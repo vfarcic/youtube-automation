@@ -1,0 +1,6 @@
+project: dot
+providers:
+  google_secretmanager:
+    env:
+      OPENAI_KEY:
+        path: projects/vfarcic/secrets/openai-key/versions/2
