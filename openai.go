@@ -4,16 +4,17 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	openai "github.com/sashabaranov/go-openai"
 )
 
-func askOpenAI(question string) []string {
+func askOpenAI(question string, iterations int) []string {
 	key := os.Getenv("OPENAI_KEY")
 	client := openai.NewClient(key)
 	responses := make([]string, 0)
-	for i := 1; i <= 5; i++ {
+	for i := 1; i <= iterations; i++ {
 		resp, err := client.CreateChatCompletion(
 			context.Background(),
 			openai.ChatCompletionRequest{
@@ -34,4 +35,63 @@ func askOpenAI(question string) []string {
 		responses = append(responses, respString)
 	}
 	return responses
+}
+
+func generateDescription(video Video) (Video, error) {
+	if len(video.Title) == 0 {
+		return video, fmt.Errorf(redStyle.Render("Title was not generated!"))
+	}
+	aiQuestion := "Write a short description for a youtube video about " + video.Title
+	descriptions := askOpenAI(aiQuestion, 5)
+	println()
+	choices := make(map[int]string)
+	for i := range descriptions {
+		println(strconv.Itoa(i) + ": " + descriptions[i])
+		choices[i] = strconv.Itoa(i)
+	}
+	println()
+	_, descriptionIndex := getChoice(choices, "Which description do you prefer?")
+	descriptionIndexInt, _ := strconv.Atoi(descriptionIndex)
+	video.Description = descriptions[descriptionIndexInt]
+	println(video.Description)
+	return video, nil
+}
+
+func generateTags(title string) (string, error) {
+	if len(title) == 0 {
+		return "", fmt.Errorf(redStyle.Render("Title was not generated!"))
+	}
+	aiQuestion := fmt.Sprintf("Write tags for youtube video about %s. Separate them with comma.", title)
+	result := askOpenAI(aiQuestion, 1)
+	println(result[0])
+	return result[0], nil
+}
+
+func generateTitle(video Video) (Video, error) {
+	if len(video.Subject) == 0 {
+		return video, fmt.Errorf(redStyle.Render("Subject was not specified"))
+	}
+	aiQuestion := "Write up to 75 characters title for a youtube video about " + video.Subject
+	result := askOpenAI(aiQuestion, 5)
+	titlesMap := make(map[int]string)
+	for index := range result {
+		titlesMap[index] = result[index]
+	}
+	println()
+	_, video.Title = getChoice(titlesMap, "Which video title do you prefer?")
+	return video, nil
+}
+
+func generateTweet(title, url string) (string, error) {
+	if len(title) == 0 {
+		return "", fmt.Errorf(redStyle.Render("Title was not generated!"))
+	}
+	if len(url) == 0 {
+		return "", fmt.Errorf(redStyle.Render("URL was not generated!"))
+	}
+	aiQuestion := fmt.Sprintf("Write a tweet for a youtube video about %s.", title)
+	result := askOpenAI(aiQuestion, 1)
+	tweet := fmt.Sprintf("%s\n\n%s", result, url)
+	println(tweet)
+	return tweet, nil
 }

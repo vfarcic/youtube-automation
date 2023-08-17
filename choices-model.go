@@ -13,10 +13,10 @@ type choice struct {
 	question      string
 	selected      string
 	selectedIndex int
-	choices       []string
+	choices       map[int]string
 }
 
-func getChoice(choices []string, question string) (int, string) {
+func getChoice(choices map[int]string, question string) (int, string) {
 	p := tea.NewProgram(choice{choices: choices, question: question})
 	m, err := p.Run()
 	if err != nil {
@@ -35,7 +35,6 @@ func (m choice) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "ctrl+c", "q", "esc":
 			return m, tea.Quit
-
 		case "enter":
 			m.selected = m.choices[m.cursor]
 			m.selectedIndex = m.cursor
@@ -58,7 +57,6 @@ func (m choice) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m choice) View() string {
 	s := strings.Builder{}
 	s.WriteString(fmt.Sprintf("%s\n\n", m.question))
-
 	for i := 0; i < len(m.choices); i++ {
 		if m.cursor == i {
 			s.WriteString("(•) ")
@@ -69,6 +67,5 @@ func (m choice) View() string {
 		s.WriteString("\n")
 	}
 	s.WriteString("\n(press enter to continue)\n")
-
 	return s.String()
 }

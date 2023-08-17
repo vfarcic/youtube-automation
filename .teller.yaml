@@ -4,3 +4,5 @@ providers:
     env:
       OPENAI_KEY:
         path: projects/vfarcic/secrets/openai-key/versions/2
+      EMAIL_PASSWORD:
+        path: projects/vfarcic/secrets/app-email-password/versions/1

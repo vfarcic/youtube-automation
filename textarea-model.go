@@ -3,13 +3,14 @@ package main
 import (
 	"fmt"
 	"log"
+	"strings"
 
 	"github.com/charmbracelet/bubbles/textarea"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-func getTextArea(value string) string {
-	p := tea.NewProgram(initialTextAreaModel(value))
+func getInputFromTextArea(question, value string) string {
+	p := tea.NewProgram(initialTextAreaModel(question, value))
 	m, err := p.Run()
 	if err != nil {
 		log.Fatal(err)
@@ -18,11 +19,12 @@ func getTextArea(value string) string {
 }
 
 type textAreaModel struct {
-	input textarea.Model
-	err   error
+	input    textarea.Model
+	question string
+	err      error
 }
 
-func initialTextAreaModel(value string) textAreaModel {
+func initialTextAreaModel(question, value string) textAreaModel {
 	ti := textarea.New()
 	ti.ShowLineNumbers = false
 	ti.SetWidth(100)
@@ -33,8 +35,9 @@ func initialTextAreaModel(value string) textAreaModel {
 	ti.SetValue(value)
 	ti.Focus()
 	return textAreaModel{
-		input: ti,
-		err:   nil,
+		input:    ti,
+		question: question,
+		err:      nil,
 	}
 }
 
@@ -71,8 +74,30 @@ func (m textAreaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m textAreaModel) View() string {
 	return fmt.Sprintf(
-		"Tell me a story.\n%s\n\n%s",
+		"%s\n\n%s\n\n%s",
+		m.question,
 		m.input.View(),
 		"(ctrl+c to continue)",
 	) + "\n\n"
+}
+
+func modifyTextArea(value, header, errorMessage string) (string, error) {
+	if len(value) == 0 {
+		return value, fmt.Errorf(redStyle.Render(errorMessage))
+	}
+	println()
+	return getInputFromTextArea(header, value), nil
+}
+
+func modifyDescriptionTags(tags, descriptionTags, header, errorMessage string) (string, error) {
+	if len(tags) == 0 {
+		return descriptionTags, fmt.Errorf(redStyle.Render(errorMessage))
+	}
+	if len(descriptionTags) == 0 {
+		descriptionTags = fmt.Sprintf("#%s", tags)
+		descriptionTags = strings.ReplaceAll(descriptionTags, " ", "")
+		descriptionTags = strings.ReplaceAll(descriptionTags, ",", " #")
+	}
+	println()
+	return getInputFromTextArea(header, descriptionTags), nil
 }
