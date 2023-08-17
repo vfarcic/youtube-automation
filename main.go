@@ -3,11 +3,20 @@ package main
 import (
 	"fmt"
 	"strconv"
+
+	"github.com/charmbracelet/lipgloss"
 )
 
 type Video struct {
+	ProjectName string
+	ProjectURL  string
+	Sponsored   string
 	Subject     string
 	Date        string
+	Code        bool
+	Screen      bool
+	Head        bool
+	Thumbnails  bool
 	Title       string
 	Description string
 	Location    string
@@ -49,17 +58,8 @@ type Video struct {
 
 // ## Tasks
 
-// - [ ] Date
-// - [ ] Sponsored
-// - [ ] Code
-// - [ ] Record screen
-// - [ ] Record face
-// - [ ] Download thumbnails
-// - [ ] Material uploaded
-// - [ ] Product name
-// - [ ] Product URL
-// - [ ] Other logos
 // - [ ] Tagline
+// - [ ] Other logos
 // - [ ] Screenshots
 // - [ ] Thumbnail ideas
 // - [ ] Animation bullets
@@ -132,49 +132,70 @@ type Video struct {
 
 // TODO:
 
+var redStyle = lipgloss.NewStyle().
+	Bold(true).
+	Foreground(lipgloss.Color("1"))
+
+var greenStyle = lipgloss.NewStyle().
+	Bold(true).
+	Foreground(lipgloss.Color("2"))
+
 func main() {
 	// CLI
 	Execute()
 	video := readYaml(path)
 	// Choices
 	for {
-		descriptionLength := len(video.Description)
-		if descriptionLength > 100 {
-			descriptionLength = 100
-		}
-		description := ""
-		if len(video.Description) > 0 {
-			description = fmt.Sprintf("%s...", video.Description[0:descriptionLength])
-		}
 		choices := []string{
-			fmt.Sprintf("Pick a subject (%s)", video.Subject),
-			fmt.Sprintf("Select publish date (%s)", video.Date),
-			"Generate title",
-			fmt.Sprintf("Modify title (%s)", video.Title),
-			"Generate description",
-			fmt.Sprintf("Modify description (%s)", description),
-			fmt.Sprintf("Set files location (%s)", video.Location),
+			getChoiceTextFromString("Set project name", video.ProjectName),
+			getChoiceTextFromString("Set project URL", video.ProjectURL),
+			getChoiceTextFromString("Set sponsorship", video.Sponsored),
+			getChoiceTextFromString("Set the subject", video.Subject),
+			getChoiceTextFromString("Set publish date", video.Date),
+			getChoiceTextFromBool("Wrote code?", video.Code),
+			getChoiceTextFromBool("Recorded screen?", video.Screen),
+			getChoiceTextFromBool("Recorded talking head?", video.Head),
+			getChoiceTextFromBool("Downloaded thumbnails?", video.Thumbnails),
+			getChoiceTextFromString("Set files location", video.Location),
+			getChoiceTextFromString("Generate title", video.Title),
+			getChoiceTextFromString("Write/Modify title", video.Title),
+			getChoiceTextFromString("Generate description", video.Description),
+			getChoiceTextFromString("Write/Modify description", video.Description),
 			"Exit",
 		}
 		println()
 		choice, _ := getChoice(choices, "What would you like to do?")
 		err := error(nil)
 		switch choice {
-		case 0: // Subject
-			video.Subject = getInput("What is the subject of the video?", video.Subject)
-		case 1: // Date
-			video.Date = getInput("What is the publish of the video?", video.Date)
-		case 2: // Generate title
+		case 0: // Project name
+			video.ProjectName, err = getInputFromString("Set project name)", video.ProjectName)
+		case 1: // Project URL
+			video.ProjectURL, err = getInputFromString("Set project URL", video.ProjectURL)
+		case 2: // Sponsored
+			video.Sponsored, err = getInputFromString("Sponsorship amount ('-' or 'N/A' if not sponsored)", video.Sponsored)
+		case 3: // Subject
+			video.Subject, err = getInputFromString("What is the subject of the video?", video.Subject)
+		case 4: // Date
+			video.Date, err = getInputFromString("What is the publish of the video?", video.Date)
+		case 5: // Code
+			video.Code = getInputFromBool(video.Code)
+		case 6: // Screen
+			video.Screen = getInputFromBool(video.Screen)
+		case 7: // Head
+			video.Head = getInputFromBool(video.Head)
+		case 8: // Thumbnails
+			video.Thumbnails = getInputFromBool(video.Thumbnails)
+		case 9: // Location
+			video.Location, err = getInputFromString("Where are files located?", video.Location)
+		case 10: // Generate title
 			video, err = generateTitle(video)
-		case 3: // Modify title
+		case 11: // Modify title
 			video, err = modifyTitle(video)
-		case 4: // Generate description
+		case 12: // Generate description
 			video, err = generateDescription(video)
-		case 5: // Modify description
+		case 13: // Modify description
 			video, err = modifyDescription(video)
-		case 6: // Location
-			video.Location = getInput("Where are files located?", video.Location)
-		case 7: // Exit
+		case 14: // Exit
 			return
 		}
 		if err != nil {
@@ -183,6 +204,29 @@ func main() {
 		}
 		writeYaml(video, path)
 	}
+}
+
+func getChoiceTextFromString(choice, value string) string {
+	valueLength := len(value)
+	if valueLength > 100 {
+		value = fmt.Sprintf("%s...", value[0:100])
+	}
+	text := choice
+	if value != "" && value != "-" && value != "N/A" {
+		text = fmt.Sprintf("%s (%s)", text, value)
+	}
+	if value == "" {
+		return redStyle.Render(text)
+	}
+	return greenStyle.Render(text)
+}
+
+func getChoiceTextFromBool(choice string, value bool) string {
+	text := fmt.Sprintf("%s (%t)", choice, value)
+	if !value {
+		return redStyle.Render(text)
+	}
+	return greenStyle.Render(text)
 }
 
 func generateTitle(video Video) (Video, error) {
@@ -201,7 +245,7 @@ func modifyTitle(video Video) (Video, error) {
 		return video, fmt.Errorf("title was not specified")
 	}
 	println()
-	video.Title = getInput("Rewrite the title:", video.Title)
+	video.Title, _ = getInputFromString("Rewrite the title:", video.Title)
 	return video, nil
 }
 

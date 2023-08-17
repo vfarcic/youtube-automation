@@ -29,5 +29,4 @@ func writeYaml(video Video, path string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	println("Saved to " + path + ".")
 }

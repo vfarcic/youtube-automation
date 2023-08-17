@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -18,13 +17,20 @@ type inputModel struct {
 	err      error
 }
 
-func getInput(question, value string) string {
+func getInputFromString(question, value string) (string, error) {
 	p := tea.NewProgram(initialInputModel(question, value))
 	m, err := p.Run()
 	if err != nil {
-		log.Fatal(err)
+		return "", err
 	}
-	return m.(inputModel).input.Value()
+	return m.(inputModel).input.Value(), nil
+}
+
+func getInputFromBool(value bool) bool {
+	if value {
+		return false
+	}
+	return true
 }
 
 func initialInputModel(question, value string) inputModel {
