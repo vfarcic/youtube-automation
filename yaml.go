@@ -7,17 +7,11 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-type Video struct {
-	Subject     string
-	Title       string
-	Description string
-}
-
 func readYaml(path string) Video {
 	var video Video
 	data, err := os.ReadFile(path)
 	if err != nil {
-		log.Fatal(err)
+		return video
 	}
 	err = yaml.Unmarshal(data, &video)
 	if err != nil {
