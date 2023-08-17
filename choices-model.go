@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"strings"
 
@@ -8,18 +9,20 @@ import (
 )
 
 type choice struct {
-	cursor   int
-	selected string
-	choices  []string
+	cursor        int
+	question      string
+	selected      string
+	selectedIndex int
+	choices       []string
 }
 
-func getChoice(titles []string) string {
-	p := tea.NewProgram(choice{choices: titles})
+func getChoice(choices []string, question string) (int, string) {
+	p := tea.NewProgram(choice{choices: choices, question: question})
 	m, err := p.Run()
 	if err != nil {
 		log.Fatal(err)
 	}
-	return m.(choice).selected
+	return m.(choice).selectedIndex, m.(choice).selected
 }
 
 func (m choice) Init() tea.Cmd {
@@ -35,6 +38,7 @@ func (m choice) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "enter":
 			m.selected = m.choices[m.cursor]
+			m.selectedIndex = m.cursor
 			return m, tea.Quit
 		case "down", "j":
 			m.cursor++
@@ -53,7 +57,7 @@ func (m choice) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m choice) View() string {
 	s := strings.Builder{}
-	s.WriteString("Which video title do you prefer?\n\n")
+	s.WriteString(fmt.Sprintf("%s\n\n", m.question))
 
 	for i := 0; i < len(m.choices); i++ {
 		if m.cursor == i {

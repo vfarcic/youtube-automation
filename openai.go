@@ -13,7 +13,7 @@ func askOpenAI(question string) []string {
 	key := os.Getenv("OPENAI_KEY")
 	client := openai.NewClient(key)
 	responses := make([]string, 0)
-	for i := 1; i <= 1; i++ {
+	for i := 1; i <= 5; i++ {
 		resp, err := client.CreateChatCompletion(
 			context.Background(),
 			openai.ChatCompletionRequest{
