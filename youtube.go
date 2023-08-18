@@ -280,7 +280,10 @@ If you are interested in sponsoring this channel, please use https://calendar.ap
 			Description: description,
 			CategoryId:  "28",
 		},
-		Status: &youtube.VideoStatus{PrivacyStatus: "unlisted"},
+		Status: &youtube.VideoStatus{
+			PrivacyStatus: "private",
+			PublishAt:     video.Date,
+		},
 	}
 	// The API returns a 400 Bad Request response if tags is an empty string.
 	if strings.Trim(video.Tags, "") != "" {
@@ -296,7 +299,9 @@ If you are interested in sponsoring this channel, please use https://calendar.ap
 	}
 
 	response, err := call.Media(file).Do()
-	println(err.Error())
+	if err != nil {
+		log.Fatalf("Error gettings response from YouTube: %v", err)
+	}
 	fmt.Printf("Upload successful! Video ID: %v\n", response.Id)
 	return response.Id
 }
@@ -309,6 +314,7 @@ func uploadThumbnail(video Video) error {
 		log.Fatalf("Error creating YouTube client: %v", err)
 	}
 
+	println(video.Thumbnail + "!!!!")
 	file, err := os.Open(video.Thumbnail)
 	if err != nil {
 		return err
@@ -318,7 +324,9 @@ func uploadThumbnail(video Video) error {
 	call := service.Thumbnails.Set(video.VideoId)
 
 	response, err := call.Media(file).Do()
-	println(err.Error())
+	if err != nil {
+		log.Fatalf("Error gettings response from YouTube: %v", err)
+	}
 
 	fmt.Printf("Thumbnail uploaded, URL: %s\n", response.Items[0].Default.Url)
 	return nil

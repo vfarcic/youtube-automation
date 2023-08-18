@@ -49,6 +49,8 @@ const choiceTimecodes = 27
 const choiceGist = 28
 const choiceRelatedVideos = 29
 const choiceUploadVideo = 30
+
+// TODO: Get the URL from the published video
 const choiceVideoURL = 31
 const choiceGenerateTweet = 32
 const choiceModifyTweet = 33
