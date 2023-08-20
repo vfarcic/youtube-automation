@@ -72,26 +72,31 @@ func generateTitle(video Video) (Video, error) {
 		return video, fmt.Errorf(redStyle.Render("Subject was not specified"))
 	}
 	aiQuestion := "Write up to 75 characters title for a youtube video about " + video.Subject
-	result := askOpenAI(aiQuestion, 5)
+	results := askOpenAI(aiQuestion, 5)
 	titlesMap := make(map[int]string)
-	for index := range result {
-		titlesMap[index] = result[index]
+	for index := range results {
+		titlesMap[index] = results[index]
 	}
 	println()
 	_, video.Title = getChoice(titlesMap, "Which video title do you prefer?")
 	return video, nil
 }
 
-func generateTweet(title, url string) (string, error) {
+func generateTweet(title, videoId string) (string, error) {
 	if len(title) == 0 {
 		return "", fmt.Errorf(redStyle.Render("Title was not generated!"))
 	}
-	if len(url) == 0 {
-		return "", fmt.Errorf(redStyle.Render("URL was not generated!"))
+	if len(videoId) == 0 {
+		return "", fmt.Errorf(redStyle.Render("Video was NOT uploaded!"))
 	}
 	aiQuestion := fmt.Sprintf("Write a tweet for a youtube video about %s.", title)
-	result := askOpenAI(aiQuestion, 1)
-	tweet := fmt.Sprintf("%s\n\n%s", result, url)
-	println(tweet)
+	results := askOpenAI(aiQuestion, 5)
+	resultsMap := make(map[int]string)
+	for index := range results {
+		resultsMap[index] = results[index]
+	}
+	println()
+	_, tweet := getChoice(resultsMap, "Which tweet do you prefer?")
+	tweet = fmt.Sprintf("%s\n\nhttps://youtu.be/%s", tweet, videoId)
 	return tweet, nil
 }

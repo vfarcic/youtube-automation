@@ -49,12 +49,9 @@ const choiceTimecodes = 27
 const choiceGist = 28
 const choiceRelatedVideos = 29
 const choiceUploadVideo = 30
-
-// TODO: Get the URL from the published video
-const choiceVideoURL = 31
-const choiceGenerateTweet = 32
-const choiceModifyTweet = 33
-const choiceExit = 34
+const choiceGenerateTweet = 31
+const choiceModifyTweet = 32
+const choiceExit = 33
 
 type Video struct {
 	ProjectName      string
@@ -86,7 +83,6 @@ type Video struct {
 	RelatedVideos    string
 	UploadVideo      string
 	VideoId          string
-	VideoURL         string
 	Tweet            string
 }
 
@@ -123,7 +119,6 @@ func modifyChoice(video Video) (Video, error) {
 		choiceGist:                  getChoiceTextFromString("Set gist", video.Gist),
 		choiceRelatedVideos:         getChoiceTextFromString("Set related videos", video.RelatedVideos),
 		choiceUploadVideo:           getChoiceTextFromString("Upload video", video.UploadVideo),
-		choiceVideoURL:              getChoiceTextFromString("Set video URL", video.VideoURL),
 		choiceGenerateTweet:         getChoiceTextFromString("Generate Tweet", video.Tweet),
 		choiceModifyTweet:           getChoiceTextFromString("Write/modify Tweet", video.Tweet),
 		choiceExit:                  "Exit",
@@ -141,7 +136,7 @@ func modifyChoice(video Video) (Video, error) {
 	case choiceSubject:
 		video.Subject, err = getInputFromString("What is the subject of the video?", video.Subject)
 	case choiceDate:
-		video.Date, err = getInputFromString("What is the publish of the video?", video.Date)
+		video.Date, err = getInputFromString("What is the publish of the video (e.g., 2030-01-21T16:00)?", video.Date)
 	case choiceCode:
 		video.Code = getInputFromBool(video.Code)
 	case choiceScreen:
@@ -194,10 +189,8 @@ func modifyChoice(video Video) (Video, error) {
 		video.RelatedVideos = getInputFromTextArea("What are the related videos?", video.RelatedVideos)
 	case choiceUploadVideo:
 		video.UploadVideo, video.VideoId = getChoiceUploadVideo(video)
-	case choiceVideoURL:
-		video.VideoURL, err = getInputFromString("What is the video URL?", video.VideoURL)
 	case choiceGenerateTweet:
-		video.Tweet, err = generateTweet(video.Title, video.VideoURL)
+		video.Tweet, err = generateTweet(video.Title, video.VideoId)
 	case choiceModifyTweet:
 		video.Tweet, err = modifyTextArea(video.Tweet, "Modify tweet:", "Tweet was not generated!")
 	case choiceExit:

@@ -84,6 +84,14 @@ func getChoiceUploadVideo(video Video) (string, string) {
 	video.UploadVideo, _ = getInputFromString("What is the path to the video?", video.UploadVideo)
 	video.VideoId = uploadVideo(video)
 	uploadThumbnail(video)
+	println(redStyle.Render(`Following should be set manually:
+- End screen
+- Playlists
+- Tags
+- Language
+- License
+- Monetization
+`))
 	return video.UploadVideo, video.VideoId
 }
 

@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
@@ -46,23 +45,24 @@ import (
 //     authorization code from the browser and enter it on the command line.
 const launchWebServer = true
 
-const missingClientSecretsMessage = `
-Please configure OAuth 2.0
-To make this sample run, you need to populate the client_secrets.json file
-found at:
-   %v
-with information from the {{ Google Cloud Console }}
-{{ https://cloud.google.com/console }}
-For more information about the client_secrets.json file format, please visit:
-https://developers.google.com/api-client-library/python/guide/aaa_client_secrets
-`
+// TODO: Remove
+// const missingClientSecretsMessage = `
+// Please configure OAuth 2.0
+// To make this sample run, you need to populate the client_secrets.json file
+// found at:
+//    %v
+// with information from the {{ Google Cloud Console }}
+// {{ https://cloud.google.com/console }}
+// For more information about the client_secrets.json file format, please visit:
+// https://developers.google.com/api-client-library/python/guide/aaa_client_secrets
+// `
 
 // getClient uses a Context and Config to retrieve a Token
 // then generate a Client. It returns the generated Client.
 func getClient(scope string) *http.Client {
 	ctx := context.Background()
 
-	b, err := ioutil.ReadFile("client_secret.json")
+	b, err := os.ReadFile("client_secret.json")
 	if err != nil {
 		log.Fatalf("Unable to read client secret file: %v", err)
 	}
@@ -135,7 +135,7 @@ func openURL(url string) error {
 	case "darwin":
 		err = exec.Command("open", url).Start()
 	default:
-		err = fmt.Errorf("Cannot open URL %s on this platform", url)
+		err = fmt.Errorf("cannot open URL %s on this platform", url)
 	}
 	return err
 }
@@ -178,7 +178,7 @@ func getTokenFromWeb(config *oauth2.Config, authURL string) (*oauth2.Token, erro
 		log.Fatalf("Unable to open authorization URL in web server: %v", err)
 	} else {
 		fmt.Println("Your browser has been opened to an authorization URL.",
-			" This program will resume once authorization has been provided.\n")
+			" This program will resume once authorization has been provided.")
 		fmt.Println(authURL)
 	}
 
@@ -257,14 +257,14 @@ func uploadVideo(video Video) string {
 Consider joining the channel: https://www.youtube.com/c/devopstoolkit/join
 
 ▬▬▬▬▬▬ 🔗 Additional Info 🔗 ▬▬▬▬▬▬ 
-➡  Gist with the commands: %s
+➡ Gist with the commands: %s
 %s
 ▬▬▬▬▬▬ 💰 Sponsoships 💰 ▬▬▬▬▬▬ 
 If you are interested in sponsoring this channel, please use https://calendar.app.google/Q9eaDUHN8ibWBaA7A to book a timeslot that suits you, and we'll go over the details. Or feel free to contact me over Twitter or LinkedIn (see below).
 
 ▬▬▬▬▬▬ 👋 Contact me 👋 ▬▬▬▬▬▬ 
-➡  Twitter: https://twitter.com/vfarcic
-➡  LinkedIn: https://www.linkedin.com/in/viktorfarcic/
+➡ Twitter: https://twitter.com/vfarcic
+➡ LinkedIn: https://www.linkedin.com/in/viktorfarcic/
 
 ▬▬▬▬▬▬ 🚀 Other Channels 🚀 ▬▬▬▬▬▬
 🎤 Podcast: https://www.devopsparadox.com/
@@ -284,6 +284,11 @@ If you are interested in sponsoring this channel, please use https://calendar.ap
 			PrivacyStatus: "private",
 			PublishAt:     video.Date,
 		},
+		// MonetizationDetails: &youtube.VideoMonetizationDetails{
+		// 	Access: &youtube.AccessPolicy{
+		// 		Allowed: true,
+		// 	},
+		// },
 	}
 	// The API returns a 400 Bad Request response if tags is an empty string.
 	if strings.Trim(video.Tags, "") != "" {
@@ -314,7 +319,6 @@ func uploadThumbnail(video Video) error {
 		log.Fatalf("Error creating YouTube client: %v", err)
 	}
 
-	println(video.Thumbnail + "!!!!")
 	file, err := os.Open(video.Thumbnail)
 	if err != nil {
 		return err
