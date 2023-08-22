@@ -54,6 +54,27 @@ func getChoiceTextFromString(choice, value string) string {
 	return greenStyle.Render(text)
 }
 
+func getChoiceTextFromArray(choice string, values []string) string {
+	value := ""
+	for i := range values {
+		value = fmt.Sprintf("%s, %s", values[i], value)
+	}
+	valueLength := len(value)
+	if valueLength > 100 {
+		value = fmt.Sprintf("%s...", value[0:100])
+	}
+	value = strings.TrimRight(value, ", ")
+	text := choice
+	value = strings.ReplaceAll(value, "\n", " ")
+	if value != "" && value != "-" && value != "N/A" {
+		text = fmt.Sprintf("%s (%s)", text, value)
+	}
+	if value == "" {
+		return orangeStyle.Render(text)
+	}
+	return greenStyle.Render(text)
+}
+
 func getChoiceTextFromBool(choice string, value bool) string {
 	if !value {
 		return orangeStyle.Render(choice)
@@ -93,6 +114,23 @@ func getChoiceUploadVideo(video Video) (string, string) {
 - Monetization
 `))
 	return video.UploadVideo, video.VideoId
+}
+
+func getChoicePlaylists(playlists []string) []string {
+	choices := make(map[int]string)
+	index := 0
+	for _, item := range getPlaylists() {
+		choices[index] = item
+		index += 1
+	}
+	selectedMap := getChoices(choices, "Which video title do you prefer?")
+	selected := []string{}
+	for _, item := range selectedMap {
+		if len(item) > 0 {
+			selected = append(selected, item)
+		}
+	}
+	return selected
 }
 
 func modifyAnimations(video Video) (string, error) {

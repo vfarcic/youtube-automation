@@ -6,3 +6,7 @@ providers:
         path: projects/vfarcic/secrets/openai-key/versions/2
       EMAIL_PASSWORD:
         path: projects/vfarcic/secrets/app-email-password/versions/1
+      YOUTUBE_API_KEY:
+        path: projects/vfarcic/secrets/youtube-api-key/versions/1
+      YOUTUBE_TOKEN:
+        path: projects/vfarcic/secrets/youtube-token/versions/1

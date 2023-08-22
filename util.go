@@ -48,10 +48,11 @@ const choiceGotMovie = 26
 const choiceTimecodes = 27
 const choiceGist = 28
 const choiceRelatedVideos = 29
-const choiceUploadVideo = 30
-const choiceGenerateTweet = 31
-const choiceModifyTweet = 32
-const choiceExit = 33
+const choicePlaylists = 30
+const choiceUploadVideo = 31
+const choiceGenerateTweet = 32
+const choiceModifyTweet = 33
+const choiceExit = 34
 
 type Video struct {
 	ProjectName      string
@@ -81,6 +82,7 @@ type Video struct {
 	Timecodes        string
 	Gist             string
 	RelatedVideos    string
+	Playlists        []string
 	UploadVideo      string
 	VideoId          string
 	Tweet            string
@@ -118,6 +120,7 @@ func modifyChoice(video Video) (Video, error) {
 		choiceTimecodes:             getChoiceTextFromString("Set timecodes", video.Timecodes),
 		choiceGist:                  getChoiceTextFromString("Set gist", video.Gist),
 		choiceRelatedVideos:         getChoiceTextFromString("Set related videos", video.RelatedVideos),
+		choicePlaylists:             getChoiceTextFromArray("Set playlists", video.Playlists),
 		choiceUploadVideo:           getChoiceTextFromString("Upload video", video.UploadVideo),
 		choiceGenerateTweet:         getChoiceTextFromString("Generate Tweet", video.Tweet),
 		choiceModifyTweet:           getChoiceTextFromString("Write/modify Tweet", video.Tweet),
@@ -187,6 +190,8 @@ func modifyChoice(video Video) (Video, error) {
 		video.Gist, err = getInputFromString("Where is the gist?", video.Gist)
 	case choiceRelatedVideos:
 		video.RelatedVideos = getInputFromTextArea("What are the related videos?", video.RelatedVideos)
+	case choicePlaylists:
+		video.Playlists = getChoicePlaylists(video.Playlists)
 	case choiceUploadVideo:
 		video.UploadVideo, video.VideoId = getChoiceUploadVideo(video)
 	case choiceGenerateTweet:

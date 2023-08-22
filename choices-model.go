@@ -9,11 +9,11 @@ import (
 )
 
 type choice struct {
-	cursor        int
-	question      string
-	selected      string
-	selectedIndex int
-	choices       map[int]string
+	cursor   int
+	question string
+	selected map[int]string
+	// selectedIndex int
+	choices map[int]string
 }
 
 func getChoice(choices map[int]string, question string) (int, string) {
@@ -22,7 +22,19 @@ func getChoice(choices map[int]string, question string) (int, string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	return m.(choice).selectedIndex, m.(choice).selected
+	for key, item := range m.(choice).selected {
+		return key, item
+	}
+	return -1, ""
+}
+
+func getChoices(choices map[int]string, question string) map[int]string {
+	p := tea.NewProgram(choice{choices: choices, question: question})
+	m, err := p.Run()
+	if err != nil {
+		log.Fatal(err)
+	}
+	return m.(choice).selected
 }
 
 func (m choice) Init() tea.Cmd {
@@ -35,9 +47,18 @@ func (m choice) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "ctrl+c", "q", "esc":
 			return m, tea.Quit
+		case " ":
+			if m.selected == nil {
+				m.selected = make(map[int]string)
+			}
+			m.selected[m.cursor] = m.choices[m.cursor]
+			// m.selectedIndex = m.cursor
 		case "enter":
-			m.selected = m.choices[m.cursor]
-			m.selectedIndex = m.cursor
+			if m.selected == nil {
+				m.selected = make(map[int]string)
+			}
+			m.selected[m.cursor] = m.choices[m.cursor]
+			// m.selectedIndex = m.cursor
 			return m, tea.Quit
 		case "down", "j":
 			m.cursor++
@@ -61,7 +82,16 @@ func (m choice) View() string {
 		if m.cursor == i {
 			s.WriteString("(•) ")
 		} else {
-			s.WriteString("( ) ")
+			selected := false
+			for key := range m.selected {
+				if key == i {
+					s.WriteString("(•) ")
+					selected = true
+				}
+			}
+			if !selected {
+				s.WriteString("( ) ")
+			}
 		}
 		s.WriteString(m.choices[i])
 		s.WriteString("\n")
