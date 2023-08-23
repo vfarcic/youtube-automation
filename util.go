@@ -82,10 +82,15 @@ type Video struct {
 	Timecodes        string
 	Gist             string
 	RelatedVideos    string
-	Playlists        []string
+	Playlists        []Playlist
 	UploadVideo      string
 	VideoId          string
 	Tweet            string
+}
+
+type Playlist struct {
+	Title string
+	Id    string
 }
 
 func modifyChoice(video Video) (Video, error) {
@@ -120,7 +125,7 @@ func modifyChoice(video Video) (Video, error) {
 		choiceTimecodes:             getChoiceTextFromString("Set timecodes", video.Timecodes),
 		choiceGist:                  getChoiceTextFromString("Set gist", video.Gist),
 		choiceRelatedVideos:         getChoiceTextFromString("Set related videos", video.RelatedVideos),
-		choicePlaylists:             getChoiceTextFromArray("Set playlists", video.Playlists),
+		choicePlaylists:             getChoiceTextFromPlaylists("Set playlists", video.Playlists),
 		choiceUploadVideo:           getChoiceTextFromString("Upload video", video.UploadVideo),
 		choiceGenerateTweet:         getChoiceTextFromString("Generate Tweet", video.Tweet),
 		choiceModifyTweet:           getChoiceTextFromString("Write/modify Tweet", video.Tweet),
@@ -191,7 +196,7 @@ func modifyChoice(video Video) (Video, error) {
 	case choiceRelatedVideos:
 		video.RelatedVideos = getInputFromTextArea("What are the related videos?", video.RelatedVideos)
 	case choicePlaylists:
-		video.Playlists = getChoicePlaylists(video.Playlists)
+		video.Playlists = getChoicePlaylists()
 	case choiceUploadVideo:
 		video.UploadVideo, video.VideoId = getChoiceUploadVideo(video)
 	case choiceGenerateTweet:

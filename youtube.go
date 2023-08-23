@@ -21,6 +21,8 @@ import (
 	"google.golang.org/api/youtube/v3"
 )
 
+const channelID = "UCfz8x0lVzJpb_dgWm9kPVrw"
+
 // This variable indicates whether the script should launch a web server to
 // initiate the authorization flow or just display the URL in the terminal
 // window. Note the following instructions based on this setting:
@@ -317,23 +319,41 @@ func uploadThumbnail(video Video) error {
 
 	service, err := youtube.New(client)
 	if err != nil {
-		log.Fatalf("Error creating YouTube client: %v", err)
+		return err
 	}
-
 	file, err := os.Open(video.Thumbnail)
 	if err != nil {
 		return err
 	}
 	defer file.Close()
-
 	call := service.Thumbnails.Set(video.VideoId)
-
 	response, err := call.Media(file).Do()
 	if err != nil {
-		log.Fatalf("Error getting response from YouTube: %v", err)
+		return err
 	}
-
 	fmt.Printf("Thumbnail uploaded, URL: %s\n", response.Items[0].Default.Url)
+	return nil
+}
+
+func setPlaylists(video Video) error {
+	client := getClient(youtube.YoutubeScope)
+	service, err := youtube.New(client)
+	if err != nil {
+		return err
+	}
+	call := service.PlaylistItems.Insert([]string{"snippet"}, &youtube.PlaylistItem{
+		Snippet: &youtube.PlaylistItemSnippet{
+			PlaylistId: "PLyicRj904Z99X4rm7NFnZGD80aDK83Miv",
+			ResourceId: &youtube.ResourceId{
+				Kind:    "youtube#video",
+				VideoId: video.VideoId,
+			},
+		},
+	})
+	_, err = call.Do()
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -348,7 +368,6 @@ type PlaylistListResponse struct {
 }
 
 func getPlaylists() map[string]string {
-	channelID := "UCfz8x0lVzJpb_dgWm9kPVrw"
 	apiKey := os.Getenv("YOUTUBE_API_KEY")
 	apiUrl := fmt.Sprintf("https://www.googleapis.com/youtube/v3/playlists?part=snippet&channelId=%s&key=%s&maxResults=50", channelID, apiKey)
 
@@ -370,7 +389,7 @@ func getPlaylists() map[string]string {
 
 	playlistTitles := make(map[string]string)
 	for _, item := range response.Items {
-		playlistTitles[item.ID] = item.Snippet.Title
+		playlistTitles[item.ID] = item.Snippet.Title + " - " + item.ID
 	}
 	return playlistTitles
 }

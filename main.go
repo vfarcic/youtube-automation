@@ -54,10 +54,10 @@ func getChoiceTextFromString(choice, value string) string {
 	return greenStyle.Render(text)
 }
 
-func getChoiceTextFromArray(choice string, values []string) string {
+func getChoiceTextFromPlaylists(choice string, values []Playlist) string {
 	value := ""
 	for i := range values {
-		value = fmt.Sprintf("%s, %s", values[i], value)
+		value = fmt.Sprintf("%s, %s", values[i].Title, value)
 	}
 	valueLength := len(value)
 	if valueLength > 100 {
@@ -105,29 +105,36 @@ func getChoiceUploadVideo(video Video) (string, string) {
 	video.UploadVideo, _ = getInputFromString("What is the path to the video?", video.UploadVideo)
 	video.VideoId = uploadVideo(video)
 	uploadThumbnail(video)
+	// err := setPlaylists(video)
+	// if err != nil {
+	// 	println(redStyle.Render(fmt.Sprintf("Error setting playlists: %s", err.Error())))
+	// }
 	println(redStyle.Render(`Following should be set manually:
-- End screen
-- Playlists
-- Tags
-- Language
-- License
-- Monetization
-`))
+	- End screen
+	- Playlists
+	- Tags
+	- Language
+	- License
+	- Monetization
+	`))
 	return video.UploadVideo, video.VideoId
 }
 
-func getChoicePlaylists(playlists []string) []string {
+func getChoicePlaylists() []Playlist {
 	choices := make(map[int]string)
 	index := 0
 	for _, item := range getPlaylists() {
 		choices[index] = item
 		index += 1
 	}
-	selectedMap := getChoices(choices, "Which video title do you prefer?")
-	selected := []string{}
-	for _, item := range selectedMap {
-		if len(item) > 0 {
-			selected = append(selected, item)
+	selectedMap := getChoices(choices, "Select playlists")
+	selected := []Playlist{}
+	for _, value := range selectedMap {
+		if len(value) > 0 {
+			id := strings.Split(value, " - ")[1]
+			title := strings.Split(value, " - ")[0]
+			playlist := Playlist{Title: title, Id: id}
+			selected = append(selected, playlist)
 		}
 	}
 	return selected
