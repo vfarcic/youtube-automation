@@ -238,9 +238,7 @@ func uploadVideo(video Video) string {
 		log.Fatalf("You must provide a thumbnail of the video file to upload")
 		return ""
 	}
-
 	client := getClient(youtube.YoutubeUploadScope)
-
 	service, err := youtube.New(client)
 	if err != nil {
 		log.Fatalf("Error creating YouTube client: %v", err)
@@ -297,9 +295,7 @@ If you are interested in sponsoring this channel, please use https://calendar.ap
 	if strings.Trim(video.Tags, "") != "" {
 		upload.Snippet.Tags = strings.Split(video.Tags, ",")
 	}
-
 	call := service.Videos.Insert([]string{"snippet", "status"}, upload)
-
 	file, err := os.Open(video.UploadVideo)
 	defer file.Close()
 	if err != nil {
@@ -341,7 +337,7 @@ func setPlaylists(video Video) error {
 	if err != nil {
 		return err
 	}
-	call := service.PlaylistItems.Insert([]string{"snippet"}, &youtube.PlaylistItem{
+	call := service.PlaylistItems.Insert([]string{"snippet", "status"}, &youtube.PlaylistItem{
 		Snippet: &youtube.PlaylistItemSnippet{
 			PlaylistId: "PLyicRj904Z99X4rm7NFnZGD80aDK83Miv",
 			ResourceId: &youtube.ResourceId{

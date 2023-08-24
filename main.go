@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -151,6 +153,19 @@ func modifyAnimations(video Video) (string, error) {
 	if len(video.Title) == 0 {
 		return video.Animations, fmt.Errorf(redStyle.Render("Video title was not specified!"))
 	}
+	title := `Write animation bullets.
+
+Suggested bullets:
+- Thumbnails: ([[TODO]]) + text "The link is in the description" + an arrow pointing below
+- Logo: [[TODO]]
+- Section: [[TODO]]
+- Text: [[TODO]]
+- Text: [[TODO]] (big)
+- Plug: [[TODO]] + logo + URL ([[TODO]]) (use their website for animations or screenshots; make it look different from the main video; I'll let you know where to put it once the main video is ready)
+- Diagram: [[TODO]]
+- Header: Cons; Items: [[TODO]]
+- Header: Pros; Items: [[TODO]]
+`
 	if len(video.Animations) == 0 {
 		video.Animations = fmt.Sprintf(`- Animation: Subscribe (anywhere in the video)
 - Animation: Like (anywhere in the video)
@@ -160,15 +175,6 @@ func modifyAnimations(video Video) (string, error) {
 - Lower third: %s + logo + URL (%s) (add to a few places when I mention %s)
 - Text: Gist with the commands + an arrow pointing below (add shortly after we start showing the code)
 - Title roll: %s
-- * Thumbnails: ([[TODO]]) + text "The link is in the description" + an arrow pointing below
-- * Logo: [[TODO]]
-- * Section: [[TODO]]
-- * Text: [[TODO]]
-- * Text: [[TODO]] (big)
-- * Plug: [[TODO]] + logo + URL ([[TODO]]) (use their website for animations or screenshots; make it look different from the main video; I'll let you know where to put it once the main video is ready)
-- * Diagram: [[TODO]]
-- * Header: Cons; Items: [[TODO]]
-- * Header: Pros; Items: [[TODO]]
 - Member shoutouts: Thanks a ton to the new members for supporting the channel: %s
 - Outro roll
 `,
@@ -178,5 +184,19 @@ func modifyAnimations(video Video) (string, error) {
 			video.Title,
 			video.Members)
 	}
-	return getInputFromTextArea("Write animation bullets", video.Animations), nil
+	return getInputFromTextArea(title, video.Animations, 100), nil
+}
+
+func setThumbnail(path string) (string, error) {
+	if len(path) == 0 {
+		path = fmt.Sprintf("%s/", filepath.Dir(settings.path))
+	}
+	path, err := getInputFromString("What is the path to the thumbnail?", path)
+	if err != nil {
+		return "", err
+	}
+	if _, err := os.Stat(path); err != nil {
+		return "", fmt.Errorf(redStyle.Render("File does not exist!"))
+	}
+	return path, nil
 }

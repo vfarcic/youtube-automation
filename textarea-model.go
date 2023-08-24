@@ -9,8 +9,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-func getInputFromTextArea(question, value string) string {
-	p := tea.NewProgram(initialTextAreaModel(question, value))
+func getInputFromTextArea(question, value string, height int) string {
+	p := tea.NewProgram(initialTextAreaModel(question, value, height))
 	m, err := p.Run()
 	if err != nil {
 		log.Fatal(err)
@@ -24,13 +24,13 @@ type textAreaModel struct {
 	err      error
 }
 
-func initialTextAreaModel(question, value string) textAreaModel {
+func initialTextAreaModel(question, value string, height int) textAreaModel {
 	ti := textarea.New()
 	ti.ShowLineNumbers = false
 	ti.SetWidth(100)
 	ti.SetHeight(20)
 	ti.MaxWidth = 100
-	ti.MaxHeight = 20
+	ti.MaxHeight = height
 	ti.CharLimit = 0
 	ti.SetValue(value)
 	ti.Focus()
@@ -86,7 +86,7 @@ func modifyTextArea(value, header, errorMessage string) (string, error) {
 		return value, fmt.Errorf(redStyle.Render(errorMessage))
 	}
 	println()
-	return getInputFromTextArea(header, value), nil
+	return getInputFromTextArea(header, value, 20), nil
 }
 
 func modifyDescriptionTags(tags, descriptionTags, header, errorMessage string) (string, error) {
@@ -99,5 +99,5 @@ func modifyDescriptionTags(tags, descriptionTags, header, errorMessage string) (
 		descriptionTags = strings.ReplaceAll(descriptionTags, ",", " #")
 	}
 	println()
-	return getInputFromTextArea(header, descriptionTags), nil
+	return getInputFromTextArea(header, descriptionTags, 20), nil
 }

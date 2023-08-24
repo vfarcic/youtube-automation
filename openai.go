@@ -41,7 +41,7 @@ func generateDescription(video Video) (Video, error) {
 	if len(video.Title) == 0 {
 		return video, fmt.Errorf(redStyle.Render("Title was not generated!"))
 	}
-	aiQuestion := "Write a short description for a youtube video about " + video.Title
+	aiQuestion := "Write a short description of up to 300 characters for a youtube video about " + video.Title
 	descriptions := askOpenAI(aiQuestion, 5)
 	println()
 	choices := make(map[int]string)

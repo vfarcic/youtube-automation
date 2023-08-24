@@ -26,7 +26,7 @@ func sendEmail(from, to string, subject, body string) {
 
 func sendThumbnailEmail(from, to string, video Video) {
 	logos := video.ProjectURL
-	if video.OtherLogos != "" {
+	if video.OtherLogos != "" && video.OtherLogos != "-" && video.OtherLogos != "N/A" {
 		logos = fmt.Sprintf("%s, %s", logos, video.OtherLogos)
 	}
 	subject := fmt.Sprintf("Thumbnail: %s", video.ProjectName)
@@ -66,6 +66,6 @@ All the material is available at %s.
 %s
 </ul>
 `, video.Location, animationsString)
-	println(body)
+	body = strings.ReplaceAll(body, "\n<li></li>", "")
 	sendEmail(from, to, subject, body)
 }

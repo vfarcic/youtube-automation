@@ -166,7 +166,7 @@ func modifyChoice(video Video) (Video, error) {
 	case choiceGenerateTitle:
 		video, err = generateTitle(video)
 	case choiceModifyTitle:
-		video.Title, err = modifyTextArea(video.Subject, "Rewrite the title:", "Title was not generated!")
+		video.Title, err = modifyTextArea(video.Title, "Rewrite the title:", "Title was not generated!")
 	case choiceGenerateDescription:
 		video, err = generateDescription(video)
 	case choiceModifyDescription:
@@ -180,7 +180,7 @@ func modifyChoice(video Video) (Video, error) {
 	case choiceRequestThumbnail:
 		video.RequestThumbnail = getChoiceThumbnail(video.RequestThumbnail, settings.fromEmail, settings.toThumbnailEmail, video)
 	case choiceThumbnail:
-		video.Thumbnail, err = getInputFromString("What is the path to the thumbnail?", video.Thumbnail)
+		video.Thumbnail, err = setThumbnail(video.Thumbnail)
 	case choiceMembers:
 		video.Members, err = getInputFromString("Who are new members?", video.Members)
 	case choiceAnimations:
@@ -190,11 +190,11 @@ func modifyChoice(video Video) (Video, error) {
 	case choiceGotMovie:
 		video.Movie = getInputFromBool(video.Movie)
 	case choiceTimecodes:
-		video.Timecodes = getInputFromTextArea("What are timecodes?", video.Timecodes)
+		video.Timecodes = getInputFromTextArea("What are timecodes?", video.Timecodes, 20)
 	case choiceGist:
 		video.Gist, err = getInputFromString("Where is the gist?", video.Gist)
 	case choiceRelatedVideos:
-		video.RelatedVideos = getInputFromTextArea("What are the related videos?", video.RelatedVideos)
+		video.RelatedVideos = getInputFromTextArea("What are the related videos?", video.RelatedVideos, 20)
 	case choicePlaylists:
 		video.Playlists = getChoicePlaylists()
 	case choiceUploadVideo:
