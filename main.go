@@ -28,7 +28,7 @@ import (
 
 func main() {
 	getArgs()
-	video := readYaml(settings.path)
+	video := readYaml(settings.Path)
 	var err error
 	for {
 		video, err = modifyChoice(video)
@@ -36,7 +36,7 @@ func main() {
 			println(fmt.Sprintf("\n%s", err.Error()))
 			continue
 		}
-		writeYaml(video, settings.path)
+		writeYaml(video, settings.Path)
 	}
 }
 
@@ -189,7 +189,7 @@ Suggested bullets:
 
 func setThumbnail(path string) (string, error) {
 	if len(path) == 0 {
-		path = fmt.Sprintf("%s/", filepath.Dir(settings.path))
+		path = fmt.Sprintf("%s/", filepath.Dir(settings.Path))
 	}
 	path, err := getInputFromString("What is the path to the thumbnail?", path)
 	if err != nil {

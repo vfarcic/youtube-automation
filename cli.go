@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 var rootCmd = &cobra.Command{
@@ -14,23 +15,46 @@ var rootCmd = &cobra.Command{
 }
 
 type Settings struct {
-	path             string
-	fromEmail        string
-	toThumbnailEmail string
-	toEditEmail      string
+	Email Email
+	Path  string
+}
+
+type Email struct {
+	From        string
+	ThumbnailTo string
+	EditTo      string
 }
 
 var settings Settings
 
 func init() {
-	rootCmd.Flags().StringVar(&settings.path, "path", "", "Path to the YAML file where the video info will be stored. Defaults to video.yaml in the current directory.")
+	viper.SetConfigFile("settings.yaml")
+	if err := viper.ReadInConfig(); err != nil {
+		fmt.Printf("Error reading config file, %s", err)
+		return
+	}
+
+	rootCmd.Flags().StringVar(&settings.Path, "path", "p", "Path to the YAML file where the video info will be stored. Defaults to video.yaml in the current directory. (required)")
+	rootCmd.Flags().StringVar(&settings.Email.From, "email-from", "", "From which email to send messages. (required)")
+	rootCmd.Flags().StringVar(&settings.Email.ThumbnailTo, "email-thumbnail-to", "", "To which email to send requests for thumbnails. (required)")
+	rootCmd.Flags().StringVar(&settings.Email.EditTo, "email-edit-to", "", "To which email to send requests for edits. (required)")
+
 	rootCmd.MarkFlagRequired("path")
-	rootCmd.Flags().StringVar(&settings.fromEmail, "from-email", "", "From which email to send messages.")
-	rootCmd.MarkFlagRequired("from-email")
-	rootCmd.Flags().StringVar(&settings.toThumbnailEmail, "to-thumbnail-email", "", "To which email to send requests for thumbnails.")
-	rootCmd.MarkFlagRequired("to-thumbnail-email")
-	rootCmd.Flags().StringVar(&settings.toEditEmail, "to-edit-email", "", "To which email to send requests for edits.")
-	rootCmd.MarkFlagRequired("to-edit-email")
+	if viper.IsSet("email.from") {
+		settings.Email.From = viper.GetString("email.from")
+	} else {
+		rootCmd.MarkFlagRequired("email-from")
+	}
+	if viper.IsSet("email.thumbnailTo") {
+		settings.Email.ThumbnailTo = viper.GetString("email.thumbnailTo")
+	} else {
+		rootCmd.MarkFlagRequired("email-thumbnail-to")
+	}
+	if viper.IsSet("email.editTo") {
+		settings.Email.EditTo = viper.GetString("email.editTo")
+	} else {
+		rootCmd.MarkFlagRequired("email-edit-to")
+	}
 }
 
 func getArgs() {

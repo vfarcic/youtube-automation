@@ -178,7 +178,7 @@ func modifyChoice(video Video) (Video, error) {
 	case choiceModifyDescriptionTags:
 		video.DescriptionTags, err = modifyDescriptionTags(video.Tags, video.DescriptionTags, "Modify description tags (max 4):", "Description tags were not generated!")
 	case choiceRequestThumbnail:
-		video.RequestThumbnail = getChoiceThumbnail(video.RequestThumbnail, settings.fromEmail, settings.toThumbnailEmail, video)
+		video.RequestThumbnail = getChoiceThumbnail(video.RequestThumbnail, settings.Email.From, settings.Email.ThumbnailTo, video)
 	case choiceThumbnail:
 		video.Thumbnail, err = setThumbnail(video.Thumbnail)
 	case choiceMembers:
@@ -186,7 +186,7 @@ func modifyChoice(video Video) (Video, error) {
 	case choiceAnimations:
 		video.Animations, err = modifyAnimations(video)
 	case choiceRequestEdit:
-		video.RequestEdit = getChoiceEdit(video.RequestEdit, settings.fromEmail, settings.toEditEmail, video)
+		video.RequestEdit = getChoiceEdit(video.RequestEdit, settings.Email.From, settings.Email.EditTo, video)
 	case choiceGotMovie:
 		video.Movie = getInputFromBool(video.Movie)
 	case choiceTimecodes:
