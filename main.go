@@ -9,51 +9,57 @@ import (
 
 func main() {
 	// TODO: Split overview and video sections
-	// TODO: Split the video section into pre-publish and publish sections
+	// TODO: Show completed tasks in pre-publish and publish phases
 	getArgs()
 	video := readYaml(settings.Path)
-	var err error
 	for {
-		video, err = modifyChoice(video)
-		if err != nil {
-			println(fmt.Sprintf("\n%s", err.Error()))
-			continue
-		}
-		writeYaml(video, settings.Path)
+		choices := Choices{}
+		video = choices.ChoosePhase(video)
 	}
 }
 
-func getChoiceTextFromString(choice, value string) string {
+func getChoiceTextFromString(title, value string) Task {
+	task := Task{Title: title, Completed: false}
 	valueLength := len(value)
 	if valueLength > 100 {
 		value = fmt.Sprintf("%s...", value[0:100])
 	}
-	text := choice
 	value = strings.ReplaceAll(value, "\n", " ")
 	if value != "" && value != "-" && value != "N/A" {
-		text = fmt.Sprintf("%s (%s)", text, value)
+		task.Title = fmt.Sprintf("%s (%s)", task.Title, value)
 	}
-	if value == "" {
-		return orangeStyle.Render(text)
+	if len(value) > 0 {
+		task.Completed = true
 	}
-	return greenStyle.Render(text)
+	return task
 }
 
-func getChoiceTextFromSponsoredEmails(choice, sponsored string, sponsoredEmails []string) string {
+func colorize(task Task) Task {
+	if task.Completed {
+		task.Title = greenStyle.Render(task.Title)
+	} else {
+		task.Title = orangeStyle.Render(task.Title)
+	}
+	return task
+}
+
+func getChoiceTextFromSponsoredEmails(title, sponsored string, sponsoredEmails []string) Task {
+	task := Task{Title: title, Completed: false}
 	if len(sponsoredEmails) > 0 {
 		emailsText := strings.Join(sponsoredEmails, ", ")
-		choice = fmt.Sprintf("%s (%s)", choice, emailsText)
-		if len(choice) > 100 {
-			choice = fmt.Sprintf("%s...", choice[0:100])
+		task.Title = fmt.Sprintf("%s (%s)", task.Title, emailsText)
+		if len(task.Title) > 100 {
+			task.Title = fmt.Sprintf("%s...", task.Title[0:100])
 		}
-		return greenStyle.Render(choice)
+		task.Completed = true
 	} else if len(sponsored) == 0 || sponsored == "N/A" || sponsored == "-" {
-		return greenStyle.Render(choice)
+		task.Completed = true
 	}
-	return orangeStyle.Render(choice)
+	return task
 }
 
-func getChoiceTextFromPlaylists(choice string, values []Playlist) string {
+func getChoiceTextFromPlaylists(title string, values []Playlist) Task {
+	task := Task{Title: title, Completed: false}
 	value := ""
 	for i := range values {
 		value = fmt.Sprintf("%s, %s", values[i].Title, value)
@@ -63,22 +69,18 @@ func getChoiceTextFromPlaylists(choice string, values []Playlist) string {
 		value = fmt.Sprintf("%s...", value[0:100])
 	}
 	value = strings.TrimRight(value, ", ")
-	text := choice
 	value = strings.ReplaceAll(value, "\n", " ")
 	if value != "" && value != "-" && value != "N/A" {
-		text = fmt.Sprintf("%s (%s)", text, value)
+		task.Title = fmt.Sprintf("%s (%s)", task.Title, value)
 	}
-	if value == "" {
-		return orangeStyle.Render(text)
+	if value != "" {
+		task.Completed = true
 	}
-	return greenStyle.Render(text)
+	return task
 }
 
-func getChoiceTextFromBool(choice string, value bool) string {
-	if !value {
-		return orangeStyle.Render(choice)
-	}
-	return greenStyle.Render(choice)
+func getChoiceTextFromBool(title string, value bool) Task {
+	return Task{Title: title, Completed: value}
 }
 
 func getChoiceThumbnail(value bool, from, to string, video Video) bool {
@@ -89,11 +91,12 @@ func getChoiceThumbnail(value bool, from, to string, video Video) bool {
 	return true
 }
 
-func getChoiceNotifySponsors(choice, sponsored string, notified bool) string {
+func getChoiceNotifySponsors(title, sponsored string, notified bool) Task {
+	task := Task{Title: title, Completed: false}
 	if notified || len(sponsored) == 0 || sponsored == "N/A" || sponsored == "-" {
-		return greenStyle.Render(choice)
+		task.Completed = true
 	}
-	return orangeStyle.Render(choice)
+	return task
 }
 
 func requestEdit(value bool, from, to string, video Video) bool {

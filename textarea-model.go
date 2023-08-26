@@ -89,7 +89,7 @@ func modifyTextArea(value, header, errorMessage string) (string, error) {
 	return strings.TrimSpace(getInputFromTextArea(header, value, 20)), nil
 }
 
-func modifyDescriptionTags(tags, descriptionTags, header, errorMessage string) (string, error) {
+func modifyDescriptionTagsX(tags, descriptionTags, header, errorMessage string) (string, error) {
 	if len(tags) == 0 {
 		return descriptionTags, fmt.Errorf(redStyle.Render(errorMessage))
 	}

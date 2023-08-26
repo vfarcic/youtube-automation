@@ -16,7 +16,11 @@ type choice struct {
 	choices map[int]string
 }
 
-func getChoice(choices map[int]string, question string) (int, string) {
+func getChoice(tasks map[int]Task, question string) (int, string) {
+	choices := make(map[int]string)
+	for key, item := range tasks {
+		choices[key] = item.Title
+	}
 	p := tea.NewProgram(choice{choices: choices, question: question})
 	m, err := p.Run()
 	if err != nil {
