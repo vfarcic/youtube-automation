@@ -8,12 +8,12 @@ import (
 	gomail "gopkg.in/mail.v2"
 )
 
-func sendEmail(from, to string, subject, body string) {
+func sendEmail(from string, to []string, subject, body string) {
 	password := os.Getenv("EMAIL_PASSWORD")
-	addresses := []string{from, to}
+	to = append(to, from)
 	msg := gomail.NewMessage()
 	msg.SetHeader("From", from)
-	msg.SetHeader("To", addresses...)
+	msg.SetHeader("To", to...)
 	msg.SetHeader("Subject", subject)
 	msg.SetBody("text/html", body)
 	dialer := gomail.NewDialer("smtp.gmail.com", 587, from, password)
@@ -46,7 +46,7 @@ Ideas:
 <br/>
 %s
 `, video.Location, logos, video.Tagline, video.TaglineIdeas)
-	sendEmail(from, to, subject, body)
+	sendEmail(from, []string{to}, subject, body)
 }
 
 func sendEditEmail(from, to string, video Video) {
@@ -67,5 +67,17 @@ All the material is available at %s.
 </ul>
 `, video.Location, animationsString)
 	body = strings.ReplaceAll(body, "\n<li></li>", "")
+	sendEmail(from, []string{to}, subject, body)
+}
+
+func sendSponsorsEmail(from string, to []string, videoID, sponsorshipPrice string) {
+	subject := "DevOps Toolkit Video Sponsorship"
+	body := fmt.Sprintf(`Hi,
+<br><br>
+The video has just been released and is available at https://youtu.be/%s. Please let me know what you think or if you have any questions.
+<br><br>
+I'll send the invoice for %s in a separate message.
+`, videoID, sponsorshipPrice)
+	to = append(to, settings.Email.FinanceTo)
 	sendEmail(from, to, subject, body)
 }

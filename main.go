@@ -7,26 +7,9 @@ import (
 	"strings"
 )
 
-// - [ ] Publish on YouTube
-// - [ ] Publish on Twitter
-// - [ ] Publish on LinkedIn
-// - [ ] Publish on Slack
-// - [ ] Publish on Reddit
-// - [ ] Hacker News
-// - [ ] Publish on TechnologyConversations.com
-// - [ ] Add to YT spotlight
-// - [ ] Add a comment to the video
-// - [ ] Respond to comments
-// - [ ] Add to slides
-// - [ ] Add to https://gde.advocu.com
-// - [ ] Modify repo README.md
-// - [ ] Publish on a Twitter space
-// - [ ] Convert to Crossplane
-// - [ ] Email
-// - [ ] Top X?
-// - [ ] Add to cncf-demo
-
 func main() {
+	// TODO: Split overview and video sections
+	// TODO: Split the video section into pre-publish and publish sections
 	getArgs()
 	video := readYaml(settings.Path)
 	var err error
@@ -54,6 +37,20 @@ func getChoiceTextFromString(choice, value string) string {
 		return orangeStyle.Render(text)
 	}
 	return greenStyle.Render(text)
+}
+
+func getChoiceTextFromSponsoredEmails(choice, sponsored string, sponsoredEmails []string) string {
+	if len(sponsoredEmails) > 0 {
+		emailsText := strings.Join(sponsoredEmails, ", ")
+		choice = fmt.Sprintf("%s (%s)", choice, emailsText)
+		if len(choice) > 100 {
+			choice = fmt.Sprintf("%s...", choice[0:100])
+		}
+		return greenStyle.Render(choice)
+	} else if len(sponsored) == 0 || sponsored == "N/A" || sponsored == "-" {
+		return greenStyle.Render(choice)
+	}
+	return orangeStyle.Render(choice)
 }
 
 func getChoiceTextFromPlaylists(choice string, values []Playlist) string {
@@ -92,11 +89,26 @@ func getChoiceThumbnail(value bool, from, to string, video Video) bool {
 	return true
 }
 
-func getChoiceEdit(value bool, from, to string, video Video) bool {
+func getChoiceNotifySponsors(choice, sponsored string, notified bool) string {
+	if notified || len(sponsored) == 0 || sponsored == "N/A" || sponsored == "-" {
+		return greenStyle.Render(choice)
+	}
+	return orangeStyle.Render(choice)
+}
+
+func requestEdit(value bool, from, to string, video Video) bool {
 	if value {
 		return false
 	}
 	sendEditEmail(from, to, video)
+	return true
+}
+
+func notifySponsors(to []string, videoID, sponsorshipPrice string, value bool) bool {
+	if value {
+		return false
+	}
+	sendSponsorsEmail(settings.Email.From, to, videoID, sponsorshipPrice)
 	return true
 }
 
@@ -122,10 +134,22 @@ func getChoiceUploadVideo(video Video) (string, string) {
 	return video.UploadVideo, video.VideoId
 }
 
-func getChoicePlaylists() []Playlist {
+func writeSponsoredEmails(emails []string) []string {
+	emailsString := ""
+	for i := range emails {
+		emailsString = fmt.Sprintf("%s\n%s", emailsString, emails[i])
+	}
+	emailsString = strings.TrimSpace(emailsString)
+	emailsString = strings.Trim(emailsString, "\n")
+	println("|" + emailsString + "|")
+	emailsString, _ = modifyTextArea(emailsString, "Write emails that should be sent to sponsors separate with new lines:", "")
+	return strings.Split(emailsString, "\n")
+}
+
+func getPlaylists() []Playlist {
 	choices := make(map[int]string)
 	index := 0
-	for _, item := range getPlaylists() {
+	for _, item := range getYouTubePlaylists() {
 		choices[index] = item
 		index += 1
 	}

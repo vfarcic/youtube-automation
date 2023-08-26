@@ -97,6 +97,6 @@ func generateTweet(title, videoId string) (string, error) {
 	}
 	println()
 	_, tweet := getChoice(resultsMap, "Which tweet do you prefer?")
-	tweet = fmt.Sprintf("%s\n\nhttps://youtu.be/%s", tweet, videoId)
+	tweet = fmt.Sprintf("%s\n\n%s", tweet, getYouTubeURL(videoId))
 	return tweet, nil
 }

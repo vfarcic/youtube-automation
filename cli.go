@@ -23,6 +23,7 @@ type Email struct {
 	From        string
 	ThumbnailTo string
 	EditTo      string
+	FinanceTo   string
 }
 
 var settings Settings
@@ -38,6 +39,7 @@ func init() {
 	rootCmd.Flags().StringVar(&settings.Email.From, "email-from", "", "From which email to send messages. (required)")
 	rootCmd.Flags().StringVar(&settings.Email.ThumbnailTo, "email-thumbnail-to", "", "To which email to send requests for thumbnails. (required)")
 	rootCmd.Flags().StringVar(&settings.Email.EditTo, "email-edit-to", "", "To which email to send requests for edits. (required)")
+	rootCmd.Flags().StringVar(&settings.Email.FinanceTo, "email-finance-to", "", "To which email to send emails related to finances. (required)")
 
 	rootCmd.MarkFlagRequired("path")
 	if viper.IsSet("email.from") {
@@ -54,6 +56,11 @@ func init() {
 		settings.Email.EditTo = viper.GetString("email.editTo")
 	} else {
 		rootCmd.MarkFlagRequired("email-edit-to")
+	}
+	if viper.IsSet("email.financeTo") {
+		settings.Email.FinanceTo = viper.GetString("email.financeTo")
+	} else {
+		rootCmd.MarkFlagRequired("email-finance-to")
 	}
 }
 

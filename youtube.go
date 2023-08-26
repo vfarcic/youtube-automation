@@ -243,14 +243,6 @@ func uploadVideo(video Video) string {
 	if err != nil {
 		log.Fatalf("Error creating YouTube client: %v", err)
 	}
-	relatedVideos := ""
-	relatedVideosArray := strings.Split(video.RelatedVideos, "\n")
-	for i := range relatedVideosArray {
-		relatedVideosArray[i] = strings.TrimSpace(relatedVideosArray[i])
-	}
-	for i := range relatedVideosArray {
-		relatedVideos = fmt.Sprintf("%s🎬 %s\n", relatedVideos, relatedVideosArray[i])
-	}
 	description := fmt.Sprintf(`%s
 
 %s
@@ -258,8 +250,8 @@ func uploadVideo(video Video) string {
 Consider joining the channel: https://www.youtube.com/c/devopstoolkit/join
 
 ▬▬▬▬▬▬ 🔗 Additional Info 🔗 ▬▬▬▬▬▬ 
-➡ Gist with the commands: %s
 %s
+
 ▬▬▬▬▬▬ 💰 Sponsoships 💰 ▬▬▬▬▬▬ 
 If you are interested in sponsoring this channel, please use https://calendar.app.google/Q9eaDUHN8ibWBaA7A to book a timeslot that suits you, and we'll go over the details. Or feel free to contact me over Twitter or LinkedIn (see below).
 
@@ -273,7 +265,7 @@ If you are interested in sponsoring this channel, please use https://calendar.ap
 
 ▬▬▬▬▬▬ ⏱ Timecodes ⏱ ▬▬▬▬▬▬
 %s
-`, video.Description, video.DescriptionTags, video.Gist, relatedVideos, video.Timecodes)
+`, video.Description, video.DescriptionTags, getAdditionalInfo(video.Gist, video.RelatedVideos), video.Timecodes)
 
 	upload := &youtube.Video{
 		Snippet: &youtube.VideoSnippet{
@@ -308,6 +300,18 @@ If you are interested in sponsoring this channel, please use https://calendar.ap
 	}
 	fmt.Printf("Upload successful! Video ID: %v\n", response.Id)
 	return response.Id
+}
+
+func getAdditionalInfo(gist, relatedVideosRaw string) string {
+	relatedVideos := ""
+	relatedVideosArray := strings.Split(relatedVideosRaw, "\n")
+	for i := range relatedVideosArray {
+		relatedVideosArray[i] = strings.TrimSpace(relatedVideosArray[i])
+	}
+	for i := range relatedVideosArray {
+		relatedVideos = fmt.Sprintf("%s🎬 %s\n", relatedVideos, relatedVideosArray[i])
+	}
+	return fmt.Sprintf("➡ Gist with the commands: %s\n%s", gist, relatedVideos)
 }
 
 func uploadThumbnail(video Video) error {
@@ -363,7 +367,7 @@ type PlaylistListResponse struct {
 	} `json:"items"`
 }
 
-func getPlaylists() map[string]string {
+func getYouTubePlaylists() map[string]string {
 	apiKey := os.Getenv("YOUTUBE_API_KEY")
 	apiUrl := fmt.Sprintf("https://www.googleapis.com/youtube/v3/playlists?part=snippet&channelId=%s&key=%s&maxResults=50", channelID, apiKey)
 
@@ -388,4 +392,8 @@ func getPlaylists() map[string]string {
 		playlistTitles[item.ID] = item.Snippet.Title + " - " + item.ID
 	}
 	return playlistTitles
+}
+
+func getYouTubeURL(videoId string) string {
+	return fmt.Sprintf("https://youtu.be/%s", videoId)
 }

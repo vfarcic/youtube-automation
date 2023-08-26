@@ -82,11 +82,11 @@ func (m textAreaModel) View() string {
 }
 
 func modifyTextArea(value, header, errorMessage string) (string, error) {
-	if len(value) == 0 {
+	if len(value) == 0 && len(errorMessage) > 0 {
 		return value, fmt.Errorf(redStyle.Render(errorMessage))
 	}
 	println()
-	return getInputFromTextArea(header, value, 20), nil
+	return strings.TrimSpace(getInputFromTextArea(header, value, 20)), nil
 }
 
 func modifyDescriptionTags(tags, descriptionTags, header, errorMessage string) (string, error) {
