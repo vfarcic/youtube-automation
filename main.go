@@ -131,7 +131,6 @@ func getChoiceUploadVideo(video Video) (string, string) {
 	- Playlists
 	- Tags
 	- Language
-	- License
 	- Monetization
 	`))
 	return video.UploadVideo, video.VideoId

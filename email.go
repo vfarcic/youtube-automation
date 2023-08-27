@@ -30,6 +30,10 @@ func sendThumbnailEmail(from, to string, video Video) {
 		logos = fmt.Sprintf("%s, %s", logos, video.OtherLogos)
 	}
 	subject := fmt.Sprintf("Thumbnail: %s", video.ProjectName)
+	taglineIdeas := ""
+	if len(video.TaglineIdeas) > 0 && video.TaglineIdeas != "N/A" && video.TaglineIdeas != "-" {
+		taglineIdeas = fmt.Sprintf("Ideas:<br/>%s", video.TaglineIdeas)
+	}
 	body := fmt.Sprintf(`<strong>Material:</strong>
 <br/><br/>
 All the material is available at %s.
@@ -42,10 +46,8 @@ Elements:
 <li>Text: %s</li>
 <li>Screenshots: screenshot-*.png</li>
 </ul>
-Ideas:
-<br/>
 %s
-`, video.Location, logos, video.Tagline, video.TaglineIdeas)
+`, video.Location, logos, video.Tagline, taglineIdeas)
 	sendEmail(from, []string{to}, subject, body)
 }
 

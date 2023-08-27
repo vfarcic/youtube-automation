@@ -281,7 +281,7 @@ func (c *Choices) ChoosePrePublish(video Video) (Video, bool, error) {
 		video, err = openAI.GenerateDescription(video)
 	case prePublishModifyDescription:
 		video.Description, err = modifyTextArea(video.Description, "Modify video description:", "Description was not generated!")
-	case prePublishGenerateTags:
+	case prePublishGenerateTags: // TODO: Add default tags like "viktor farcic", "DevOps", etc.
 		video.Tags, err = openAI.GenerateTags(video.Title)
 	case prePublishModifyTags:
 		video.Tags, err = modifyTextArea(video.Tags, "Modify tags:", "Tags were not generated!")
@@ -301,7 +301,7 @@ func (c *Choices) ChoosePrePublish(video Video) (Video, bool, error) {
 		video.Movie = getInputFromBool(video.Movie)
 	case prePublishTimecodes:
 		video.Timecodes = getInputFromTextArea("What are timecodes?", video.Timecodes, 20)
-	case prePublishGist:
+	case prePublishGist: // TODO: Ask for the Gist path, create it, and store both the path and the URL.
 		video.Gist, err = getInputFromString("Where is the gist?", video.Gist)
 	case prePublishRelatedVideos:
 		video.RelatedVideos = getInputFromTextArea("What are the related videos?", video.RelatedVideos, 20)
@@ -317,7 +317,8 @@ func (c *Choices) ChoosePublish(video Video) (Video, bool, error) {
 	openAI := OpenAI{}
 	returnVar := false
 	tasks := map[int]Task{
-		publishUploadVideo:         colorize(getChoiceTextFromString("Upload video", video.UploadVideo)),
+		publishUploadVideo: colorize(getChoiceTextFromString("Upload video", video.UploadVideo)),
+		// TODO: Add new option to Update the Gist with Gist and Video URL
 		publishGenerateTweet:       colorize(getChoiceTextFromString("Generate Tweet", video.Tweet)),
 		publishModifyTweet:         colorize(getChoiceTextFromString("Write/modify Tweet", video.Tweet)),
 		publishTweetPosted:         colorize(getChoiceTextFromBool("Post to Tweeter (MANUAL)", video.TweetPosted)),
