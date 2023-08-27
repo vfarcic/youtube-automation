@@ -3,9 +3,7 @@
 ## Run
 
 ```bash
-go run . --path something.yaml --from-email someone@acme.com \
-    --to-thumbnail-email someone@acme.com \
-    --to-edit-email someone@acme.com
+go run . --path something.yaml
 ```
 
 ## Build
