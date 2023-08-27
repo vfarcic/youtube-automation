@@ -10,7 +10,7 @@ import (
 )
 
 func getInputFromTextArea(question, value string, height int) string {
-	p := tea.NewProgram(initialTextAreaModel(question, value, height))
+	p := tea.NewProgram(initialTextAreaModel(question, value, height), tea.WithAltScreen())
 	m, err := p.Run()
 	if err != nil {
 		log.Fatal(err)
@@ -85,7 +85,6 @@ func modifyTextArea(value, header, errorMessage string) (string, error) {
 	if len(value) == 0 && len(errorMessage) > 0 {
 		return value, fmt.Errorf(redStyle.Render(errorMessage))
 	}
-	println()
 	return strings.TrimSpace(getInputFromTextArea(header, value, 20)), nil
 }
 
@@ -98,6 +97,5 @@ func modifyDescriptionTagsX(tags, descriptionTags, header, errorMessage string) 
 		descriptionTags = strings.ReplaceAll(descriptionTags, " ", "")
 		descriptionTags = strings.ReplaceAll(descriptionTags, ",", " #")
 	}
-	println()
 	return getInputFromTextArea(header, descriptionTags, 20), nil
 }

@@ -8,6 +8,11 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
+var (
+	errorMessage        string
+	confirmationMessage string
+)
+
 type choice struct {
 	cursor   int
 	question string
@@ -21,7 +26,7 @@ func getChoice(tasks map[int]Task, question string) (int, string) {
 	for key, item := range tasks {
 		choices[key] = item.Title
 	}
-	p := tea.NewProgram(choice{choices: choices, question: question})
+	p := tea.NewProgram(choice{choices: choices, question: question}, tea.WithAltScreen())
 	m, err := p.Run()
 	if err != nil {
 		log.Fatal(err)
@@ -33,7 +38,7 @@ func getChoice(tasks map[int]Task, question string) (int, string) {
 }
 
 func getChoices(choices map[int]string, question string) map[int]string {
-	p := tea.NewProgram(choice{choices: choices, question: question})
+	p := tea.NewProgram(choice{choices: choices, question: question}, tea.WithAltScreen())
 	m, err := p.Run()
 	if err != nil {
 		log.Fatal(err)
@@ -56,13 +61,15 @@ func (m choice) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.selected = make(map[int]string)
 			}
 			m.selected[m.cursor] = m.choices[m.cursor]
-			// m.selectedIndex = m.cursor
+			errorMessage = ""
+			confirmationMessage = ""
 		case "enter":
 			if m.selected == nil {
 				m.selected = make(map[int]string)
 			}
 			m.selected[m.cursor] = m.choices[m.cursor]
-			// m.selectedIndex = m.cursor
+			errorMessage = ""
+			confirmationMessage = ""
 			return m, tea.Quit
 		case "down", "j":
 			m.cursor++
@@ -81,6 +88,12 @@ func (m choice) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m choice) View() string {
 	s := strings.Builder{}
+	if len(errorMessage) > 0 {
+		s.WriteString(errorStyle.Render(errorMessage))
+	}
+	if len(confirmationMessage) > 0 {
+		s.WriteString(confirmationStyle.Render(confirmationMessage))
+	}
 	s.WriteString(fmt.Sprintf("%s\n\n", m.question))
 	for i := 0; i < len(m.choices); i++ {
 		if m.cursor == i {

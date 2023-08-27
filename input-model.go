@@ -18,7 +18,7 @@ type inputModel struct {
 }
 
 func getInputFromString(question, value string) (string, error) {
-	p := tea.NewProgram(initialInputModel(question, value))
+	p := tea.NewProgram(initialInputModel(question, value), tea.WithAltScreen())
 	m, err := p.Run()
 	if err != nil {
 		return "", err

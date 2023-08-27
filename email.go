@@ -8,7 +8,7 @@ import (
 	gomail "gopkg.in/mail.v2"
 )
 
-func sendEmail(from string, to []string, subject, body string) {
+func sendEmail(from string, to []string, subject, body string) error {
 	password := os.Getenv("EMAIL_PASSWORD")
 	to = append(to, from)
 	msg := gomail.NewMessage()
@@ -18,13 +18,14 @@ func sendEmail(from string, to []string, subject, body string) {
 	msg.SetBody("text/html", body)
 	dialer := gomail.NewDialer("smtp.gmail.com", 587, from, password)
 	if err := dialer.DialAndSend(msg); err != nil {
-		fmt.Println(err)
-		panic(err)
+		errorMessage = err.Error()
+		return err
 	}
-	fmt.Println("Email Sent Successfully!")
+	confirmationMessage = "Email Sent Successfully!"
+	return nil
 }
 
-func sendThumbnailEmail(from, to string, video Video) {
+func sendThumbnailEmail(from, to string, video Video) error {
 	logos := video.ProjectURL
 	if video.OtherLogos != "" && video.OtherLogos != "-" && video.OtherLogos != "N/A" {
 		logos = fmt.Sprintf("%s, %s", logos, video.OtherLogos)
@@ -48,10 +49,14 @@ Elements:
 </ul>
 %s
 `, video.Location, logos, video.Tagline, taglineIdeas)
-	sendEmail(from, []string{to}, subject, body)
+	err := sendEmail(from, []string{to}, subject, body)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-func sendEditEmail(from, to string, video Video) {
+func sendEditEmail(from, to string, video Video) error {
 	subject := fmt.Sprintf("Video: %s", video.ProjectName)
 	animations := strings.Split(video.Animations, "\n")
 	animationsString := ""
@@ -69,10 +74,14 @@ All the material is available at %s.
 </ul>
 `, video.Location, animationsString)
 	body = strings.ReplaceAll(body, "\n<li></li>", "")
-	sendEmail(from, []string{to}, subject, body)
+	err := sendEmail(from, []string{to}, subject, body)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-func sendSponsorsEmail(from string, to []string, videoID, sponsorshipPrice string) {
+func sendSponsorsEmail(from string, to []string, videoID, sponsorshipPrice string) error {
 	subject := "DevOps Toolkit Video Sponsorship"
 	body := fmt.Sprintf(`Hi,
 <br><br>
@@ -81,5 +90,9 @@ The video has just been released and is available at https://youtu.be/%s. Please
 I'll send the invoice for %s in a separate message.
 `, videoID, sponsorshipPrice)
 	to = append(to, settings.Email.FinanceTo)
-	sendEmail(from, to, subject, body)
+	err := sendEmail(from, to, subject, body)
+	if err != nil {
+		return err
+	}
+	return nil
 }

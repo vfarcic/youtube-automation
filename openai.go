@@ -45,17 +45,15 @@ func (o *OpenAI) GenerateDescription(video Video) (Video, error) {
 	}
 	aiQuestion := "Write a short description of up to 300 characters for a youtube video about " + video.Title
 	descriptions := o.Ask(aiQuestion, 5)
-	println()
 	choices := make(map[int]Task)
 	for i := range descriptions {
-		println(strconv.Itoa(i) + ": " + descriptions[i])
+		confirmationMessage += strconv.Itoa(i) + ": " + descriptions[i] + "\n"
 		choices[i] = Task{Title: strconv.Itoa(i)}
 	}
-	println()
 	_, descriptionIndex := getChoice(choices, "Which description do you prefer?")
 	descriptionIndexInt, _ := strconv.Atoi(descriptionIndex)
 	video.Description = descriptions[descriptionIndexInt]
-	println(video.Description)
+	confirmationMessage = video.Description
 	return video, nil
 }
 
@@ -65,7 +63,7 @@ func (o *OpenAI) GenerateTags(title string) (string, error) {
 	}
 	aiQuestion := fmt.Sprintf("Write tags for youtube video about %s. Separate them with comma.", title)
 	result := o.Ask(aiQuestion, 1)
-	println(result[0])
+	confirmationMessage = result[0]
 	return result[0], nil
 }
 
@@ -79,7 +77,6 @@ func (o *OpenAI) GenerateTitle(video Video) (Video, error) {
 	for index := range results {
 		titlesMap[index] = Task{Title: results[index]}
 	}
-	println()
 	_, video.Title = getChoice(titlesMap, "Which video title do you prefer?")
 	return video, nil
 }
@@ -97,8 +94,7 @@ func (o *OpenAI) GenerateTweet(title, videoId string) (string, error) {
 	for index := range results {
 		resultsMap[index] = Task{Title: results[index]}
 	}
-	println()
-	_, tweet := getChoice(resultsMap, "Which tweet do you prefer?")
+	_, tweet := getChoice(resultsMap, titleStyle.Render("Which tweet do you prefer?"))
 	tweet = fmt.Sprintf("%s\n\n%s", tweet, getYouTubeURL(videoId))
 	return tweet, nil
 }

@@ -8,6 +8,11 @@ import (
 )
 
 func main() {
+	// TODO: Remove all println()
+	// TODO: Switch to composable views
+	//   (https://github.com/charmbracelet/bubbletea/blob/master/examples/composable-views/main.go)
+	//   and alt screen
+	//   (https://github.com/charmbracelet/bubbletea/tree/master/examples/altscreen-toggle)
 	// TODO: Split overview and video sections
 	// TODO: Show completed tasks in pre-publish and publish phases
 	getArgs()
@@ -87,7 +92,9 @@ func getChoiceThumbnail(value bool, from, to string, video Video) bool {
 	if value {
 		return false
 	}
-	sendThumbnailEmail(from, to, video)
+	if sendThumbnailEmail(from, to, video) != nil {
+		return false
+	}
 	return true
 }
 
@@ -103,7 +110,9 @@ func requestEdit(value bool, from, to string, video Video) bool {
 	if value {
 		return false
 	}
-	sendEditEmail(from, to, video)
+	if sendEditEmail(from, to, video) != nil {
+		return false
+	}
 	return true
 }
 
@@ -126,13 +135,12 @@ func getChoiceUploadVideo(video Video) (string, string) {
 	// if err != nil {
 	// 	println(redStyle.Render(fmt.Sprintf("Error setting playlists: %s", err.Error())))
 	// }
-	println(redStyle.Render(`Following should be set manually:
-	- End screen
-	- Playlists
-	- Tags
-	- Language
-	- Monetization
-	`))
+	confirmationMessage = `Following should be set manually:
+- End screen
+- Playlists
+- Tags
+- Language
+- Monetization`
 	return video.UploadVideo, video.VideoId
 }
 
@@ -141,11 +149,8 @@ func writeSponsoredEmails(emails []string) []string {
 	for i := range emails {
 		emailsString = fmt.Sprintf("%s\n%s", emailsString, emails[i])
 	}
-	emailsString = strings.TrimSpace(emailsString)
-	emailsString = strings.Trim(emailsString, "\n")
-	println("|" + emailsString + "|")
 	emailsString, _ = modifyTextArea(emailsString, "Write emails that should be sent to sponsors separate with new lines:", "")
-	return strings.Split(emailsString, "\n")
+	return deleteEmpty(strings.Split(emailsString, "\n"))
 }
 
 func getPlaylists() []Playlist {
@@ -169,7 +174,6 @@ func getPlaylists() []Playlist {
 }
 
 func modifyAnimations(video Video) (string, error) {
-	println()
 	if len(video.ProjectName) == 0 {
 		return video.Animations, fmt.Errorf(redStyle.Render("Project name was not specified!"))
 	}
@@ -225,4 +229,14 @@ func setThumbnail(path string) (string, error) {
 		return "", fmt.Errorf(redStyle.Render("File does not exist!"))
 	}
 	return path, nil
+}
+
+func deleteEmpty(s []string) []string {
+	var r []string
+	for _, str := range s {
+		if str != "" {
+			r = append(r, str)
+		}
+	}
+	return r
 }

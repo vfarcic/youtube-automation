@@ -21,6 +21,30 @@ var orangeStyle = lipgloss.NewStyle().
 	Bold(true).
 	Foreground(lipgloss.Color("3"))
 
+var errorStyle = lipgloss.NewStyle().
+	Bold(true).
+	Foreground(lipgloss.Color("#FFFFFF")).
+	Background(lipgloss.Color("#B60A02")).
+	PaddingTop(1).
+	PaddingBottom(1).
+	PaddingLeft(2).
+	PaddingRight(2).
+	MarginTop(1).
+	MarginBottom(1)
+
+var confirmationStyle = lipgloss.NewStyle().
+	Bold(true).
+	Foreground(lipgloss.Color("#FFFFFF")).
+	Background(lipgloss.Color("#006E14")).
+	PaddingTop(1).
+	PaddingBottom(1).
+	MarginTop(1).
+	MarginBottom(1)
+
+var titleStyle = lipgloss.NewStyle().
+	MarginTop(2).
+	MarginBottom(1)
+
 const phasePrePublish = 0
 const phasePublish = 1
 const phaseExit = 2
@@ -165,15 +189,14 @@ func (c *Choices) ChoosePhase(video Video) Video {
 		phasePublish:    colorize(publish),
 		phaseExit:       {Title: "Exit"},
 	}
-	println()
-	option, _ := getChoice(tasks, "Would you like to work on pre-publish or publish tasks?")
+	option, _ := getChoice(tasks, titleStyle.Render("Would you like to work on pre-publish or publish tasks?"))
 	switch option {
 	case phasePrePublish:
 		var err error
 		for !returnVar {
 			video, returnVar, err = c.ChoosePrePublish(video)
 			if err != nil {
-				println(fmt.Sprintf("\n%s", err.Error()))
+				errorMessage = err.Error()
 				continue
 			}
 			writeYaml(video, settings.Path)
@@ -183,7 +206,7 @@ func (c *Choices) ChoosePhase(video Video) Video {
 		for !returnVar {
 			video, returnVar, err = c.ChoosePublish(video)
 			if err != nil {
-				println(fmt.Sprintf("\n%s", err.Error()))
+				errorMessage = err.Error()
 				continue
 			}
 			writeYaml(video, settings.Path)
@@ -239,12 +262,11 @@ func (c *Choices) ChoosePrePublish(video Video) (Video, bool, error) {
 		}
 	}
 	video.PrePublish = Tasks{Total: len(tasks) - 1, Completed: completed}
-	println()
-	choice, _ := getChoice(tasks, "Which pre-publish task would you like to work on?")
+	choice, _ := getChoice(tasks, titleStyle.Render("Which pre-publish task would you like to work on?"))
 	err := error(nil)
 	switch choice {
 	case prePublishProjectName:
-		video.ProjectName, err = getInputFromString("Set project name)", video.ProjectName)
+		video.ProjectName, err = getInputFromString("Set project name", video.ProjectName)
 	case prePublishProjectURL:
 		video.ProjectURL, err = getInputFromString("Set project URL", video.ProjectURL)
 	case prePublishSponsored:
@@ -344,8 +366,7 @@ func (c *Choices) ChoosePublish(video Video) (Video, bool, error) {
 		}
 	}
 	video.Publish = Tasks{Total: len(tasks) - 1, Completed: completed}
-	println()
-	choice, _ := getChoice(tasks, "Which publish task would you like to work on?")
+	choice, _ := getChoice(tasks, titleStyle.Render("Which publish task would you like to work on?"))
 	err := error(nil)
 	switch choice {
 	case publishUploadVideo: // TODO: Finish implementing End screen, Playlists, Tags, Language, License, Monetization
