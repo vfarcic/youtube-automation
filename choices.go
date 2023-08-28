@@ -59,29 +59,30 @@ const prePublishCode = 6
 const prePublishScreen = 7
 const prePublishHead = 8
 const prePublishThumbnails = 9
-const prePublishLocation = 10
-const prePublishTagline = 11
-const prePublishTaglineIdeas = 12
-const prePublishOtherLogos = 13
-const prePublishScreenshots = 14
-const prePublishGenerateTitle = 15
-const prePublishModifyTitle = 16
-const prePublishGenerateDescription = 17
-const prePublishModifyDescription = 18
-const prePublishGenerateTags = 19
-const prePublishModifyTags = 20
-const prePublishModifyDescriptionTags = 21
-const prePublishRequestThumbnail = 22
-const prePublishMembers = 23
-const prePublishAnimations = 24
-const prePublishRequestEdit = 25
-const prePublishThumbnail = 26
-const prePublishGotMovie = 27
-const prePublishTimecodes = 28
-const prePublishGist = 29
-const prePublishRelatedVideos = 30
-const prePublishPlaylists = 31
-const prePublishReturn = 32
+const prePublishDiagrams = 10
+const prePublishLocation = 11
+const prePublishTagline = 12
+const prePublishTaglineIdeas = 13
+const prePublishOtherLogos = 14
+const prePublishScreenshots = 15
+const prePublishGenerateTitle = 16
+const prePublishModifyTitle = 17
+const prePublishGenerateDescription = 18
+const prePublishModifyDescription = 19
+const prePublishGenerateTags = 20
+const prePublishModifyTags = 21
+const prePublishModifyDescriptionTags = 22
+const prePublishRequestThumbnail = 23
+const prePublishMembers = 24
+const prePublishAnimations = 25
+const prePublishRequestEdit = 26
+const prePublishThumbnail = 27
+const prePublishGotMovie = 28
+const prePublishTimecodes = 29
+const prePublishGist = 30
+const prePublishRelatedVideos = 31
+const prePublishPlaylists = 32
+const prePublishReturn = 33
 
 const publishUploadVideo = 0
 const publishGenerateTweet = 1
@@ -115,6 +116,7 @@ type Video struct {
 	Screen              bool
 	Head                bool
 	Thumbnails          bool
+	Diagrams            bool
 	Title               string
 	Description         string
 	Tags                string
@@ -231,6 +233,7 @@ func (c *Choices) ChoosePrePublish(video Video) (Video, bool, error) {
 		prePublishScreen:                colorize(getChoiceTextFromBool("Recorded screen?", video.Screen)),
 		prePublishHead:                  colorize(getChoiceTextFromBool("Recorded talking head?", video.Head)),
 		prePublishThumbnails:            colorize(getChoiceTextFromBool("Downloaded thumbnails?", video.Thumbnails)),
+		prePublishDiagrams:              colorize(getChoiceTextFromBool("Created diagrams?", video.Diagrams)),
 		prePublishLocation:              colorize(getChoiceTextFromString("Set files location", video.Location)),
 		prePublishTagline:               colorize(getChoiceTextFromString("Set tagline", video.Tagline)),
 		prePublishTaglineIdeas:          colorize(getChoiceTextFromString("Set tagline ideas", video.TaglineIdeas)),
@@ -285,6 +288,8 @@ func (c *Choices) ChoosePrePublish(video Video) (Video, bool, error) {
 		video.Head = getInputFromBool(video.Head)
 	case prePublishThumbnails:
 		video.Thumbnails = getInputFromBool(video.Thumbnails)
+	case prePublishDiagrams:
+		video.Diagrams = getInputFromBool(video.Diagrams)
 	case prePublishLocation:
 		video.Location, err = getInputFromString("Where are files located?", video.Location)
 	case prePublishTagline:
