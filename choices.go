@@ -103,58 +103,6 @@ const publishTwitterSpace = 15
 const publishNotifySponsors = 16
 const publishReturn = 17
 
-type Video struct {
-	PrePublish          Tasks
-	Publish             Tasks
-	ProjectName         string
-	ProjectURL          string
-	Sponsored           string
-	SponsoredEmails     []string
-	Subject             string
-	Date                string
-	Code                bool
-	Screen              bool
-	Head                bool
-	Thumbnails          bool
-	Diagrams            bool
-	Title               string
-	Description         string
-	Tags                string
-	DescriptionTags     string
-	Location            string
-	Tagline             string
-	TaglineIdeas        string
-	OtherLogos          string
-	Screenshots         bool
-	RequestThumbnail    bool
-	Thumbnail           string
-	Members             string
-	Animations          string
-	RequestEdit         bool
-	Movie               bool
-	Timecodes           string
-	Gist                string
-	RelatedVideos       string
-	Playlists           []Playlist
-	UploadVideo         string
-	VideoId             string
-	Tweet               string
-	TweetPosted         bool
-	LinkedInPosted      bool
-	SlackPosted         bool
-	RedditPosted        bool
-	HNPosted            bool
-	TCPosted            bool
-	YouTubeHighlight    bool
-	YouTubeComment      bool
-	YouTubeCommentReply bool
-	Slides              bool
-	GDE                 bool
-	RepoReadme          bool
-	TwitterSpace        bool
-	NotifiedSponsors    bool
-}
-
 type Tasks struct {
 	Completed int
 	Total     int
@@ -201,7 +149,6 @@ func (c *Choices) ChoosePhase(video Video) Video {
 				errorMessage = err.Error()
 				continue
 			}
-			writeYaml(video, settings.Path)
 		}
 	case phasePublish:
 		var err error
@@ -211,7 +158,6 @@ func (c *Choices) ChoosePhase(video Video) Video {
 				errorMessage = err.Error()
 				continue
 			}
-			writeYaml(video, settings.Path)
 		}
 	case phaseExit:
 		os.Exit(0)

@@ -8,18 +8,17 @@ import (
 )
 
 func main() {
-	// TODO: Remove all println()
-	// TODO: Switch to composable views
-	//   (https://github.com/charmbracelet/bubbletea/blob/master/examples/composable-views/main.go)
-	//   and alt screen
-	//   (https://github.com/charmbracelet/bubbletea/tree/master/examples/altscreen-toggle)
-	// TODO: Split overview and video sections
-	// TODO: Show completed tasks in pre-publish and publish phases
 	getArgs()
-	video := readYaml(settings.Path)
+	// TODO: Add the screen to:
+	// - add new videos
+	// - list videos by category
+	// - edit videos
+	yaml := YAML{}
+	video := yaml.GetVideo(settings.Path)
 	for {
 		choices := Choices{}
 		video = choices.ChoosePhase(video)
+		yaml.WriteVideo(video, settings.Path)
 	}
 }
 
