@@ -9,8 +9,8 @@ import (
 
 type YAML struct{}
 
-type Videos struct {
-	ID       int
+type Index struct {
+	ID       string
 	Category string
 	Subject  string
 }
@@ -82,6 +82,17 @@ func (y *YAML) GetVideo(path string) Video {
 
 func (y *YAML) WriteVideo(video Video, path string) {
 	data, err := yaml.Marshal(&video)
+	if err != nil {
+		log.Fatal(err)
+	}
+	err = os.WriteFile(path, data, 0644)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func (y *YAML) WriteIndex(vi []Index, path string) {
+	data, err := yaml.Marshal(&vi)
 	if err != nil {
 		log.Fatal(err)
 	}

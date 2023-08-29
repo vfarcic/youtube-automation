@@ -45,6 +45,14 @@ var titleStyle = lipgloss.NewStyle().
 	MarginTop(2).
 	MarginBottom(1)
 
+const indexCreateVideo = 0
+const indexListVideos = 1
+const indexExit = 2
+
+const videoIndexQuestionID = "1. ID"
+const videoIndexQuestionCategory = "2. Category"
+const videoIndexQuestionSubject = "3. Subject"
+
 const phasePrePublish = 0
 const phasePublish = 1
 const phaseExit = 2
@@ -118,6 +126,26 @@ type Playlist struct {
 	Id    string
 }
 
+func (c *Choices) ChooseIndex() {
+	yaml := YAML{}
+	videoIndexes := []Index{} // TODO: Read it from YAML
+	tasks := map[int]Task{
+		indexCreateVideo: {Title: "Create a video"},
+		indexListVideos:  {Title: "List videos"},
+		indexExit:        {Title: "Exit"},
+	}
+	option, _ := getChoice(tasks, "What would you like to do?")
+	switch option {
+	case indexCreateVideo:
+		videoIndexes = append(videoIndexes, c.ChooseCreateVideo())
+		yaml.WriteIndex(videoIndexes, "index.yaml")
+	case indexListVideos:
+		println("TODO: Not implemented yet!")
+	case indexExit:
+		os.Exit(0)
+	}
+}
+
 func (c *Choices) ChoosePhase(video Video) Video {
 	returnVar := false
 	prePublish := Task{
@@ -165,6 +193,27 @@ func (c *Choices) ChoosePhase(video Video) Video {
 	return video
 }
 
+func (c *Choices) ChooseCreateVideo() Index {
+	qa := map[string]string{
+		videoIndexQuestionID:       "", // TODO: Autogenerate
+		videoIndexQuestionCategory: "", // TODO: Pick from a list
+		videoIndexQuestionSubject:  "",
+	}
+	m, _ := getMultipleInputsFromString(qa)
+	vi := Index{}
+	for k, v := range m {
+		switch k {
+		case videoIndexQuestionID:
+			vi.ID = v
+		case videoIndexQuestionCategory:
+			vi.Category = v
+		case videoIndexQuestionSubject:
+			vi.Subject = v
+		}
+	}
+	return vi
+}
+
 func (c *Choices) ChoosePrePublish(video Video) (Video, bool, error) {
 	openAI := OpenAI{}
 	returnVar := false
@@ -202,7 +251,7 @@ func (c *Choices) ChoosePrePublish(video Video) (Video, bool, error) {
 		prePublishGist:                  colorize(getChoiceTextFromString("Set gist", video.Gist)),
 		prePublishRelatedVideos:         colorize(getChoiceTextFromString("Set related videos", video.RelatedVideos)),
 		prePublishPlaylists:             colorize(getChoiceTextFromPlaylists("Set playlists", video.Playlists)),
-		prePublishReturn:                {Title: "Return"},
+		prePublishReturn:                {Title: "Save and return"},
 	}
 	completed := 0
 	for _, task := range tasks {
@@ -308,7 +357,7 @@ func (c *Choices) ChoosePublish(video Video) (Video, bool, error) {
 		publishRepoReadme:          colorize(getChoiceTextFromBool("Update repo README (MANUAL)", video.RepoReadme)),
 		publishTwitterSpace:        colorize(getChoiceTextFromBool("Post to a Twitter Spaces (MANUAL)", video.TwitterSpace)),
 		publishNotifySponsors:      colorize(getChoiceNotifySponsors("Notify sponsors", video.Sponsored, video.NotifiedSponsors)),
-		publishReturn:              {Title: "Return"},
+		publishReturn:              {Title: "Save and return"},
 	}
 	completed := 0
 	for _, task := range tasks {
