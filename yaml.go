@@ -7,12 +7,14 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-type YAML struct{}
+type YAML struct {
+	IndexPath string
+}
 
-type Index struct {
-	ID       string
+type VideoIndex struct {
+	Name     string
 	Category string
-	Subject  string
+	Phase    string
 }
 
 type Video struct {
@@ -22,6 +24,7 @@ type Video struct {
 	ProjectURL          string
 	Sponsored           string
 	SponsoredEmails     []string
+	SponsorshipBlocked  string
 	Subject             string
 	Date                string
 	Code                bool
@@ -91,12 +94,25 @@ func (y *YAML) WriteVideo(video Video, path string) {
 	}
 }
 
-func (y *YAML) WriteIndex(vi []Index, path string) {
+func (y *YAML) GetIndex() []VideoIndex {
+	var index []VideoIndex
+	data, err := os.ReadFile(y.IndexPath)
+	if err != nil {
+		return index
+	}
+	err = yaml.Unmarshal(data, &index)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return index
+}
+
+func (y *YAML) WriteIndex(vi []VideoIndex) {
 	data, err := yaml.Marshal(&vi)
 	if err != nil {
 		log.Fatal(err)
 	}
-	err = os.WriteFile(path, data, 0644)
+	err = os.WriteFile(y.IndexPath, data, 0644)
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/charmbracelet/lipgloss"
 )
@@ -49,48 +50,54 @@ const indexCreateVideo = 0
 const indexListVideos = 1
 const indexExit = 2
 
-const videoIndexQuestionID = "1. ID"
-const videoIndexQuestionCategory = "2. Category"
-const videoIndexQuestionSubject = "3. Subject"
+const videosPhasePublished = 0
+const videosPhasePublishPending = 1
+const videosPhaseEditRequested = 2
+const videosPhaseMaterialDone = 3
+const videosPhaseStarted = 4
+const videosPhaseSponsoredBlocked = 5
+const videosPhaseIdeas = 6
+const videosPhaseReturn = 7
 
 const phasePrePublish = 0
 const phasePublish = 1
-const phaseExit = 2
+const phaseReturn = 2
 
 const prePublishProjectName = 0
 const prePublishProjectURL = 1
 const prePublishSponsored = 2
 const prePublishSponsoredEmails = 3
-const prePublishSubject = 4
-const prePublishDate = 5
-const prePublishCode = 6
-const prePublishScreen = 7
-const prePublishHead = 8
-const prePublishThumbnails = 9
-const prePublishDiagrams = 10
-const prePublishLocation = 11
-const prePublishTagline = 12
-const prePublishTaglineIdeas = 13
-const prePublishOtherLogos = 14
-const prePublishScreenshots = 15
-const prePublishGenerateTitle = 16
-const prePublishModifyTitle = 17
-const prePublishGenerateDescription = 18
-const prePublishModifyDescription = 19
-const prePublishGenerateTags = 20
-const prePublishModifyTags = 21
-const prePublishModifyDescriptionTags = 22
-const prePublishRequestThumbnail = 23
-const prePublishMembers = 24
-const prePublishAnimations = 25
-const prePublishRequestEdit = 26
-const prePublishThumbnail = 27
-const prePublishGotMovie = 28
-const prePublishTimecodes = 29
-const prePublishGist = 30
-const prePublishRelatedVideos = 31
-const prePublishPlaylists = 32
-const prePublishReturn = 33
+const prePublishSponsorshipBlocked = 4
+const prePublishSubject = 5
+const prePublishDate = 6
+const prePublishCode = 7
+const prePublishScreen = 8
+const prePublishHead = 9
+const prePublishThumbnails = 10
+const prePublishDiagrams = 11
+const prePublishLocation = 12
+const prePublishTagline = 13
+const prePublishTaglineIdeas = 14
+const prePublishOtherLogos = 15
+const prePublishScreenshots = 16
+const prePublishGenerateTitle = 17
+const prePublishModifyTitle = 18
+const prePublishGenerateDescription = 19
+const prePublishModifyDescription = 20
+const prePublishGenerateTags = 21
+const prePublishModifyTags = 22
+const prePublishModifyDescriptionTags = 23
+const prePublishRequestThumbnail = 24
+const prePublishMembers = 25
+const prePublishAnimations = 26
+const prePublishRequestEdit = 27
+const prePublishThumbnail = 28
+const prePublishGotMovie = 29
+const prePublishTimecodes = 30
+const prePublishGist = 31
+const prePublishRelatedVideos = 32
+const prePublishPlaylists = 33
+const prePublishReturn = 34
 
 const publishUploadVideo = 0
 const publishGenerateTweet = 1
@@ -106,8 +113,8 @@ const publishYouTubeComment = 10
 const publishYouTubeCommentReply = 11
 const publishSlides = 12
 const publishGDE = 13
-const publishRepoReadme = 14
-const publishTwitterSpace = 15
+const publishTwitterSpace = 14
+const publishRepoReadme = 15
 const publishNotifySponsors = 16
 const publishReturn = 17
 
@@ -119,6 +126,8 @@ type Tasks struct {
 type Task struct {
 	Title     string
 	Completed bool
+	Counter   int
+	Index     int
 }
 
 type Playlist struct {
@@ -127,26 +136,34 @@ type Playlist struct {
 }
 
 func (c *Choices) ChooseIndex() {
-	yaml := YAML{}
-	videoIndexes := []Index{} // TODO: Read it from YAML
+	yaml := YAML{IndexPath: "index.yaml"}
+	index := yaml.GetIndex()
 	tasks := map[int]Task{
 		indexCreateVideo: {Title: "Create a video"},
 		indexListVideos:  {Title: "List videos"},
 		indexExit:        {Title: "Exit"},
 	}
-	option, _ := getChoice(tasks, "What would you like to do?")
+	option, _ := getChoice(tasks, titleStyle.Render("What would you like to do?"))
 	switch option {
 	case indexCreateVideo:
-		videoIndexes = append(videoIndexes, c.ChooseCreateVideo())
-		yaml.WriteIndex(videoIndexes, "index.yaml")
+		item := c.ChooseCreateVideo()
+		if len(item.Category) > 0 && len(item.Name) > 0 {
+			index = append(index, item)
+			yaml.WriteIndex(index)
+		}
 	case indexListVideos:
-		println("TODO: Not implemented yet!")
+		for {
+			returnVal := c.ChooseVideosPhase(index)
+			if returnVal {
+				break
+			}
+		}
 	case indexExit:
 		os.Exit(0)
 	}
 }
 
-func (c *Choices) ChoosePhase(video Video) Video {
+func (c *Choices) ChoosePhase(video Video) (Video, bool) {
 	returnVar := false
 	prePublish := Task{
 		Title:     "Pre-publish",
@@ -165,7 +182,7 @@ func (c *Choices) ChoosePhase(video Video) Video {
 	tasks := map[int]Task{
 		phasePrePublish: colorize(prePublish),
 		phasePublish:    colorize(publish),
-		phaseExit:       {Title: "Exit"},
+		phaseReturn:     {Title: "Return"},
 	}
 	option, _ := getChoice(tasks, titleStyle.Render("Would you like to work on pre-publish or publish tasks?"))
 	switch option {
@@ -187,41 +204,126 @@ func (c *Choices) ChoosePhase(video Video) Video {
 				continue
 			}
 		}
-	case phaseExit:
-		os.Exit(0)
+	case phaseReturn:
+		returnVar = true
 	}
-	return video
+	return video, returnVar
 }
 
-func (c *Choices) ChooseCreateVideo() Index {
+func (c *Choices) ChooseCreateVideo() VideoIndex {
+	const name = "1. Name"
+	const category = "2. Category"
 	qa := map[string]string{
-		videoIndexQuestionID:       "", // TODO: Autogenerate
-		videoIndexQuestionCategory: "", // TODO: Pick from a list
-		videoIndexQuestionSubject:  "",
+		name:     "",
+		category: "",
 	}
 	m, _ := getMultipleInputsFromString(qa)
-	vi := Index{}
+	vi := VideoIndex{}
 	for k, v := range m {
 		switch k {
-		case videoIndexQuestionID:
-			vi.ID = v
-		case videoIndexQuestionCategory:
+		case name:
+			vi.Name = v
+		case category:
 			vi.Category = v
-		case videoIndexQuestionSubject:
-			vi.Subject = v
 		}
 	}
-	return vi
+	if vi.Name == "" || vi.Category == "" {
+		errorMessage = "Name and category are required!"
+		return vi
+	}
+	dirPath := c.GetDirPath(vi.Category)
+	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
+		os.Mkdir(dirPath, 0755)
+	}
+	scriptContent := `
+#############
+# [[title]] #
+# [[url]]   #
+#############
+
+# Additional Info:
+# - [[additional-info]]
+
+#########
+# Intro #
+#########
+
+# TODO: Intro (Sara)
+
+# TODO: Title screen
+
+#########
+# Setup #
+#########
+
+# TODO:
+
+##########
+# TODO:: #
+##########
+
+# TODO: Gist
+
+# TODO: Commands
+
+#######################
+# TODO: Pros And Cons #
+#######################
+
+# Cons:
+# - TODO:
+
+# Pros:
+# - TODO:
+
+###########
+# Destroy #
+###########
+
+# TODO:
+`
+	filePath := c.GetFilePath(vi.Category, vi.Name, "sh")
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		f, err := os.Create(filePath)
+		if err != nil {
+			errorMessage = err.Error()
+			return VideoIndex{}
+		}
+		defer f.Close()
+		f.Write([]byte(scriptContent))
+		return vi
+	}
+	return VideoIndex{}
+}
+
+func (c *Choices) GetDirPath(category string) string {
+	return fmt.Sprintf("manuscript/%s", strings.ReplaceAll(strings.ToLower(category), " ", "-"))
+}
+
+func (c *Choices) GetFilePath(category, name, extension string) string {
+	dirPath := c.GetDirPath(category)
+	filePath := fmt.Sprintf("%s/%s.%s", dirPath, strings.ToLower(name), extension)
+	filePath = strings.ReplaceAll(filePath, " ", "-")
+	filePath = strings.ReplaceAll(filePath, "?", "")
+	return filePath
 }
 
 func (c *Choices) ChoosePrePublish(video Video) (Video, bool, error) {
 	openAI := OpenAI{}
 	returnVar := false
+	sponsorshipBlockedTask := getChoiceTextFromString("Sponsorship blocked?", video.SponsorshipBlocked)
+	if len(video.SponsorshipBlocked) > 0 {
+		sponsorshipBlockedTask.Title = redStyle.Render(sponsorshipBlockedTask.Title)
+	} else {
+		sponsorshipBlockedTask.Title = greenStyle.Render(sponsorshipBlockedTask.Title)
+	}
+	sponsorshipBlockedTask.Completed = !sponsorshipBlockedTask.Completed
 	tasks := map[int]Task{
 		prePublishProjectName:           colorize(getChoiceTextFromString("Set project name", video.ProjectName)),
 		prePublishProjectURL:            colorize(getChoiceTextFromString("Set project URL", video.ProjectURL)),
 		prePublishSponsored:             colorize(getChoiceTextFromString("Set sponsorship", video.Sponsored)),
 		prePublishSponsoredEmails:       colorize(getChoiceTextFromSponsoredEmails("Set sponsorship emails", video.Sponsored, video.SponsoredEmails)),
+		prePublishSponsorshipBlocked:    sponsorshipBlockedTask,
 		prePublishSubject:               colorize(getChoiceTextFromString("Set the subject", video.Subject)),
 		prePublishDate:                  colorize(getChoiceTextFromString("Set publish date", video.Date)),
 		prePublishCode:                  colorize(getChoiceTextFromBool("Wrote code?", video.Code)),
@@ -245,7 +347,7 @@ func (c *Choices) ChoosePrePublish(video Video) (Video, bool, error) {
 		prePublishMembers:               colorize(getChoiceTextFromString("Set members", video.Members)),
 		prePublishAnimations:            colorize(getChoiceTextFromString("Write/modify animations", video.Animations)),
 		prePublishRequestEdit:           colorize(getChoiceTextFromBool("Request edit", video.RequestEdit)),
-		prePublishThumbnail:             colorize(getChoiceTextFromString("Set thumbnail?", video.Thumbnail)),
+		prePublishThumbnail:             colorize(getChoiceTextFromString("Got thumbnail?", video.Thumbnail)),
 		prePublishGotMovie:              colorize(getChoiceTextFromBool("Got movie?", video.Movie)),
 		prePublishTimecodes:             colorize(getChoiceTextFromString("Set timecodes", video.Timecodes)),
 		prePublishGist:                  colorize(getChoiceTextFromString("Set gist", video.Gist)),
@@ -271,6 +373,8 @@ func (c *Choices) ChoosePrePublish(video Video) (Video, bool, error) {
 		video.Sponsored, err = getInputFromString("Sponsorship amount ('-' or 'N/A' if not sponsored)", video.Sponsored)
 	case prePublishSponsoredEmails:
 		video.SponsoredEmails = writeSponsoredEmails(video.SponsoredEmails)
+	case prePublishSponsorshipBlocked:
+		video.SponsorshipBlocked, err = getInputFromString(video.SponsorshipBlocked, video.SponsorshipBlocked)
 	case prePublishSubject:
 		video.Subject, err = getInputFromString("What is the subject of the video?", video.Subject)
 	case prePublishDate:
@@ -335,12 +439,145 @@ func (c *Choices) ChoosePrePublish(video Video) (Video, bool, error) {
 	return video, returnVar, err
 }
 
+func (c *Choices) ChooseVideosPhase(vi []VideoIndex) bool {
+	tasks := map[int]Task{
+		videosPhasePublished:        {Title: "Published"},
+		videosPhasePublishPending:   {Title: "Pending publish"},
+		videosPhaseEditRequested:    {Title: "Edit requested"},
+		videosPhaseMaterialDone:     {Title: "Material done"},
+		videosPhaseStarted:          {Title: "Started"},
+		videosPhaseSponsoredBlocked: {Title: "Sponsored blocked"},
+		videosPhaseIdeas:            {Title: "Ideas"},
+		videosPhaseReturn:           {Title: "Return"},
+	}
+	for i := range vi {
+		phase := c.GetVideoPhase(vi[i])
+		task := tasks[phase]
+		task.Counter++
+		tasks[phase] = task
+	}
+	for key := range tasks {
+		task := tasks[key]
+		if key != videosPhaseReturn {
+			task.Title = fmt.Sprintf("%s (%d)", task.Title, task.Counter)
+			if task.Counter == 0 {
+				task.Title = greenStyle.Render(task.Title)
+			} else {
+				task.Title = orangeStyle.Render(task.Title)
+			}
+			tasks[key] = task
+		}
+	}
+	choice, _ := getChoice(tasks, titleStyle.Render("From which phase would you like to list the videos?"))
+	if choice == videosPhaseReturn {
+		return true
+	}
+	c.ChooseVideos(vi, choice)
+	return false
+}
+
+func (c *Choices) GetVideoPhase(vi VideoIndex) int {
+	yaml := YAML{}
+	video := yaml.GetVideo(c.GetFilePath(vi.Category, vi.Name, "yaml"))
+	if len(video.SponsorshipBlocked) > 0 {
+		return videosPhaseSponsoredBlocked
+	} else if video.RepoReadme {
+		return videosPhasePublished
+	} else if len(video.UploadVideo) > 0 && len(video.Tweet) > 0 {
+		return videosPhasePublishPending
+	} else if video.RequestEdit {
+		return videosPhaseEditRequested
+	} else if video.Code && video.Screen && video.Head && video.Thumbnails && video.Diagrams {
+		return videosPhaseMaterialDone
+	} else if len(video.Date) > 0 {
+		return videosPhaseStarted
+	} else if len(vi.Phase) == 0 {
+		return videosPhaseIdeas
+	}
+	return videosPhaseReturn
+}
+
+func (c *Choices) ChooseVideos(vi []VideoIndex, phase int) {
+	tasks := make(map[int]Task)
+	index := 0
+	for i := range vi {
+		videoIndex := vi[i]
+		videoPhase := c.GetVideoPhase(videoIndex)
+		if videoPhase == phase {
+			title := videoIndex.Name
+			yaml := YAML{}
+			path := c.GetFilePath(videoIndex.Category, videoIndex.Name, "yaml")
+			video := yaml.GetVideo(path)
+			if len(video.Date) > 0 {
+				title = fmt.Sprintf("%s (%s)", title, video.Date)
+			}
+			if len(video.Sponsored) > 0 && video.Sponsored != "-" && video.Sponsored != "N/A" {
+				title = fmt.Sprintf("%s (sponsored)", title)
+			}
+			tasks[index] = Task{Title: title, Index: i}
+			index++
+		}
+	}
+	tasks[len(tasks)] = Task{Title: "Return"}
+	choice, _ := getChoice(tasks, titleStyle.Render("Which video would you like to work on?"))
+	selectedTask := tasks[choice]
+	if choice == len(tasks)-1 {
+		return
+	}
+	selectedVideoIndex := vi[selectedTask.Index]
+	selectedPhase := c.GetVideoPhase(selectedVideoIndex)
+	video, _ := c.VideoTasks(selectedVideoIndex, selectedPhase)
+	if len(video.Name) == 0 {
+		err := os.Remove(c.GetFilePath(selectedVideoIndex.Category, selectedVideoIndex.Name, "sh"))
+		if err != nil {
+			errorMessage = err.Error()
+		}
+		os.Remove(c.GetFilePath(selectedVideoIndex.Category, selectedVideoIndex.Name, "yaml"))
+		selectedVideoIndex = vi[len(vi)-1]
+		vi = vi[:len(vi)-1]
+	} else {
+		selectedVideoIndex = video
+	}
+	yaml := YAML{IndexPath: "index.yaml"}
+	yaml.WriteIndex(vi)
+}
+
+func (c *Choices) VideoTasks(vi VideoIndex, phase int) (VideoIndex, bool) {
+	const edit = 0
+	const delete = 1
+	const back = 2
+	tasks := map[int]Task{
+		edit:   {Title: "Edit"},
+		delete: {Title: "Delete"},
+		back:   {Title: "Return"},
+	}
+	question := fmt.Sprintf("What would you like to do with '%s'?", vi.Name)
+	choice, _ := getChoice(tasks, titleStyle.Render(question))
+	switch choice {
+	case edit:
+		returnVal := false
+		path := c.GetFilePath(vi.Category, vi.Name, "yaml")
+		yaml := YAML{}
+		video := yaml.GetVideo(path)
+		for !returnVal {
+			choices := Choices{}
+			video, returnVal = choices.ChoosePhase(video)
+			yaml.WriteVideo(video, path)
+		}
+	case delete:
+		return VideoIndex{}, true
+	case back:
+		return vi, true
+	}
+	return vi, false
+}
+
 func (c *Choices) ChoosePublish(video Video) (Video, bool, error) {
 	openAI := OpenAI{}
 	returnVar := false
 	tasks := map[int]Task{
 		publishUploadVideo: colorize(getChoiceTextFromString("Upload video", video.UploadVideo)),
-		// TODO: Add new option to Update the Gist with Gist and Video URL
+		// TODO: Add a new option to Update the Gist with Gist and Video URL
 		publishGenerateTweet:       colorize(getChoiceTextFromString("Generate Tweet", video.Tweet)),
 		publishModifyTweet:         colorize(getChoiceTextFromString("Write/modify Tweet", video.Tweet)),
 		publishTweetPosted:         colorize(getChoiceTextFromBool("Post to Tweeter (MANUAL)", video.TweetPosted)),
@@ -354,8 +591,8 @@ func (c *Choices) ChoosePublish(video Video) (Video, bool, error) {
 		publishYouTubeCommentReply: colorize(getChoiceTextFromBool("Write replies to comments (MANUAL)", video.YouTubeCommentReply)),
 		publishSlides:              colorize(getChoiceTextFromBool("Added to slides?", video.Slides)),
 		publishGDE:                 colorize(getChoiceTextFromBool("Add to https://gde.advocu.com (MANUAL)", video.GDE)),
-		publishRepoReadme:          colorize(getChoiceTextFromBool("Update repo README (MANUAL)", video.RepoReadme)),
 		publishTwitterSpace:        colorize(getChoiceTextFromBool("Post to a Twitter Spaces (MANUAL)", video.TwitterSpace)),
+		publishRepoReadme:          colorize(getChoiceTextFromBool("Update repo README (MANUAL)", video.RepoReadme)),
 		publishNotifySponsors:      colorize(getChoiceNotifySponsors("Notify sponsors", video.Sponsored, video.NotifiedSponsors)),
 		publishReturn:              {Title: "Save and return"},
 	}
@@ -398,11 +635,11 @@ func (c *Choices) ChoosePublish(video Video) (Video, bool, error) {
 		video.Slides = getInputFromBool(video.Slides)
 	case publishGDE: // TODO: Automate
 		video.GDE = getInputFromBool(video.GDE)
-	case publishRepoReadme: // TODO: Automate
-		video.RepoReadme = getInputFromBool(video.RepoReadme)
 	case publishTwitterSpace:
 		twitter := Twitter{}
 		video.TwitterSpace = twitter.PostSpace(video.VideoId, video.TwitterSpace)
+	case publishRepoReadme: // TODO: Automate
+		video.RepoReadme = getInputFromBool(video.RepoReadme)
 	case publishNotifySponsors:
 		video.NotifiedSponsors = notifySponsors(video.SponsoredEmails, video.VideoId, video.Sponsored, video.NotifiedSponsors)
 	case publishReturn:

@@ -1,3 +1,12 @@
-- id: my id
-  category: my category
-  subject: my subject
+- name: Do we need it
+  category: security
+  phase: ""
+- name: Deep dive
+  category: kubernetes
+  phase: ""
+- name: something
+  category: else
+  phase: ""
+- name: What is Kubernetes?
+  category: Kubernetes
+  phase: ""

@@ -1,0 +1,54 @@
+prepublish:
+    completed: 3
+    total: 34
+publish:
+    completed: 0
+    total: 0
+projectname: ""
+projecturl: ""
+sponsored: ""
+sponsoredemails: []
+sponsorshipblocked: ""
+subject: ""
+date: "2030-01-01"
+code: false
+screen: false
+head: false
+thumbnails: false
+diagrams: false
+title: ""
+description: ""
+tags: ""
+descriptiontags: ""
+location: ""
+tagline: ""
+taglineideas: ""
+otherlogos: ""
+screenshots: false
+requestthumbnail: false
+thumbnail: ""
+members: ""
+animations: ""
+requestedit: false
+movie: false
+timecodes: ""
+gist: ""
+relatedvideos: ""
+playlists: []
+uploadvideo: ""
+videoid: ""
+tweet: ""
+tweetposted: false
+linkedinposted: false
+slackposted: false
+redditposted: false
+hnposted: false
+tcposted: false
+youtubehighlight: false
+youtubecomment: false
+youtubecommentreply: false
+slides: false
+gde: false
+reporeadme: false
+twitterspace: false
+notifiedsponsors: false

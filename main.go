@@ -3,16 +3,11 @@ package main
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 )
 
 func main() {
 	getArgs()
-	// TODO: Add the screen to:
-	// - add new videos
-	// - list videos by category
-	//   - edit videos
 	// TODO: https://github.com/charmbracelet/bubbletea/tree/master/examples/tabs
 	// TODO: https://github.com/charmbracelet/bubbletea/tree/master/examples/table
 	// TODO: https://github.com/charmbracelet/bubbletea/tree/master/examples/spinners
@@ -25,12 +20,8 @@ func main() {
 	// TODO: https://github.com/charmbracelet/bubbletea/tree/master/examples/credit-card-form
 	// TODO: https://github.com/charmbracelet/bubbletea/tree/master/examples/composable-views
 	choices := Choices{}
-	// choices.ChooseIndex()
-	yaml := YAML{}
-	video := yaml.GetVideo(settings.Path)
 	for {
-		video = choices.ChoosePhase(video)
-		yaml.WriteVideo(video, settings.Path)
+		choices.ChooseIndex()
 	}
 }
 
@@ -229,9 +220,6 @@ Suggested bullets:
 }
 
 func setThumbnail(path string) (string, error) {
-	if len(path) == 0 {
-		path = fmt.Sprintf("%s/", filepath.Dir(settings.Path))
-	}
 	path, err := getInputFromString("What is the path to the thumbnail?", path)
 	if err != nil {
 		return "", err

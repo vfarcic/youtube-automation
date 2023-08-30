@@ -16,7 +16,6 @@ var rootCmd = &cobra.Command{
 
 type Settings struct {
 	Email Email
-	Path  string
 }
 
 type Email struct {
@@ -35,13 +34,10 @@ func init() {
 		return
 	}
 
-	rootCmd.Flags().StringVar(&settings.Path, "path", "p", "Path to the YAML file where the video info will be stored. Defaults to video.yaml in the current directory. (required)")
 	rootCmd.Flags().StringVar(&settings.Email.From, "email-from", "", "From which email to send messages. (required)")
 	rootCmd.Flags().StringVar(&settings.Email.ThumbnailTo, "email-thumbnail-to", "", "To which email to send requests for thumbnails. (required)")
 	rootCmd.Flags().StringVar(&settings.Email.EditTo, "email-edit-to", "", "To which email to send requests for edits. (required)")
 	rootCmd.Flags().StringVar(&settings.Email.FinanceTo, "email-finance-to", "", "To which email to send emails related to finances. (required)")
-
-	rootCmd.MarkFlagRequired("path")
 	if viper.IsSet("email.from") {
 		settings.Email.From = viper.GetString("email.from")
 	} else {

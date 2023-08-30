@@ -18,17 +18,12 @@ type inputModel struct {
 	err        error
 }
 
-func getInputFromString(question, answer string) (string, error) {
-	qa := map[string]string{question: answer}
-	output, err := getMultipleInputsFromString(qa)
-	for _, value := range output {
-		return value, err
+func getInputs(inputs []textinput.Model) (map[string]string, error) {
+	im := inputModel{
+		inputs: inputs,
+		err:    nil,
 	}
-	return "", err
-}
-
-func getMultipleInputsFromString(qa map[string]string) (map[string]string, error) {
-	p := tea.NewProgram(initialInputModel(qa), tea.WithAltScreen())
+	p := tea.NewProgram(im, tea.WithAltScreen())
 	m, err := p.Run()
 	if err != nil {
 		return map[string]string{}, err
@@ -40,11 +35,16 @@ func getMultipleInputsFromString(qa map[string]string) (map[string]string, error
 	return output, nil
 }
 
-func getInputFromBool(value bool) bool {
-	return !value
+func getInputFromString(question, answer string) (string, error) {
+	qa := map[string]string{question: answer}
+	output, err := getMultipleInputsFromString(qa)
+	for _, value := range output {
+		return value, err
+	}
+	return "", err
 }
 
-func initialInputModel(qa map[string]string) inputModel {
+func getMultipleInputsFromString(qa map[string]string) (map[string]string, error) {
 	inputs := []textinput.Model{}
 	for question, answer := range qa {
 		i := textinput.New()
@@ -57,10 +57,11 @@ func initialInputModel(qa map[string]string) inputModel {
 		}
 		inputs = append(inputs, i)
 	}
-	return inputModel{
-		inputs: inputs,
-		err:    nil,
-	}
+	return getInputs(inputs)
+}
+
+func getInputFromBool(value bool) bool {
+	return !value
 }
 
 func (m inputModel) Init() tea.Cmd {
