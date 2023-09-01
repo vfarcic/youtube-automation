@@ -137,10 +137,10 @@ func getChoiceUploadVideo(video Video) (string, string) {
 	// if err != nil {
 	// 	println(redStyle.Render(fmt.Sprintf("Error setting playlists: %s", err.Error())))
 	// }
+	// TODO: Remove
 	confirmationMessage = `Following should be set manually:
 - End screen
 - Playlists
-- Tags
 - Language
 - Monetization`
 	return video.UploadVideo, video.VideoId
