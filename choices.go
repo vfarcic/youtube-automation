@@ -508,11 +508,15 @@ func (c *Choices) ChooseVideos(vi []VideoIndex, phase int) {
 			yaml := YAML{}
 			path := c.GetFilePath(videoIndex.Category, videoIndex.Name, "yaml")
 			video := yaml.GetVideo(path)
-			if len(video.Date) > 0 {
-				title = fmt.Sprintf("%s (%s)", title, video.Date)
-			}
-			if len(video.Sponsored) > 0 && video.Sponsored != "-" && video.Sponsored != "N/A" {
-				title = fmt.Sprintf("%s (sponsored)", title)
+			if len(video.SponsorshipBlocked) > 0 && video.SponsorshipBlocked != "-" && video.SponsorshipBlocked != "N/A" {
+				title = fmt.Sprintf("%s (%s)", title, video.SponsorshipBlocked)
+			} else {
+				if len(video.Date) > 0 {
+					title = fmt.Sprintf("%s (%s)", title, video.Date)
+				}
+				if len(video.Sponsored) > 0 && video.Sponsored != "-" && video.Sponsored != "N/A" {
+					title = fmt.Sprintf("%s (sponsored)", title)
+				}
 			}
 			tasks[index] = Task{Title: title, Index: i}
 			index++

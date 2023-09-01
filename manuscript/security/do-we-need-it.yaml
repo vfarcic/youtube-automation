@@ -1,5 +1,5 @@
 prepublish:
-    completed: 6
+    completed: 5
     total: 34
 publish:
     completed: 0
@@ -9,7 +9,7 @@ projecturl: dsdsd
 sponsored: 4k EUR
 sponsoredemails:
     - jdoe@acme.com
-sponsorshipblocked: ""
+sponsorshipblocked: this and that, since September 2023
 subject: ""
 date: 2030-01-21T16:00
 code: false
