@@ -552,7 +552,7 @@ func (c *Choices) VideoTasks(vi VideoIndex, phase int) (VideoIndex, bool) {
 	const back = 2
 	tasks := map[int]Task{
 		edit:   {Title: "Edit"},
-		delete: {Title: "Delete"},
+		delete: {Title: "Delete (TODO: fix it)"},
 		back:   {Title: "Return"},
 	}
 	question := fmt.Sprintf("What would you like to do with '%s'?", vi.Name)
