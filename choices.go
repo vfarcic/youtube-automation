@@ -584,7 +584,7 @@ func (c *Choices) ChoosePublish(video Video) (Video, bool, error) {
 		// TODO: Add a new option to Update the Gist with Gist and Video URL
 		publishGenerateTweet:       colorize(getChoiceTextFromString("Generate Tweet", video.Tweet)),
 		publishModifyTweet:         colorize(getChoiceTextFromString("Write/modify Tweet", video.Tweet)),
-		publishTweetPosted:         colorize(getChoiceTextFromBool("Post to Tweeter (MANUAL)", video.TweetPosted)),
+		publishTweetPosted:         colorize(getChoiceTextFromBool("Post to Twitter (MANUAL)", video.TweetPosted)),
 		publishLinkedInPosted:      colorize(getChoiceTextFromBool("Post to LinkedIn (MANUAL)", video.LinkedInPosted)),
 		publishSlackPosted:         colorize(getChoiceTextFromBool("Post to Slack (MANUAL)", video.SlackPosted)),
 		publishRedditPosted:        colorize(getChoiceTextFromBool("Post to Reddit (MANUAL)", video.RedditPosted)),
