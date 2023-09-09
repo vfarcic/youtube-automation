@@ -628,7 +628,7 @@ func (c *Choices) ChoosePublish(video Video) (Video, bool, error) {
 	case publishHNPosted: // TODO: Automate
 		video.HNPosted = postHackerNews(video.Title, video.VideoId, video.HNPosted)
 	case publishTCPosted: // TODO: Automate
-		video.TCPosted = postTechnologyConversations(video.Title, video.Description, video.VideoId, video.Gist, video.RelatedVideos, video.TCPosted)
+		video.TCPosted = postTechnologyConversations(video.Title, video.Description, video.VideoId, video.Gist, video.ProjectName, video.ProjectURL, video.RelatedVideos, video.TCPosted)
 	case publishYouTubeHighlight: // TODO: Automate
 		video.YouTubeHighlight = getInputFromBool(video.YouTubeHighlight)
 	case publishYouTubeComment: // TODO: Automate

@@ -2,7 +2,7 @@ package main
 
 import "fmt"
 
-func postTechnologyConversations(title, description, videoId, gist, relatedVideos string, posted bool) bool {
+func postTechnologyConversations(title, description, videoId, gist, projectName, projectURL, relatedVideos string, posted bool) bool {
 	// if len(title) == 0 {
 	// 	errorMessage = "Please generate the title first."
 	// 	return false
@@ -24,7 +24,7 @@ func postTechnologyConversations(title, description, videoId, gist, relatedVideo
 		confirmationMessage += fmt.Sprintf("\n\nTitle:\n%s", title)
 		confirmationMessage += fmt.Sprintf("\n\nDescription:\n%s", description)
 		confirmationMessage += fmt.Sprintf("\n\nVideo ID:\n%s", videoId)
-		confirmationMessage += fmt.Sprintf("\n\nAdditional info:\n%s", getAdditionalInfo(gist, relatedVideos))
+		confirmationMessage += fmt.Sprintf("\n\nAdditional info:\n%s", getAdditionalInfo(gist, projectName, projectURL, relatedVideos))
 	}
 	return getInputFromBool(posted)
 }

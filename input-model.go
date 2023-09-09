@@ -50,7 +50,7 @@ func getMultipleInputsFromString(qa map[string]string) (map[string]string, error
 		i := textinput.New()
 		i.Placeholder = question
 		i.SetValue(answer)
-		i.CharLimit = 100
+		i.CharLimit = 250
 		i.Width = 100
 		if len(qa) == 1 || strings.HasPrefix(question, "1.") {
 			i.Focus()
