@@ -114,7 +114,7 @@ const publishYouTubeCommentReply = 11
 const publishSlides = 12
 const publishGDE = 13
 const publishTwitterSpace = 14
-const publishRepoReadme = 15
+const publishRepo = 15
 const publishNotifySponsors = 16
 const publishedShort = 17
 const publishReturn = 18
@@ -482,7 +482,7 @@ func (c *Choices) GetVideoPhase(vi VideoIndex) int {
 	video := yaml.GetVideo(c.GetFilePath(vi.Category, vi.Name, "yaml"))
 	if len(video.SponsorshipBlocked) > 0 {
 		return videosPhaseSponsoredBlocked
-	} else if video.RepoReadme {
+	} else if len(video.Repo) > 0 {
 		return videosPhasePublished
 	} else if len(video.UploadVideo) > 0 && len(video.Tweet) > 0 {
 		return videosPhasePublishPending
@@ -597,7 +597,7 @@ func (c *Choices) ChoosePublish(video Video) (Video, bool, error) {
 		publishSlides:              colorize(getChoiceTextFromBool("Added to slides?", video.Slides)),
 		publishGDE:                 colorize(getChoiceTextFromBool("Add to https://gde.advocu.com (MANUAL)", video.GDE)),     // TODO:
 		publishTwitterSpace:        colorize(getChoiceTextFromBool("Post to a Twitter Spaces (MANUAL)", video.TwitterSpace)), // TODO:
-		publishRepoReadme:          colorize(getChoiceTextFromBool("Update repo README (MANUAL)", video.RepoReadme)),         // TODO:
+		publishRepo:                colorize(getChoiceTextFromString("Set code repo", video.Repo)),                           // TODO:
 		publishNotifySponsors:      colorize(getChoiceNotifySponsors("Notify sponsors", video.Sponsored, video.NotifiedSponsors)),
 		publishedShort:             colorize(getChoiceTextFromBool("Published short (MANUAL)", video.PublishedShort)), // TODO:
 		publishReturn:              {Title: "Save and return"},
@@ -644,8 +644,9 @@ func (c *Choices) ChoosePublish(video Video) (Video, bool, error) {
 	case publishTwitterSpace:
 		twitter := Twitter{}
 		video.TwitterSpace = twitter.PostSpace(video.VideoId, video.TwitterSpace)
-	case publishRepoReadme: // TODO: Automate
-		video.RepoReadme = getInputFromBool(video.RepoReadme)
+	case publishRepo:
+		repo := Repo{}
+		video.Repo, _ = repo.Update(video.Repo, video.Title, video.VideoId)
 	case publishNotifySponsors:
 		video.NotifiedSponsors = notifySponsors(video.SponsoredEmails, video.VideoId, video.Sponsored, video.NotifiedSponsors)
 	case publishedShort:

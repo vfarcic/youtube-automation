@@ -8,17 +8,6 @@ import (
 
 func main() {
 	getArgs()
-	// TODO: https://github.com/charmbracelet/bubbletea/tree/master/examples/tabs
-	// TODO: https://github.com/charmbracelet/bubbletea/tree/master/examples/table
-	// TODO: https://github.com/charmbracelet/bubbletea/tree/master/examples/spinners
-	// TODO: https://github.com/charmbracelet/bubbletea/tree/master/examples/paginator
-	// TODO: https://github.com/charmbracelet/bubbletea/tree/master/examples/list-simple
-	// TODO: https://github.com/charmbracelet/bubbletea/tree/master/examples/list-fancy
-	// TODO: https://github.com/charmbracelet/bubbletea/tree/master/examples/list-default
-	// TODO: https://github.com/charmbracelet/bubbletea/tree/master/examples/glamour
-	// TODO: https://github.com/charmbracelet/bubbletea/tree/master/examples/file-picker
-	// TODO: https://github.com/charmbracelet/bubbletea/tree/master/examples/credit-card-form
-	// TODO: https://github.com/charmbracelet/bubbletea/tree/master/examples/composable-views
 	choices := Choices{}
 	for {
 		choices.ChooseIndex()
