@@ -68,6 +68,7 @@ type Video struct {
 	RepoReadme          bool
 	TwitterSpace        bool
 	NotifiedSponsors    bool
+	PublishedShort      bool
 }
 
 func (y *YAML) GetVideo(path string) Video {

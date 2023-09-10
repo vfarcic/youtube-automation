@@ -116,7 +116,8 @@ const publishGDE = 13
 const publishTwitterSpace = 14
 const publishRepoReadme = 15
 const publishNotifySponsors = 16
-const publishReturn = 17
+const publishedShort = 17
+const publishReturn = 18
 
 type Tasks struct {
 	Completed int
@@ -584,20 +585,21 @@ func (c *Choices) ChoosePublish(video Video) (Video, bool, error) {
 		// TODO: Add a new option to Update the Gist with Gist and Video URL
 		publishGenerateTweet:       colorize(getChoiceTextFromString("Generate Tweet", video.Tweet)),
 		publishModifyTweet:         colorize(getChoiceTextFromString("Write/modify Tweet", video.Tweet)),
-		publishTweetPosted:         colorize(getChoiceTextFromBool("Post to Twitter (MANUAL)", video.TweetPosted)),
-		publishLinkedInPosted:      colorize(getChoiceTextFromBool("Post to LinkedIn (MANUAL)", video.LinkedInPosted)),
-		publishSlackPosted:         colorize(getChoiceTextFromBool("Post to Slack (MANUAL)", video.SlackPosted)),
-		publishRedditPosted:        colorize(getChoiceTextFromBool("Post to Reddit (MANUAL)", video.RedditPosted)),
-		publishHNPosted:            colorize(getChoiceTextFromBool("Post to Hacker News (MANUAL)", video.HNPosted)),
-		publishTCPosted:            colorize(getChoiceTextFromBool("Post to Technology Conversations (MANUAL)", video.TCPosted)),
-		publishYouTubeHighlight:    colorize(getChoiceTextFromBool("Set as YouTube Highlight (MANUAL)", video.YouTubeHighlight)),
-		publishYouTubeComment:      colorize(getChoiceTextFromBool("Write pinned comment (MANUAL)", video.YouTubeComment)),
-		publishYouTubeCommentReply: colorize(getChoiceTextFromBool("Write replies to comments (MANUAL)", video.YouTubeCommentReply)),
+		publishTweetPosted:         colorize(getChoiceTextFromBool("Post to Twitter (MANUAL)", video.TweetPosted)),                   // TODO:
+		publishLinkedInPosted:      colorize(getChoiceTextFromBool("Post to LinkedIn (MANUAL)", video.LinkedInPosted)),               // TODO:
+		publishSlackPosted:         colorize(getChoiceTextFromBool("Post to Slack (MANUAL)", video.SlackPosted)),                     // TODO:
+		publishRedditPosted:        colorize(getChoiceTextFromBool("Post to Reddit (MANUAL)", video.RedditPosted)),                   // TODO:
+		publishHNPosted:            colorize(getChoiceTextFromBool("Post to Hacker News (MANUAL)", video.HNPosted)),                  // TODO:
+		publishTCPosted:            colorize(getChoiceTextFromBool("Post to Technology Conversations (MANUAL)", video.TCPosted)),     // TODO:
+		publishYouTubeHighlight:    colorize(getChoiceTextFromBool("Set as YouTube Highlight (MANUAL)", video.YouTubeHighlight)),     // TODO:
+		publishYouTubeComment:      colorize(getChoiceTextFromBool("Write pinned comment (MANUAL)", video.YouTubeComment)),           // TODO:
+		publishYouTubeCommentReply: colorize(getChoiceTextFromBool("Write replies to comments (MANUAL)", video.YouTubeCommentReply)), // TODO:
 		publishSlides:              colorize(getChoiceTextFromBool("Added to slides?", video.Slides)),
-		publishGDE:                 colorize(getChoiceTextFromBool("Add to https://gde.advocu.com (MANUAL)", video.GDE)),
-		publishTwitterSpace:        colorize(getChoiceTextFromBool("Post to a Twitter Spaces (MANUAL)", video.TwitterSpace)),
-		publishRepoReadme:          colorize(getChoiceTextFromBool("Update repo README (MANUAL)", video.RepoReadme)),
+		publishGDE:                 colorize(getChoiceTextFromBool("Add to https://gde.advocu.com (MANUAL)", video.GDE)),     // TODO:
+		publishTwitterSpace:        colorize(getChoiceTextFromBool("Post to a Twitter Spaces (MANUAL)", video.TwitterSpace)), // TODO:
+		publishRepoReadme:          colorize(getChoiceTextFromBool("Update repo README (MANUAL)", video.RepoReadme)),         // TODO:
 		publishNotifySponsors:      colorize(getChoiceNotifySponsors("Notify sponsors", video.Sponsored, video.NotifiedSponsors)),
+		publishedShort:             colorize(getChoiceTextFromBool("Published short (MANUAL)", video.PublishedShort)), // TODO:
 		publishReturn:              {Title: "Save and return"},
 	}
 	completed := 0
@@ -646,6 +648,8 @@ func (c *Choices) ChoosePublish(video Video) (Video, bool, error) {
 		video.RepoReadme = getInputFromBool(video.RepoReadme)
 	case publishNotifySponsors:
 		video.NotifiedSponsors = notifySponsors(video.SponsoredEmails, video.VideoId, video.Sponsored, video.NotifiedSponsors)
+	case publishedShort:
+		video.PublishedShort = getInputFromBool(video.PublishedShort)
 	case publishReturn:
 		returnVar = true
 	}
