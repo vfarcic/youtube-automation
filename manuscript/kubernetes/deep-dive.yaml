@@ -1,0 +1,55 @@
+prepublish:
+    completed: 16
+    total: 34
+publish:
+    completed: 3
+    total: 18
+projectname: dsds
+projecturl: acme.com
+sponsored: ""
+sponsoredemails: []
+sponsorshipblocked: ""
+subject: Kubernetes
+date: 2030-01-01T16:00
+code: true
+screen: true
+head: true
+thumbnails: true
+diagrams: true
+title: 'Mastering Kubernetes: The Ultimate Guide for Container Orchestration'
+description: ""
+tags: ""
+descriptiontags: ""
+location: fff
+tagline: ""
+taglineideas: ""
+otherlogos: ""
+screenshots: false
+requestthumbnail: false
+thumbnail: thumbnail.png
+members: ""
+animations: ""
+requestedit: true
+movie: false
+timecodes: ""
+gist: ""
+relatedvideos: ""
+playlists: []
+uploadvideo: ""
+videoid: xyzxyz
+tweet: ""
+tweetposted: false
+linkedinposted: false
+slackposted: false
+redditposted: false
+hnposted: false
+tcposted: false
+youtubehighlight: false
+youtubecomment: false
+youtubecommentreply: false
+slides: false
+gde: false
+repo: test
+twitterspace: false
+notifiedsponsors: false
+publishedshort: true

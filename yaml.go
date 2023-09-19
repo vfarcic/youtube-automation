@@ -65,7 +65,7 @@ type Video struct {
 	YouTubeCommentReply bool
 	Slides              bool
 	GDE                 bool
-	RepoReadme          bool
+	Repo                string
 	TwitterSpace        bool
 	NotifiedSponsors    bool
 	PublishedShort      bool
