@@ -7,6 +7,8 @@ import (
 )
 
 func main() {
+	// TODO: Publish binary
+	// TODO: Publish as brew
 	getArgs()
 	choices := Choices{}
 	for {

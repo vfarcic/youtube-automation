@@ -9,7 +9,9 @@ go run . --path something.yaml
 ## Build
 
 ```bash
-go build -o youtube-release
+make build # All binaries
+
+go build -o youtube-release # Single binary
 
 chmod +x youtube-release
 
