@@ -73,29 +73,29 @@ const prePublishDate = 6
 const prePublishCode = 7
 const prePublishScreen = 8
 const prePublishHead = 9
-const prePublishThumbnails = 10
-const prePublishDiagrams = 11
-const prePublishLocation = 12
-const prePublishTagline = 13
-const prePublishTaglineIdeas = 14
-const prePublishOtherLogos = 15
-const prePublishScreenshots = 16
-const prePublishGenerateTitle = 17
-const prePublishModifyTitle = 18
-const prePublishGenerateDescription = 19
-const prePublishModifyDescription = 20
-const prePublishGenerateTags = 21
-const prePublishModifyTags = 22
-const prePublishModifyDescriptionTags = 23
-const prePublishRequestThumbnail = 24
-const prePublishMembers = 25
-const prePublishAnimations = 26
-const prePublishRequestEdit = 27
-const prePublishThumbnail = 28
-const prePublishGotMovie = 29
-const prePublishTimecodes = 30
-const prePublishGist = 31
-const prePublishRelatedVideos = 32
+const prePublishRelatedVideos = 10
+const prePublishThumbnails = 11
+const prePublishDiagrams = 12
+const prePublishLocation = 13
+const prePublishTagline = 14
+const prePublishTaglineIdeas = 15
+const prePublishOtherLogos = 16
+const prePublishScreenshots = 17
+const prePublishGenerateTitle = 18
+const prePublishModifyTitle = 19
+const prePublishGenerateDescription = 20
+const prePublishModifyDescription = 21
+const prePublishGenerateTags = 22
+const prePublishModifyTags = 23
+const prePublishModifyDescriptionTags = 24
+const prePublishRequestThumbnail = 25
+const prePublishMembers = 26
+const prePublishAnimations = 27
+const prePublishRequestEdit = 28
+const prePublishThumbnail = 29
+const prePublishGotMovie = 30
+const prePublishTimecodes = 31
+const prePublishGist = 32
 const prePublishPlaylists = 33
 const prePublishReturn = 34
 
@@ -330,6 +330,7 @@ func (c *Choices) ChoosePrePublish(video Video) (Video, bool, error) {
 		prePublishCode:                  colorize(getChoiceTextFromBool("Wrote code?", video.Code)),
 		prePublishScreen:                colorize(getChoiceTextFromBool("Recorded screen?", video.Screen)),
 		prePublishHead:                  colorize(getChoiceTextFromBool("Recorded talking head?", video.Head)),
+		prePublishRelatedVideos:         colorize(getChoiceTextFromString("Set related videos", video.RelatedVideos)),
 		prePublishThumbnails:            colorize(getChoiceTextFromBool("Downloaded thumbnails?", video.Thumbnails)),
 		prePublishDiagrams:              colorize(getChoiceTextFromBool("Created diagrams?", video.Diagrams)),
 		prePublishLocation:              colorize(getChoiceTextFromString("Set files location", video.Location)),
@@ -352,7 +353,6 @@ func (c *Choices) ChoosePrePublish(video Video) (Video, bool, error) {
 		prePublishGotMovie:              colorize(getChoiceTextFromBool("Got movie?", video.Movie)),
 		prePublishTimecodes:             colorize(getChoiceTextFromString("Set timecodes", video.Timecodes)),
 		prePublishGist:                  colorize(getChoiceTextFromString("Set gist", video.Gist)),
-		prePublishRelatedVideos:         colorize(getChoiceTextFromString("Set related videos", video.RelatedVideos)),
 		prePublishPlaylists:             colorize(getChoiceTextFromPlaylists("Set playlists", video.Playlists)),
 		prePublishReturn:                {Title: "Save and return"},
 	}
@@ -386,6 +386,8 @@ func (c *Choices) ChoosePrePublish(video Video) (Video, bool, error) {
 		video.Screen = getInputFromBool(video.Screen)
 	case prePublishHead:
 		video.Head = getInputFromBool(video.Head)
+	case prePublishRelatedVideos:
+		video.RelatedVideos = getInputFromTextArea("What are the related videos?", video.RelatedVideos, 20)
 	case prePublishThumbnails:
 		video.Thumbnails = getInputFromBool(video.Thumbnails)
 	case prePublishDiagrams:
@@ -430,8 +432,6 @@ func (c *Choices) ChoosePrePublish(video Video) (Video, bool, error) {
 		video.Timecodes = getInputFromTextArea("What are timecodes?", video.Timecodes, 20)
 	case prePublishGist: // TODO: Ask for the Gist path, create it, and store both the path and the URL.
 		video.Gist, err = getInputFromString("Where is the gist?", video.Gist)
-	case prePublishRelatedVideos:
-		video.RelatedVideos = getInputFromTextArea("What are the related videos?", video.RelatedVideos, 20)
 	case prePublishPlaylists:
 		video.Playlists = getPlaylists()
 	case prePublishReturn:
