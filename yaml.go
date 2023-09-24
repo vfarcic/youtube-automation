@@ -14,7 +14,8 @@ type YAML struct {
 type VideoIndex struct {
 	Name     string
 	Category string
-	Phase    string
+	// TODO: Remove
+	// Phase    string
 }
 
 type Video struct {
