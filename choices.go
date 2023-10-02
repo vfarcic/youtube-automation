@@ -468,8 +468,8 @@ func (c *Choices) ChooseVideosPhase(vi []VideoIndex) bool {
 				task.Title = greenStyle.Render(task.Title)
 			} else if key == videosPhaseMaterialDone && task.Counter >= 3 {
 				task.Title = greenStyle.Render(task.Title)
-			} else if task.Counter == 0 {
-				task.Title = greenStyle.Render(task.Title)
+				// } else if task.Counter == 0 {
+				// 	task.Title = greenStyle.Render(task.Title)
 			} else {
 				task.Title = orangeStyle.Render(task.Title)
 			}
@@ -499,8 +499,6 @@ func (c *Choices) GetVideoPhase(vi VideoIndex) int {
 		return videosPhaseMaterialDone
 	} else if len(video.Date) > 0 {
 		return videosPhaseStarted
-		// TODO: Remove
-		// } else if len(vi.Phase) == 0 {
 	} else {
 		return videosPhaseIdeas
 	}
