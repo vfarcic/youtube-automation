@@ -499,10 +499,12 @@ func (c *Choices) GetVideoPhase(vi VideoIndex) int {
 		return videosPhaseMaterialDone
 	} else if len(video.Date) > 0 {
 		return videosPhaseStarted
-	} else if len(vi.Phase) == 0 {
+		// TODO: Remove
+		// } else if len(vi.Phase) == 0 {
+	} else {
 		return videosPhaseIdeas
 	}
-	return videosPhaseReturn
+	// return videosPhaseReturn
 }
 
 func (c *Choices) ChooseVideos(vi []VideoIndex, phase int) {
