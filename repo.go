@@ -19,6 +19,9 @@ func (r *Repo) Update(repo, title, videoID string) (string, error) {
 		return "", fmt.Errorf(errorMessage)
 	}
 	repo, err := getInputFromString("What is the name of the repo?", repo)
+	if repo == "N/A" {
+		return repo, nil
+	}
 	if err != nil {
 		errorMessage = err.Error()
 		return "", err

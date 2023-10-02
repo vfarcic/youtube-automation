@@ -116,8 +116,7 @@ const publishGDE = 13
 const publishTwitterSpace = 14
 const publishRepo = 15
 const publishNotifySponsors = 16
-const publishedShort = 17
-const publishReturn = 18
+const publishReturn = 17
 
 type Tasks struct {
 	Completed int
@@ -461,7 +460,15 @@ func (c *Choices) ChooseVideosPhase(vi []VideoIndex) bool {
 		task := tasks[key]
 		if key != videosPhaseReturn {
 			task.Title = fmt.Sprintf("%s (%d)", task.Title, task.Counter)
-			if task.Counter == 0 {
+			if key == videosPhasePublished {
+				task.Title = greenStyle.Render(task.Title)
+			} else if key == videosPhasePublishPending && task.Counter > 0 {
+				task.Title = greenStyle.Render(task.Title)
+			} else if key == videosPhaseEditRequested && task.Counter > 0 {
+				task.Title = greenStyle.Render(task.Title)
+			} else if key == videosPhaseMaterialDone && task.Counter >= 3 {
+				task.Title = greenStyle.Render(task.Title)
+			} else if task.Counter == 0 {
 				task.Title = greenStyle.Render(task.Title)
 			} else {
 				task.Title = orangeStyle.Render(task.Title)
@@ -599,7 +606,6 @@ func (c *Choices) ChoosePublish(video Video) (Video, bool, error) {
 		publishTwitterSpace:        colorize(getChoiceTextFromBool("Post to a Twitter Spaces (MANUAL)", video.TwitterSpace)), // TODO:
 		publishRepo:                colorize(getChoiceTextFromString("Set code repo", video.Repo)),                           // TODO:
 		publishNotifySponsors:      colorize(getChoiceNotifySponsors("Notify sponsors", video.Sponsored, video.NotifiedSponsors)),
-		publishedShort:             colorize(getChoiceTextFromBool("Published short (MANUAL)", video.PublishedShort)), // TODO:
 		publishReturn:              {Title: "Save and return"},
 	}
 	completed := 0
@@ -645,12 +651,12 @@ func (c *Choices) ChoosePublish(video Video) (Video, bool, error) {
 		twitter := Twitter{}
 		video.TwitterSpace = twitter.PostSpace(video.VideoId, video.TwitterSpace)
 	case publishRepo:
-		repo := Repo{}
-		video.Repo, _ = repo.Update(video.Repo, video.Title, video.VideoId)
+		if video.Repo != "N/A" {
+			repo := Repo{}
+			video.Repo, _ = repo.Update(video.Repo, video.Title, video.VideoId)
+		}
 	case publishNotifySponsors:
 		video.NotifiedSponsors = notifySponsors(video.SponsoredEmails, video.VideoId, video.Sponsored, video.NotifiedSponsors)
-	case publishedShort:
-		video.PublishedShort = getInputFromBool(video.PublishedShort)
 	case publishReturn:
 		returnVar = true
 	}
