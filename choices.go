@@ -319,40 +319,40 @@ func (c *Choices) ChoosePrePublish(video Video) (Video, bool, error) {
 	}
 	sponsorshipBlockedTask.Completed = !sponsorshipBlockedTask.Completed
 	tasks := map[int]Task{
-		prePublishProjectName:           colorize(getChoiceTextFromString("Set project name", video.ProjectName)),
-		prePublishProjectURL:            colorize(getChoiceTextFromString("Set project URL", video.ProjectURL)),
-		prePublishSponsored:             colorize(getChoiceTextFromString("Set sponsorship", video.Sponsored)),
-		prePublishSponsoredEmails:       colorize(getChoiceTextFromSponsoredEmails("Set sponsorship emails", video.Sponsored, video.SponsoredEmails)),
+		prePublishProjectName:           colorize(getChoiceTextFromString("Project name", video.ProjectName)),
+		prePublishProjectURL:            colorize(getChoiceTextFromString("Project URL", video.ProjectURL)),
+		prePublishSponsored:             colorize(getChoiceTextFromString("Sponsorship", video.Sponsored)),
+		prePublishSponsoredEmails:       colorize(getChoiceTextFromSponsoredEmails("Sponsorship emails", video.Sponsored, video.SponsoredEmails)),
 		prePublishSponsorshipBlocked:    sponsorshipBlockedTask,
-		prePublishSubject:               colorize(getChoiceTextFromString("Set the subject", video.Subject)),
-		prePublishDate:                  colorize(getChoiceTextFromString("Set publish date", video.Date)),
-		prePublishCode:                  colorize(getChoiceTextFromBool("Wrote code?", video.Code)),
-		prePublishScreen:                colorize(getChoiceTextFromBool("Recorded screen?", video.Screen)),
-		prePublishHead:                  colorize(getChoiceTextFromBool("Recorded talking head?", video.Head)),
-		prePublishRelatedVideos:         colorize(getChoiceTextFromString("Set related videos", video.RelatedVideos)),
-		prePublishThumbnails:            colorize(getChoiceTextFromBool("Downloaded thumbnails?", video.Thumbnails)),
-		prePublishDiagrams:              colorize(getChoiceTextFromBool("Created diagrams?", video.Diagrams)),
-		prePublishLocation:              colorize(getChoiceTextFromString("Set files location", video.Location)),
-		prePublishTagline:               colorize(getChoiceTextFromString("Set tagline", video.Tagline)),
-		prePublishTaglineIdeas:          colorize(getChoiceTextFromString("Set tagline ideas", video.TaglineIdeas)),
-		prePublishOtherLogos:            colorize(getChoiceTextFromString("Set other logos", video.OtherLogos)),
-		prePublishScreenshots:           colorize(getChoiceTextFromBool("Created screenshots?", video.Screenshots)),
-		prePublishGenerateTitle:         colorize(getChoiceTextFromString("Generate title", video.Title)),
-		prePublishModifyTitle:           colorize(getChoiceTextFromString("Write/modify title", video.Title)),
-		prePublishGenerateDescription:   colorize(getChoiceTextFromString("Generate description", video.Description)),
-		prePublishModifyDescription:     colorize(getChoiceTextFromString("Write/modify description", video.Description)),
-		prePublishGenerateTags:          colorize(getChoiceTextFromString("Generate tags", video.Tags)),
-		prePublishModifyTags:            colorize(getChoiceTextFromString("Write/modify tags", video.Tags)),
+		prePublishSubject:               colorize(getChoiceTextFromString("Subject", video.Subject)),
+		prePublishDate:                  colorize(getChoiceTextFromString("Publish date", video.Date)),
+		prePublishCode:                  colorize(getChoiceTextFromBool("Code?", video.Code)),
+		prePublishScreen:                colorize(getChoiceTextFromBool("Screen?", video.Screen)),
+		prePublishHead:                  colorize(getChoiceTextFromBool("Talking head?", video.Head)),
+		prePublishRelatedVideos:         colorize(getChoiceTextFromString("Related videos", video.RelatedVideos)),
+		prePublishThumbnails:            colorize(getChoiceTextFromBool("Thumbnails?", video.Thumbnails)),
+		prePublishDiagrams:              colorize(getChoiceTextFromBool("Diagrams?", video.Diagrams)),
+		prePublishLocation:              colorize(getChoiceTextFromString("Files location", video.Location)),
+		prePublishTagline:               colorize(getChoiceTextFromString("Tagline", video.Tagline)),
+		prePublishTaglineIdeas:          colorize(getChoiceTextFromString("Tagline ideas", video.TaglineIdeas)),
+		prePublishOtherLogos:            colorize(getChoiceTextFromString("Other logos", video.OtherLogos)),
+		prePublishScreenshots:           colorize(getChoiceTextFromBool("Screenshots?", video.Screenshots)),
+		prePublishGenerateTitle:         colorize(getChoiceTextFromString("Title (generate)", video.Title)),
+		prePublishModifyTitle:           colorize(getChoiceTextFromString("Title (write/modify)", video.Title)),
+		prePublishGenerateDescription:   colorize(getChoiceTextFromString("Description (generate)", video.Description)),
+		prePublishModifyDescription:     colorize(getChoiceTextFromString("Description (write/modify)", video.Description)),
+		prePublishGenerateTags:          colorize(getChoiceTextFromString("Tags (generate)", video.Tags)),
+		prePublishModifyTags:            colorize(getChoiceTextFromString("Tags (write/modify)", video.Tags)),
 		prePublishModifyDescriptionTags: colorize(getChoiceTextFromString("Write/modify description tags", video.DescriptionTags)),
-		prePublishRequestThumbnail:      colorize(getChoiceTextFromBool("Request thumbnail", video.RequestThumbnail)),
-		prePublishMembers:               colorize(getChoiceTextFromString("Set members", video.Members)),
-		prePublishAnimations:            colorize(getChoiceTextFromString("Write/modify animations", video.Animations)),
-		prePublishRequestEdit:           colorize(getChoiceTextFromBool("Request edit", video.RequestEdit)),
-		prePublishThumbnail:             colorize(getChoiceTextFromString("Got thumbnail?", video.Thumbnail)),
-		prePublishGotMovie:              colorize(getChoiceTextFromBool("Got movie?", video.Movie)),
-		prePublishTimecodes:             colorize(getChoiceTextFromString("Set timecodes", video.Timecodes)),
-		prePublishGist:                  colorize(getChoiceTextFromString("Set gist", video.Gist)),
-		prePublishPlaylists:             colorize(getChoiceTextFromPlaylists("Set playlists", video.Playlists)),
+		prePublishRequestThumbnail:      colorize(getChoiceTextFromBool("Thumbnail request", video.RequestThumbnail)),
+		prePublishMembers:               colorize(getChoiceTextFromString("Members", video.Members)),
+		prePublishAnimations:            colorize(getChoiceTextFromString("Animations", video.Animations)),
+		prePublishRequestEdit:           colorize(getChoiceTextFromBool("Edit (request)", video.RequestEdit)),
+		prePublishThumbnail:             colorize(getChoiceTextFromString("Thumbnail?", video.Thumbnail)),
+		prePublishGotMovie:              colorize(getChoiceTextFromBool("Movie?", video.Movie)),
+		prePublishTimecodes:             colorize(getChoiceTextFromString("Timecodes", video.Timecodes)),
+		prePublishGist:                  colorize(getChoiceTextFromString("Gist", video.Gist)),
+		prePublishPlaylists:             colorize(getChoiceTextFromPlaylists("Playlists", video.Playlists)),
 		prePublishReturn:                {Title: "Save and return"},
 	}
 	completed := 0
@@ -590,22 +590,22 @@ func (c *Choices) ChoosePublish(video Video) (Video, bool, error) {
 	tasks := map[int]Task{
 		publishUploadVideo: colorize(getChoiceTextFromString("Upload video", video.UploadVideo)),
 		// TODO: Add a new option to Update the Gist with Gist and Video URL
-		publishGenerateTweet:       colorize(getChoiceTextFromString("Generate Tweet", video.Tweet)),
-		publishModifyTweet:         colorize(getChoiceTextFromString("Write/modify Tweet", video.Tweet)),
-		publishTweetPosted:         colorize(getChoiceTextFromBool("Post to Twitter (MANUAL)", video.TweetPosted)),                   // TODO:
-		publishLinkedInPosted:      colorize(getChoiceTextFromBool("Post to LinkedIn (MANUAL)", video.LinkedInPosted)),               // TODO:
-		publishSlackPosted:         colorize(getChoiceTextFromBool("Post to Slack (MANUAL)", video.SlackPosted)),                     // TODO:
-		publishRedditPosted:        colorize(getChoiceTextFromBool("Post to Reddit (MANUAL)", video.RedditPosted)),                   // TODO:
-		publishHNPosted:            colorize(getChoiceTextFromBool("Post to Hacker News (MANUAL)", video.HNPosted)),                  // TODO:
-		publishTCPosted:            colorize(getChoiceTextFromBool("Post to Technology Conversations (MANUAL)", video.TCPosted)),     // TODO:
-		publishYouTubeHighlight:    colorize(getChoiceTextFromBool("Set as YouTube Highlight (MANUAL)", video.YouTubeHighlight)),     // TODO:
-		publishYouTubeComment:      colorize(getChoiceTextFromBool("Write pinned comment (MANUAL)", video.YouTubeComment)),           // TODO:
-		publishYouTubeCommentReply: colorize(getChoiceTextFromBool("Write replies to comments (MANUAL)", video.YouTubeCommentReply)), // TODO:
-		publishSlides:              colorize(getChoiceTextFromBool("Added to slides?", video.Slides)),
-		publishGDE:                 colorize(getChoiceTextFromBool("Add to https://gde.advocu.com (MANUAL)", video.GDE)),     // TODO:
-		publishTwitterSpace:        colorize(getChoiceTextFromBool("Post to a Twitter Spaces (MANUAL)", video.TwitterSpace)), // TODO:
-		publishRepo:                colorize(getChoiceTextFromString("Set code repo", video.Repo)),                           // TODO:
-		publishNotifySponsors:      colorize(getChoiceNotifySponsors("Notify sponsors", video.Sponsored, video.NotifiedSponsors)),
+		publishGenerateTweet:       colorize(getChoiceTextFromString("Tweet (generate)", video.Tweet)),
+		publishModifyTweet:         colorize(getChoiceTextFromString("Tweet (write/modify)", video.Tweet)),
+		publishTweetPosted:         colorize(getChoiceTextFromBool("Twitter post (MANUAL)", video.TweetPosted)),                // TODO:
+		publishLinkedInPosted:      colorize(getChoiceTextFromBool("LinkedIn  post (MANUAL)", video.LinkedInPosted)),           // TODO:
+		publishSlackPosted:         colorize(getChoiceTextFromBool("Slack post (MANUAL)", video.SlackPosted)),                  // TODO:
+		publishRedditPosted:        colorize(getChoiceTextFromBool("Reddit post (MANUAL)", video.RedditPosted)),                // TODO:
+		publishHNPosted:            colorize(getChoiceTextFromBool("Hacker News post (MANUAL)", video.HNPosted)),               // TODO:
+		publishTCPosted:            colorize(getChoiceTextFromBool("Technology Conversations post (MANUAL)", video.TCPosted)),  // TODO:
+		publishYouTubeHighlight:    colorize(getChoiceTextFromBool("YouTube Highlight (MANUAL)", video.YouTubeHighlight)),      // TODO:
+		publishYouTubeComment:      colorize(getChoiceTextFromBool("Pinned comment (MANUAL)", video.YouTubeComment)),           // TODO:
+		publishYouTubeCommentReply: colorize(getChoiceTextFromBool("Replies to comments (MANUAL)", video.YouTubeCommentReply)), // TODO:
+		publishSlides:              colorize(getChoiceTextFromBool("Slides?", video.Slides)),
+		publishGDE:                 colorize(getChoiceTextFromBool("https://gde.advocu.com post (MANUAL)", video.GDE)),  // TODO:
+		publishTwitterSpace:        colorize(getChoiceTextFromBool("Twitter Spaces post (MANUAL)", video.TwitterSpace)), // TODO:
+		publishRepo:                colorize(getChoiceTextFromString("Code repo", video.Repo)),                          // TODO:
+		publishNotifySponsors:      colorize(getChoiceNotifySponsors("Sponsors (notify)", video.Sponsored, video.NotifiedSponsors)),
 		publishReturn:              {Title: "Save and return"},
 	}
 	completed := 0
