@@ -236,10 +236,7 @@ func (c *Choices) ChooseCreateVideo() VideoIndex {
 		os.Mkdir(dirPath, 0755)
 	}
 	scriptContent := `
-#############
 # [[title]] #
-# [[url]]   #
-#############
 
 # Additional Info:
 # - [[additional-info]]
@@ -247,8 +244,6 @@ func (c *Choices) ChooseCreateVideo() VideoIndex {
 #########
 # Intro #
 #########
-
-# TODO: Intro (Sara)
 
 # TODO: Title screen
 
@@ -429,8 +424,12 @@ func (c *Choices) ChoosePrePublish(video Video) (Video, bool, error) {
 		video.Movie = getInputFromBool(video.Movie)
 	case prePublishTimecodes:
 		video.Timecodes = getInputFromTextArea("What are timecodes?", video.Timecodes, 20)
-	case prePublishGist: // TODO: Ask for the Gist path, create it, and store both the path and the URL.
+	case prePublishGist:
 		video.Gist, err = getInputFromString("Where is the gist?", video.Gist)
+		if len(video.Gist) > 0 {
+			repo := Repo{}
+			err = repo.Gist(video.Gist, video.Title, video.ProjectName, video.ProjectURL, video.RelatedVideos)
+		}
 	case prePublishPlaylists:
 		video.Playlists = getPlaylists()
 	case prePublishReturn:
