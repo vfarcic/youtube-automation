@@ -95,9 +95,10 @@ const prePublishRequestEdit = 28
 const prePublishThumbnail = 29
 const prePublishGotMovie = 30
 const prePublishTimecodes = 31
-const prePublishGist = 32
-const prePublishPlaylists = 33
-const prePublishReturn = 34
+const publishSlides = 32
+const prePublishGist = 33
+const prePublishPlaylists = 34
+const prePublishReturn = 35
 
 const publishUploadVideo = 0
 const publishGenerateTweet = 1
@@ -111,12 +112,11 @@ const publishTCPosted = 8
 const publishYouTubeHighlight = 9
 const publishYouTubeComment = 10
 const publishYouTubeCommentReply = 11
-const publishSlides = 12
-const publishGDE = 13
-const publishTwitterSpace = 14
-const publishRepo = 15
-const publishNotifySponsors = 16
-const publishReturn = 17
+const publishGDE = 12
+const publishTwitterSpace = 13
+const publishRepo = 14
+const publishNotifySponsors = 15
+const publishReturn = 16
 
 type Tasks struct {
 	Completed int
