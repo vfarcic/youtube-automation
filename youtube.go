@@ -264,7 +264,7 @@ If you are interested in sponsoring this channel, please use https://calendar.ap
 
 ▬▬▬▬▬▬ ⏱ Timecodes ⏱ ▬▬▬▬▬▬
 %s
-`, video.Description, video.DescriptionTags, getAdditionalInfo(video.Gist, video.ProjectName, video.ProjectURL, video.RelatedVideos), video.Timecodes)
+`, video.Description, video.DescriptionTags, getAdditionalInfo(video.GistUrl, video.ProjectName, video.ProjectURL, video.RelatedVideos), video.Timecodes)
 
 	upload := &youtube.Video{
 		Snippet: &youtube.VideoSnippet{
@@ -301,7 +301,7 @@ If you are interested in sponsoring this channel, please use https://calendar.ap
 	return response.Id
 }
 
-func getAdditionalInfo(gist, projectName, projectURL, relatedVideosRaw string) string {
+func getAdditionalInfo(gistUrl, projectName, projectURL, relatedVideosRaw string) string {
 	relatedVideos := ""
 	relatedVideosArray := strings.Split(relatedVideosRaw, "\n")
 	for i := range relatedVideosArray {
@@ -310,7 +310,7 @@ func getAdditionalInfo(gist, projectName, projectURL, relatedVideosRaw string) s
 	for i := range relatedVideosArray {
 		relatedVideos = fmt.Sprintf("%s🎬 %s\n", relatedVideos, relatedVideosArray[i])
 	}
-	return fmt.Sprintf("➡ Gist with the commands: %s\n🔗 %s: %s\n%s", gist, projectName, projectURL, relatedVideos)
+	return fmt.Sprintf("➡ Gist with the commands: %s\n🔗 %s: %s\n%s", gistUrl, projectName, projectURL, relatedVideos)
 }
 
 func uploadThumbnail(video Video) error {

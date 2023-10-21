@@ -50,6 +50,7 @@ type Video struct {
 	Movie               bool
 	Timecodes           string
 	Gist                string
+	GistUrl             string
 	RelatedVideos       string
 	Playlists           []Playlist
 	UploadVideo         string

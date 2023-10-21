@@ -95,7 +95,7 @@ const prePublishRequestEdit = 28
 const prePublishThumbnail = 29
 const prePublishGotMovie = 30
 const prePublishTimecodes = 31
-const publishSlides = 32
+const prePublishSlides = 32
 const prePublishGist = 33
 const prePublishPlaylists = 34
 const prePublishReturn = 35
@@ -346,6 +346,7 @@ func (c *Choices) ChoosePrePublish(video Video) (Video, bool, error) {
 		prePublishThumbnail:             colorize(getChoiceTextFromString("Thumbnail?", video.Thumbnail)),
 		prePublishGotMovie:              colorize(getChoiceTextFromBool("Movie?", video.Movie)),
 		prePublishTimecodes:             colorize(getChoiceTextFromString("Timecodes", video.Timecodes)),
+		prePublishSlides:                colorize(getChoiceTextFromBool("Slides?", video.Slides)),
 		prePublishGist:                  colorize(getChoiceTextFromString("Gist", video.Gist)),
 		prePublishPlaylists:             colorize(getChoiceTextFromPlaylists("Playlists", video.Playlists)),
 		prePublishReturn:                {Title: "Save and return"},
@@ -424,11 +425,13 @@ func (c *Choices) ChoosePrePublish(video Video) (Video, bool, error) {
 		video.Movie = getInputFromBool(video.Movie)
 	case prePublishTimecodes:
 		video.Timecodes = getInputFromTextArea("What are timecodes?", video.Timecodes, 20)
+	case prePublishSlides:
+		video.Slides = getInputFromBool(video.Slides)
 	case prePublishGist:
 		video.Gist, err = getInputFromString("Where is the gist?", video.Gist)
 		if len(video.Gist) > 0 {
 			repo := Repo{}
-			err = repo.Gist(video.Gist, video.Title, video.ProjectName, video.ProjectURL, video.RelatedVideos)
+			video.GistUrl, err = repo.Gist(video.Gist, video.Title, video.ProjectName, video.ProjectURL, video.RelatedVideos)
 		}
 	case prePublishPlaylists:
 		video.Playlists = getPlaylists()
@@ -600,10 +603,9 @@ func (c *Choices) ChoosePublish(video Video) (Video, bool, error) {
 		publishYouTubeHighlight:    colorize(getChoiceTextFromBool("YouTube Highlight (MANUAL)", video.YouTubeHighlight)),      // TODO:
 		publishYouTubeComment:      colorize(getChoiceTextFromBool("Pinned comment (MANUAL)", video.YouTubeComment)),           // TODO:
 		publishYouTubeCommentReply: colorize(getChoiceTextFromBool("Replies to comments (MANUAL)", video.YouTubeCommentReply)), // TODO:
-		publishSlides:              colorize(getChoiceTextFromBool("Slides?", video.Slides)),
-		publishGDE:                 colorize(getChoiceTextFromBool("https://gde.advocu.com post (MANUAL)", video.GDE)),  // TODO:
-		publishTwitterSpace:        colorize(getChoiceTextFromBool("Twitter Spaces post (MANUAL)", video.TwitterSpace)), // TODO:
-		publishRepo:                colorize(getChoiceTextFromString("Code repo", video.Repo)),                          // TODO:
+		publishGDE:                 colorize(getChoiceTextFromBool("https://gde.advocu.com post (MANUAL)", video.GDE)),         // TODO:
+		publishTwitterSpace:        colorize(getChoiceTextFromBool("Twitter Spaces post (MANUAL)", video.TwitterSpace)),        // TODO:
+		publishRepo:                colorize(getChoiceTextFromString("Code repo", video.Repo)),                                 // TODO:
 		publishNotifySponsors:      colorize(getChoiceNotifySponsors("Sponsors (notify)", video.Sponsored, video.NotifiedSponsors)),
 		publishReturn:              {Title: "Save and return"},
 	}
@@ -642,8 +644,6 @@ func (c *Choices) ChoosePublish(video Video) (Video, bool, error) {
 		video.YouTubeComment = getInputFromBool(video.YouTubeComment)
 	case publishYouTubeCommentReply: // TODO: Automate
 		video.YouTubeCommentReply = getInputFromBool(video.YouTubeCommentReply)
-	case publishSlides: // TODO: Automate
-		video.Slides = getInputFromBool(video.Slides)
 	case publishGDE: // TODO: Automate
 		video.GDE = getInputFromBool(video.GDE)
 	case publishTwitterSpace:

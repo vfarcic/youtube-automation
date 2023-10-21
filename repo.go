@@ -10,14 +10,14 @@ import (
 
 type Repo struct{}
 
-func (r *Repo) Gist(gist, title, projectName, projectUrl, relatedVideos string) error {
+func (r *Repo) Gist(gist, title, projectName, projectUrl, relatedVideos string) (string, error) {
 	if len(title) == 0 {
 		errorMessage = "Please set the title of the video first"
-		return fmt.Errorf(errorMessage)
+		return "", fmt.Errorf(errorMessage)
 	}
 	data, err := os.ReadFile(gist)
 	if err != nil {
-		return err
+		return "", err
 	}
 	titleBorder := strings.Repeat("#", len(title)+4)
 	newTitle := fmt.Sprintf("%s\n# %s #\n%s", titleBorder, title, titleBorder)
@@ -38,20 +38,20 @@ func (r *Repo) Gist(gist, title, projectName, projectUrl, relatedVideos string) 
 	modifiedData = strings.Replace(modifiedData, "# - [[additional-info]]", additionalInfo, -1)
 	err = os.WriteFile(gist, []byte(modifiedData), 0644)
 	if err != nil {
-		return err
+		return "", err
 	}
 	cmd := exec.Command("gh", "gist", "create", "--public", gist)
 	output, err := cmd.Output()
 	if err != nil {
-		return err
+		return "", err
 	}
 	gistUrl := strings.TrimSpace(string(output))
 	modifiedData = fmt.Sprintf("# Source: %s\n%s", gistUrl, modifiedData)
 	err = os.WriteFile(gist, []byte(modifiedData), 0644)
 	if err != nil {
-		return err
+		return "", err
 	}
-	return nil
+	return gistUrl, nil
 }
 
 func (r *Repo) Update(repo, title, videoID string) (string, error) {

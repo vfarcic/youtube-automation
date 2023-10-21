@@ -1,6 +1,6 @@
 prepublish:
-    completed: 34
-    total: 34
+    completed: 32
+    total: 35
 publish:
     completed: 16
     total: 17
@@ -19,7 +19,7 @@ screen: true
 head: true
 thumbnails: true
 diagrams: true
-title: 'Mastering CI/CD: Streamline Your Development Workflow'
+title: ""
 description: In this informative YouTube video, we delve into the world of Continuous Integration and Continuous Delivery (CI/CD) and how it can revolutionize your development process. From understanding the basic concepts to learning practical implementation strategies, we cover everything you need to know to streamline your development process for guaranteed success. With real-world examples and expert insights, this video is a must-watch for developers, project managers, and anyone looking to optimize their software development workflow. Master CI/CD and unlock the power to deliver high-quality software faster and more efficiently.
 tags: CI/CD, Continuous Integration, Continuous Delivery, Development Process, DevOps, Software Development, Agile Methodology, Automated Testing, Deployment Automation
 descriptiontags: '#CI/CD #ContinuousIntegration #ContinuousDelivery'
@@ -49,6 +49,7 @@ timecodes: |-
     01:23 Something else
     02:34 The End
 gist: manuscript/kubernetes/falco.sh
+gisturl: ""
 relatedvideos: |-
     Argo CD - Applying GitOps Principles To Manage A Production Environment In Kubernetes: https://youtu.be/vpWQeoaiRM4
     How To Apply GitOps To Everything - Combining Argo CD And Crossplane: https://youtu.be/yrj4lmScKHQ
@@ -57,13 +58,7 @@ relatedvideos: |-
     SchemaHero - Database Schema Migrations Inside Kubernetes: https://youtu.be/SofQxb4CDQQ
     Is Timoni With CUE a Helm Replacement?: https://youtu.be/bbE1BFCs548
     GitHub CLI - How to manage repositories more efficiently: https://youtu.be/BII6ZY2Rnlc
-playlists:
-    - title: Security
-      id: PLyicRj904Z99jxJw2etzEUXATb7RgEns9
-    - title: Argo Project
-      id: PLyicRj904Z9_dGuNs6AN5Khljjn9ssbQ6
-    - title: GitOps
-      id: PLyicRj904Z99dJk8bOygbov5up5YYvoZV
+playlists: []
 uploadvideo: ""
 videoid: xyz
 tweet: "\U0001F680 Boost your development superhero powers with the ultimate guide to Mastering CI/CD! \U0001F3AF Streamline your processes & unlock success like never before! Don't miss this game-changing YouTube video—your code will thank you! \U0001F4AA #DevOps #CI/CD #DevelopmentSuccess\n\nhttps://youtu.be/E_8zpztN2wA\n"
