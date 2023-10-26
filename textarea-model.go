@@ -89,10 +89,7 @@ func modifyTextArea(value, header, errorMessage string) (string, error) {
 }
 
 func modifyDescriptionTagsX(tags, descriptionTags, header, errorMessage string) (string, error) {
-	if len(tags) == 0 {
-		return descriptionTags, fmt.Errorf(redStyle.Render(errorMessage))
-	}
-	if len(descriptionTags) == 0 {
+	if len(descriptionTags) == 0 && len(tags) > 0 {
 		descriptionTags = fmt.Sprintf("#%s", tags)
 		descriptionTags = strings.ReplaceAll(descriptionTags, " ", "")
 		descriptionTags = strings.ReplaceAll(descriptionTags, ",", " #")

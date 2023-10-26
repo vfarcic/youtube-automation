@@ -400,17 +400,17 @@ func (c *Choices) ChoosePrePublish(video Video) (Video, bool, error) {
 	case prePublishGenerateTitle:
 		video, err = openAI.GenerateTitle(video)
 	case prePublishModifyTitle:
-		video.Title, err = modifyTextArea(video.Title, "Rewrite the title:", "Title was not generated!")
+		video.Title, err = modifyTextArea(video.Title, "Rewrite the title:", "")
 	case prePublishGenerateDescription:
 		video, err = openAI.GenerateDescription(video)
 	case prePublishModifyDescription:
-		video.Description, err = modifyTextArea(video.Description, "Modify video description:", "Description was not generated!")
+		video.Description, err = modifyTextArea(video.Description, "Rewrite video description:", "")
 	case prePublishGenerateTags: // TODO: Add default tags like "viktor farcic", "DevOps", etc.
 		video.Tags, err = openAI.GenerateTags(video.Title)
 	case prePublishModifyTags:
-		video.Tags, err = modifyTextArea(video.Tags, "Modify tags:", "Tags were not generated!")
+		video.Tags, err = modifyTextArea(video.Tags, "Write tags:", "")
 	case prePublishModifyDescriptionTags:
-		video.DescriptionTags, err = modifyDescriptionTagsX(video.Tags, video.DescriptionTags, "Modify description tags (max 4):", "Description tags were not generated!")
+		video.DescriptionTags, err = modifyDescriptionTagsX(video.Tags, video.DescriptionTags, "Write description tags (max 4):", "")
 	case prePublishRequestThumbnail:
 		video.RequestThumbnail = getChoiceThumbnail(video.RequestThumbnail, settings.Email.From, settings.Email.ThumbnailTo, video)
 	case prePublishThumbnail:

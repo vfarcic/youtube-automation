@@ -19,6 +19,9 @@ func (r *Repo) Gist(gist, title, projectName, projectUrl, relatedVideos string) 
 	if err != nil {
 		return "", err
 	}
+	if gist == "N/A" {
+		return "", nil
+	}
 	titleBorder := strings.Repeat("#", len(title)+4)
 	newTitle := fmt.Sprintf("%s\n# %s #\n%s", titleBorder, title, titleBorder)
 	additionalInfo := ""
