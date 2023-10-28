@@ -55,9 +55,10 @@ const videosPhasePublishPending = 1
 const videosPhaseEditRequested = 2
 const videosPhaseMaterialDone = 3
 const videosPhaseStarted = 4
-const videosPhaseSponsoredBlocked = 5
-const videosPhaseIdeas = 6
-const videosPhaseReturn = 7
+const videosPhaseDelayed = 5
+const videosPhaseSponsoredBlocked = 6
+const videosPhaseIdeas = 7
+const videosPhaseReturn = 8
 
 const phasePrePublish = 0
 const phasePublish = 1
@@ -70,35 +71,36 @@ const prePublishSponsoredEmails = 3
 const prePublishSponsorshipBlocked = 4
 const prePublishSubject = 5
 const prePublishDate = 6
-const prePublishCode = 7
-const prePublishScreen = 8
-const prePublishHead = 9
-const prePublishRelatedVideos = 10
-const prePublishThumbnails = 11
-const prePublishDiagrams = 12
-const prePublishLocation = 13
-const prePublishTagline = 14
-const prePublishTaglineIdeas = 15
-const prePublishOtherLogos = 16
-const prePublishScreenshots = 17
-const prePublishGenerateTitle = 18
-const prePublishModifyTitle = 19
-const prePublishGenerateDescription = 20
-const prePublishModifyDescription = 21
-const prePublishGenerateTags = 22
-const prePublishModifyTags = 23
-const prePublishModifyDescriptionTags = 24
-const prePublishRequestThumbnail = 25
-const prePublishMembers = 26
-const prePublishAnimations = 27
-const prePublishRequestEdit = 28
-const prePublishThumbnail = 29
-const prePublishGotMovie = 30
-const prePublishTimecodes = 31
-const prePublishSlides = 32
-const prePublishGist = 33
-const prePublishPlaylists = 34
-const prePublishReturn = 35
+const prePublishDelayed = 7
+const prePublishCode = 8
+const prePublishScreen = 9
+const prePublishHead = 10
+const prePublishRelatedVideos = 11
+const prePublishThumbnails = 12
+const prePublishDiagrams = 13
+const prePublishLocation = 14
+const prePublishTagline = 15
+const prePublishTaglineIdeas = 16
+const prePublishOtherLogos = 17
+const prePublishScreenshots = 18
+const prePublishGenerateTitle = 19
+const prePublishModifyTitle = 20
+const prePublishGenerateDescription = 21
+const prePublishModifyDescription = 22
+const prePublishGenerateTags = 23
+const prePublishModifyTags = 24
+const prePublishModifyDescriptionTags = 25
+const prePublishRequestThumbnail = 26
+const prePublishMembers = 27
+const prePublishAnimations = 28
+const prePublishRequestEdit = 29
+const prePublishThumbnail = 30
+const prePublishGotMovie = 31
+const prePublishTimecodes = 32
+const prePublishSlides = 33
+const prePublishGist = 34
+const prePublishPlaylists = 35
+const prePublishReturn = 36
 
 const publishUploadVideo = 0
 const publishGenerateTweet = 1
@@ -321,6 +323,7 @@ func (c *Choices) ChoosePrePublish(video Video) (Video, bool, error) {
 		prePublishSponsorshipBlocked:    sponsorshipBlockedTask,
 		prePublishSubject:               colorize(getChoiceTextFromString("Subject", video.Subject)),
 		prePublishDate:                  colorize(getChoiceTextFromString("Publish date", video.Date)),
+		prePublishDelayed:               colorize(getChoiceTextFromBool("Delayed?", video.Delayed)),
 		prePublishCode:                  colorize(getChoiceTextFromBool("Code?", video.Code)),
 		prePublishScreen:                colorize(getChoiceTextFromBool("Screen?", video.Screen)),
 		prePublishHead:                  colorize(getChoiceTextFromBool("Talking head?", video.Head)),
@@ -375,6 +378,8 @@ func (c *Choices) ChoosePrePublish(video Video) (Video, bool, error) {
 		video.Subject, err = getInputFromString("What is the subject of the video?", video.Subject)
 	case prePublishDate:
 		video.Date, err = getInputFromString("What is the publish of the video (e.g., 2030-01-21T16:00)?", video.Date)
+	case prePublishDelayed:
+		video.Delayed = getInputFromBool(video.Delayed)
 	case prePublishCode:
 		video.Code = getInputFromBool(video.Code)
 	case prePublishScreen:
@@ -448,6 +453,7 @@ func (c *Choices) ChooseVideosPhase(vi []VideoIndex) bool {
 		videosPhaseEditRequested:    {Title: "Edit requested"},
 		videosPhaseMaterialDone:     {Title: "Material done"},
 		videosPhaseStarted:          {Title: "Started"},
+		videosPhaseDelayed:          {Title: "Delayed"},
 		videosPhaseSponsoredBlocked: {Title: "Sponsored blocked"},
 		videosPhaseIdeas:            {Title: "Ideas"},
 		videosPhaseReturn:           {Title: "Return"},
@@ -489,7 +495,9 @@ func (c *Choices) ChooseVideosPhase(vi []VideoIndex) bool {
 func (c *Choices) GetVideoPhase(vi VideoIndex) int {
 	yaml := YAML{}
 	video := yaml.GetVideo(c.GetFilePath(vi.Category, vi.Name, "yaml"))
-	if len(video.SponsorshipBlocked) > 0 {
+	if video.Delayed {
+		return videosPhaseDelayed
+	} else if len(video.SponsorshipBlocked) > 0 {
 		return videosPhaseSponsoredBlocked
 	} else if len(video.Repo) > 0 {
 		return videosPhasePublished

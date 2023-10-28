@@ -28,6 +28,7 @@ type Video struct {
 	SponsorshipBlocked  string
 	Subject             string
 	Date                string
+	Delayed             bool
 	Code                bool
 	Screen              bool
 	Head                bool
