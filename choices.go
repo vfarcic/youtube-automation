@@ -323,7 +323,7 @@ func (c *Choices) ChoosePrePublish(video Video) (Video, bool, error) {
 		prePublishSponsorshipBlocked:    sponsorshipBlockedTask,
 		prePublishSubject:               colorize(getChoiceTextFromString("Subject", video.Subject)),
 		prePublishDate:                  colorize(getChoiceTextFromString("Publish date", video.Date)),
-		prePublishDelayed:               colorize(getChoiceTextFromBool("Delayed?", video.Delayed)),
+		prePublishDelayed:               colorize(getChoiceTextFromBool("Delayed?", !video.Delayed)),
 		prePublishCode:                  colorize(getChoiceTextFromBool("Code?", video.Code)),
 		prePublishScreen:                colorize(getChoiceTextFromBool("Screen?", video.Screen)),
 		prePublishHead:                  colorize(getChoiceTextFromBool("Talking head?", video.Head)),
