@@ -474,7 +474,9 @@ func (c *Choices) ChooseVideosPhase(vi []VideoIndex) bool {
 				task.Title = greenStyle.Render(task.Title)
 			} else if key == videosPhaseEditRequested && task.Counter > 0 {
 				task.Title = greenStyle.Render(task.Title)
-			} else if key == videosPhaseMaterialDone && task.Counter >= 3 {
+			} else if (key == videosPhaseMaterialDone || key == videosPhaseIdeas) && task.Counter >= 3 {
+				task.Title = greenStyle.Render(task.Title)
+			} else if key == videosPhaseStarted && task.Counter > 0 {
 				task.Title = greenStyle.Render(task.Title)
 				// } else if task.Counter == 0 {
 				// 	task.Title = greenStyle.Render(task.Title)
@@ -632,7 +634,7 @@ func (c *Choices) ChoosePublish(video Video) (Video, bool, error) {
 	case publishGenerateTweet:
 		video.Tweet, err = openAI.GenerateTweet(video.Title, video.VideoId)
 	case publishModifyTweet:
-		video.Tweet, err = modifyTextArea(video.Tweet, "Modify tweet:", "Tweet was not generated!")
+		video.Tweet, err = modifyTextArea(video.Tweet, "Modify tweet:", "")
 	case publishTweetPosted: // TODO: Automate
 		twitter := Twitter{}
 		video.TweetPosted = twitter.Post(video.Tweet, video.TweetPosted)
