@@ -308,9 +308,15 @@ func getAdditionalInfo(gistUrl, projectName, projectURL, relatedVideosRaw string
 		relatedVideosArray[i] = strings.TrimSpace(relatedVideosArray[i])
 	}
 	for i := range relatedVideosArray {
-		relatedVideos = fmt.Sprintf("%s🎬 %s\n", relatedVideos, relatedVideosArray[i])
+		if len(relatedVideosArray[i]) > 0 && relatedVideosArray[i] != "N/A" {
+			relatedVideos = fmt.Sprintf("%s🎬 %s\n", relatedVideos, relatedVideosArray[i])
+		}
 	}
-	return fmt.Sprintf("➡ Gist with the commands: %s\n🔗 %s: %s\n%s", gistUrl, projectName, projectURL, relatedVideos)
+	gist := ""
+	if len(gistUrl) > 0 {
+		gist = fmt.Sprintf("➡ Gist with the commands: %s\n", gistUrl)
+	}
+	return fmt.Sprintf("%s🔗 %s: %s\n%s", gist, projectName, projectURL, relatedVideos)
 }
 
 func uploadThumbnail(video Video) error {
