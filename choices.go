@@ -387,7 +387,7 @@ func (c *Choices) ChoosePrePublish(video Video) (Video, bool, error) {
 	case prePublishHead:
 		video.Head = getInputFromBool(video.Head)
 	case prePublishRelatedVideos:
-		video.RelatedVideos = getInputFromTextArea("What are the related videos?", video.RelatedVideos, 20)
+		video.RelatedVideos = getInputFromTextArea("What are the related videos?", video.RelatedVideos, 100)
 	case prePublishThumbnails:
 		video.Thumbnails = getInputFromBool(video.Thumbnails)
 	case prePublishDiagrams:
