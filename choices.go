@@ -264,7 +264,7 @@ func (c *Choices) ChooseCreateVideo() VideoIndex {
 # TODO: Commands
 
 #######################
-# TODO: Pros And Cons #
+# TODO: Pros and Cons #
 #######################
 
 # Cons:
@@ -531,9 +531,6 @@ func (c *Choices) ChooseVideos(vi []VideoIndex, phase int) {
 			if len(video.SponsorshipBlocked) > 0 && video.SponsorshipBlocked != "-" && video.SponsorshipBlocked != "N/A" {
 				title = fmt.Sprintf("%s (%s)", title, video.SponsorshipBlocked)
 			} else {
-				if video.Short {
-					title = fmt.Sprintf("%s (short)", title)
-				}
 				if len(video.Date) > 0 {
 					title = fmt.Sprintf("%s (%s)", title, video.Date)
 				}

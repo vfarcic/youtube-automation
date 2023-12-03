@@ -23,7 +23,6 @@ type Video struct {
 	Publish             Tasks
 	ProjectName         string
 	ProjectURL          string
-	Short               bool
 	Sponsored           string
 	SponsoredEmails     []string
 	SponsorshipBlocked  string
