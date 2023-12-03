@@ -66,42 +66,41 @@ const phaseReturn = 2
 
 const prePublishProjectName = 0
 const prePublishProjectURL = 1
-const prePublishShort = 2
-const prePublishSponsored = 3
-const prePublishSponsoredEmails = 4
-const prePublishSponsorshipBlocked = 5
-const prePublishSubject = 6
-const prePublishDate = 7
-const prePublishDelayed = 8
-const prePublishCode = 9
-const prePublishScreen = 10
-const prePublishHead = 11
-const prePublishRelatedVideos = 12
-const prePublishThumbnails = 13
-const prePublishDiagrams = 14
-const prePublishLocation = 15
-const prePublishTagline = 16
-const prePublishTaglineIdeas = 17
-const prePublishOtherLogos = 18
-const prePublishScreenshots = 19
-const prePublishGenerateTitle = 20
-const prePublishModifyTitle = 21
-const prePublishGenerateDescription = 22
-const prePublishModifyDescription = 23
-const prePublishGenerateTags = 24
-const prePublishModifyTags = 25
-const prePublishModifyDescriptionTags = 26
-const prePublishRequestThumbnail = 27
-const prePublishMembers = 28
-const prePublishAnimations = 29
-const prePublishRequestEdit = 30
-const prePublishThumbnail = 31
-const prePublishGotMovie = 32
-const prePublishTimecodes = 33
-const prePublishSlides = 34
-const prePublishGist = 35
-const prePublishPlaylists = 36
-const prePublishReturn = 37
+const prePublishSponsored = 2
+const prePublishSponsoredEmails = 3
+const prePublishSponsorshipBlocked = 4
+const prePublishSubject = 5
+const prePublishDate = 6
+const prePublishDelayed = 7
+const prePublishCode = 8
+const prePublishScreen = 9
+const prePublishHead = 10
+const prePublishRelatedVideos = 11
+const prePublishThumbnails = 12
+const prePublishDiagrams = 13
+const prePublishLocation = 14
+const prePublishTagline = 15
+const prePublishTaglineIdeas = 16
+const prePublishOtherLogos = 17
+const prePublishScreenshots = 18
+const prePublishGenerateTitle = 19
+const prePublishModifyTitle = 20
+const prePublishGenerateDescription = 21
+const prePublishModifyDescription = 22
+const prePublishGenerateTags = 23
+const prePublishModifyTags = 24
+const prePublishModifyDescriptionTags = 25
+const prePublishRequestThumbnail = 26
+const prePublishMembers = 27
+const prePublishAnimations = 28
+const prePublishRequestEdit = 29
+const prePublishThumbnail = 30
+const prePublishGotMovie = 31
+const prePublishTimecodes = 32
+const prePublishSlides = 33
+const prePublishGist = 34
+const prePublishPlaylists = 35
+const prePublishReturn = 36
 
 const publishUploadVideo = 0
 const publishGenerateTweet = 1
@@ -319,7 +318,6 @@ func (c *Choices) ChoosePrePublish(video Video) (Video, bool, error) {
 	tasks := map[int]Task{
 		prePublishProjectName:           colorize(getChoiceTextFromString("Project name", video.ProjectName)),
 		prePublishProjectURL:            colorize(getChoiceTextFromString("Project URL", video.ProjectURL)),
-		prePublishShort:                 getChoiceTextFromBool(fmt.Sprintf("Short (%t)", video.Short), video.Short),
 		prePublishSponsored:             colorize(getChoiceTextFromString("Sponsorship", video.Sponsored)),
 		prePublishSponsoredEmails:       colorize(getChoiceTextFromSponsoredEmails("Sponsorship emails", video.Sponsored, video.SponsoredEmails)),
 		prePublishSponsorshipBlocked:    sponsorshipBlockedTask,
@@ -370,8 +368,6 @@ func (c *Choices) ChoosePrePublish(video Video) (Video, bool, error) {
 		video.ProjectName, err = getInputFromString("Set project name", video.ProjectName)
 	case prePublishProjectURL:
 		video.ProjectURL, err = getInputFromString("Set project URL", video.ProjectURL)
-	case prePublishShort:
-		video.Short = getInputFromBool(video.Short)
 	case prePublishSponsored:
 		video.Sponsored, err = getInputFromString("Sponsorship amount ('-' or 'N/A' if not sponsored)", video.Sponsored)
 	case prePublishSponsoredEmails:

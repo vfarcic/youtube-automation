@@ -243,6 +243,10 @@ func uploadVideo(video Video) string {
 	if err != nil {
 		log.Fatalf("Error creating YouTube client: %v", err)
 	}
+	timecodes := ""
+	if len(video.Timecodes) > 0 && video.Timecodes != "N/A" {
+		timecodes = fmt.Sprintf("▬▬▬▬▬▬ ⏱ Timecodes ⏱ ▬▬▬▬▬▬\n%s", video.Timecodes)
+	}
 	description := fmt.Sprintf(`%s
 
 %s
@@ -262,9 +266,8 @@ If you are interested in sponsoring this channel, please use https://calendar.ap
 🎤 Podcast: https://www.devopsparadox.com/
 💬 Live streams: https://www.youtube.com/c/DevOpsParadox
 
-▬▬▬▬▬▬ ⏱ Timecodes ⏱ ▬▬▬▬▬▬
 %s
-`, video.Description, video.DescriptionTags, getAdditionalInfo(video.GistUrl, video.ProjectName, video.ProjectURL, video.RelatedVideos), video.Timecodes)
+`, video.Description, video.DescriptionTags, getAdditionalInfo(video.GistUrl, video.ProjectName, video.ProjectURL, video.RelatedVideos), timecodes)
 
 	upload := &youtube.Video{
 		Snippet: &youtube.VideoSnippet{
