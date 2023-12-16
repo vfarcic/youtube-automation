@@ -445,7 +445,7 @@ func (c *Choices) ChoosePrePublish(video Video) (Video, bool, error) {
 	}
 	video.PrePublish = Tasks{Total: len(tasks) - 1, Completed: completed}
 	choice, _ := getChoice(tasks, titleStyle.Render("Which pre-publish task would you like to work on?"))
-	err = error(nil)
+	err := error(nil)
 	switch choice {
 	case prePublishProjectName:
 		video.ProjectName, err = getInputFromString("Set project name", video.ProjectName)
