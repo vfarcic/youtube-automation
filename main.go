@@ -16,6 +16,7 @@ func main() {
 	}
 }
 
+// TODO: Remove
 func getChoiceTextFromString(title, value string) Task {
 	task := Task{Title: title, Completed: false}
 	valueLength := len(value)
@@ -32,6 +33,7 @@ func getChoiceTextFromString(title, value string) Task {
 	return task
 }
 
+// Remove
 func colorize(task Task) Task {
 	if task.Completed {
 		task.Title = greenStyle.Render(task.Title)
@@ -41,6 +43,7 @@ func colorize(task Task) Task {
 	return task
 }
 
+// TODO: Remove
 func getChoiceTextFromSponsoredEmails(title, sponsored string, sponsoredEmails []string) Task {
 	task := Task{Title: title, Completed: false}
 	if len(sponsoredEmails) > 0 {
@@ -56,6 +59,7 @@ func getChoiceTextFromSponsoredEmails(title, sponsored string, sponsoredEmails [
 	return task
 }
 
+// TODO: Remove
 func getChoiceTextFromPlaylists(title string, values []Playlist) Task {
 	task := Task{Title: title, Completed: false}
 	value := ""
@@ -77,6 +81,7 @@ func getChoiceTextFromPlaylists(title string, values []Playlist) Task {
 	return task
 }
 
+// TODO: Remove
 func getChoiceTextFromBool(title string, value bool) Task {
 	return Task{Title: title, Completed: value}
 }
