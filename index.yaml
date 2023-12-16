@@ -1,2 +1,10 @@
 - name: Something
   category: else
+- name: ccc
+  category: ddd
+- name: b2
+  category: bbb
+- name: b1
+  category: bbb
+- name: b3
+  category: bbb

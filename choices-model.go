@@ -5,11 +5,14 @@ import (
 	"log"
 	"strings"
 
+	// TODO: Replace with Huh
 	tea "github.com/charmbracelet/bubbletea"
 )
 
 var (
-	errorMessage        string
+	// TODO: Remove
+	errorMessage string
+	// TODO: Remove
 	confirmationMessage string
 )
 

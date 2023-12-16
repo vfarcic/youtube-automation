@@ -1,0 +1,57 @@
+prepublish:
+    completed: 4
+    total: 33
+publish:
+    completed: 0
+    total: 0
+projectname: b2222
+projecturl: ""
+sponsored: ""
+sponsoredemails: []
+sponsorshipblocked: ""
+subject: ""
+date: ""
+delayed: false
+code: false
+screen: false
+head: false
+thumbnails: false
+diagrams: false
+title: ""
+description: ""
+tags: ""
+descriptiontags: ""
+location: ""
+tagline: ""
+taglineideas: ""
+otherlogos: ""
+screenshots: false
+requestthumbnail: false
+thumbnail: ""
+members: ""
+animations: ""
+requestedit: false
+movie: false
+timecodes: ""
+gist: ""
+gisturl: ""
+relatedvideos: ""
+playlists: []
+uploadvideo: ""
+videoid: ""
+tweet: ""
+tweetposted: false
+linkedinposted: false
+slackposted: false
+redditposted: false
+hnposted: false
+tcposted: false
+youtubehighlight: false
+youtubecomment: false
+youtubecommentreply: false
+slides: false
+gde: false
+repo: ""
+twitterspace: false
+notifiedsponsors: false
+publishedshort: false
