@@ -26,9 +26,18 @@ func sendEmail(from string, to []string, subject, body string) error {
 }
 
 func sendThumbnailEmail(from, to string, video Video) error {
-	logos := video.ProjectURL
+	logos := ""
+	if video.ProjectURL != "" && video.ProjectURL != "-" && video.ProjectURL != "N/A" {
+		logos = video.ProjectURL
+	}
 	if video.OtherLogos != "" && video.OtherLogos != "-" && video.OtherLogos != "N/A" {
-		logos = fmt.Sprintf("%s, %s", logos, video.OtherLogos)
+		if len(logos) > 0 {
+			logos = fmt.Sprintf("%s, ", logos)
+		}
+		logos = fmt.Sprintf("%s%s", logos, video.OtherLogos)
+	}
+	if len(logos) > 0 {
+		logos = fmt.Sprintf("<li>Logo: %s</li>", logos)
 	}
 	subject := fmt.Sprintf("Thumbnail: %s", video.ProjectName)
 	taglineIdeas := ""
@@ -43,7 +52,7 @@ All the material is available at %s.
 <br/><br/>
 Elements:
 <ul>
-<li>Logo: %s</li>
+%s
 <li>Text: %s</li>
 <li>Screenshots: screenshot-*.png</li>
 </ul>
