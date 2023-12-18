@@ -18,10 +18,8 @@ func sendEmail(from string, to []string, subject, body string) error {
 	msg.SetBody("text/html", body)
 	dialer := gomail.NewDialer("smtp.gmail.com", 587, from, password)
 	if err := dialer.DialAndSend(msg); err != nil {
-		errorMessage = err.Error()
 		return err
 	}
-	confirmationMessage = "Email Sent Successfully!"
 	return nil
 }
 

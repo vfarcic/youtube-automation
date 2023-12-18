@@ -4,14 +4,7 @@ import (
 	"github.com/atotto/clipboard"
 )
 
-func postSlack(videoId string, posted bool) bool {
-	if len(videoId) == 0 {
-		errorMessage = "Please upload video first."
-		return false
-	}
-	if !posted {
-		clipboard.WriteAll(getYouTubeURL(videoId))
-		confirmationMessage = "The video URL has be copied to clipboard. Please paste it into Slack manually."
-	}
-	return getInputFromBool(posted)
+func postSlack(videoId string) {
+	clipboard.WriteAll(getYouTubeURL(videoId))
+	println(confirmationStyle.Render("The video URL has been copied to clipboard. Please paste it into Slack manually."))
 }

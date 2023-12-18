@@ -45,14 +45,6 @@ var confirmationStyle = lipgloss.NewStyle().
 	MarginTop(1).
 	MarginBottom(1)
 
-var titleStyle = lipgloss.NewStyle().
-	MarginTop(2).
-	MarginBottom(1)
-
-const indexCreateVideo = 0
-const indexListVideos = 1
-const indexExit = 2
-
 const videosPhasePublished = 0
 const videosPhasePublishPending = 1
 const videosPhaseEditRequested = 2
@@ -62,71 +54,7 @@ const videosPhaseDelayed = 5
 const videosPhaseSponsoredBlocked = 6
 const videosPhaseIdeas = 7
 
-// TODO: Remove
-const videosPhaseReturn = 8
-
-const phasePrePublish = 0
-const phasePublish = 1
-
-const actionEdit = 0
-const actionDelete = 1
-const actionReturn = -1
-
-const prePublishProjectName = 0
-const prePublishProjectURL = 1
-const prePublishSponsored = 2
-const prePublishSponsoredEmails = 3
-const prePublishSponsorshipBlocked = 4
-const prePublishSubject = 5
-const prePublishDate = 6
-const prePublishDelayed = 7
-const prePublishCode = 8
-const prePublishScreen = 9
-const prePublishHead = 10
-const prePublishRelatedVideos = 11
-const prePublishThumbnails = 12
-const prePublishDiagrams = 13
-const prePublishLocation = 14
-const prePublishTagline = 15
-const prePublishTaglineIdeas = 16
-const prePublishOtherLogos = 17
-const prePublishScreenshots = 18
-const prePublishModifyTitle = 19
-const prePublishModifyDescription = 20
-const prePublishModifyTags = 21
-const prePublishModifyDescriptionTags = 22
-const prePublishRequestThumbnail = 23
-const prePublishMembers = 24
-const prePublishAnimations = 25
-const prePublishRequestEdit = 26
-const prePublishThumbnail = 27
-const prePublishGotMovie = 28
-const prePublishTimecodes = 29
-const prePublishSlides = 30
-const prePublishGist = 31
-const prePublishPlaylists = 32
-
-// TODO: Remove
-const prePublishReturn = 33
-
-const publishUploadVideo = 0
-const publishModifyTweet = 1
-const publishTweetPosted = 2
-const publishLinkedInPosted = 3
-const publishSlackPosted = 4
-const publishRedditPosted = 5
-const publishHNPosted = 6
-const publishTCPosted = 7
-const publishYouTubeHighlight = 8
-const publishYouTubeComment = 9
-const publishYouTubeCommentReply = 10
-const publishGDE = 11
-const publishTwitterSpace = 12
-const publishRepo = 13
-const publishNotifySponsors = 14
-
-// TODO: Remove
-const publishReturn = 15
+const actionReturn = 99
 
 type Tasks struct {
 	Completed int
@@ -140,15 +68,12 @@ type Task struct {
 	Index     int
 }
 
-type Playlist struct {
-	Title string
-	Id    string
-}
-
 func (c *Choices) ChooseIndex() {
+	const indexCreateVideo = 0
+	const indexListVideos = 1
+	const indexExit = 2
 	var selectedIndex int
 	yaml := YAML{IndexPath: "index.yaml"}
-
 	form := huh.NewForm(
 		huh.NewGroup(
 			huh.NewSelect[int]().
@@ -165,7 +90,6 @@ func (c *Choices) ChooseIndex() {
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	switch selectedIndex {
 	case indexCreateVideo:
 		index := yaml.GetIndex()
@@ -187,61 +111,77 @@ func (c *Choices) ChooseIndex() {
 	}
 }
 
-func (c *Choices) ChoosePhase(video Video) (Video, bool) {
-	var selected int
-	prePublishText := fmt.Sprintf("Pre-publish (%d/%d)", video.PrePublish.Completed, video.PrePublish.Total)
-	if video.PrePublish.Completed == video.PrePublish.Total && video.PrePublish.Total > 0 {
-		prePublishText = greenStyle.Render(prePublishText)
-	} else {
-		prePublishText = orangeStyle.Render(prePublishText)
+func (c *Choices) GetPhaseText(text string, task Tasks) string {
+	text = fmt.Sprintf("%s (%d/%d)", text, task.Completed, task.Total)
+	if task.Completed == task.Total && task.Total > 0 {
+		return greenStyle.Render(text)
 	}
-	publishText := fmt.Sprintf("Publish (%d/%d)", video.Publish.Completed, video.Publish.Total)
-	if video.Publish.Completed == video.Publish.Total && video.Publish.Total > 0 {
-		publishText = greenStyle.Render(publishText)
-	} else {
-		publishText = orangeStyle.Render(publishText)
-	}
-	form := huh.NewForm(
-		huh.NewGroup(
-			huh.NewSelect[int]().
-				Title("Which type of tasks would you like to work on?").
-				Options(
-					huh.NewOption(prePublishText, phasePrePublish),
-					huh.NewOption(publishText, phasePublish),
-					huh.NewOption("Return", actionReturn),
-				).
-				Value(&selected),
-		),
-	)
-	err := form.Run()
-	if err != nil {
-		log.Fatal(err)
-	}
+	return orangeStyle.Render(text)
+}
 
+func (c *Choices) ChoosePhase(video Video) {
 	returnVar := false
-	switch selected {
-	case phasePrePublish:
-		var err error
-		for !returnVar {
-			video, returnVar, err = c.ChoosePrePublish(video)
-			if err != nil {
-				errorMessage = err.Error()
-				continue
-			}
+	for returnVar == false {
+		const phaseInit = 0
+		const phaseWork = 1
+		const phaseDefine = 2
+		const phaseEdit = 3
+		const phasePublish = 4
+		var selected int
+		form := huh.NewForm(
+			huh.NewGroup(
+				huh.NewSelect[int]().
+					Title("Which type of tasks would you like to work on?").
+					Options(
+						huh.NewOption(c.GetPhaseText("Initialize", video.Init), phaseInit),
+						huh.NewOption(c.GetPhaseText("Work", video.Work), phaseWork),
+						huh.NewOption(c.GetPhaseText("Define", video.Define), phaseDefine),
+						huh.NewOption(c.GetPhaseText("Edit", video.Edit), phaseEdit),
+						huh.NewOption(c.GetPhaseText("Publish", video.Publish), phasePublish),
+						huh.NewOption("Return", actionReturn),
+					).
+					Value(&selected),
+			),
+		)
+		err := form.Run()
+		if err != nil {
+			log.Fatal(err)
 		}
-	case phasePublish:
-		var err error
-		for !returnVar {
-			video, returnVar, err = c.ChoosePublish(video)
+		switch selected {
+		case phaseInit:
+			var err error
+			video, _, err = c.ChooseInit(video)
 			if err != nil {
-				errorMessage = err.Error()
-				continue
+				panic(err)
 			}
+		case phaseWork:
+			var err error
+			video, _, err = c.ChooseWork(video)
+			if err != nil {
+				panic(err)
+			}
+		case phaseDefine:
+			var err error
+			video, _, err = c.ChooseDefine(video)
+			if err != nil {
+				panic(err)
+			}
+		case phaseEdit:
+			var err error
+			video, _, err = c.ChooseEdit(video)
+			if err != nil {
+				panic(err)
+			}
+		case phasePublish:
+			var err error
+			video, _, err = c.ChoosePublish(video)
+			if err != nil {
+				panic(err)
+			}
+		case actionReturn:
+			returnVar = true
 		}
-	case actionReturn:
-		returnVar = true
 	}
-	return video, returnVar
 }
 
 func (c *Choices) ChooseCreateVideo() VideoIndex {
@@ -262,10 +202,6 @@ func (c *Choices) ChooseCreateVideo() VideoIndex {
 		Category: category,
 	}
 
-	if vi.Name == "" || vi.Category == "" {
-		errorMessage = "Name and category are required!"
-		return vi
-	}
 	dirPath := c.GetDirPath(vi.Category)
 	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
 		os.Mkdir(dirPath, 0755)
@@ -314,7 +250,7 @@ func (c *Choices) ChooseCreateVideo() VideoIndex {
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
 		f, err := os.Create(filePath)
 		if err != nil {
-			errorMessage = err.Error()
+			panic(err)
 			return VideoIndex{}
 		}
 		defer f.Close()
@@ -337,190 +273,461 @@ func (c *Choices) GetFilePath(category, name, extension string) string {
 }
 
 // TODO: Refactor
-func (c *Choices) ChoosePrePublish(video Video) (Video, bool, error) {
-	// var selected int
-	// sponsorshipBlockedTitle, sponsorshipBlockedCompleted := c.GetOptionTextFromString("Sponsorship blocked?", video.SponsorshipBlocked)
-	// if len(video.SponsorshipBlocked) > 0 {
-	// 	sponsorshipBlockedTitle = redStyle.Render(sponsorshipBlockedTitle)
-	// } else {
-	// 	sponsorshipBlockedTitle = greenStyle.Render(sponsorshipBlockedTitle)
-	// }
-	// form := huh.NewForm(
-	// 	huh.NewGroup(
-	// 		huh.NewSelect[int]().
-	// 			Title("Which pre-publish task would you like to work on?").
-	// 			Options(
-	// 				huh.NewOption(c.Colorize(c.GetOptionTextFromString("Project name", video.ProjectName)), prePublishProjectName),
-	// 				huh.NewOption(c.Colorize(c.GetOptionTextFromString("Project URL", video.ProjectURL)), prePublishProjectURL),
-	// 				huh.NewOption(c.Colorize(c.GetOptionTextFromString("Sponsorship", video.Sponsored)), prePublishSponsored),
-	// 				huh.NewOption(c.Colorize(c.GetOptionTextFromSponsoredEmails("Sponsorship emails", video.Sponsored, video.SponsoredEmails)), prePublishSponsoredEmails),
-	// 				huh.NewOption(c.Colorize(sponsorshipBlockedTitle, sponsorshipBlockedCompleted), prePublishSponsorshipBlocked),
-	// 				huh.NewOption(c.Colorize(c.GetOptionTextFromString("Subject", video.Subject)), prePublishSubject),
-	// 				huh.NewOption(c.Colorize(c.GetOptionTextFromString("Publish date", video.Date)), prePublishSponsorshipBlocked),
-	// 				huh.NewOption(c.Colorize("Delayed?", !video.Delayed), prePublishDelayed),
-	// 				huh.NewOption(c.Colorize("Code?", video.Code), prePublishCode),
-	// 				huh.NewOption(c.Colorize("Screen?", video.Screen), prePublishScreen),
-	// 				huh.NewOption(c.Colorize("Talking head?", video.Head), prePublishHead),
-	// 				huh.NewOption(c.Colorize(c.GetOptionTextFromString("Related videos", video.RelatedVideos)), prePublishRelatedVideos),
-	// 				huh.NewOption(c.Colorize("Thumbnails?", video.Thumbnails), prePublishThumbnails),
-	// 				huh.NewOption(c.Colorize("Files location", video.Diagrams), prePublishDiagrams),
-	// 				huh.NewOption(c.Colorize(c.GetOptionTextFromString("Files location", video.Location)), prePublishLocation),
-	// 				huh.NewOption(c.Colorize(c.GetOptionTextFromString("Tagline", video.Tagline)), prePublishTagline),
-	// 				huh.NewOption(c.Colorize(c.GetOptionTextFromString("Tagline ideas", video.TaglineIdeas)), prePublishTaglineIdeas),
-	// 				huh.NewOption(c.Colorize(c.GetOptionTextFromString("Other logos", video.OtherLogos)), prePublishOtherLogos),
-	// 				huh.NewOption(c.Colorize("Screenshots?", video.Screenshots), prePublishScreenshots),
-	// 				huh.NewOption(c.Colorize(c.GetOptionTextFromString("Title (write/modify)", video.Title)), prePublishModifyTitle),
-	// 				huh.NewOption(c.Colorize(c.GetOptionTextFromString("Description (write/modify)", video.Description)), prePublishModifyDescription),
-	// 				huh.NewOption(c.Colorize(c.GetOptionTextFromString("Tags (write/modify)", video.Tags)), prePublishModifyTags),
-	// 				huh.NewOption(c.Colorize(c.GetOptionTextFromString("Write/modify description tags", video.DescriptionTags)), prePublishModifyDescriptionTags),
-	// 				huh.NewOption(c.Colorize("Thumbnail request", video.RequestThumbnail), prePublishRequestThumbnail),
-	// 				huh.NewOption(c.Colorize(c.GetOptionTextFromString("Members", video.Members)), prePublishMembers),
-	// 				huh.NewOption(c.Colorize(c.GetOptionTextFromString("Animations", video.Animations)), prePublishAnimations),
-	// 				huh.NewOption(c.Colorize("Edit (request)", video.RequestEdit), prePublishRequestEdit),
-	// 				huh.NewOption(c.Colorize(c.GetOptionTextFromString("Thumbnail?", video.Thumbnail)), prePublishThumbnail),
-	// 				huh.NewOption(c.Colorize("Movie?", video.Movie), prePublishGotMovie),
-	// 				huh.NewOption(c.Colorize(c.GetOptionTextFromString("Timecodes", video.Timecodes)), prePublishTimecodes),
-	// 				huh.NewOption(c.Colorize("Slides?", video.Slides), prePublishSlides),
-	// 				huh.NewOption(c.Colorize(c.GetOptionTextFromString("Gist", video.Gist)), prePublishGist),
-	// 				huh.NewOption(c.Colorize(c.GetOptionTextFromPlaylists("Playlists", video.Playlists)), prePublishPlaylists),
-	// 				huh.NewOption("Save and return", actionReturn),
-	// 			).
-	// 			Value(&selected),
-	// 	),
-	// )
-	// err := form.Run()
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
+// TODO: Remove bool from the return value
+func (c *Choices) ChooseInit(video Video) (Video, bool, error) {
+	save := true
+	sponsoredEmailsString := strings.Join(video.SponsoredEmails, ", ")
+	sponsoredEmailsTitle, _ := c.ColorFromSponsoredEmails("Sponsorship emails (comma separated)", video.Sponsored, video.SponsoredEmails)
+	form := huh.NewForm(
+		huh.NewGroup(
+			huh.NewInput().Title(c.ColorFromString("Project name", video.ProjectName)).Value(&video.ProjectName),
+			huh.NewInput().Title(c.ColorFromString("Project URL", video.ProjectURL)).Value(&video.ProjectURL),
+			huh.NewInput().Title(c.ColorFromString("Sponsorship amount", video.Sponsored)).Value(&video.Sponsored),
+			huh.NewInput().Title(sponsoredEmailsTitle).Value(&sponsoredEmailsString),
+			huh.NewInput().Title(c.ColorFromStringInverse("Sponsorship blocked", video.SponsorshipBlocked)).Value(&video.SponsorshipBlocked),
+			huh.NewInput().Title(c.ColorFromString("Subject", video.Subject)).Value(&video.Subject),
+			huh.NewInput().Title(c.ColorFromString("Publish date (e.g., 2030-01-21T16:00)", video.Date)).Value(&video.Date),
+			huh.NewConfirm().Title(c.ColorFromBool("Delayed", !video.Delayed)).Value(&video.Delayed),
+			huh.NewConfirm().Affirmative("Save").Negative("Cancel").Value(&save),
+		),
+	)
+	err := form.Run()
+	if err != nil {
+		return Video{}, true, err
+	}
+	video.SponsoredEmails = deleteEmpty(strings.Split(sponsoredEmailsString, ","))
+	video.Init.Completed = 0
+	video.Init.Total = 8
+	if video.ProjectName != "" {
+		video.Init.Completed++
+	}
+	if video.ProjectURL != "" {
+		video.Init.Completed++
+	}
+	if video.Sponsored != "" {
+		video.Init.Completed++
+	}
+	if _, completed := c.ColorFromSponsoredEmails("Sponsorship emails (comma separated)", video.Sponsored, video.SponsoredEmails); completed {
+		video.Init.Completed++
+	}
+	if video.SponsorshipBlocked == "" {
+		video.Init.Completed++
+	}
+	if video.Subject != "" {
+		video.Init.Completed++
+	}
+	if video.Date != "" {
+		video.Init.Completed++
+	}
+	if !video.Delayed {
+		video.Init.Completed++
+	}
+	if save {
+		yaml := YAML{}
+		yaml.WriteVideo(video, video.Path)
+	}
+	return video, true, err
+}
 
-	returnVar := false
-	sponsorshipBlockedTask := getChoiceTextFromString("Sponsorship blocked?", video.SponsorshipBlocked)
-	if len(video.SponsorshipBlocked) > 0 {
-		sponsorshipBlockedTask.Title = redStyle.Render(sponsorshipBlockedTask.Title)
+func (c *Choices) ChooseWork(video Video) (Video, bool, error) {
+	save := true
+	form := huh.NewForm(
+		huh.NewGroup(
+			huh.NewConfirm().Title(c.ColorFromBool("Code done", video.Code)).Value(&video.Code),
+			huh.NewConfirm().Title(c.ColorFromBool("Screen done", video.Screen)).Value(&video.Screen),
+			huh.NewConfirm().Title(c.ColorFromBool("Talking head done", video.Head)).Value(&video.Head),
+			huh.NewText().Lines(3).Title(c.ColorFromString("Related videos", video.RelatedVideos)).Value(&video.RelatedVideos),
+			huh.NewConfirm().Title(c.ColorFromBool("Thumbnails done", video.Thumbnails)).Value(&video.Thumbnails),
+			huh.NewConfirm().Title(c.ColorFromBool("Diagrams done", video.Diagrams)).Value(&video.Diagrams),
+			huh.NewInput().Title(c.ColorFromString("Files location", video.Location)).Value(&video.Location),
+			huh.NewInput().Title(c.ColorFromString("Tagline", video.Tagline)).Value(&video.Tagline),
+			huh.NewInput().Title(c.ColorFromString("Tagline ideas", video.TaglineIdeas)).Value(&video.TaglineIdeas),
+			huh.NewInput().Title(c.ColorFromString("Other logos", video.OtherLogos)).Value(&video.OtherLogos),
+			huh.NewConfirm().Title(c.ColorFromBool("Screenshots done", video.Screenshots)).Value(&video.Screenshots),
+			huh.NewConfirm().Affirmative("Save").Negative("Cancel").Value(&save),
+		),
+	)
+	err := form.Run()
+	if err != nil {
+		return Video{}, true, err
+	}
+	video.Work.Completed = 0
+	video.Work.Total = 11
+	if video.Code {
+		video.Work.Completed++
+	}
+	if video.Screen {
+		video.Work.Completed++
+	}
+	if video.Head {
+		video.Work.Completed++
+	}
+	if video.RelatedVideos != "" {
+		video.Work.Completed++
+	}
+	if video.Thumbnails {
+		video.Work.Completed++
+	}
+	if video.Diagrams {
+		video.Work.Completed++
+	}
+	if video.Location != "" {
+		video.Work.Completed++
+	}
+	if video.Tagline != "" {
+		video.Work.Completed++
+	}
+	if video.TaglineIdeas != "" {
+		video.Work.Completed++
+	}
+	if video.OtherLogos != "" {
+		video.Work.Completed++
+	}
+	if video.Screenshots {
+		video.Work.Completed++
+	}
+	if save {
+		yaml := YAML{}
+		yaml.WriteVideo(video, video.Path)
+	}
+	return video, true, err
+}
+
+func (c *Choices) ChooseDefine(video Video) (Video, bool, error) {
+	save := true
+	requestThumbnailOrig := video.RequestThumbnail
+	animationsPlaceHolder := fmt.Sprintf(`- Animation: Subscribe (anywhere in the video)
+- Animation: Like (anywhere in the video)
+- Lower third: Viktor Farcic (anywhere in the video)
+- Animation: Join the channel (anywhere in the video)
+- Animation: Sponsor the channel (anywhere in the video)
+- Lower third: %s + logo + URL (%s) (add to a few places when I mention %s)
+- Text: Gist with the commands + an arrow pointing below (add shortly after we start showing the code)
+- Title roll: %s
+- Member shoutouts: Thanks a ton to the new members for supporting the channel: %s
+- Outro roll
+`,
+		video.ProjectName,
+		video.ProjectURL,
+		video.ProjectName,
+		video.Title,
+		video.Members,
+	)
+	form := huh.NewForm(
+		huh.NewGroup(
+			huh.NewInput().Title(c.ColorFromString("Title", video.Title)).Value(&video.Title),
+			huh.NewText().Lines(3).Title(c.ColorFromString("Description", video.Description)).Value(&video.Description),
+			huh.NewText().Lines(3).Title(c.ColorFromString("Tags (comma separated)", video.Tags)).Value(&video.Tags),
+			huh.NewInput().Title(c.ColorFromString("Description tags (3-4 # separated)", video.DescriptionTags)).Value(&video.DescriptionTags),
+			huh.NewConfirm().Title(c.ColorFromBool("Thumbnail requested", video.RequestThumbnail)).Value(&video.RequestThumbnail),
+			huh.NewText().Lines(10).Title(c.ColorFromString("Animations", video.Animations)).Value(&video.Animations).Editor("vi").Placeholder(animationsPlaceHolder),
+			huh.NewInput().Title(c.ColorFromString("Thumbnail path", video.Thumbnail)).Value(&video.Thumbnail),
+			// TODO: Use AI
+			huh.NewText().Lines(10).Title(c.ColorFromString("Tweet write", video.Tweet)).Value(&video.Tweet),
+			huh.NewConfirm().Affirmative("Save").Negative("Cancel").Value(&save),
+		),
+	)
+	err := form.Run()
+	if err != nil {
+		return Video{}, true, err
+	}
+	video.Define.Completed = 0
+	video.Define.Total = 8
+	if video.Title != "" {
+		video.Define.Completed++
+	}
+	if video.Description != "" {
+		video.Define.Completed++
+	}
+	if video.Tags != "" {
+		video.Define.Completed++
+	}
+	if video.DescriptionTags != "" {
+		video.Define.Completed++
+	}
+	if video.RequestThumbnail {
+		video.Define.Completed++
+	}
+	if video.Animations != "" {
+		video.Define.Completed++
+	}
+	if video.Thumbnail != "" {
+		video.Define.Completed++
+	}
+	if !requestThumbnailOrig && video.RequestThumbnail {
+		if sendThumbnailEmail(settings.Email.From, settings.Email.ThumbnailTo, video) != nil {
+			panic(err)
+		}
+	}
+	if video.Tweet != "" {
+		video.Define.Completed++
+	}
+	if save {
+		yaml := YAML{}
+		yaml.WriteVideo(video, video.Path)
+	}
+	return video, true, err
+}
+
+func (c *Choices) ChooseEdit(video Video) (Video, bool, error) {
+	save := true
+	requestEditOrig := video.RequestEdit
+	gistOrig := video.Gist
+	playlistOptions := huh.NewOptions[string]()
+	for key, value := range getYouTubePlaylists() {
+		selected := false
+		for _, existing := range video.Playlists {
+			if key == existing.Id {
+				selected = true
+			}
+		}
+		playlistOptions = append(playlistOptions, huh.NewOption(value, value).Selected(selected))
+	}
+	var playlists []string
+	form := huh.NewForm(
+		huh.NewGroup(
+			huh.NewInput().Title(c.ColorFromString("Members (comma separated)", video.Members)).Value(&video.Members),
+			huh.NewConfirm().Title(c.ColorFromBool("Edit requested", video.RequestEdit)).Value(&video.RequestEdit),
+			huh.NewText().Lines(5).Title(c.ColorFromString("Timecodes", video.Thumbnail)).Value(&video.Timecodes),
+			huh.NewConfirm().Title(c.ColorFromBool("Movie done", video.Movie)).Value(&video.Movie),
+			huh.NewConfirm().Title(c.ColorFromBool("Slides done", video.Slides)).Value(&video.Slides),
+			huh.NewInput().Title(c.ColorFromString("Gist path", video.Gist)).Value(&video.Gist),
+			huh.NewMultiSelect[string]().Title("Playlists").Options(playlistOptions...).Value(&playlists),
+			huh.NewConfirm().Affirmative("Save").Negative("Cancel").Value(&save),
+		),
+	)
+	err := form.Run()
+	if err != nil {
+		return Video{}, true, err
+	}
+	if save {
+		yaml := YAML{}
+		yaml.WriteVideo(video, video.Path)
+	}
+	video.Edit.Completed = 0
+	video.Edit.Total = 7
+	if video.Members != "" {
+		video.Edit.Completed++
+	}
+	if video.RequestEdit {
+		video.Edit.Completed++
+	}
+	if video.Timecodes != "" {
+		video.Edit.Completed++
+	}
+	if video.Movie {
+		video.Edit.Completed++
+	}
+	if video.Slides {
+		video.Edit.Completed++
+	}
+	if video.Gist != "" {
+		video.Edit.Completed++
+	}
+	if len(video.Playlists) > 0 {
+		video.Edit.Completed++
+	}
+	if !requestEditOrig && video.RequestEdit {
+		if sendEditEmail(settings.Email.From, settings.Email.EditTo, video) != nil {
+			panic(err)
+		}
+	}
+	if len(gistOrig) == 0 && len(video.Gist) > 0 {
+		repo := Repo{}
+		video.GistUrl, err = repo.Gist(video.Gist, video.Title, video.ProjectName, video.ProjectURL, video.RelatedVideos)
+		if err != nil {
+			panic(err)
+		}
+	}
+	video.Playlists = []Playlist{}
+	if len(playlists) > 0 {
+		for _, value := range playlists {
+			if len(value) > 0 {
+				id := strings.Split(value, " - ")[1]
+				title := strings.Split(value, " - ")[0]
+				playlist := Playlist{Title: title, Id: id}
+				video.Playlists = append(video.Playlists, playlist)
+			}
+		}
+	}
+	if save {
+		yaml := YAML{}
+		yaml.WriteVideo(video, video.Path)
+	}
+	return video, true, err
+}
+
+func (c *Choices) ChoosePublish(video Video) (Video, bool, error) {
+	save := true
+	uploadVideoOrig := video.UploadVideo
+	tweetPostedOrig := video.TweetPosted
+	linkedInPostedOrig := video.LinkedInPosted
+	slackPostedOrig := video.SlackPosted
+	redditPostedOrig := video.RedditPosted
+	hnPostedOrig := video.HNPosted
+	tcPosted := video.TCPosted
+	twitterSpaceOrig := video.TwitterSpace
+	repoOrig := video.Repo
+	sponsorsNotifyText := "Sponsors notify"
+	notifiedSponsorsOrig := video.NotifiedSponsors
+	if video.NotifiedSponsors || len(video.Sponsored) == 0 || video.Sponsored == "N/A" || video.Sponsored == "-" {
+		sponsorsNotifyText = greenStyle.Render(sponsorsNotifyText)
 	} else {
-		sponsorshipBlockedTask.Title = greenStyle.Render(sponsorshipBlockedTask.Title)
+		sponsorsNotifyText = redStyle.Render(sponsorsNotifyText)
 	}
-	sponsorshipBlockedTask.Completed = !sponsorshipBlockedTask.Completed
-	tasks := map[int]Task{
-		prePublishProjectName:           colorize(getChoiceTextFromString("Project name", video.ProjectName)),
-		prePublishProjectURL:            colorize(getChoiceTextFromString("Project URL", video.ProjectURL)),
-		prePublishSponsored:             colorize(getChoiceTextFromString("Sponsorship", video.Sponsored)),
-		prePublishSponsoredEmails:       colorize(getChoiceTextFromSponsoredEmails("Sponsorship emails", video.Sponsored, video.SponsoredEmails)),
-		prePublishSponsorshipBlocked:    sponsorshipBlockedTask,
-		prePublishSubject:               colorize(getChoiceTextFromString("Subject", video.Subject)),
-		prePublishDate:                  colorize(getChoiceTextFromString("Publish date", video.Date)),
-		prePublishDelayed:               colorize(getChoiceTextFromBool("Delayed?", !video.Delayed)),
-		prePublishCode:                  colorize(getChoiceTextFromBool("Code?", video.Code)),
-		prePublishScreen:                colorize(getChoiceTextFromBool("Screen?", video.Screen)),
-		prePublishHead:                  colorize(getChoiceTextFromBool("Talking head?", video.Head)),
-		prePublishRelatedVideos:         colorize(getChoiceTextFromString("Related videos", video.RelatedVideos)),
-		prePublishThumbnails:            colorize(getChoiceTextFromBool("Thumbnails?", video.Thumbnails)),
-		prePublishDiagrams:              colorize(getChoiceTextFromBool("Diagrams?", video.Diagrams)),
-		prePublishLocation:              colorize(getChoiceTextFromString("Files location", video.Location)),
-		prePublishTagline:               colorize(getChoiceTextFromString("Tagline", video.Tagline)),
-		prePublishTaglineIdeas:          colorize(getChoiceTextFromString("Tagline ideas", video.TaglineIdeas)),
-		prePublishOtherLogos:            colorize(getChoiceTextFromString("Other logos", video.OtherLogos)),
-		prePublishScreenshots:           colorize(getChoiceTextFromBool("Screenshots?", video.Screenshots)),
-		prePublishModifyTitle:           colorize(getChoiceTextFromString("Title (write/modify)", video.Title)),
-		prePublishModifyDescription:     colorize(getChoiceTextFromString("Description (write/modify)", video.Description)),
-		prePublishModifyTags:            colorize(getChoiceTextFromString("Tags (write/modify)", video.Tags)),
-		prePublishModifyDescriptionTags: colorize(getChoiceTextFromString("Write/modify description tags", video.DescriptionTags)),
-		prePublishRequestThumbnail:      colorize(getChoiceTextFromBool("Thumbnail request", video.RequestThumbnail)),
-		prePublishMembers:               colorize(getChoiceTextFromString("Members", video.Members)),
-		prePublishAnimations:            colorize(getChoiceTextFromString("Animations", video.Animations)),
-		prePublishRequestEdit:           colorize(getChoiceTextFromBool("Edit (request)", video.RequestEdit)),
-		prePublishThumbnail:             colorize(getChoiceTextFromString("Thumbnail?", video.Thumbnail)),
-		prePublishGotMovie:              colorize(getChoiceTextFromBool("Movie?", video.Movie)),
-		prePublishTimecodes:             colorize(getChoiceTextFromString("Timecodes", video.Timecodes)),
-		prePublishSlides:                colorize(getChoiceTextFromBool("Slides?", video.Slides)),
-		prePublishGist:                  colorize(getChoiceTextFromString("Gist", video.Gist)),
-		prePublishPlaylists:             colorize(getChoiceTextFromPlaylists("Playlists", video.Playlists)),
-		prePublishReturn:                {Title: "Save and return"},
+	fields := []huh.Field{
+		huh.NewInput().Title(c.ColorFromString("Upload video", video.UploadVideo)).Value(&video.UploadVideo),
+		// TODO: Automate
+		huh.NewConfirm().Title(c.ColorFromBool("Twitter post", video.TweetPosted)).Value(&video.TweetPosted),
+		// TODO: Automate
+		huh.NewConfirm().Title(c.ColorFromBool("LinkedIn post", video.LinkedInPosted)).Value(&video.LinkedInPosted),
+		// TODO: Automate
+		huh.NewConfirm().Title(c.ColorFromBool("Slack post", video.SlackPosted)).Value(&video.SlackPosted),
+		// TODO: Automate
+		huh.NewConfirm().Title(c.ColorFromBool("Reddit post", video.RedditPosted)).Value(&video.RedditPosted),
+		// TODO: Automate
+		huh.NewConfirm().Title(c.ColorFromBool("Hacker News post", video.HNPosted)).Value(&video.HNPosted),
+		// TODO: Automate
+		huh.NewConfirm().Title(c.ColorFromBool("Technology Conversations post", video.TCPosted)).Value(&video.TCPosted),
+		// TODO: Automate
+		huh.NewConfirm().Title(c.ColorFromBool("YouTube Highlight", video.YouTubeHighlight)).Value(&video.YouTubeHighlight),
+		huh.NewConfirm().Title(c.ColorFromBool("Pinned comment", video.YouTubeComment)).Value(&video.YouTubeComment),
+		huh.NewConfirm().Title(c.ColorFromBool("Replies to comments", video.YouTubeCommentReply)).Value(&video.YouTubeCommentReply),
+		// TODO: Automate
+		huh.NewConfirm().Title(c.ColorFromBool("https://gde.advocu.com post", video.GDE)).Value(&video.GDE),
+		// TODO: Automate
+		huh.NewConfirm().Title(c.ColorFromBool("Twitter Spaces post", video.TwitterSpace)).Value(&video.TwitterSpace),
+		huh.NewInput().Title(c.ColorFromString("Code repo", video.Repo)).Value(&video.Repo),
+		huh.NewConfirm().Title(sponsorsNotifyText).Value(&video.NotifiedSponsors),
 	}
-	completed := 0
-	for _, task := range tasks {
-		if task.Completed {
-			completed++
+	for index := range fields {
+		form := huh.NewForm(
+			huh.NewGroup(
+				fields[index],
+				huh.NewConfirm().Affirmative("Save & continue").Negative("Cancel").Value(&save),
+			),
+		)
+		err := form.Run()
+		if err != nil {
+			return Video{}, true, err
 		}
-	}
-	video.PrePublish = Tasks{Total: len(tasks) - 1, Completed: completed}
-	choice, _ := getChoice(tasks, titleStyle.Render("Which pre-publish task would you like to work on?"))
-	err := error(nil)
-	switch choice {
-	case prePublishProjectName:
-		video.ProjectName, err = getInputFromString("Set project name", video.ProjectName)
-	case prePublishProjectURL:
-		video.ProjectURL, err = getInputFromString("Set project URL", video.ProjectURL)
-	case prePublishSponsored:
-		video.Sponsored, err = getInputFromString("Sponsorship amount ('-' or 'N/A' if not sponsored)", video.Sponsored)
-	case prePublishSponsoredEmails:
-		video.SponsoredEmails = writeSponsoredEmails(video.SponsoredEmails)
-	case prePublishSponsorshipBlocked:
-		video.SponsorshipBlocked, err = getInputFromString(video.SponsorshipBlocked, video.SponsorshipBlocked)
-	case prePublishSubject:
-		video.Subject, err = getInputFromString("What is the subject of the video?", video.Subject)
-	case prePublishDate:
-		video.Date, err = getInputFromString("What is the publish of the video (e.g., 2030-01-21T16:00)?", video.Date)
-	case prePublishDelayed:
-		video.Delayed = getInputFromBool(video.Delayed)
-	case prePublishCode:
-		video.Code = getInputFromBool(video.Code)
-	case prePublishScreen:
-		video.Screen = getInputFromBool(video.Screen)
-	case prePublishHead:
-		video.Head = getInputFromBool(video.Head)
-	case prePublishRelatedVideos:
-		video.RelatedVideos = getInputFromTextArea("What are the related videos?", video.RelatedVideos, 100)
-	case prePublishThumbnails:
-		video.Thumbnails = getInputFromBool(video.Thumbnails)
-	case prePublishDiagrams:
-		video.Diagrams = getInputFromBool(video.Diagrams)
-	case prePublishLocation:
-		video.Location, err = getInputFromString("Where are files located?", video.Location)
-	case prePublishTagline:
-		video.Tagline, err = getInputFromString("What is the tagline?", video.Tagline)
-	case prePublishTaglineIdeas:
-		video.TaglineIdeas, err = getInputFromString("What are the tagline ideas?", video.TaglineIdeas)
-	case prePublishOtherLogos:
-		video.OtherLogos, err = getInputFromString("What are the other logos?", video.OtherLogos)
-	case prePublishScreenshots:
-		video.Screenshots = getInputFromBool(video.Screenshots)
-	case prePublishModifyTitle:
-		video.Title, err = modifyTextArea(video.Title, "Rewrite the title:", "")
-	case prePublishModifyDescription:
-		video.Description, err = modifyTextArea(video.Description, "Rewrite video description:", "")
-	case prePublishModifyTags:
-		video.Tags, err = modifyTextArea(video.Tags, "Write tags:", "")
-	case prePublishModifyDescriptionTags:
-		video.DescriptionTags, err = modifyDescriptionTagsX(video.Tags, video.DescriptionTags, "Write description tags (max 4):", "")
-	case prePublishRequestThumbnail:
-		video.RequestThumbnail = getChoiceThumbnail(video.RequestThumbnail, settings.Email.From, settings.Email.ThumbnailTo, video)
-	case prePublishThumbnail:
-		video.Thumbnail, err = setThumbnail(video.Thumbnail)
-	case prePublishMembers:
-		video.Members, err = getInputFromString("Who are new members?", video.Members)
-	case prePublishAnimations:
-		video.Animations, err = modifyAnimations(video)
-	case prePublishRequestEdit:
-		video.RequestEdit = requestEdit(video.RequestEdit, settings.Email.From, settings.Email.EditTo, video)
-	case prePublishGotMovie:
-		video.Movie = getInputFromBool(video.Movie)
-	case prePublishTimecodes:
-		video.Timecodes = getInputFromTextArea("What are timecodes?", video.Timecodes, 20)
-	case prePublishSlides:
-		video.Slides = getInputFromBool(video.Slides)
-	case prePublishGist:
-		video.Gist, err = getInputFromString("Where is the gist?", video.Gist)
-		if len(video.Gist) > 0 {
+		video.Publish.Completed = 0
+		video.Publish.Total = 14
+		if video.UploadVideo != "" {
+			video.Publish.Completed++
+		}
+		if video.TweetPosted {
+			video.Publish.Completed++
+		}
+		if video.LinkedInPosted {
+			video.Publish.Completed++
+		}
+		if video.SlackPosted {
+			video.Publish.Completed++
+		}
+		if video.RedditPosted {
+			video.Publish.Completed++
+		}
+		if video.HNPosted {
+			video.Publish.Completed++
+		}
+		if video.TCPosted {
+			video.Publish.Completed++
+		}
+		if video.YouTubeHighlight {
+			video.Publish.Completed++
+		}
+		if video.YouTubeComment {
+			video.Publish.Completed++
+		}
+		if video.YouTubeCommentReply {
+			video.Publish.Completed++
+		}
+		if video.GDE {
+			video.Publish.Completed++
+		}
+		if video.TwitterSpace {
+			video.Publish.Completed++
+		}
+		if video.Repo != "" {
+			video.Publish.Completed++
+		}
+		if video.NotifiedSponsors || len(video.Sponsored) == 0 || video.Sponsored == "N/A" || video.Sponsored == "-" {
+			video.Publish.Completed++
+		}
+		if len(uploadVideoOrig) == 0 && len(video.UploadVideo) > 0 {
+			video.VideoId = uploadVideo(video)
+			uploadThumbnail(video)
+			println(confirmationStyle.Render(`Following should be set manually:
+- End screen
+- Playlists
+- Language
+- Monetization`))
+		}
+		twitter := Twitter{}
+		if !tweetPostedOrig && len(video.Tweet) > 0 && video.TweetPosted {
+			twitter.Post(video.Tweet)
+		}
+		if !linkedInPostedOrig && len(video.Tweet) > 0 && video.LinkedInPosted {
+			postLinkedIn(video.Tweet)
+		}
+		if !slackPostedOrig && len(video.VideoId) > 0 && video.SlackPosted {
+			postSlack(video.VideoId)
+		}
+		if !redditPostedOrig && len(video.VideoId) > 0 && video.RedditPosted {
+			postReddit(video.Title, video.VideoId)
+		}
+		if !hnPostedOrig && len(video.VideoId) > 0 && video.HNPosted {
+			postHackerNews(video.Title, video.VideoId)
+		}
+		if !tcPosted && len(video.VideoId) > 0 && video.TCPosted {
+			postTechnologyConversations(video.Title, video.Description, video.VideoId, video.Gist, video.ProjectName, video.ProjectURL, video.RelatedVideos)
+		}
+		if !twitterSpaceOrig && len(video.VideoId) > 0 && video.TwitterSpace {
+			twitter.PostSpace(video.VideoId)
+		}
+		if len(repoOrig) == 0 && len(video.Repo) > 0 && video.Repo != "N/A" {
 			repo := Repo{}
-			video.GistUrl, err = repo.Gist(video.Gist, video.Title, video.ProjectName, video.ProjectURL, video.RelatedVideos)
+			repo.Update(video.Repo, video.Title, video.VideoId)
 		}
-	case prePublishPlaylists:
-		video.Playlists = getPlaylists()
-	case prePublishReturn:
-		returnVar = true
+		if !notifiedSponsorsOrig && video.NotifiedSponsors {
+			sendSponsorsEmail(settings.Email.From, video.SponsoredEmails, video.VideoId, video.Sponsored)
+		}
+		if !save {
+			break
+		}
+		yaml := YAML{}
+		yaml.WriteVideo(video, video.Path)
 	}
-	return video, returnVar, err
+	return video, true, nil
+}
+
+func (c *Choices) ColorFromSponsoredEmails(title, sponsored string, sponsoredEmails []string) (string, bool) {
+	if len(sponsored) == 0 || sponsored == "N/A" || sponsored == "-" || len(sponsoredEmails) > 0 {
+		return greenStyle.Render(title), true
+	}
+	return redStyle.Render(title), false
+}
+
+func (c *Choices) ColorFromString(title, value string) string {
+	if len(value) > 0 {
+		return greenStyle.Render(title)
+	}
+	return redStyle.Render(title)
+}
+
+func (c *Choices) ColorFromStringInverse(title, value string) string {
+	if len(value) > 0 {
+		return redStyle.Render(title)
+	}
+	return greenStyle.Render(title)
+}
+
+func (c *Choices) ColorFromBool(title string, value bool) string {
+	if value {
+		return greenStyle.Render(title)
+	}
+	return redStyle.Render(title)
 }
 
 func (c *Choices) ChooseVideosPhase(vi []VideoIndex) bool {
@@ -530,21 +737,37 @@ func (c *Choices) ChooseVideosPhase(vi []VideoIndex) bool {
 		phase := c.GetVideoPhase(vi[i])
 		phases[phase] = phases[phase] + 1
 	}
+	options := huh.NewOptions[int]()
+	if text, count := c.GetPhaseColoredText(phases, videosPhasePublished, "Published"); count > 0 {
+		options = append(options, huh.NewOption(text, videosPhasePublished))
+	}
+	if text, count := c.GetPhaseColoredText(phases, videosPhasePublishPending, "Pending publish"); count > 0 {
+		options = append(options, huh.NewOption(text, videosPhasePublishPending))
+	}
+	if text, count := c.GetPhaseColoredText(phases, videosPhaseEditRequested, "Edit requested"); count > 0 {
+		options = append(options, huh.NewOption(text, videosPhaseEditRequested))
+	}
+	if text, count := c.GetPhaseColoredText(phases, videosPhaseMaterialDone, "Material done"); count > 0 {
+		options = append(options, huh.NewOption(text, videosPhaseMaterialDone))
+	}
+	if text, count := c.GetPhaseColoredText(phases, videosPhaseStarted, "Started"); count > 0 {
+		options = append(options, huh.NewOption(text, videosPhaseStarted))
+	}
+	if text, count := c.GetPhaseColoredText(phases, videosPhaseDelayed, "Delayed"); count > 0 {
+		options = append(options, huh.NewOption(text, videosPhaseDelayed))
+	}
+	if text, count := c.GetPhaseColoredText(phases, videosPhaseSponsoredBlocked, "Sponsored blocked"); count > 0 {
+		options = append(options, huh.NewOption(text, videosPhaseSponsoredBlocked))
+	}
+	if text, count := c.GetPhaseColoredText(phases, videosPhaseIdeas, "Ideas"); count > 0 {
+		options = append(options, huh.NewOption(text, videosPhaseIdeas))
+	}
+	options = append(options, huh.NewOption("Return", actionReturn))
 	form := huh.NewForm(
 		huh.NewGroup(
 			huh.NewSelect[int]().
 				Title("From which phase would you like to list the videos?").
-				Options(
-					huh.NewOption(c.GetPhaseColoredText(phases, videosPhasePublished, "Published"), videosPhasePublished),
-					huh.NewOption(c.GetPhaseColoredText(phases, videosPhasePublishPending, "Pending publish"), videosPhasePublishPending),
-					huh.NewOption(c.GetPhaseColoredText(phases, videosPhaseEditRequested, "Edit requested"), videosPhaseEditRequested),
-					huh.NewOption(c.GetPhaseColoredText(phases, videosPhaseMaterialDone, "Material done"), videosPhaseMaterialDone),
-					huh.NewOption(c.GetPhaseColoredText(phases, videosPhaseStarted, "Started"), videosPhaseStarted),
-					huh.NewOption(c.GetPhaseColoredText(phases, videosPhaseDelayed, "Delayed"), videosPhaseDelayed),
-					huh.NewOption(c.GetPhaseColoredText(phases, videosPhaseSponsoredBlocked, "Sponsored blocked"), videosPhaseSponsoredBlocked),
-					huh.NewOption(c.GetPhaseColoredText(phases, videosPhaseIdeas, "Ideas"), videosPhaseIdeas),
-					huh.NewOption("Return", videosPhaseReturn),
-				).
+				Options(options...).
 				Value(&selection),
 		),
 	)
@@ -552,7 +775,7 @@ func (c *Choices) ChooseVideosPhase(vi []VideoIndex) bool {
 	if err != nil {
 		log.Fatal(err)
 	}
-	if selection == videosPhaseReturn {
+	if selection == actionReturn {
 		return true
 	}
 	c.ChooseVideos(vi, selection)
@@ -582,6 +805,8 @@ func (c *Choices) GetVideoPhase(vi VideoIndex) int {
 }
 
 func (c *Choices) ChooseVideos(vi []VideoIndex, phase int) {
+	const actionEdit = 0
+	const actionDelete = 1
 	var selectedVideo int
 	var selectedAction int
 	options := huh.NewOptions[int]()
@@ -634,15 +859,12 @@ func (c *Choices) ChooseVideos(vi []VideoIndex, phase int) {
 	selectedVideoIndex := vi[selectedVideo]
 	switch selectedAction {
 	case actionEdit:
-		returnVal := false
 		path := c.GetFilePath(selectedVideoIndex.Category, selectedVideoIndex.Name, "yaml")
 		yaml := YAML{}
 		video := yaml.GetVideo(path)
-		for !returnVal {
-			choices := Choices{}
-			video, returnVal = choices.ChoosePhase(video)
-			yaml.WriteVideo(video, path)
-		}
+		video.Path = path
+		choices := Choices{}
+		choices.ChoosePhase(video)
 	case actionDelete:
 		if os.Remove(c.GetFilePath(selectedVideoIndex.Category, selectedVideoIndex.Name, "sh")) != nil {
 			panic(err)
@@ -655,77 +877,6 @@ func (c *Choices) ChooseVideos(vi []VideoIndex, phase int) {
 	yaml.WriteIndex(vi)
 }
 
-func (c *Choices) ChoosePublish(video Video) (Video, bool, error) {
-	returnVar := false
-	tasks := map[int]Task{
-		publishUploadVideo:         colorize(getChoiceTextFromString("Upload video", video.UploadVideo)),
-		publishModifyTweet:         colorize(getChoiceTextFromString("Tweet (write/modify)", video.Tweet)),
-		publishTweetPosted:         colorize(getChoiceTextFromBool("Twitter post (MANUAL)", video.TweetPosted)),                // TODO:
-		publishLinkedInPosted:      colorize(getChoiceTextFromBool("LinkedIn  post (MANUAL)", video.LinkedInPosted)),           // TODO:
-		publishSlackPosted:         colorize(getChoiceTextFromBool("Slack post (MANUAL)", video.SlackPosted)),                  // TODO:
-		publishRedditPosted:        colorize(getChoiceTextFromBool("Reddit post (MANUAL)", video.RedditPosted)),                // TODO:
-		publishHNPosted:            colorize(getChoiceTextFromBool("Hacker News post (MANUAL)", video.HNPosted)),               // TODO:
-		publishTCPosted:            colorize(getChoiceTextFromBool("Technology Conversations post (MANUAL)", video.TCPosted)),  // TODO:
-		publishYouTubeHighlight:    colorize(getChoiceTextFromBool("YouTube Highlight (MANUAL)", video.YouTubeHighlight)),      // TODO:
-		publishYouTubeComment:      colorize(getChoiceTextFromBool("Pinned comment (MANUAL)", video.YouTubeComment)),           // TODO:
-		publishYouTubeCommentReply: colorize(getChoiceTextFromBool("Replies to comments (MANUAL)", video.YouTubeCommentReply)), // TODO:
-		publishGDE:                 colorize(getChoiceTextFromBool("https://gde.advocu.com post (MANUAL)", video.GDE)),         // TODO:
-		publishTwitterSpace:        colorize(getChoiceTextFromBool("Twitter Spaces post (MANUAL)", video.TwitterSpace)),        // TODO:
-		publishRepo:                colorize(getChoiceTextFromString("Code repo", video.Repo)),                                 // TODO:
-		publishNotifySponsors:      colorize(getChoiceNotifySponsors("Sponsors (notify)", video.Sponsored, video.NotifiedSponsors)),
-		publishReturn:              {Title: "Save and return"},
-	}
-	completed := 0
-	for _, task := range tasks {
-		if task.Completed {
-			completed++
-		}
-	}
-	video.Publish = Tasks{Total: len(tasks) - 1, Completed: completed}
-	choice, _ := getChoice(tasks, titleStyle.Render("Which publish task would you like to work on?"))
-	err := error(nil)
-	switch choice {
-	case publishUploadVideo: // TODO: Finish implementing End screen, Playlists, Tags, Language, License, Monetization
-		video.UploadVideo, video.VideoId = getChoiceUploadVideo(video)
-	case publishModifyTweet:
-		video.Tweet, err = modifyTextArea(video.Tweet, "Modify tweet:", "")
-	case publishTweetPosted: // TODO: Automate
-		twitter := Twitter{}
-		video.TweetPosted = twitter.Post(video.Tweet, video.TweetPosted)
-	case publishLinkedInPosted: // TODO: Automate
-		video.LinkedInPosted = postLinkedIn(video.Tweet, video.LinkedInPosted)
-	case publishSlackPosted: // TODO: Automate
-		video.SlackPosted = postSlack(video.VideoId, video.SlackPosted)
-	case publishRedditPosted: // TODO: Automate
-		video.RedditPosted = postReddit(video.Title, video.VideoId, video.RedditPosted)
-	case publishHNPosted: // TODO: Automate
-		video.HNPosted = postHackerNews(video.Title, video.VideoId, video.HNPosted)
-	case publishTCPosted: // TODO: Automate
-		video.TCPosted = postTechnologyConversations(video.Title, video.Description, video.VideoId, video.Gist, video.ProjectName, video.ProjectURL, video.RelatedVideos, video.TCPosted)
-	case publishYouTubeHighlight: // TODO: Automate
-		video.YouTubeHighlight = getInputFromBool(video.YouTubeHighlight)
-	case publishYouTubeComment: // TODO: Automate
-		video.YouTubeComment = getInputFromBool(video.YouTubeComment)
-	case publishYouTubeCommentReply: // TODO: Automate
-		video.YouTubeCommentReply = getInputFromBool(video.YouTubeCommentReply)
-	case publishGDE: // TODO: Automate
-		video.GDE = getInputFromBool(video.GDE)
-	case publishTwitterSpace:
-		twitter := Twitter{}
-		video.TwitterSpace = twitter.PostSpace(video.VideoId, video.TwitterSpace)
-	case publishRepo:
-		if video.Repo != "N/A" {
-			repo := Repo{}
-			video.Repo, _ = repo.Update(video.Repo, video.Title, video.VideoId)
-		}
-	case publishNotifySponsors:
-		video.NotifiedSponsors = notifySponsors(video.SponsoredEmails, video.VideoId, video.Sponsored, video.NotifiedSponsors)
-	case publishReturn:
-		returnVar = true
-	}
-	return video, returnVar, err
-}
-
 func (c *Choices) IsEmpty(str string) error {
 	if len(str) == 0 {
 		return errors.New("Required!")
@@ -733,24 +884,24 @@ func (c *Choices) IsEmpty(str string) error {
 	return nil
 }
 
-func (c *Choices) GetPhaseColoredText(phases map[int]int, phase int, title string) string {
-	if phase != videosPhaseReturn {
+func (c *Choices) GetPhaseColoredText(phases map[int]int, phase int, title string) (string, int) {
+	if phase != actionReturn {
 		title = fmt.Sprintf("%s (%d)", title, phases[phase])
 		if phase == videosPhasePublished {
-			return greenStyle.Render(title)
+			return greenStyle.Render(title), phases[phase]
 		} else if phase == videosPhasePublishPending && phases[phase] > 0 {
-			return greenStyle.Render(title)
+			return greenStyle.Render(title), phases[phase]
 		} else if phase == videosPhaseEditRequested && phases[phase] > 0 {
-			return greenStyle.Render(title)
+			return greenStyle.Render(title), phases[phase]
 		} else if (phase == videosPhaseMaterialDone || phase == videosPhaseIdeas) && phases[phase] >= 3 {
-			return greenStyle.Render(title)
+			return greenStyle.Render(title), phases[phase]
 		} else if phase == videosPhaseStarted && phases[phase] > 0 {
-			return greenStyle.Render(title)
+			return greenStyle.Render(title), phases[phase]
 		} else {
-			return orangeStyle.Render(title)
+			return orangeStyle.Render(title), phases[phase]
 		}
 	}
-	return title
+	return title, phases[phase]
 }
 
 func (c *Choices) GetOptionTextFromString(title, value string) (string, bool) {
@@ -782,13 +933,6 @@ func (c *Choices) GetOptionTextFromSponsoredEmails(title, sponsored string, spon
 		completed = true
 	}
 	return title, completed
-}
-
-func (c *Choices) Colorize(title string, completed bool) string {
-	if completed {
-		return greenStyle.Render(title)
-	}
-	return orangeStyle.Render(title)
 }
 
 func (c *Choices) GetOptionTextFromPlaylists(title string, values []Playlist) (string, bool) {

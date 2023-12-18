@@ -17,7 +17,11 @@ type VideoIndex struct {
 }
 
 type Video struct {
-	PrePublish          Tasks
+	Path                string
+	Init                Tasks
+	Work                Tasks
+	Define              Tasks
+	Edit                Tasks
 	Publish             Tasks
 	ProjectName         string
 	ProjectURL          string
@@ -70,6 +74,11 @@ type Video struct {
 	TwitterSpace        bool
 	NotifiedSponsors    bool
 	PublishedShort      bool
+}
+
+type Playlist struct {
+	Title string
+	Id    string
 }
 
 func (y *YAML) GetVideo(path string) Video {
