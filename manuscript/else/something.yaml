@@ -19,8 +19,8 @@ projecturl: acme.com
 sponsored: 4k EUR
 sponsoredemails:
     - jdoe@acme.com
-    - '                someone@something.com'
-    - '                sss@sss.com'
+    - '                 someone@something.com'
+    - '                 sss@sss.com'
 sponsorshipblocked: ""
 subject: ci/cd
 date: 2024-01-21T16:00
@@ -62,10 +62,10 @@ gist: manuscript/kubernetes/falco.sh
 gisturl: ""
 relatedvideos: "Argo CD - Applying GitOps Principles To Manage A Production Environment In Kubernetes: https://youtu.be/vpWQeoaiRM4\nHow To Apply GitOps To Everything - Combining Argo CD And Crossplane: https://youtu.be/yrj4lmScKHQ\nCrossplane - GitOps-based Infrastructure as Code "
 playlists:
-    - title: Ask Me Anything
-      id: PLyicRj904Z99d82mxPAtTtSR98g75Botj
     - title: Crossplane
       id: PLyicRj904Z9_X62k6_XM_xlJkSyoQDkS2
+    - title: Ask Me Anything
+      id: PLyicRj904Z99d82mxPAtTtSR98g75Botj
 uploadvideo: sdsdsd
 videoid: xyz
 tweet: "\U0001F680 Boost your development superhero powers with the ultimate guide to Mastering CI/CD! \U0001F3AF\nStreamline your processes & unlock success like never before!\nDon't miss this game-changing YouTube video—your code will thank you! \U0001F4AA\n\n#DevOps #CI/CD #DevelopmentSuccess\n\nhttps://youtu.be/E_8zpztN2wA\n"

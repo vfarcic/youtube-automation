@@ -150,32 +150,27 @@ func (c *Choices) ChoosePhase(video Video) {
 		switch selected {
 		case phaseInit:
 			var err error
-			video, _, err = c.ChooseInit(video)
-			if err != nil {
+			if video, err = c.ChooseInit(video); err != nil {
 				panic(err)
 			}
 		case phaseWork:
 			var err error
-			video, _, err = c.ChooseWork(video)
-			if err != nil {
+			if video, err = c.ChooseWork(video); err != nil {
 				panic(err)
 			}
 		case phaseDefine:
 			var err error
-			video, _, err = c.ChooseDefine(video)
-			if err != nil {
+			if video, err = c.ChooseDefine(video); err != nil {
 				panic(err)
 			}
 		case phaseEdit:
 			var err error
-			video, _, err = c.ChooseEdit(video)
-			if err != nil {
+			if video, err = c.ChooseEdit(video); err != nil {
 				panic(err)
 			}
 		case phasePublish:
 			var err error
-			video, _, err = c.ChoosePublish(video)
-			if err != nil {
+			if video, err = c.ChoosePublish(video); err != nil {
 				panic(err)
 			}
 		case actionReturn:
@@ -251,7 +246,6 @@ func (c *Choices) ChooseCreateVideo() VideoIndex {
 		f, err := os.Create(filePath)
 		if err != nil {
 			panic(err)
-			return VideoIndex{}
 		}
 		defer f.Close()
 		f.Write([]byte(scriptContent))
@@ -272,9 +266,7 @@ func (c *Choices) GetFilePath(category, name, extension string) string {
 	return filePath
 }
 
-// TODO: Refactor
-// TODO: Remove bool from the return value
-func (c *Choices) ChooseInit(video Video) (Video, bool, error) {
+func (c *Choices) ChooseInit(video Video) (Video, error) {
 	save := true
 	sponsoredEmailsString := strings.Join(video.SponsoredEmails, ", ")
 	sponsoredEmailsTitle, _ := c.ColorFromSponsoredEmails("Sponsorship emails (comma separated)", video.Sponsored, video.SponsoredEmails)
@@ -293,7 +285,7 @@ func (c *Choices) ChooseInit(video Video) (Video, bool, error) {
 	)
 	err := form.Run()
 	if err != nil {
-		return Video{}, true, err
+		return Video{}, err
 	}
 	video.SponsoredEmails = deleteEmpty(strings.Split(sponsoredEmailsString, ","))
 	video.Init.Completed = 0
@@ -326,10 +318,10 @@ func (c *Choices) ChooseInit(video Video) (Video, bool, error) {
 		yaml := YAML{}
 		yaml.WriteVideo(video, video.Path)
 	}
-	return video, true, err
+	return video, err
 }
 
-func (c *Choices) ChooseWork(video Video) (Video, bool, error) {
+func (c *Choices) ChooseWork(video Video) (Video, error) {
 	save := true
 	form := huh.NewForm(
 		huh.NewGroup(
@@ -349,7 +341,7 @@ func (c *Choices) ChooseWork(video Video) (Video, bool, error) {
 	)
 	err := form.Run()
 	if err != nil {
-		return Video{}, true, err
+		return Video{}, err
 	}
 	video.Work.Completed = 0
 	video.Work.Total = 11
@@ -390,10 +382,10 @@ func (c *Choices) ChooseWork(video Video) (Video, bool, error) {
 		yaml := YAML{}
 		yaml.WriteVideo(video, video.Path)
 	}
-	return video, true, err
+	return video, err
 }
 
-func (c *Choices) ChooseDefine(video Video) (Video, bool, error) {
+func (c *Choices) ChooseDefine(video Video) (Video, error) {
 	save := true
 	requestThumbnailOrig := video.RequestThumbnail
 	animationsPlaceHolder := fmt.Sprintf(`- Animation: Subscribe (anywhere in the video)
@@ -415,9 +407,13 @@ func (c *Choices) ChooseDefine(video Video) (Video, bool, error) {
 	)
 	form := huh.NewForm(
 		huh.NewGroup(
+			// TODO: Use AI
 			huh.NewInput().Title(c.ColorFromString("Title", video.Title)).Value(&video.Title),
+			// TODO: Use AI
 			huh.NewText().Lines(3).Title(c.ColorFromString("Description", video.Description)).Value(&video.Description),
+			// TODO: Use AI
 			huh.NewText().Lines(3).Title(c.ColorFromString("Tags (comma separated)", video.Tags)).Value(&video.Tags),
+			// TODO: Use AI
 			huh.NewInput().Title(c.ColorFromString("Description tags (3-4 # separated)", video.DescriptionTags)).Value(&video.DescriptionTags),
 			huh.NewConfirm().Title(c.ColorFromBool("Thumbnail requested", video.RequestThumbnail)).Value(&video.RequestThumbnail),
 			huh.NewText().Lines(10).Title(c.ColorFromString("Animations", video.Animations)).Value(&video.Animations).Editor("vi").Placeholder(animationsPlaceHolder),
@@ -429,7 +425,7 @@ func (c *Choices) ChooseDefine(video Video) (Video, bool, error) {
 	)
 	err := form.Run()
 	if err != nil {
-		return Video{}, true, err
+		return Video{}, err
 	}
 	video.Define.Completed = 0
 	video.Define.Total = 8
@@ -466,10 +462,10 @@ func (c *Choices) ChooseDefine(video Video) (Video, bool, error) {
 		yaml := YAML{}
 		yaml.WriteVideo(video, video.Path)
 	}
-	return video, true, err
+	return video, err
 }
 
-func (c *Choices) ChooseEdit(video Video) (Video, bool, error) {
+func (c *Choices) ChooseEdit(video Video) (Video, error) {
 	save := true
 	requestEditOrig := video.RequestEdit
 	gistOrig := video.Gist
@@ -498,7 +494,7 @@ func (c *Choices) ChooseEdit(video Video) (Video, bool, error) {
 	)
 	err := form.Run()
 	if err != nil {
-		return Video{}, true, err
+		return Video{}, err
 	}
 	if save {
 		yaml := YAML{}
@@ -554,10 +550,10 @@ func (c *Choices) ChooseEdit(video Video) (Video, bool, error) {
 		yaml := YAML{}
 		yaml.WriteVideo(video, video.Path)
 	}
-	return video, true, err
+	return video, err
 }
 
-func (c *Choices) ChoosePublish(video Video) (Video, bool, error) {
+func (c *Choices) ChoosePublish(video Video) (Video, error) {
 	save := true
 	uploadVideoOrig := video.UploadVideo
 	tweetPostedOrig := video.TweetPosted
@@ -609,7 +605,7 @@ func (c *Choices) ChoosePublish(video Video) (Video, bool, error) {
 		)
 		err := form.Run()
 		if err != nil {
-			return Video{}, true, err
+			return Video{}, err
 		}
 		video.Publish.Completed = 0
 		video.Publish.Total = 14
@@ -699,7 +695,7 @@ func (c *Choices) ChoosePublish(video Video) (Video, bool, error) {
 		yaml := YAML{}
 		yaml.WriteVideo(video, video.Path)
 	}
-	return video, true, nil
+	return video, nil
 }
 
 func (c *Choices) ColorFromSponsoredEmails(title, sponsored string, sponsoredEmails []string) (string, bool) {
