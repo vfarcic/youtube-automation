@@ -1,9 +1,6 @@
 package main
 
 import (
-	"fmt"
-	"os"
-
 	"github.com/Azure/azure-sdk-for-go/sdk/ai/azopenai"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
@@ -12,35 +9,31 @@ import (
 )
 
 type AzureOpenAI struct {
-	messages []azopenai.ChatRequestMessageClassification
+	messages   []azopenai.ChatRequestMessageClassification
+	key        string
+	endpoint   string
+	deployment string
 }
 
-func NewAIChat(systemMessage string) *AzureOpenAI {
+func NewAIChat(systemMessage, endpoint, key, deployment string) *AzureOpenAI {
 	return &AzureOpenAI{
 		messages: []azopenai.ChatRequestMessageClassification{
 			&azopenai.ChatRequestSystemMessage{Content: to.Ptr(systemMessage)},
 		},
+		key:        key,
+		endpoint:   endpoint,
+		deployment: deployment,
 	}
 }
 
-func NewAIChatYouTube() *AzureOpenAI {
-	return NewAIChat("You are helping with YouTube videos.")
+func NewAIChatYouTube(endpoint, key, deployment string) *AzureOpenAI {
+	return NewAIChat("You are helping with YouTube videos.", endpoint, key, deployment)
 }
 
 func (a *AzureOpenAI) Chat(newMessage string) (map[int32]string, error) {
 	var resp azopenai.GetChatCompletionsResponse
-	var err error
-	azureOpenAIKey := os.Getenv("AZURE_OPENAI_KEY")
-	modelDeploymentID := os.Getenv("AZURE_OPENAI_DEPLOYMENT")
-	if len(modelDeploymentID) == 0 {
-		modelDeploymentID = "gpt-4-1106-preview"
-	}
-	azureOpenAIEndpoint := os.Getenv("AZURE_OPENAI_ENDPOINT")
-	if azureOpenAIKey == "" || modelDeploymentID == "" || azureOpenAIEndpoint == "" {
-		return nil, fmt.Errorf("Skipping example, environment variables missing")
-	}
-	keyCredential := azcore.NewKeyCredential(azureOpenAIKey)
-	client, err := azopenai.NewClientWithKeyCredential(azureOpenAIEndpoint, keyCredential, nil)
+	keyCredential := azcore.NewKeyCredential(a.key)
+	client, err := azopenai.NewClientWithKeyCredential(a.endpoint, keyCredential, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -48,7 +41,7 @@ func (a *AzureOpenAI) Chat(newMessage string) (map[int32]string, error) {
 	action := func() {
 		resp, err = client.GetChatCompletions(context.TODO(), azopenai.ChatCompletionsOptions{
 			Messages:       a.messages,
-			DeploymentName: &modelDeploymentID,
+			DeploymentName: &a.deployment,
 		}, nil)
 	}
 	spinner.New().Title("Contemplating how to destroy the world while trying to answer your question...").Action(action).Run()

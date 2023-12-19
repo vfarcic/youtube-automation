@@ -3,3 +3,6 @@ email:
   thumbnailTo: viktor@farcic.com
   editTo: viktor@farcic.com
   financeTo: devopstoolkit@acme.com
+ai:
+  endpoint: https://dotaisweden.openai.azure.com
+  deployment: gpt-4-1106-preview

@@ -9,8 +9,8 @@ define:
     completed: 7
     total: 7
 edit:
-    completed: 7
-    total: 7
+    completed: 8
+    total: 8
 publish:
     completed: 14
     total: 14
@@ -19,8 +19,8 @@ projecturl: acme.com
 sponsored: 4k EUR
 sponsoredemails:
     - jdoe@acme.com
-    - '                    someone@something.com'
-    - '                    sss@sss.com'
+    - someone@something.com
+    - sss@sss.com
 sponsorshipblocked: ""
 subject: ci/cd
 date: 2024-01-21T16:00
@@ -30,7 +30,7 @@ screen: true
 head: true
 thumbnails: true
 diagrams: true
-title: 'Mastering Kubernetes: A Comprehensive Guide to Managing Containerized Applications'
+title: 'Mastering Continuous Integration and Continuous Deployment: A Complete CI/CD Tutorial for Beginners'
 description: Dive into the world of container orchestration with our detailed guide on Kubernetes. This video is the ultimate resource for developers and system administrators alike, looking to master the ins and outs of Kubernetes to manage complex containerized applications with ease. From fundamental concepts to advanced deployment strategies, our expert breaks down each aspect of Kubernetes, ensuring you gain the expertise needed to run your applications efficiently. Whether you're a newbie curious about containerization or a seasoned pro aiming to sharpen your Kubernetes skills, this comprehensive guide is your roadmap to success. Hit the play button and embark on your journey to Kubernetes mastery today!!!!
 tags: '#KubernetesTutorial #DevOpsTraining #ContainerManagement'
 descriptiontags: '#CI/CD #ContinuousIntegration #ContinuousDelivery'
@@ -58,10 +58,10 @@ gist: manuscript/kubernetes/falco.sh
 gisturl: ""
 relatedvideos: "Argo CD - Applying GitOps Principles To Manage A Production Environment In Kubernetes: https://youtu.be/vpWQeoaiRM4\nHow To Apply GitOps To Everything - Combining Argo CD And Crossplane: https://youtu.be/yrj4lmScKHQ\nCrossplane - GitOps-based Infrastructure as Code "
 playlists:
-    - title: Ask Me Anything
-      id: PLyicRj904Z99d82mxPAtTtSR98g75Botj
     - title: Shorts
       id: PLyicRj904Z99psBRs798Xg0mhJY__4aJt
+    - title: Ask Me Anything
+      id: PLyicRj904Z99d82mxPAtTtSR98g75Botj
     - title: Crossplane
       id: PLyicRj904Z9_X62k6_XM_xlJkSyoQDkS2
 uploadvideo: sdsdsd

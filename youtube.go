@@ -375,8 +375,11 @@ type PlaylistListResponse struct {
 }
 
 func getYouTubePlaylists() map[string]string {
-	apiKey := os.Getenv("YOUTUBE_API_KEY")
-	apiUrl := fmt.Sprintf("https://www.googleapis.com/youtube/v3/playlists?part=snippet&channelId=%s&key=%s&maxResults=50", channelID, apiKey)
+	apiUrl := fmt.Sprintf(
+		"https://www.googleapis.com/youtube/v3/playlists?part=snippet&channelId=%s&key=%s&maxResults=50",
+		channelID,
+		settings.YouTube.APIKey,
+	)
 
 	resp, err := http.Get(apiUrl)
 	if err != nil {

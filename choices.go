@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"reflect"
 	"strings"
 
 	"github.com/charmbracelet/huh"
@@ -55,18 +56,6 @@ const videosPhaseSponsoredBlocked = 6
 const videosPhaseIdeas = 7
 
 const actionReturn = 99
-
-type Tasks struct {
-	Completed int
-	Total     int
-}
-
-type Task struct {
-	Title     string
-	Completed bool
-	Counter   int
-	Index     int
-}
 
 func (c *Choices) ChooseIndex() {
 	const indexCreateVideo = 0
@@ -266,6 +255,21 @@ func (c *Choices) GetFilePath(category, name, extension string) string {
 	return filePath
 }
 
+func (c *Choices) Count(fields []interface{}) (green, all int) {
+	for _, field := range fields {
+		valueType := reflect.TypeOf(field)
+		if valueType.Kind() == reflect.String && len(field.(string)) > 0 {
+			green++
+		} else if valueType.Kind() == reflect.Bool && field.(bool) {
+			green++
+		} else if valueType.Kind() == reflect.Slice && reflect.Indirect(reflect.ValueOf(field)).Len() > 0 {
+			green++
+		}
+		all++
+	}
+	return green, all
+}
+
 func (c *Choices) ChooseInit(video Video) (Video, error) {
 	save := true
 	sponsoredEmailsString := strings.Join(video.SponsoredEmails, ", ")
@@ -288,32 +292,23 @@ func (c *Choices) ChooseInit(video Video) (Video, error) {
 		return Video{}, err
 	}
 	video.SponsoredEmails = deleteEmpty(strings.Split(sponsoredEmailsString, ","))
-	video.Init.Completed = 0
-	video.Init.Total = 8
-	if video.ProjectName != "" {
-		video.Init.Completed++
-	}
-	if video.ProjectURL != "" {
-		video.Init.Completed++
-	}
-	if video.Sponsored != "" {
-		video.Init.Completed++
-	}
+	video.Init.Completed, video.Init.Total = c.Count([]interface{}{
+		video.ProjectName,
+		video.ProjectURL,
+		video.Sponsored,
+		video.Subject,
+		video.Date,
+	})
 	if _, completed := c.ColorFromSponsoredEmails("Sponsorship emails (comma separated)", video.Sponsored, video.SponsoredEmails); completed {
 		video.Init.Completed++
 	}
 	if video.SponsorshipBlocked == "" {
 		video.Init.Completed++
 	}
-	if video.Subject != "" {
-		video.Init.Completed++
-	}
-	if video.Date != "" {
-		video.Init.Completed++
-	}
 	if !video.Delayed {
 		video.Init.Completed++
 	}
+	video.Init.Total += 3
 	if save {
 		yaml := YAML{}
 		yaml.WriteVideo(video, video.Path)
@@ -343,41 +338,19 @@ func (c *Choices) ChooseWork(video Video) (Video, error) {
 	if err != nil {
 		return Video{}, err
 	}
-	video.Work.Completed = 0
-	video.Work.Total = 11
-	if video.Code {
-		video.Work.Completed++
-	}
-	if video.Screen {
-		video.Work.Completed++
-	}
-	if video.Head {
-		video.Work.Completed++
-	}
-	if video.RelatedVideos != "" {
-		video.Work.Completed++
-	}
-	if video.Thumbnails {
-		video.Work.Completed++
-	}
-	if video.Diagrams {
-		video.Work.Completed++
-	}
-	if video.Location != "" {
-		video.Work.Completed++
-	}
-	if video.Tagline != "" {
-		video.Work.Completed++
-	}
-	if video.TaglineIdeas != "" {
-		video.Work.Completed++
-	}
-	if video.OtherLogos != "" {
-		video.Work.Completed++
-	}
-	if video.Screenshots {
-		video.Work.Completed++
-	}
+	video.Work.Completed, video.Work.Total = c.Count([]interface{}{
+		video.Code,
+		video.Screen,
+		video.Head,
+		video.RelatedVideos,
+		video.Thumbnails,
+		video.Diagrams,
+		video.Location,
+		video.Tagline,
+		video.TaglineIdeas,
+		video.OtherLogos,
+		video.Screenshots,
+	})
 	if save {
 		yaml := YAML{}
 		yaml.WriteVideo(video, video.Path)
@@ -389,7 +362,7 @@ func (c *Choices) ChooseDefineAI(video *Video, field *string, fieldName string, 
 	firstIteration := true
 	askAgain := true
 	question := ""
-	chat := NewAIChatYouTube()
+	chat := NewAIChatYouTube(settings.AI.Endpoint, settings.AI.Key, settings.AI.Deployment)
 	history := ""
 	defer chat.Close()
 	for askAgain || firstIteration {
@@ -508,33 +481,20 @@ func (c *Choices) ChooseDefine(video Video) (Video, error) {
 	if err != nil {
 		return Video{}, err
 	}
-	video.Define.Completed = 0
-	video.Define.Total = 7
-	if video.Title != "" {
-		video.Define.Completed++
-	}
-	if video.Description != "" {
-		video.Define.Completed++
-	}
-	if video.Tags != "" {
-		video.Define.Completed++
-	}
-	if video.DescriptionTags != "" {
-		video.Define.Completed++
-	}
-	if video.RequestThumbnail {
-		video.Define.Completed++
-	}
-	if video.Animations != "" {
-		video.Define.Completed++
-	}
+	video.Define.Completed, video.Define.Total = c.Count([]interface{}{
+		video.Title,
+		video.Description,
+		video.Tags,
+		video.DescriptionTags,
+		video.RequestThumbnail,
+		video.Animations,
+		video.Tweet,
+	})
 	if !requestThumbnailOrig && video.RequestThumbnail {
-		if sendThumbnailEmail(settings.Email.From, settings.Email.ThumbnailTo, video) != nil {
+		email := NewEmail(settings.Email.Password)
+		if email.SendThumbnail(settings.Email.From, settings.Email.ThumbnailTo, video) != nil {
 			panic(err)
 		}
-	}
-	if video.Tweet != "" {
-		video.Define.Completed++
 	}
 	if save {
 		yaml := YAML{}
@@ -579,34 +539,19 @@ func (c *Choices) ChooseEdit(video Video) (Video, error) {
 		yaml := YAML{}
 		yaml.WriteVideo(video, video.Path)
 	}
-	video.Edit.Completed = 0
-	video.Edit.Total = 8
-	if video.Thumbnail != "" {
-		video.Edit.Completed++
-	}
-	if video.Members != "" {
-		video.Edit.Completed++
-	}
-	if video.RequestEdit {
-		video.Edit.Completed++
-	}
-	if video.Timecodes != "" {
-		video.Edit.Completed++
-	}
-	if video.Movie {
-		video.Edit.Completed++
-	}
-	if video.Slides {
-		video.Edit.Completed++
-	}
-	if video.Gist != "" {
-		video.Edit.Completed++
-	}
-	if len(video.Playlists) > 0 {
-		video.Edit.Completed++
-	}
+	video.Edit.Completed, video.Edit.Total = c.Count([]interface{}{
+		video.Thumbnail,
+		video.Members,
+		video.RequestEdit,
+		video.Timecodes,
+		video.Movie,
+		video.Slides,
+		video.Gist,
+		video.Playlists,
+	})
 	if !requestEditOrig && video.RequestEdit {
-		if sendEditEmail(settings.Email.From, settings.Email.EditTo, video) != nil {
+		email := NewEmail(settings.Email.Password)
+		if email.SendEdit(settings.Email.From, settings.Email.EditTo, video) != nil {
 			panic(err)
 		}
 	}
@@ -689,53 +634,29 @@ func (c *Choices) ChoosePublish(video Video) (Video, error) {
 		if err != nil {
 			return Video{}, err
 		}
-		video.Publish.Completed = 0
-		video.Publish.Total = 14
-		if video.UploadVideo != "" {
-			video.Publish.Completed++
-		}
-		if video.TweetPosted {
-			video.Publish.Completed++
-		}
-		if video.LinkedInPosted {
-			video.Publish.Completed++
-		}
-		if video.SlackPosted {
-			video.Publish.Completed++
-		}
-		if video.RedditPosted {
-			video.Publish.Completed++
-		}
-		if video.HNPosted {
-			video.Publish.Completed++
-		}
-		if video.TCPosted {
-			video.Publish.Completed++
-		}
-		if video.YouTubeHighlight {
-			video.Publish.Completed++
-		}
-		if video.YouTubeComment {
-			video.Publish.Completed++
-		}
-		if video.YouTubeCommentReply {
-			video.Publish.Completed++
-		}
-		if video.GDE {
-			video.Publish.Completed++
-		}
-		if video.TwitterSpace {
-			video.Publish.Completed++
-		}
-		if video.Repo != "" {
-			video.Publish.Completed++
-		}
+		video.Publish.Completed, video.Publish.Total = c.Count([]interface{}{
+			video.UploadVideo,
+			video.TweetPosted,
+			video.LinkedInPosted,
+			video.SlackPosted,
+			video.RedditPosted,
+			video.HNPosted,
+			video.TCPosted,
+			video.YouTubeHighlight,
+			video.YouTubeComment,
+			video.YouTubeCommentReply,
+			video.GDE,
+			video.TwitterSpace,
+			video.Repo,
+		})
+		video.Publish.Total++
 		if video.NotifiedSponsors || len(video.Sponsored) == 0 || video.Sponsored == "N/A" || video.Sponsored == "-" {
 			video.Publish.Completed++
 		}
 		if len(uploadVideoOrig) == 0 && len(video.UploadVideo) > 0 {
 			video.VideoId = uploadVideo(video)
 			uploadThumbnail(video)
+			// TODO: Automate
 			println(confirmationStyle.Render(`Following should be set manually:
 - End screen
 - Playlists
@@ -769,7 +690,8 @@ func (c *Choices) ChoosePublish(video Video) (Video, error) {
 			repo.Update(video.Repo, video.Title, video.VideoId)
 		}
 		if !notifiedSponsorsOrig && video.NotifiedSponsors {
-			sendSponsorsEmail(settings.Email.From, video.SponsoredEmails, video.VideoId, video.Sponsored)
+			email := NewEmail(settings.Email.Password)
+			email.SendSponsors(settings.Email.From, video.SponsoredEmails, video.VideoId, video.Sponsored)
 		}
 		if !save {
 			break

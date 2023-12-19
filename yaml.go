@@ -76,6 +76,11 @@ type Video struct {
 	PublishedShort      bool
 }
 
+type Tasks struct {
+	Completed int
+	Total     int
+}
+
 type Playlist struct {
 	Title string
 	Id    string

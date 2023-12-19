@@ -2,28 +2,36 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"strings"
 
 	gomail "gopkg.in/mail.v2"
 )
 
-func sendEmail(from string, to []string, subject, body string) error {
-	password := os.Getenv("EMAIL_PASSWORD")
+type Email struct {
+	password string
+}
+
+func NewEmail(password string) *Email {
+	return &Email{
+		password: password,
+	}
+}
+
+func (e *Email) Send(from string, to []string, subject, body string) error {
 	to = append(to, from)
 	msg := gomail.NewMessage()
 	msg.SetHeader("From", from)
 	msg.SetHeader("To", to...)
 	msg.SetHeader("Subject", subject)
 	msg.SetBody("text/html", body)
-	dialer := gomail.NewDialer("smtp.gmail.com", 587, from, password)
+	dialer := gomail.NewDialer("smtp.gmail.com", 587, from, e.password)
 	if err := dialer.DialAndSend(msg); err != nil {
 		return err
 	}
 	return nil
 }
 
-func sendThumbnailEmail(from, to string, video Video) error {
+func (e *Email) SendThumbnail(from, to string, video Video) error {
 	logos := ""
 	if video.ProjectURL != "" && video.ProjectURL != "-" && video.ProjectURL != "N/A" {
 		logos = video.ProjectURL
@@ -56,14 +64,14 @@ Elements:
 </ul>
 %s
 `, video.Location, logos, video.Tagline, taglineIdeas)
-	err := sendEmail(from, []string{to}, subject, body)
+	err := e.Send(from, []string{to}, subject, body)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func sendEditEmail(from, to string, video Video) error {
+func (e *Email) SendEdit(from, to string, video Video) error {
 	subject := fmt.Sprintf("Video: %s", video.ProjectName)
 	animations := strings.Split(video.Animations, "\n")
 	animationsString := ""
@@ -81,14 +89,14 @@ All the material is available at %s.
 </ul>
 `, video.Location, animationsString)
 	body = strings.ReplaceAll(body, "\n<li></li>", "")
-	err := sendEmail(from, []string{to}, subject, body)
+	err := e.Send(from, []string{to}, subject, body)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func sendSponsorsEmail(from string, to []string, videoID, sponsorshipPrice string) error {
+func (e *Email) SendSponsors(from string, to []string, videoID, sponsorshipPrice string) error {
 	subject := "DevOps Toolkit Video Sponsorship"
 	body := fmt.Sprintf(`Hi,
 <br><br>
@@ -97,7 +105,7 @@ The video has just been released and is available at https://youtu.be/%s. Please
 I'll send the invoice for %s in a separate message.
 `, videoID, sponsorshipPrice)
 	to = append(to, settings.Email.FinanceTo)
-	err := sendEmail(from, to, subject, body)
+	err := e.Send(from, to, subject, body)
 	if err != nil {
 		return err
 	}
