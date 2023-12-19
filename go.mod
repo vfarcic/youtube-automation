@@ -7,8 +7,8 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.9.1
 	github.com/atotto/clipboard v0.1.4
 	github.com/charmbracelet/bubbles v0.17.1
-	github.com/charmbracelet/bubbletea v0.25.0
 	github.com/charmbracelet/huh v0.2.2
+	github.com/charmbracelet/huh/spinner v0.0.0-20231218010117-47340b543539
 	github.com/charmbracelet/lipgloss v0.9.1
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/viper v1.18.1
@@ -27,6 +27,7 @@ require (
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/catppuccin/go v0.2.0 // indirect
+	github.com/charmbracelet/bubbletea v0.25.0 // indirect
 	github.com/charmbracelet/glamour v0.6.0 // indirect
 	github.com/containerd/console v1.0.4-0.20230313162750-1ae8d489ac81 // indirect
 	github.com/dlclark/regexp2 v1.10.0 // indirect

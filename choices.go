@@ -385,7 +385,99 @@ func (c *Choices) ChooseWork(video Video) (Video, error) {
 	return video, err
 }
 
+func (c *Choices) ChooseDefineAI(video *Video, field *string, fieldName string, initialQuestion string) error {
+	firstIteration := true
+	askAgain := true
+	question := ""
+	chat := NewAIChatYouTube()
+	history := ""
+	defer chat.Close()
+	for askAgain || firstIteration {
+		askAgain = false
+		if firstIteration {
+			firstIteration = false
+			question = initialQuestion
+		} else {
+			responses, err := chat.Chat(question)
+			if err != nil {
+				log.Fatal(err)
+			}
+			for _, resp := range responses {
+				resp = strings.ReplaceAll(resp, "\"", "")
+				*field = resp
+				history = fmt.Sprintf("%s\n%s\n---\n", history, resp)
+			}
+			question = ""
+		}
+		form := huh.NewForm(
+			huh.NewGroup(
+				huh.NewText().Lines(20).CharLimit(10000).Title("AI Responses").Value(&history),
+				huh.NewText().Lines(20).CharLimit(1000).Title(c.ColorFromString(fmt.Sprintf("Current %s", fieldName), *field)).Value(field),
+				huh.NewInput().Title(c.ColorFromString("Question", *field)).Value(&question),
+				huh.NewConfirm().Affirmative("Ask").Negative("Save & Continue").Value(&askAgain),
+			),
+		)
+		err := form.Run()
+		if err != nil {
+			return err
+		}
+	}
+	yaml := YAML{}
+	yaml.WriteVideo(*video, video.Path)
+	return nil
+}
+
 func (c *Choices) ChooseDefine(video Video) (Video, error) {
+	// Title
+	err := c.ChooseDefineAI(
+		&video,
+		&video.Title,
+		"Title",
+		fmt.Sprintf("Write a title for a youtube video about %s", video.Subject),
+	)
+	if err != nil {
+		return video, err
+	}
+
+	// Description
+	err = c.ChooseDefineAI(
+		&video,
+		&video.Description,
+		"Description",
+		fmt.Sprintf("Write a short description for a youtube video with the title \"%s\"", video.Title),
+	)
+	if err != nil {
+		return video, err
+	}
+	// Tags
+	err = c.ChooseDefineAI(
+		&video,
+		&video.Tags,
+		"Tags",
+		fmt.Sprintf("Write comma separated tags for a youtube video with the description \"%s\"", video.Description),
+	)
+	// Description tags
+	err = c.ChooseDefineAI(
+		&video,
+		&video.Tags,
+		"Description Tags",
+		fmt.Sprintf("Write up to 4 tags separated with # for a youtube video with the description \"%s\"", video.Description),
+	)
+	if err != nil {
+		return video, err
+	}
+	// Tweet
+	err = c.ChooseDefineAI(
+		&video,
+		&video.Tweet,
+		"Tweet",
+		fmt.Sprintf("Write a Tweet about a YouTube video with the title \"%s\". Include @DevOpsToolkit into it.", video.Title),
+	)
+	if err != nil {
+		return video, err
+	}
+
+	// The rest
 	save := true
 	requestThumbnailOrig := video.RequestThumbnail
 	animationsPlaceHolder := fmt.Sprintf(`- Animation: Subscribe (anywhere in the video)
@@ -407,28 +499,17 @@ func (c *Choices) ChooseDefine(video Video) (Video, error) {
 	)
 	form := huh.NewForm(
 		huh.NewGroup(
-			// TODO: Use AI
-			huh.NewInput().Title(c.ColorFromString("Title", video.Title)).Value(&video.Title),
-			// TODO: Use AI
-			huh.NewText().Lines(3).Title(c.ColorFromString("Description", video.Description)).Value(&video.Description),
-			// TODO: Use AI
-			huh.NewText().Lines(3).Title(c.ColorFromString("Tags (comma separated)", video.Tags)).Value(&video.Tags),
-			// TODO: Use AI
-			huh.NewInput().Title(c.ColorFromString("Description tags (3-4 # separated)", video.DescriptionTags)).Value(&video.DescriptionTags),
-			huh.NewConfirm().Title(c.ColorFromBool("Thumbnail requested", video.RequestThumbnail)).Value(&video.RequestThumbnail),
 			huh.NewText().Lines(10).Title(c.ColorFromString("Animations", video.Animations)).Value(&video.Animations).Editor("vi").Placeholder(animationsPlaceHolder),
-			huh.NewInput().Title(c.ColorFromString("Thumbnail path", video.Thumbnail)).Value(&video.Thumbnail),
-			// TODO: Use AI
-			huh.NewText().Lines(10).Title(c.ColorFromString("Tweet write", video.Tweet)).Value(&video.Tweet),
+			huh.NewConfirm().Title(c.ColorFromBool("Thumbnail requested", video.RequestThumbnail)).Value(&video.RequestThumbnail),
 			huh.NewConfirm().Affirmative("Save").Negative("Cancel").Value(&save),
 		),
 	)
-	err := form.Run()
+	err = form.Run()
 	if err != nil {
 		return Video{}, err
 	}
 	video.Define.Completed = 0
-	video.Define.Total = 8
+	video.Define.Total = 7
 	if video.Title != "" {
 		video.Define.Completed++
 	}
@@ -445,9 +526,6 @@ func (c *Choices) ChooseDefine(video Video) (Video, error) {
 		video.Define.Completed++
 	}
 	if video.Animations != "" {
-		video.Define.Completed++
-	}
-	if video.Thumbnail != "" {
 		video.Define.Completed++
 	}
 	if !requestThumbnailOrig && video.RequestThumbnail {
@@ -482,9 +560,10 @@ func (c *Choices) ChooseEdit(video Video) (Video, error) {
 	var playlists []string
 	form := huh.NewForm(
 		huh.NewGroup(
+			huh.NewInput().Title(c.ColorFromString("Thumbnail path", video.Thumbnail)).Value(&video.Thumbnail),
 			huh.NewInput().Title(c.ColorFromString("Members (comma separated)", video.Members)).Value(&video.Members),
 			huh.NewConfirm().Title(c.ColorFromBool("Edit requested", video.RequestEdit)).Value(&video.RequestEdit),
-			huh.NewText().Lines(5).Title(c.ColorFromString("Timecodes", video.Thumbnail)).Value(&video.Timecodes),
+			huh.NewText().Lines(5).Title(c.ColorFromString("Timecodes", video.Timecodes)).Value(&video.Timecodes),
 			huh.NewConfirm().Title(c.ColorFromBool("Movie done", video.Movie)).Value(&video.Movie),
 			huh.NewConfirm().Title(c.ColorFromBool("Slides done", video.Slides)).Value(&video.Slides),
 			huh.NewInput().Title(c.ColorFromString("Gist path", video.Gist)).Value(&video.Gist),
@@ -501,7 +580,10 @@ func (c *Choices) ChooseEdit(video Video) (Video, error) {
 		yaml.WriteVideo(video, video.Path)
 	}
 	video.Edit.Completed = 0
-	video.Edit.Total = 7
+	video.Edit.Total = 8
+	if video.Thumbnail != "" {
+		video.Edit.Completed++
+	}
 	if video.Members != "" {
 		video.Edit.Completed++
 	}
@@ -555,15 +637,6 @@ func (c *Choices) ChooseEdit(video Video) (Video, error) {
 
 func (c *Choices) ChoosePublish(video Video) (Video, error) {
 	save := true
-	uploadVideoOrig := video.UploadVideo
-	tweetPostedOrig := video.TweetPosted
-	linkedInPostedOrig := video.LinkedInPosted
-	slackPostedOrig := video.SlackPosted
-	redditPostedOrig := video.RedditPosted
-	hnPostedOrig := video.HNPosted
-	tcPosted := video.TCPosted
-	twitterSpaceOrig := video.TwitterSpace
-	repoOrig := video.Repo
 	sponsorsNotifyText := "Sponsors notify"
 	notifiedSponsorsOrig := video.NotifiedSponsors
 	if video.NotifiedSponsors || len(video.Sponsored) == 0 || video.Sponsored == "N/A" || video.Sponsored == "-" {
@@ -597,6 +670,15 @@ func (c *Choices) ChoosePublish(video Video) (Video, error) {
 		huh.NewConfirm().Title(sponsorsNotifyText).Value(&video.NotifiedSponsors),
 	}
 	for index := range fields {
+		uploadVideoOrig := video.UploadVideo
+		tweetPostedOrig := video.TweetPosted
+		linkedInPostedOrig := video.LinkedInPosted
+		slackPostedOrig := video.SlackPosted
+		redditPostedOrig := video.RedditPosted
+		hnPostedOrig := video.HNPosted
+		tcPosted := video.TCPosted
+		twitterSpaceOrig := video.TwitterSpace
+		repoOrig := video.Repo
 		form := huh.NewForm(
 			huh.NewGroup(
 				fields[index],

@@ -8,14 +8,6 @@ func main() {
 	for {
 		choices.ChooseIndex()
 	}
-	// azureOpenAI := AzureOpenAI{}
-	// responses, err := azureOpenAI.Chat("write a title for a youtube video about kubernetes dependencies and deployment ordering")
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// for _, resp := range responses {
-	// 	fmt.Println(resp)
-	// }
 }
 
 func deleteEmpty(s []string) []string {
