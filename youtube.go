@@ -48,7 +48,6 @@ const channelID = "UCfz8x0lVzJpb_dgWm9kPVrw"
 //     authorization code from the browser and enter it on the command line.
 const launchWebServer = true
 
-// TODO: Remove
 // const missingClientSecretsMessage = `
 // Please configure OAuth 2.0
 // To make this sample run, you need to populate the client_secrets.json file
