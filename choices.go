@@ -432,7 +432,7 @@ func (c *Choices) ChooseDefine(video Video) (Video, error) {
 	// Description tags
 	err = c.ChooseDefineAI(
 		&video,
-		&video.Tags,
+		&video.DescriptionTags,
 		"Description Tags",
 		fmt.Sprintf("Write up to 4 tags separated with # for a youtube video with the description \"%s\"", video.Description),
 	)
