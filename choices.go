@@ -665,7 +665,7 @@ func (c *Choices) ChoosePublish(video Video) (Video, error) {
 		}
 		twitter := Twitter{}
 		if !tweetPostedOrig && len(video.Tweet) > 0 && video.TweetPosted {
-			twitter.Post(video.Tweet)
+			twitter.Post(video.Tweet, video.VideoId)
 		}
 		if !linkedInPostedOrig && len(video.Tweet) > 0 && video.LinkedInPosted {
 			postLinkedIn(video.Tweet)
