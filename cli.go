@@ -77,7 +77,7 @@ func init() {
 		rootCmd.MarkFlagRequired("email-finance-to")
 	}
 	if len(os.Getenv("EMAIL_PASSWORD")) > 0 {
-		settings.AI.Key = os.Getenv("EMAIL_PASSWORD")
+		settings.Email.Password = os.Getenv("EMAIL_PASSWORD")
 	} else {
 		rootCmd.MarkFlagRequired("email-password")
 	}

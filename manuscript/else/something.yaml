@@ -6,14 +6,14 @@ work:
     completed: 11
     total: 11
 define:
-    completed: 7
-    total: 7
-edit:
     completed: 8
     total: 8
+edit:
+    completed: 7
+    total: 7
 publish:
     completed: 14
-    total: 14
+    total: 15
 projectname: Something
 projecturl: acme.com
 sponsored: 4k EUR
@@ -43,18 +43,28 @@ requestthumbnail: true
 thumbnail: thumbnail.png
 members: member1, member2, member3
 animations: |-
-    - Animation: Subscribe (anywhere in the video)
-    - Animation: Like (anywhere in the video)
-    - Lower third: Viktor Farcic (anywhere in the video)
-    - Animation: Join the channel (anywhere in the video)
-    - Animation: Sponsor the channel (anywhere in the video)!!!
+    - Thumbnail: WASM video
+    - Thumbnail: EsZcDUaSUss
+    - Ad: Project: groundcover, Material: https://drive.google.com/drive/folders/1CwkKaaoYp0aUirond0ZbnvxHv44cuhYh?usp=sharing, URL: https://groundcover.com
+    - Section: Apply Predefined Policies with Kubewarden
+    - Logos: kyverno.png, opa.png
+    - Section: Find and Inspect Kubewarden Policy Modules
+    - screen-artifact-hub
+    - Logos: kyverno.png, opa.png
+    - Section: Use Custom Kubewarden Modules and Policies
+    - Miki: Skip the screen recording from 12:23 to 14:44.
+    - Logos: kyverno.png, opa.png
+    - Section: Use Custom Kubewarden Modules and Policies
+    - Logos: kyverno.png, opa.png
+    - Section: Kubewarden Pros and Cons
+    - Logos: kyverno.png, opa.png
 requestedit: true
 movie: true
 timecodes: |-
     00:00 Intro
     01:23 Something else
     02:34 The End
-gist: manuscript/kubernetes/falco.sh
+gist: manuscript/security/kubewarden.sh
 gisturl: ""
 relatedvideos: "Argo CD - Applying GitOps Principles To Manage A Production Environment In Kubernetes: https://youtu.be/vpWQeoaiRM4\nHow To Apply GitOps To Everything - Combining Argo CD And Crossplane: https://youtu.be/yrj4lmScKHQ\nCrossplane - GitOps-based Infrastructure as Code "
 playlists:

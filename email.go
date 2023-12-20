@@ -79,6 +79,24 @@ func (e *Email) SendEdit(from, to string, video Video) error {
 		animationsString = fmt.Sprintf("%s\n<li>%s</li>", animationsString, animations[i])
 	}
 	animationsString = strings.ReplaceAll(animationsString, "- ", "")
+	animationsString = fmt.Sprintf(`<li>Animation: Subscribe (anywhere in the video)</li>
+<li>Animation: Like (anywhere in the video)</li>
+<li>Lower third: Viktor Farcic (anywhere in the video)</li>
+<li>Animation: Join the channel (anywhere in the video)</li>
+<li>Animation: Sponsor the channel (anywhere in the video)</li>
+<li>Lower third: %s + logo + URL (%s) (add to a few places when I mention %s)</li>
+<li>Text: Gist with the commands + an arrow pointing below (add shortly after we start showing the code)</li>
+<li>Title roll: %s</li>
+%s
+<li>Member shoutouts: Thanks a ton to the new members for supporting the channel: %s</li>
+<li>Outro roll</li>`,
+		video.ProjectName,
+		video.ProjectURL,
+		video.ProjectName,
+		video.Title,
+		animationsString,
+		video.Members,
+	)
 	body := fmt.Sprintf(`<strong>Material:</strong>
 <br/><br/>
 All the material is available at %s.

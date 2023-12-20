@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"os"
@@ -89,5 +90,100 @@ func (r *Repo) Update(repo, title, videoID string) error {
 	if err != nil {
 		return err
 	}
+	return err
+}
+
+func (r *Repo) GetAnimations(filePath string) ([]string, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	var hashLines []string
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+		line = strings.TrimSpace(line)
+		line = strings.ReplaceAll(line, " ", " ")
+		if strings.HasPrefix(line, "#") && strings.HasSuffix(line, "#") && !strings.HasPrefix(line, "##") {
+			foundIt := false
+			for _, value := range []string{"# [[title]] #", "# Intro #", "# Setup #", "# Destroy #"} {
+				if line == value {
+					foundIt = true
+					break
+				}
+			}
+			if !foundIt {
+				line = strings.ReplaceAll(line, "#", "")
+				line = strings.TrimSpace(line)
+				line = fmt.Sprintf("Section: %s", line)
+				hashLines = append(hashLines, line)
+			}
+		} else if strings.HasPrefix(line, "# TODO:") {
+			line = strings.ReplaceAll(line, "# TODO:", "")
+			line = strings.TrimSpace(line)
+			hashLines = append(hashLines, line)
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+
+	return hashLines, nil
+}
+
+func (r *Repo) CleanupGist(filePath string) error {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	var lines, outputLines []string
+	for scanner.Scan() {
+		line := scanner.Text()
+		line = strings.ReplaceAll(line, " ", " ")
+		lines = append(lines, line)
+	}
+	if err := scanner.Err(); err != nil {
+		return err
+	}
+	for index := 0; index < len(lines); index++ {
+		line := lines[index]
+		if strings.HasPrefix(line, "##") { // Headers
+			for headerIndex := 0; headerIndex <= 2; headerIndex++ {
+				line = lines[index]
+				outputLines = append(outputLines, line)
+				index++
+			}
+			outputLines = append(outputLines, "")
+		} else if strings.HasPrefix(line, "# FIXME:") { // Comments
+			outputLines = append(outputLines, strings.Replace(line, "# FIXME:", "#", 1))
+			outputLines = append(outputLines, "")
+		} else if !strings.HasPrefix(line, "#") && len(line) > 0 { // Code
+			outputLines = append(outputLines, line)
+			if !strings.HasSuffix(line, "\\") {
+				outputLines = append(outputLines, "")
+			}
+		} else if index <= 4 { // Title & Additional Info
+			outputLines = append(outputLines, line)
+		}
+	}
+	// Remove empty sections
+	lines = outputLines
+	outputLines = []string{}
+	for index := 0; index < len(lines); index++ {
+		line := lines[index]
+		if len(lines) >= index+5 && strings.HasPrefix(line, "##") && strings.HasPrefix(lines[index+2], "##") && !strings.HasPrefix(lines[index+4], "##") {
+			outputLines = append(outputLines, lines[index:index+3]...)
+			index += 2
+		} else if !strings.HasSuffix(line, "#") || line == "# [[title]] #" {
+			outputLines = append(outputLines, line)
+		}
+	}
+
+	err = os.WriteFile(filePath, []byte(strings.Join(outputLines, "\n")), 0644)
 	return err
 }

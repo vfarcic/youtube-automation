@@ -384,11 +384,11 @@ func (c *Choices) ChooseDefineAI(video *Video, field *string, fieldName string, 
 		}
 		form := huh.NewForm(
 			huh.NewGroup(
+				huh.NewText().Lines(20).CharLimit(1000).Title(c.ColorFromString(fieldName, *field)).Value(field),
 				huh.NewText().Lines(20).CharLimit(10000).Title("AI Responses").Value(&history),
-				huh.NewText().Lines(20).CharLimit(1000).Title(c.ColorFromString(fmt.Sprintf("Current %s", fieldName), *field)).Value(field),
 				huh.NewInput().Title(c.ColorFromString("Question", *field)).Value(&question),
 				huh.NewConfirm().Affirmative("Ask").Negative("Save & Continue").Value(&askAgain),
-			),
+			).Title(fieldName),
 		)
 		err := form.Run()
 		if err != nil {
@@ -450,30 +450,44 @@ func (c *Choices) ChooseDefine(video Video) (Video, error) {
 		return video, err
 	}
 
-	// The rest
+	// Animations
+	generateAnimations := true
+	for generateAnimations {
+		generateAnimations = false
+		video.Animations = strings.TrimSpace(video.Animations)
+		formAnimations := huh.NewForm(
+			huh.NewGroup(
+				huh.NewInput().Title(c.ColorFromString("Gist path", video.Gist)).Value(&video.Gist),
+				huh.NewText().Lines(40).CharLimit(10000).Title(c.ColorFromString("Animations", video.Animations)).Value(&video.Animations).Editor("vi"),
+				huh.NewConfirm().Affirmative("Generate").Negative("Continue").Value(&generateAnimations),
+			).Title("Animations"),
+		)
+		err = formAnimations.Run()
+		if err != nil {
+			return Video{}, err
+		}
+		if generateAnimations {
+			animations := ""
+			repo := Repo{}
+			lines, err := repo.GetAnimations(video.Gist)
+			if err != nil {
+				panic(err)
+			}
+			if err != nil {
+				return Video{}, err
+			}
+			for _, line := range lines {
+				animations = fmt.Sprintf("%s\n- %s", animations, line)
+			}
+			video.Animations = animations
+		}
+	}
+	// Thumbnail
 	save := true
 	requestThumbnailOrig := video.RequestThumbnail
-	animationsPlaceHolder := fmt.Sprintf(`- Animation: Subscribe (anywhere in the video)
-- Animation: Like (anywhere in the video)
-- Lower third: Viktor Farcic (anywhere in the video)
-- Animation: Join the channel (anywhere in the video)
-- Animation: Sponsor the channel (anywhere in the video)
-- Lower third: %s + logo + URL (%s) (add to a few places when I mention %s)
-- Text: Gist with the commands + an arrow pointing below (add shortly after we start showing the code)
-- Title roll: %s
-- Member shoutouts: Thanks a ton to the new members for supporting the channel: %s
-- Outro roll
-`,
-		video.ProjectName,
-		video.ProjectURL,
-		video.ProjectName,
-		video.Title,
-		video.Members,
-	)
 	form := huh.NewForm(
 		huh.NewGroup(
-			huh.NewText().Lines(10).Title(c.ColorFromString("Animations", video.Animations)).Value(&video.Animations).Editor("vi").Placeholder(animationsPlaceHolder),
-			huh.NewConfirm().Title(c.ColorFromBool("Thumbnail requested", video.RequestThumbnail)).Value(&video.RequestThumbnail),
+			huh.NewConfirm().Title(c.ColorFromBool("Thumbnail request", video.RequestThumbnail)).Value(&video.RequestThumbnail),
 			huh.NewConfirm().Affirmative("Save").Negative("Cancel").Value(&save),
 		),
 	)
@@ -487,6 +501,7 @@ func (c *Choices) ChooseDefine(video Video) (Video, error) {
 		video.Tags,
 		video.DescriptionTags,
 		video.RequestThumbnail,
+		video.Gist,
 		video.Animations,
 		video.Tweet,
 	})
@@ -506,7 +521,6 @@ func (c *Choices) ChooseDefine(video Video) (Video, error) {
 func (c *Choices) ChooseEdit(video Video) (Video, error) {
 	save := true
 	requestEditOrig := video.RequestEdit
-	gistOrig := video.Gist
 	playlistOptions := huh.NewOptions[string]()
 	for key, value := range getYouTubePlaylists() {
 		selected := false
@@ -520,13 +534,12 @@ func (c *Choices) ChooseEdit(video Video) (Video, error) {
 	var playlists []string
 	form := huh.NewForm(
 		huh.NewGroup(
-			huh.NewInput().Title(c.ColorFromString("Thumbnail path", video.Thumbnail)).Value(&video.Thumbnail),
+			huh.NewInput().Title(c.ColorFromString("Thumbnail Path", video.Thumbnail)).Value(&video.Thumbnail),
 			huh.NewInput().Title(c.ColorFromString("Members (comma separated)", video.Members)).Value(&video.Members),
-			huh.NewConfirm().Title(c.ColorFromBool("Edit requested", video.RequestEdit)).Value(&video.RequestEdit),
+			huh.NewConfirm().Title(c.ColorFromBool("Edit Request", video.RequestEdit)).Value(&video.RequestEdit),
 			huh.NewText().Lines(5).Title(c.ColorFromString("Timecodes", video.Timecodes)).Value(&video.Timecodes),
-			huh.NewConfirm().Title(c.ColorFromBool("Movie done", video.Movie)).Value(&video.Movie),
-			huh.NewConfirm().Title(c.ColorFromBool("Slides done", video.Slides)).Value(&video.Slides),
-			huh.NewInput().Title(c.ColorFromString("Gist path", video.Gist)).Value(&video.Gist),
+			huh.NewConfirm().Title(c.ColorFromBool("Movie Done", video.Movie)).Value(&video.Movie),
+			huh.NewConfirm().Title(c.ColorFromBool("Slides Done", video.Slides)).Value(&video.Slides),
 			huh.NewMultiSelect[string]().Title("Playlists").Options(playlistOptions...).Value(&playlists),
 			huh.NewConfirm().Affirmative("Save").Negative("Cancel").Value(&save),
 		),
@@ -546,19 +559,11 @@ func (c *Choices) ChooseEdit(video Video) (Video, error) {
 		video.Timecodes,
 		video.Movie,
 		video.Slides,
-		video.Gist,
 		video.Playlists,
 	})
 	if !requestEditOrig && video.RequestEdit {
 		email := NewEmail(settings.Email.Password)
-		if email.SendEdit(settings.Email.From, settings.Email.EditTo, video) != nil {
-			panic(err)
-		}
-	}
-	if len(gistOrig) == 0 && len(video.Gist) > 0 {
-		repo := Repo{}
-		video.GistUrl, err = repo.Gist(video.Gist, video.Title, video.ProjectName, video.ProjectURL, video.RelatedVideos)
-		if err != nil {
+		if err = email.SendEdit(settings.Email.From, settings.Email.EditTo, video); err != nil {
 			panic(err)
 		}
 	}
@@ -589,7 +594,9 @@ func (c *Choices) ChoosePublish(video Video) (Video, error) {
 	} else {
 		sponsorsNotifyText = redStyle.Render(sponsorsNotifyText)
 	}
+	createGist := video.GistUrl != ""
 	fields := []huh.Field{
+		huh.NewConfirm().Title(c.ColorFromBool("Create Gist", createGist)).Value(&createGist),
 		huh.NewInput().Title(c.ColorFromString("Upload video", video.UploadVideo)).Value(&video.UploadVideo),
 		// TODO: Automate
 		huh.NewConfirm().Title(c.ColorFromBool("Twitter post", video.TweetPosted)).Value(&video.TweetPosted),
@@ -635,6 +642,7 @@ func (c *Choices) ChoosePublish(video Video) (Video, error) {
 			return Video{}, err
 		}
 		video.Publish.Completed, video.Publish.Total = c.Count([]interface{}{
+			video.GistUrl,
 			video.UploadVideo,
 			video.TweetPosted,
 			video.LinkedInPosted,
@@ -652,6 +660,17 @@ func (c *Choices) ChoosePublish(video Video) (Video, error) {
 		video.Publish.Total++
 		if video.NotifiedSponsors || len(video.Sponsored) == 0 || video.Sponsored == "N/A" || video.Sponsored == "-" {
 			video.Publish.Completed++
+		}
+		if createGist {
+			repo := Repo{}
+			err = repo.CleanupGist(video.Gist)
+			if err != nil {
+				return Video{}, err
+			}
+			video.GistUrl, err = repo.Gist(video.Gist, video.Title, video.ProjectName, video.ProjectURL, video.RelatedVideos)
+			if err != nil {
+				return Video{}, err
+			}
 		}
 		if len(uploadVideoOrig) == 0 && len(video.UploadVideo) > 0 {
 			video.VideoId = uploadVideo(video)
