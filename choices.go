@@ -444,7 +444,7 @@ func (c *Choices) ChooseDefine(video Video) (Video, error) {
 		&video,
 		&video.Tweet,
 		"Tweet",
-		fmt.Sprintf("Write a Tweet about a YouTube video with the title \"%s\". Include @DevOpsToolkit into it.", video.Title),
+		fmt.Sprintf("Write a Tweet about a YouTube video with the title \"%s\". Include @DevOpsToolkit into it. Use [YouTube Link] as a placeholder for the link to the vidfeo", video.Title),
 	)
 	if err != nil {
 		return video, err
