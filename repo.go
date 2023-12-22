@@ -118,6 +118,7 @@ func (r *Repo) GetAnimations(filePath string) ([]string, error) {
 				line = strings.ReplaceAll(line, "#", "")
 				line = strings.TrimSpace(line)
 				line = fmt.Sprintf("Section: %s", line)
+				// TODO: Add to timecodes
 				hashLines = append(hashLines, line)
 			}
 		} else if strings.HasPrefix(line, "# TODO:") {

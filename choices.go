@@ -26,17 +26,6 @@ var orangeStyle = lipgloss.NewStyle().
 	Bold(true).
 	Foreground(lipgloss.Color("3"))
 
-var errorStyle = lipgloss.NewStyle().
-	Bold(true).
-	Foreground(lipgloss.Color("#FFFFFF")).
-	Background(lipgloss.Color("#B60A02")).
-	PaddingTop(1).
-	PaddingBottom(1).
-	PaddingLeft(2).
-	PaddingRight(2).
-	MarginTop(1).
-	MarginBottom(1)
-
 var confirmationStyle = lipgloss.NewStyle().
 	Bold(true).
 	Foreground(lipgloss.Color("#FFFFFF")).
@@ -110,7 +99,7 @@ func (c *Choices) GetPhaseText(text string, task Tasks) string {
 
 func (c *Choices) ChoosePhase(video Video) {
 	returnVar := false
-	for returnVar == false {
+	for !returnVar {
 		const phaseInit = 0
 		const phaseWork = 1
 		const phaseDefine = 2
@@ -384,7 +373,7 @@ func (c *Choices) ChooseDefineAI(video *Video, field *string, fieldName string, 
 		}
 		form := huh.NewForm(
 			huh.NewGroup(
-				huh.NewText().Lines(20).CharLimit(1000).Title(c.ColorFromString(fieldName, *field)).Value(field),
+				huh.NewText().Lines(20).CharLimit(10000).Title(c.ColorFromString(fieldName, *field)).Value(field),
 				huh.NewText().Lines(20).CharLimit(10000).Title("AI Responses").Value(&history),
 				huh.NewInput().Title(c.ColorFromString("Question", *field)).Value(&question),
 				huh.NewConfirm().Affirmative("Ask").Negative("Save & Continue").Value(&askAgain),
