@@ -6,7 +6,9 @@ import (
 	"log"
 	"os"
 	"reflect"
+	"sort"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
@@ -665,7 +667,7 @@ func (c *Choices) ChoosePublish(video Video) (Video, error) {
 		if video.NotifiedSponsors || len(video.Sponsored) == 0 || video.Sponsored == "N/A" || video.Sponsored == "-" {
 			video.Publish.Completed++
 		}
-		if createGist {
+		if createGist && len(video.GistUrl) == 0 {
 			repo := Repo{}
 			err = repo.CleanupGist(video.Gist)
 			if err != nil {
@@ -830,33 +832,45 @@ func (c *Choices) GetVideoPhase(vi VideoIndex) int {
 func (c *Choices) ChooseVideos(vi []VideoIndex, phase int) {
 	const actionEdit = 0
 	const actionDelete = 1
-	var selectedVideo int
+	var selectedVideo Video
 	var selectedAction int
-	options := huh.NewOptions[int]()
+	options := huh.NewOptions[Video]()
+	sortedVideos := []Video{}
 	for i := range vi {
 		videoPhase := c.GetVideoPhase(vi[i])
 		if videoPhase == phase {
-			title := vi[i].Name
 			yaml := YAML{}
 			path := c.GetFilePath(vi[i].Category, vi[i].Name, "yaml")
 			video := yaml.GetVideo(path)
-			if len(video.SponsorshipBlocked) > 0 && video.SponsorshipBlocked != "-" && video.SponsorshipBlocked != "N/A" {
-				title = fmt.Sprintf("%s (%s)", title, video.SponsorshipBlocked)
-			} else {
-				if len(video.Date) > 0 {
-					title = fmt.Sprintf("%s (%s)", title, video.Date)
-				}
-				if len(video.Sponsored) > 0 && video.Sponsored != "-" && video.Sponsored != "N/A" {
-					title = fmt.Sprintf("%s (sponsored)", title)
-				}
-			}
-
-			options = append(options, huh.NewOption(title, i))
+			video.Name = vi[i].Name
+			video.Path = path
+			video.Index = i
+			sortedVideos = append(sortedVideos, video)
 		}
+	}
+	sort.Slice(sortedVideos, func(i, j int) bool {
+		date1, _ := time.Parse("2006-01-02T15:04", sortedVideos[i].Date)
+		date2, _ := time.Parse("2006-01-02T15:04", sortedVideos[j].Date)
+		return date1.Before(date2)
+	})
+	for _, video := range sortedVideos {
+		title := video.Name
+		if len(video.SponsorshipBlocked) > 0 && video.SponsorshipBlocked != "-" && video.SponsorshipBlocked != "N/A" {
+			title = fmt.Sprintf("%s (%s)", title, video.SponsorshipBlocked)
+		} else {
+			if len(video.Date) > 0 {
+				title = fmt.Sprintf("%s (%s)", title, video.Date)
+			}
+			if len(video.Sponsored) > 0 && video.Sponsored != "-" && video.Sponsored != "N/A" {
+				title = fmt.Sprintf("%s (sponsored)", title)
+			}
+		}
+
+		options = append(options, huh.NewOption(title, video))
 	}
 	form := huh.NewForm(
 		huh.NewGroup(
-			huh.NewSelect[int]().
+			huh.NewSelect[Video]().
 				Title("Which video would you like to work on?").
 				Options(options...).
 				Value(&selectedVideo),
@@ -875,26 +889,20 @@ func (c *Choices) ChooseVideos(vi []VideoIndex, phase int) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	if selectedVideo == actionReturn {
-		return
-	}
-
-	selectedVideoIndex := vi[selectedVideo]
 	switch selectedAction {
 	case actionEdit:
-		path := c.GetFilePath(selectedVideoIndex.Category, selectedVideoIndex.Name, "yaml")
-		yaml := YAML{}
-		video := yaml.GetVideo(path)
-		video.Path = path
 		choices := Choices{}
-		choices.ChoosePhase(video)
+		choices.ChoosePhase(selectedVideo)
 	case actionDelete:
-		if os.Remove(c.GetFilePath(selectedVideoIndex.Category, selectedVideoIndex.Name, "sh")) != nil {
+		shPath := strings.ReplaceAll(selectedVideo.Path, ".yaml", ".sh")
+		if os.Remove(shPath) != nil {
 			panic(err)
 		}
-		os.Remove(c.GetFilePath(selectedVideoIndex.Category, selectedVideoIndex.Name, "yaml"))
-		selectedVideoIndex = vi[len(vi)-1]
-		vi = append(vi[:selectedVideo], vi[selectedVideo+1:]...)
+		os.Remove(selectedVideo.Path)
+		// selectedVideoIndex = vi[len(vi)-1]
+		vi = append(vi[:selectedVideo.Index], vi[selectedVideo.Index+1:]...)
+	case actionReturn:
+		return
 	}
 	yaml := YAML{IndexPath: "index.yaml"}
 	yaml.WriteIndex(vi)
@@ -902,7 +910,7 @@ func (c *Choices) ChooseVideos(vi []VideoIndex, phase int) {
 
 func (c *Choices) IsEmpty(str string) error {
 	if len(str) == 0 {
-		return errors.New("Required!")
+		return errors.New("Required")
 	}
 	return nil
 }

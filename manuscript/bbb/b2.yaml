@@ -1,6 +1,18 @@
-prepublish:
-    completed: 4
-    total: 33
+name: b2
+index: 0
+path: manuscript/bbb/b2.yaml
+init:
+    completed: 5
+    total: 8
+work:
+    completed: 0
+    total: 0
+define:
+    completed: 0
+    total: 0
+edit:
+    completed: 0
+    total: 0
 publish:
     completed: 0
     total: 0
@@ -10,7 +22,7 @@ sponsored: ""
 sponsoredemails: []
 sponsorshipblocked: ""
 subject: ""
-date: ""
+date: 2024-01-15T16:00
 delayed: false
 code: false
 screen: false

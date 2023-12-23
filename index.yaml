@@ -4,7 +4,7 @@
   category: ddd
 - name: b2
   category: bbb
-- name: b1
-  category: bbb
 - name: b3
   category: bbb
+- name: d1
+  category: ddd

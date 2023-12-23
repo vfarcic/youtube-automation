@@ -17,6 +17,8 @@ type VideoIndex struct {
 }
 
 type Video struct {
+	Name                string
+	Index               int
 	Path                string
 	Init                Tasks
 	Work                Tasks

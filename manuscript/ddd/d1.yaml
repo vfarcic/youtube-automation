@@ -1,10 +1,22 @@
-prepublish:
+name: d1
+index: 0
+path: manuscript/ddd/d1.yaml
+init:
     completed: 4
-    total: 33
+    total: 8
+work:
+    completed: 0
+    total: 0
+define:
+    completed: 0
+    total: 0
+edit:
+    completed: 0
+    total: 0
 publish:
     completed: 0
     total: 0
-projectname: b11111
+projectname: d111111
 projecturl: ""
 sponsored: ""
 sponsoredemails: []
