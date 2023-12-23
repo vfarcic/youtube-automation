@@ -19,28 +19,32 @@
 # Setup #
 #########
 
-# TODO:
+# TODO: Do the setup
 
-##########
-# TODO:: #
-##########
+########
+# Demo #
+########
+
+ls -l
 
 # TODO: Gist
 
 # TODO: Commands
 
 #######################
-# TODO: Pros And Cons #
+# Something Pros And Cons #
 #######################
 
 # Cons:
-# - TODO:
+# - bad
+# - ugly
 
 # Pros:
-# - TODO:
+# - good
+# - pretty
 
 ###########
 # Destroy #
 ###########
 
-# TODO:
+# FIXME: Destroy everything

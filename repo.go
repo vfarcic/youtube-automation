@@ -62,10 +62,11 @@ func (r *Repo) Update(repo, title, videoID string) error {
 	}
 	readmePath := fmt.Sprintf("%s/README.md", repo)
 	file, err := os.OpenFile(readmePath, os.O_CREATE|os.O_WRONLY, 0644)
-	defer file.Close()
 	if err != nil {
+		file.Close()
 		return err
 	}
+	defer file.Close()
 	contentTitle := "# Demo Manifests and Code Used in DevOps Toolkit Videos"
 	contentVideo := fmt.Sprintf("[![%s](https://img.youtube.com/vi/%s/0.jpg)](https://youtu.be/%s)", title, videoID, videoID)
 	content := fmt.Sprintf("%s\n\n%s", contentTitle, contentVideo)
@@ -93,14 +94,13 @@ func (r *Repo) Update(repo, title, videoID string) error {
 	return err
 }
 
-func (r *Repo) GetAnimations(filePath string) ([]string, error) {
+func (r *Repo) GetAnimations(filePath string) (animations, sections []string, err error) {
 	file, err := os.Open(filePath)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer file.Close()
 
-	var hashLines []string
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -118,20 +118,20 @@ func (r *Repo) GetAnimations(filePath string) ([]string, error) {
 				line = strings.ReplaceAll(line, "#", "")
 				line = strings.TrimSpace(line)
 				line = fmt.Sprintf("Section: %s", line)
-				// TODO: Add to timecodes
-				hashLines = append(hashLines, line)
+				animations = append(animations, line)
+				sections = append(sections, line)
 			}
 		} else if strings.HasPrefix(line, "# TODO:") {
 			line = strings.ReplaceAll(line, "# TODO:", "")
 			line = strings.TrimSpace(line)
-			hashLines = append(hashLines, line)
+			animations = append(animations, line)
 		}
 	}
 	if err := scanner.Err(); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return hashLines, nil
+	return animations, sections, nil
 }
 
 func (r *Repo) CleanupGist(filePath string) error {

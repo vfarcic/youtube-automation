@@ -57,8 +57,8 @@ func (c *Choices) ChooseIndex() {
 			huh.NewSelect[int]().
 				Title("What do you want to do?").
 				Options(
-					huh.NewOption("Create a video", indexCreateVideo),
 					huh.NewOption("List videos", indexListVideos),
+					huh.NewOption("Create a video", indexCreateVideo),
 					huh.NewOption("Exit", indexExit),
 				).
 				Value(&selectedIndex),
@@ -456,19 +456,25 @@ func (c *Choices) ChooseDefine(video Video) (Video, error) {
 			return Video{}, err
 		}
 		if generateAnimations {
-			animations := ""
+			video.Animations = ""
+			video.Timecodes = ""
 			repo := Repo{}
-			lines, err := repo.GetAnimations(video.Gist)
+			linesSlice, sectionsSlice, err := repo.GetAnimations(video.Gist)
 			if err != nil {
 				panic(err)
 			}
 			if err != nil {
 				return Video{}, err
 			}
-			for _, line := range lines {
-				animations = fmt.Sprintf("%s\n- %s", animations, line)
+			for _, line := range linesSlice {
+				video.Animations = fmt.Sprintf("%s\n- %s", video.Animations, line)
 			}
-			video.Animations = animations
+			if len(video.Timecodes) == 0 {
+				video.Timecodes = "00:00 TODO:"
+				for _, section := range sectionsSlice {
+					video.Timecodes = fmt.Sprintf("%s\nTODO:TODO %s", video.Timecodes, section)
+				}
+			}
 		}
 	}
 	// Thumbnail
@@ -521,12 +527,18 @@ func (c *Choices) ChooseEdit(video Video) (Video, error) {
 		playlistOptions = append(playlistOptions, huh.NewOption(value, value).Selected(selected))
 	}
 	var playlists []string
+	timeCodesTitle := "Timecodes"
+	if strings.Contains(video.Timecodes, "TODO:") {
+		timeCodesTitle = redStyle.Render(timeCodesTitle)
+	} else {
+		timeCodesTitle = greenStyle.Render(timeCodesTitle)
+	}
 	form := huh.NewForm(
 		huh.NewGroup(
 			huh.NewInput().Title(c.ColorFromString("Thumbnail Path", video.Thumbnail)).Value(&video.Thumbnail),
 			huh.NewInput().Title(c.ColorFromString("Members (comma separated)", video.Members)).Value(&video.Members),
 			huh.NewConfirm().Title(c.ColorFromBool("Edit Request", video.RequestEdit)).Value(&video.RequestEdit),
-			huh.NewText().Lines(5).Title(c.ColorFromString("Timecodes", video.Timecodes)).Value(&video.Timecodes),
+			huh.NewText().Lines(5).Title(timeCodesTitle).Value(&video.Timecodes),
 			huh.NewConfirm().Title(c.ColorFromBool("Movie Done", video.Movie)).Value(&video.Movie),
 			huh.NewConfirm().Title(c.ColorFromBool("Slides Done", video.Slides)).Value(&video.Slides),
 			huh.NewMultiSelect[string]().Title("Playlists").Options(playlistOptions...).Value(&playlists),
@@ -545,11 +557,14 @@ func (c *Choices) ChooseEdit(video Video) (Video, error) {
 		video.Thumbnail,
 		video.Members,
 		video.RequestEdit,
-		video.Timecodes,
 		video.Movie,
 		video.Slides,
 		video.Playlists,
 	})
+	video.Edit.Total++
+	if !strings.Contains(video.Timecodes, "TODO:") {
+		video.Edit.Completed++
+	}
 	if !requestEditOrig && video.RequestEdit {
 		email := NewEmail(settings.Email.Password)
 		if err = email.SendEdit(settings.Email.From, settings.Email.EditTo, video); err != nil {

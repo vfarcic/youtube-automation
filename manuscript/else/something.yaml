@@ -43,37 +43,31 @@ requestthumbnail: true
 thumbnail: thumbnail.png
 members: member1, member2, member3
 animations: |-
-    - Thumbnail: WASM video
-    - Thumbnail: EsZcDUaSUss
-    - Ad: Project: groundcover, Material: https://drive.google.com/drive/folders/1CwkKaaoYp0aUirond0ZbnvxHv44cuhYh?usp=sharing, URL: https://groundcover.com
-    - Section: Apply Predefined Policies with Kubewarden
-    - Logos: kyverno.png, opa.png
-    - Section: Find and Inspect Kubewarden Policy Modules
-    - screen-artifact-hub
-    - Logos: kyverno.png, opa.png
-    - Section: Use Custom Kubewarden Modules and Policies
-    - Miki: Skip the screen recording from 12:23 to 14:44.
-    - Logos: kyverno.png, opa.png
-    - Section: Use Custom Kubewarden Modules and Policies
-    - Logos: kyverno.png, opa.png
-    - Section: Kubewarden Pros and Cons
-    - Logos: kyverno.png, opa.png
+    - Section: [[url]]
+    - Intro (Sara)
+    - Title screen
+    - Do the setup
+    - Section: Demo
+    - Gist
+    - Commands
+    - Section: Something Pros And Cons
 requestedit: true
 movie: true
 timecodes: |-
     00:00 Intro
-    01:23 Something else
-    02:34 The End
-gist: manuscript/security/kubewarden.sh
+    00:01 Section: [[url]]
+    00:02 Section: Demo
+    00:03 Section: Something Pros And Cons
+gist: manuscript/else/something.sh
 gisturl: ""
 relatedvideos: "Argo CD - Applying GitOps Principles To Manage A Production Environment In Kubernetes: https://youtu.be/vpWQeoaiRM4\nHow To Apply GitOps To Everything - Combining Argo CD And Crossplane: https://youtu.be/yrj4lmScKHQ\nCrossplane - GitOps-based Infrastructure as Code "
 playlists:
+    - title: Crossplane
+      id: PLyicRj904Z9_X62k6_XM_xlJkSyoQDkS2
     - title: Shorts
       id: PLyicRj904Z99psBRs798Xg0mhJY__4aJt
     - title: Ask Me Anything
       id: PLyicRj904Z99d82mxPAtTtSR98g75Botj
-    - title: Crossplane
-      id: PLyicRj904Z9_X62k6_XM_xlJkSyoQDkS2
 uploadvideo: sdsdsd
 videoid: xyz
 tweet: "\U0001F680 Boost your development superhero powers with the ultimate guide to Mastering CI/CD! \U0001F3AF\nStreamline your processes & unlock success like never before!\nDon't miss this game-changing YouTube video—your code will thank you! \U0001F4AA\n\n#DevOps #CI/CD #DevelopmentSuccess\n\nhttps://youtu.be/E_8zpztN2wA\n"
