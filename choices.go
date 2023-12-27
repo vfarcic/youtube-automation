@@ -12,6 +12,8 @@ import (
 
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 type Choices struct{}
@@ -46,23 +48,21 @@ const videosPhaseDelayed = 5
 const videosPhaseSponsoredBlocked = 6
 const videosPhaseIdeas = 7
 
+const indexCreateVideo = 0
+const indexListVideos = 1
+
+const actionEdit = 0
+const actionDelete = 1
 const actionReturn = 99
 
 func (c *Choices) ChooseIndex() {
-	const indexCreateVideo = 0
-	const indexListVideos = 1
-	const indexExit = 2
 	var selectedIndex int
 	yaml := YAML{IndexPath: "index.yaml"}
 	form := huh.NewForm(
 		huh.NewGroup(
 			huh.NewSelect[int]().
 				Title("What do you want to do?").
-				Options(
-					huh.NewOption("List videos", indexListVideos),
-					huh.NewOption("Create a video", indexCreateVideo),
-					huh.NewOption("Exit", indexExit),
-				).
+				Options(c.getIndexOptions()...).
 				Value(&selectedIndex),
 		),
 	)
@@ -86,7 +86,7 @@ func (c *Choices) ChooseIndex() {
 				break
 			}
 		}
-	case indexExit:
+	case actionReturn:
 		os.Exit(0)
 	}
 }
@@ -160,15 +160,14 @@ func (c *Choices) ChoosePhase(video Video) {
 }
 
 func (c *Choices) ChooseCreateVideo() VideoIndex {
-	var name string
-	var category string
-	form := huh.NewForm(
-		huh.NewGroup(
-			huh.NewInput().Prompt("Name: ").Value(&name).Validate(c.IsEmpty),
-			huh.NewInput().Prompt("Category: ").Value(&category).Validate(c.IsEmpty),
-		),
-	)
-	err := form.Run()
+	var name, category string
+	save := true
+	fields, err := c.getCreateVideoFields(&name, &category, &save)
+	if err != nil {
+		panic(err)
+	}
+	form := huh.NewForm(huh.NewGroup(fields...))
+	err = form.Run()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -176,7 +175,9 @@ func (c *Choices) ChooseCreateVideo() VideoIndex {
 		Name:     name,
 		Category: category,
 	}
-
+	if !save {
+		return vi
+	}
 	dirPath := c.GetDirPath(vi.Category)
 	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
 		os.Mkdir(dirPath, 0755)
@@ -191,35 +192,35 @@ func (c *Choices) ChooseCreateVideo() VideoIndex {
 # Intro #
 #########
 
-# TODO: Title screen
+# FIXME:
 
 #########
 # Setup #
 #########
 
-# TODO:
+# FIXME:
 
-##########
-# TODO:: #
-##########
+###########
+# FIXME:: #
+###########
 
-# TODO:
+# FIXME:
 
-#######################
-# TODO: Pros and Cons #
-#######################
+########################
+# FIXME: Pros and Cons #
+########################
 
 # Cons:
-# - TODO:
+# - FIXME:
 
 # Pros:
-# - TODO:
+# - FIXME:
 
 ###########
 # Destroy #
 ###########
 
-# TODO:
+# FIXME:
 `
 	filePath := c.GetFilePath(vi.Category, vi.Name, "sh")
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
@@ -420,6 +421,9 @@ func (c *Choices) ChooseDefine(video Video) (Video, error) {
 		"Tags",
 		fmt.Sprintf("Write comma separated tags for a youtube video with the description \"%s\"", video.Description),
 	)
+	if err != nil {
+		return video, err
+	}
 	// Description tags
 	err = c.ChooseDefineAI(
 		&video,
@@ -820,7 +824,7 @@ func (c *Choices) GetVideoPhase(vi VideoIndex) int {
 		return videosPhasePublishPending
 	} else if video.RequestEdit {
 		return videosPhaseEditRequested
-	} else if video.Code && video.Screen && video.Head && video.Thumbnails && video.Diagrams {
+	} else if video.Code && video.Screen && video.Head && video.Diagrams {
 		return videosPhaseMaterialDone
 	} else if len(video.Date) > 0 {
 		return videosPhaseStarted
@@ -830,8 +834,6 @@ func (c *Choices) GetVideoPhase(vi VideoIndex) int {
 }
 
 func (c *Choices) ChooseVideos(vi []VideoIndex, phase int) {
-	const actionEdit = 0
-	const actionDelete = 1
 	var selectedVideo Video
 	var selectedAction int
 	options := huh.NewOptions[Video]()
@@ -876,11 +878,7 @@ func (c *Choices) ChooseVideos(vi []VideoIndex, phase int) {
 				Value(&selectedVideo),
 			huh.NewSelect[int]().
 				Title("What would you like to do with the video?").
-				Options(
-					huh.NewOption("Edit", actionEdit),
-					huh.NewOption("Delete", actionDelete),
-					huh.NewOption("Return", actionReturn),
-				).
+				Options(c.getActionOptions()...).
 				Value(&selectedAction),
 		),
 	)
@@ -985,4 +983,50 @@ func (c *Choices) GetOptionTextFromPlaylists(title string, values []Playlist) (s
 		completed = true
 	}
 	return title, completed
+}
+
+func (c *Choices) getCreateVideoFields(name, category *string, save *bool) ([]huh.Field, error) {
+	categories, err := c.getCategories()
+	if err != nil {
+		return nil, err
+	}
+	return []huh.Field{
+		huh.NewInput().Prompt("Name: ").Value(name),
+		huh.NewSelect[string]().Title("Category").Options(categories...).Value(category),
+		huh.NewConfirm().Affirmative("Save").Negative("Cancel").Value(save),
+	}, nil
+}
+
+func (c *Choices) getCategories() ([]huh.Option[string], error) {
+	files, err := os.ReadDir("manuscript")
+	if err != nil {
+		return nil, err
+	}
+	options := huh.NewOptions[string]()
+	for _, file := range files {
+		if file.IsDir() {
+			caser := cases.Title(language.AmericanEnglish)
+			categoryKey := strings.ReplaceAll(file.Name(), "-", " ")
+			categoryKey = caser.String(categoryKey)
+			options = append(options, huh.NewOption(categoryKey, file.Name()))
+		}
+	}
+	return options, nil
+}
+
+func (c *Choices) getIndexOptions() []huh.Option[int] {
+	return []huh.Option[int]{
+		huh.NewOption("List Videos", indexListVideos),
+		huh.NewOption("Create Video", indexCreateVideo),
+		huh.NewOption("Exit", actionReturn),
+	}
+}
+
+func (c *Choices) getActionOptions() []huh.Option[int] {
+	return []huh.Option[int]{
+		huh.NewOption("Edit", actionEdit),
+		huh.NewOption("Delete", actionDelete),
+		// TODO: Add the option to move video files to a different directory
+		huh.NewOption("Return", actionReturn),
+	}
 }
