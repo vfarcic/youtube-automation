@@ -1,4 +1,6 @@
-path: manuscript/else/something.yaml
+name: Something
+index: 0
+path: manuscript/category-04/something.yaml
 init:
     completed: 8
     total: 8
