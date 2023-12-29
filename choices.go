@@ -673,9 +673,12 @@ func (c *Choices) ChoosePublish(video Video) (Video, error) {
 		}
 		if createGist && len(video.GistUrl) == 0 {
 			repo := Repo{}
-			err = repo.CleanupGist(video.Gist)
-			if err != nil {
-				return Video{}, err
+			// TODO: Remove
+			if strings.HasSuffix(video.Gist, ".sh") {
+				err = repo.CleanupGist(video.Gist)
+				if err != nil {
+					return Video{}, err
+				}
 			}
 			video.GistUrl, err = repo.Gist(video.Gist, video.Title, video.ProjectName, video.ProjectURL, video.RelatedVideos)
 			if err != nil {

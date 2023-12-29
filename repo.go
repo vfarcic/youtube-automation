@@ -12,12 +12,20 @@ import (
 type Repo struct{}
 
 func (r *Repo) Gist(gist, title, projectName, projectUrl, relatedVideos string) (string, error) {
+	if gist == "N/A" {
+		return "", nil
+	}
+	if strings.HasSuffix(gist, ".sh") {
+		return r.gistFromScript(gist, title, projectName, projectUrl, relatedVideos)
+	}
+	return r.gistFromMarkdown(gist, title, projectName, projectUrl, relatedVideos)
+}
+
+// TODO: Remove
+func (r *Repo) gistFromScript(gist, title, projectName, projectUrl, relatedVideos string) (string, error) {
 	data, err := os.ReadFile(gist)
 	if err != nil {
 		return "", err
-	}
-	if gist == "N/A" {
-		return "", nil
 	}
 	titleBorder := strings.Repeat("#", len(title)+4)
 	newTitle := fmt.Sprintf("%s\n# %s #\n%s", titleBorder, title, titleBorder)
@@ -48,6 +56,78 @@ func (r *Repo) Gist(gist, title, projectName, projectUrl, relatedVideos string) 
 	gistUrl := strings.TrimSpace(string(output))
 	modifiedData = fmt.Sprintf("# Source: %s\n%s", gistUrl, modifiedData)
 	err = os.WriteFile(gist, []byte(modifiedData), 0644)
+	if err != nil {
+		return "", err
+	}
+	return gistUrl, nil
+}
+
+// TODO: Replace with a template
+func (r *Repo) gistFromMarkdown(filePath, title, projectName, projectUrl, relatedVideos string) (string, error) {
+	titleBorder := strings.Repeat("#", len(title)+4)
+	gist := fmt.Sprintf("%s\n# %s #\n%s\n", titleBorder, title, titleBorder)
+	additionalInfo := "# Additional Info:\n"
+	if len(projectUrl) > 0 {
+		additionalInfo = fmt.Sprintf("%s# - %s: %s\n", additionalInfo, projectName, projectUrl)
+	}
+	if len(relatedVideos) > 0 {
+		a := strings.Split(relatedVideos, "\n")
+		for _, t := range a {
+			additionalInfo = fmt.Sprintf("%s# - %s\n", additionalInfo, t)
+		}
+	}
+	if len(additionalInfo) > 0 {
+		gist = fmt.Sprintf("%s\n%s\n", gist, strings.TrimRight(additionalInfo, "\n"))
+	}
+	file, err := os.Open(filePath)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+	scanner := bufio.NewScanner(file)
+	sections := make(map[string][]string)
+	sh := false
+	section := ""
+	for scanner.Scan() {
+		line := scanner.Text()
+		line = strings.ReplaceAll(line, " ", " ")
+		if strings.HasPrefix(line, "## ") {
+			section = strings.Replace(line, "## ", "", 1)
+		} else if strings.HasPrefix(line, "FIXME:") {
+			sections[section] = append(sections[section], strings.Replace(line, "FIXME:", "#", 1))
+		} else if line == "```sh" || line == "```bash" {
+			sh = true
+		} else if line == "```" {
+			sh = false
+		} else if sh && len(line) > 0 {
+			sections[section] = append(sections[section], line)
+		}
+	}
+	for section, lines := range sections {
+		if len(lines) > 0 {
+			decoration := strings.Repeat("#", len(section)+4)
+			gist = fmt.Sprintf("%s\n%s\n# %s #\n%s\n", gist, decoration, section, decoration)
+			for _, line := range lines {
+				gist = fmt.Sprintf("%s\n%s", gist, line)
+				if !strings.HasSuffix(line, "\\") {
+					gist = fmt.Sprintf("%s\n", gist)
+				}
+			}
+		}
+	}
+	gistPath := strings.Replace(filePath, ".md", ".sh", 1)
+	err = os.WriteFile(gistPath, []byte(gist), 0644)
+	if err != nil {
+		return "", err
+	}
+	cmd := exec.Command("gh", "gist", "create", "--public", gistPath)
+	output, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+	gistUrl := strings.TrimSpace(string(output))
+	gist = fmt.Sprintf("# Source: %s\n\n%s", gistUrl, gist)
+	err = os.WriteFile(gistPath, []byte(gist), 0644)
 	if err != nil {
 		return "", err
 	}
@@ -95,6 +175,14 @@ func (r *Repo) Update(repo, title, videoID string) error {
 }
 
 func (r *Repo) GetAnimations(filePath string) (animations, sections []string, err error) {
+	if strings.HasSuffix(filePath, ".sh") {
+		return r.getAnimationsFromScript(filePath)
+	}
+	return r.getAnimationsFromMarkdown(filePath)
+}
+
+// TODO: Remove
+func (r *Repo) getAnimationsFromScript(filePath string) (animations, sections []string, err error) {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return nil, nil, err
@@ -125,6 +213,46 @@ func (r *Repo) GetAnimations(filePath string) (animations, sections []string, er
 			line = strings.ReplaceAll(line, "# TODO:", "")
 			line = strings.TrimSpace(line)
 			animations = append(animations, line)
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, nil, err
+	}
+
+	return animations, sections, nil
+}
+
+func (r *Repo) getAnimationsFromMarkdown(filePath string) (animations, sections []string, err error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+		line = strings.TrimSpace(line)
+		line = strings.ReplaceAll(line, " ", " ")
+		if strings.HasPrefix(line, "TODO:") {
+			line = strings.ReplaceAll(line, "TODO:", "")
+			line = strings.TrimSpace(line)
+			animations = append(animations, line)
+		} else if strings.HasPrefix(line, "## ") {
+			containsAny := false
+			for _, value := range []string{"## Intro", "## Setup", "## Destroy"} {
+				if strings.Contains(line, value) {
+					containsAny = true
+					break
+				}
+			}
+			if !containsAny {
+				line = strings.Replace(line, "## ", "", 1)
+				line = strings.TrimSpace(line)
+				line = fmt.Sprintf("Section: %s", line)
+				animations = append(animations, line)
+				sections = append(sections, line)
+			}
 		}
 	}
 	if err := scanner.Err(); err != nil {
@@ -180,7 +308,7 @@ func (r *Repo) CleanupGist(filePath string) error {
 		if len(lines) >= index+5 && strings.HasPrefix(line, "##") && strings.HasPrefix(lines[index+2], "##") && !strings.HasPrefix(lines[index+4], "##") {
 			outputLines = append(outputLines, lines[index:index+3]...)
 			index += 2
-		} else if !strings.HasSuffix(line, "#") || line == "# [[title]] #" {
+		} else if !strings.HasSuffix(line, "#") || line == "# [[title]] #" || line == "[[title]]" {
 			outputLines = append(outputLines, line)
 		}
 	}

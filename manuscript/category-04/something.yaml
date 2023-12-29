@@ -11,7 +11,7 @@ define:
     completed: 8
     total: 8
 edit:
-    completed: 7
+    completed: 6
     total: 7
 publish:
     completed: 14
@@ -45,31 +45,38 @@ requestthumbnail: true
 thumbnail: thumbnail.png
 members: member1, member2, member3
 animations: |-
-    - Section: [[url]]
-    - Intro (Sara)
-    - Title screen
-    - Do the setup
-    - Section: Demo
-    - Gist
-    - Commands
-    - Section: Something Pros And Cons
+    - Logo: okteto.png, gitpod.png
+    - Logos: charm-gum.png, git.png, github.png, kind.png, kubectl (there is no logo so put text instead), yq (there is no logo so put text instead), jq.svg, teller.png, aws.png, azure.png, google-cloud.png
+    - Thumbnail: oosQ3z_9UEM
+    - Text: @ZiggleFingers (big)
+    - Logo: nix.png
+    - Section: Ephemeral Shell Environments with Nix
+    - Logo: oh-my-zsh.png
+    - Logo: nix.png
+    - Overlay: screen-01
+    - Logos: charm-gum.png, kind.png, kubectl (there is no logo so put text instead), yq (there is no logo so put text instead), aws.png, azure.png, google-cloud.png
+    - Logo: oh-my-zsh.png
+    - Miki: Ignore the screen between 09:12 and 09:27.
+    - Overlay: nixos-search; Lower-third: https://search.nixos.org
+    - Overlay: nix-store-gc
+    - Section: Nix Pros and Cons
+    - Logos: jenkins.png, github-actions.png, tekton.png, argo-workflows.png
 requestedit: true
 movie: true
 timecodes: |-
-    00:00 Intro
-    00:01 Section: [[url]]
-    00:02 Section: Demo
-    00:03 Section: Something Pros And Cons
-gist: manuscript/else/something.sh
-gisturl: ""
+    00:00 TODO:
+    TODO:TODO Section: Ephemeral Shell Environments with Nix
+    TODO:TODO Section: Nix Pros and Cons
+gist: manuscript/category-04/something.md
+gisturl: https://gist.github.com/vfarcic/29deee52bcd5720625e969205de2f0e1
 relatedvideos: "Argo CD - Applying GitOps Principles To Manage A Production Environment In Kubernetes: https://youtu.be/vpWQeoaiRM4\nHow To Apply GitOps To Everything - Combining Argo CD And Crossplane: https://youtu.be/yrj4lmScKHQ\nCrossplane - GitOps-based Infrastructure as Code "
 playlists:
-    - title: Crossplane
-      id: PLyicRj904Z9_X62k6_XM_xlJkSyoQDkS2
-    - title: Shorts
-      id: PLyicRj904Z99psBRs798Xg0mhJY__4aJt
     - title: Ask Me Anything
       id: PLyicRj904Z99d82mxPAtTtSR98g75Botj
+    - title: Shorts
+      id: PLyicRj904Z99psBRs798Xg0mhJY__4aJt
+    - title: Crossplane
+      id: PLyicRj904Z9_X62k6_XM_xlJkSyoQDkS2
 uploadvideo: sdsdsd
 videoid: xyz
 tweet: "\U0001F680 Boost your development superhero powers with the ultimate guide to Mastering CI/CD! \U0001F3AF\nStreamline your processes & unlock success like never before!\nDon't miss this game-changing YouTube video—your code will thank you! \U0001F4AA\n\n#DevOps #CI/CD #DevelopmentSuccess\n\nhttps://youtu.be/E_8zpztN2wA\n"
