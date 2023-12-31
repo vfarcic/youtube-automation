@@ -182,47 +182,29 @@ func (c *Choices) ChooseCreateVideo() VideoIndex {
 	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
 		os.Mkdir(dirPath, 0755)
 	}
-	scriptContent := `
-# [[title]] #
+	scriptContent := `## Intro
 
-# Additional Info:
-# - [[additional-info]]
+FIXME:
 
-#########
-# Intro #
-#########
+## Setup
 
-# FIXME:
+FIXME:
 
-#########
-# Setup #
-#########
+## FIXME:
 
-# FIXME:
+FIXME:
 
-###########
-# FIXME:: #
-###########
+## FIXME: Pros and Cons
 
-# FIXME:
+TODO: Header: Cons; Items: FIXME:
 
-########################
-# FIXME: Pros and Cons #
-########################
+TODO: Header: Pros; Items: FIXME:
 
-# Cons:
-# - FIXME:
+## Destroy
 
-# Pros:
-# - FIXME:
-
-###########
-# Destroy #
-###########
-
-# FIXME:
+FIXME:
 `
-	filePath := c.GetFilePath(vi.Category, vi.Name, "sh")
+	filePath := c.GetFilePath(vi.Category, vi.Name, "md")
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
 		f, err := os.Create(filePath)
 		if err != nil {
@@ -895,7 +877,7 @@ func (c *Choices) ChooseVideos(vi []VideoIndex, phase int) {
 		choices := Choices{}
 		choices.ChoosePhase(selectedVideo)
 	case actionDelete:
-		shPath := strings.ReplaceAll(selectedVideo.Path, ".yaml", ".sh")
+		shPath := strings.ReplaceAll(selectedVideo.Path, ".yaml", ".md")
 		if os.Remove(shPath) != nil {
 			panic(err)
 		}
