@@ -295,8 +295,8 @@ func (c *Choices) ChooseWork(video Video) (Video, error) {
 	form := huh.NewForm(
 		huh.NewGroup(
 			huh.NewConfirm().Title(c.ColorFromBool("Code done", video.Code)).Value(&video.Code),
-			huh.NewConfirm().Title(c.ColorFromBool("Screen done", video.Screen)).Value(&video.Screen),
 			huh.NewConfirm().Title(c.ColorFromBool("Talking head done", video.Head)).Value(&video.Head),
+			huh.NewConfirm().Title(c.ColorFromBool("Screen done", video.Screen)).Value(&video.Screen),
 			huh.NewText().Lines(3).Title(c.ColorFromString("Related videos", video.RelatedVideos)).Value(&video.RelatedVideos),
 			huh.NewConfirm().Title(c.ColorFromBool("Thumbnails done", video.Thumbnails)).Value(&video.Thumbnails),
 			huh.NewConfirm().Title(c.ColorFromBool("Diagrams done", video.Diagrams)).Value(&video.Diagrams),
