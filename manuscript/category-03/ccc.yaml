@@ -1,6 +1,18 @@
-prepublish:
+name: ccc
+index: 1
+path: manuscript/category-03/ccc.yaml
+init:
     completed: 4
-    total: 33
+    total: 8
+work:
+    completed: 0
+    total: 0
+define:
+    completed: 1
+    total: 8
+edit:
+    completed: 2
+    total: 7
 publish:
     completed: 0
     total: 0
@@ -30,10 +42,10 @@ requestthumbnail: false
 thumbnail: ""
 members: ""
 animations: ""
-requestedit: false
+requestedit: true
 movie: false
 timecodes: ""
-gist: ""
+gist: manuscript/category-03/ccc.md
 gisturl: ""
 relatedvideos: ""
 playlists: []

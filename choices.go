@@ -36,6 +36,19 @@ var confirmationStyle = lipgloss.NewStyle().
 	Background(lipgloss.Color("#006E14")).
 	PaddingTop(1).
 	PaddingBottom(1).
+	PaddingLeft(5).
+	PaddingRight(5).
+	MarginTop(1).
+	MarginBottom(1)
+
+var errorStyle = lipgloss.NewStyle().
+	Bold(true).
+	Foreground(lipgloss.Color("#FFFFFF")).
+	Background(lipgloss.Color("1")).
+	PaddingTop(1).
+	PaddingBottom(1).
+	PaddingLeft(5).
+	PaddingRight(5).
 	MarginTop(1).
 	MarginBottom(1)
 
@@ -101,6 +114,7 @@ func (c *Choices) GetPhaseText(text string, task Tasks) string {
 
 func (c *Choices) ChoosePhase(video Video) {
 	returnVar := false
+	errorMsg := ""
 	for !returnVar {
 		const phaseInit = 0
 		const phaseWork = 1
@@ -108,10 +122,14 @@ func (c *Choices) ChoosePhase(video Video) {
 		const phaseEdit = 3
 		const phasePublish = 4
 		var selected int
+		title := "Which type of tasks would you like to work on?"
+		if len(errorMsg) > 0 {
+			title = fmt.Sprintf("%s\n%s", errorStyle.Render(errorMsg), title)
+		}
 		form := huh.NewForm(
 			huh.NewGroup(
 				huh.NewSelect[int]().
-					Title("Which type of tasks would you like to work on?").
+					Title(title).
 					Options(
 						huh.NewOption(c.GetPhaseText("Initialize", video.Init), phaseInit),
 						huh.NewOption(c.GetPhaseText("Work", video.Work), phaseWork),
@@ -123,6 +141,7 @@ func (c *Choices) ChoosePhase(video Video) {
 					Value(&selected),
 			),
 		)
+		errorMsg = ""
 		err := form.Run()
 		if err != nil {
 			log.Fatal(err)
@@ -146,7 +165,7 @@ func (c *Choices) ChoosePhase(video Video) {
 		case phaseEdit:
 			var err error
 			if video, err = c.ChooseEdit(video); err != nil {
-				panic(err)
+				errorMsg = err.Error()
 			}
 		case phasePublish:
 			var err error
@@ -556,7 +575,7 @@ func (c *Choices) ChooseEdit(video Video) (Video, error) {
 	if !requestEditOrig && video.RequestEdit {
 		email := NewEmail(settings.Email.Password)
 		if err = email.SendEdit(settings.Email.From, settings.Email.EditTo, video); err != nil {
-			panic(err)
+			return video, err
 		}
 	}
 	video.Playlists = []Playlist{}

@@ -17,13 +17,16 @@ func NewEmail(password string) *Email {
 	}
 }
 
-func (e *Email) Send(from string, to []string, subject, body string) error {
+func (e *Email) Send(from string, to []string, subject, body string, attachmentPath string) error {
 	to = append(to, from)
 	msg := gomail.NewMessage()
 	msg.SetHeader("From", from)
 	msg.SetHeader("To", to...)
 	msg.SetHeader("Subject", subject)
 	msg.SetBody("text/html", body)
+	if attachmentPath != "" {
+		msg.Attach(attachmentPath)
+	}
 	dialer := gomail.NewDialer("smtp.gmail.com", 587, from, e.password)
 	if err := dialer.DialAndSend(msg); err != nil {
 		return err
@@ -64,7 +67,7 @@ Elements:
 </ul>
 %s
 `, video.Location, logos, video.Tagline, taglineIdeas)
-	err := e.Send(from, []string{to}, subject, body)
+	err := e.Send(from, []string{to}, subject, body, "")
 	if err != nil {
 		return err
 	}
@@ -72,6 +75,9 @@ Elements:
 }
 
 func (e *Email) SendEdit(from, to string, video Video) error {
+	if len(video.Gist) == 0 {
+		return fmt.Errorf("Gist is empty")
+	}
 	subject := fmt.Sprintf("Video: %s", video.ProjectName)
 	animations := strings.Split(video.Animations, "\n")
 	animationsString := ""
@@ -107,7 +113,7 @@ All the material is available at %s.
 </ul>
 `, video.Location, animationsString)
 	body = strings.ReplaceAll(body, "\n<li></li>", "")
-	err := e.Send(from, []string{to}, subject, body)
+	err := e.Send(from, []string{to}, subject, body, video.Gist)
 	if err != nil {
 		return err
 	}
@@ -123,7 +129,7 @@ The video has just been released and is available at https://youtu.be/%s. Please
 I'll send the invoice for %s in a separate message.
 `, videoID, sponsorshipPrice)
 	to = append(to, settings.Email.FinanceTo)
-	err := e.Send(from, to, subject, body)
+	err := e.Send(from, to, subject, body, "")
 	if err != nil {
 		return err
 	}
