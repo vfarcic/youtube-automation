@@ -33,25 +33,44 @@ func NewAIChatYouTube(endpoint, key, deployment string) *AzureOpenAI {
 func (a *AzureOpenAI) Chat(newMessage string) (map[int32]string, error) {
 	var resp azopenai.GetChatCompletionsResponse
 	keyCredential := azcore.NewKeyCredential(a.key)
-	client, err := azopenai.NewClientWithKeyCredential(a.endpoint, keyCredential, nil)
+	client, err := azopenai.NewClientWithKeyCredential(
+		a.endpoint,
+		keyCredential,
+		nil,
+	)
 	if err != nil {
 		return nil, err
 	}
-	a.messages = append(a.messages, &azopenai.ChatRequestUserMessage{Content: azopenai.NewChatRequestUserMessageContent(newMessage)})
+	a.messages = append(
+		a.messages,
+		&azopenai.ChatRequestUserMessage{
+			Content: azopenai.NewChatRequestUserMessageContent(newMessage),
+		},
+	)
 	action := func() {
-		resp, err = client.GetChatCompletions(context.TODO(), azopenai.ChatCompletionsOptions{
-			Messages:       a.messages,
-			DeploymentName: &a.deployment,
-		}, nil)
+		resp, err = client.GetChatCompletions(
+			context.TODO(),
+			azopenai.ChatCompletionsOptions{
+				Messages:       a.messages,
+				DeploymentName: &a.deployment,
+			}, nil)
 	}
-	spinner.New().Title("Contemplating how to destroy the world while trying to answer your question...").Action(action).Run()
+	spinner.New().
+		Title("Contemplating how to destroy the world while trying to answer your question...").
+		Action(action).
+		Run()
 	if err != nil {
 		return nil, err
 	}
 	out := make(map[int32]string)
 	for _, choice := range resp.Choices {
 		out[*choice.Index] = *choice.Message.Content
-		a.messages = append(a.messages, &azopenai.ChatRequestAssistantMessage{Content: choice.Message.Content})
+		a.messages = append(
+			a.messages,
+			&azopenai.ChatRequestAssistantMessage{
+				Content: choice.Message.Content,
+			},
+		)
 	}
 	return out, nil
 }

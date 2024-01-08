@@ -377,8 +377,8 @@ func (c *Choices) ChooseDefineAI(video *Video, field *string, fieldName string, 
 		}
 		form := huh.NewForm(
 			huh.NewGroup(
-				huh.NewText().Lines(20).CharLimit(10000).Title(c.ColorFromString(fieldName, *field)).Value(field),
-				huh.NewText().Lines(20).CharLimit(10000).Title("AI Responses").Value(&history),
+				huh.NewText().Lines(5).CharLimit(10000).Title(c.ColorFromString(fieldName, *field)).Value(field),
+				huh.NewText().Lines(5).CharLimit(10000).Title("AI Responses").Value(&history),
 				huh.NewInput().Title(c.ColorFromString("Question", *field)).Value(&question),
 				huh.NewConfirm().Affirmative("Ask").Negative("Save & Continue").Value(&askAgain),
 			).Title(fieldName),
