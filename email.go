@@ -93,6 +93,7 @@ func (e *Email) SendEdit(from, to string, video Video) error {
 <li>Lower third: %s + logo + URL (%s) (add to a few places when I mention %s)</li>
 <li>Text: Gist with the commands + an arrow pointing below (add shortly after we start showing the code)</li>
 <li>Title roll: %s</li>
+<li>Convert all text in bold (surounded with **) in the attachment into text on the screen</li>
 %s
 <li>Member shoutouts: Thanks a ton to the new members for supporting the channel: %s</li>
 <li>Outro roll</li>`,

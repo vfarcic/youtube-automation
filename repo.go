@@ -241,7 +241,7 @@ func (r *Repo) getAnimationsFromMarkdown(filePath string) (animations, sections 
 		} else if strings.HasPrefix(line, "## ") {
 			containsAny := false
 			for _, value := range []string{"## Intro", "## Setup", "## Destroy"} {
-				if strings.Contains(line, value) {
+				if line == value {
 					containsAny = true
 					break
 				}

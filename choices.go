@@ -377,8 +377,8 @@ func (c *Choices) ChooseDefineAI(video *Video, field *string, fieldName string, 
 		}
 		form := huh.NewForm(
 			huh.NewGroup(
-				huh.NewText().Lines(5).CharLimit(10000).Title(c.ColorFromString(fieldName, *field)).Value(field),
-				huh.NewText().Lines(5).CharLimit(10000).Title("AI Responses").Value(&history),
+				huh.NewText().Lines(20).CharLimit(10000).Title(c.ColorFromString(fieldName, *field)).Value(field),
+				huh.NewText().Lines(20).CharLimit(10000).Title("AI Responses").Value(&history),
 				huh.NewInput().Title(c.ColorFromString("Question", *field)).Value(&question),
 				huh.NewConfirm().Affirmative("Ask").Negative("Save & Continue").Value(&askAgain),
 			).Title(fieldName),
@@ -479,7 +479,7 @@ func (c *Choices) ChooseDefine(video Video) (Video, error) {
 			if len(video.Timecodes) == 0 {
 				video.Timecodes = "00:00 TODO:"
 				for _, section := range sectionsSlice {
-					video.Timecodes = fmt.Sprintf("%s\nTODO:TODO %s", video.Timecodes, section)
+					video.Timecodes = fmt.Sprintf("%s\nTODO:TODO %s", video.Timecodes, strings.TrimLeft(section, "Section: "))
 				}
 			}
 		}
@@ -701,7 +701,7 @@ func (c *Choices) ChoosePublish(video Video) (Video, error) {
 			twitter.Post(video.Tweet, video.VideoId)
 		}
 		if !linkedInPostedOrig && len(video.Tweet) > 0 && video.LinkedInPosted {
-			postLinkedIn(video.Tweet)
+			postLinkedIn(video.Tweet, video.VideoId)
 		}
 		if !slackPostedOrig && len(video.VideoId) > 0 && video.SlackPosted {
 			postSlack(video.VideoId)
