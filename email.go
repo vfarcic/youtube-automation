@@ -94,6 +94,7 @@ func (e *Email) SendEdit(from, to string, video Video) error {
 <li>Text: Gist with the commands + an arrow pointing below (add shortly after we start showing the code)</li>
 <li>Title roll: %s</li>
 <li>Convert all text in bold (surounded with **) in the attachment into text on the screen</li>
+<li>Convert all text in italic (surounded with *) in the attachment into "special" part of the video since those are side-notes.</li>
 %s
 <li>Member shoutouts: Thanks a ton to the new members for supporting the channel: %s</li>
 <li>Outro roll</li>`,
