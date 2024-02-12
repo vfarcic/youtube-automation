@@ -420,7 +420,7 @@ func (c *Choices) ChooseDefine(video Video) (Video, error) {
 		&video,
 		&video.Tags,
 		"Tags",
-		fmt.Sprintf("Write comma separated tags for a youtube video with the description \"%s\"", video.Description),
+		fmt.Sprintf("Write comma separated tags for a youtube video with the description \"%s\". Do not exceeed 450 characters.", video.Description),
 	)
 	if err != nil {
 		return video, err
