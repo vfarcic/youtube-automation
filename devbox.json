@@ -1,0 +1,14 @@
+{
+  "packages": [
+    "teller@1.5.6"
+  ],
+  "shell": {
+    "init_hook": [],
+    "scripts": {
+      "youtube-release":  [
+        "eval \"$(teller sh)\"",
+        "youtube-release"
+      ]
+    }
+  }
+}
