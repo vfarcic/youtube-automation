@@ -545,7 +545,7 @@ func (c *Choices) ChooseEdit(video Video) (Video, error) {
 			huh.NewInput().Title(c.ColorFromString("Thumbnail Path", video.Thumbnail)).Value(&video.Thumbnail),
 			huh.NewInput().Title(c.ColorFromString("Members (comma separated)", video.Members)).Value(&video.Members),
 			huh.NewConfirm().Title(c.ColorFromBool("Edit Request", video.RequestEdit)).Value(&video.RequestEdit),
-			huh.NewText().Lines(5).Title(timeCodesTitle).Value(&video.Timecodes),
+			huh.NewText().Lines(5).CharLimit(10000).Title(timeCodesTitle).Value(&video.Timecodes),
 			huh.NewConfirm().Title(c.ColorFromBool("Movie Done", video.Movie)).Value(&video.Movie),
 			huh.NewConfirm().Title(c.ColorFromBool("Slides Done", video.Slides)).Value(&video.Slides),
 			huh.NewMultiSelect[string]().Title("Playlists").Options(playlistOptions...).Value(&playlists),
