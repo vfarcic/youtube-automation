@@ -203,7 +203,9 @@ func (c *Choices) ChooseCreateVideo() VideoIndex {
 	}
 	scriptContent := `## Intro
 
-FIXME:
+FIXME: This is...
+
+FIXME: It's supposed to...
 
 ## Setup
 
@@ -928,7 +930,7 @@ func (c *Choices) GetPhaseColoredText(phases map[int]int, phase int, title strin
 			return greenStyle.Render(title), phases[phase]
 		} else if (phase == videosPhaseMaterialDone || phase == videosPhaseIdeas) && phases[phase] >= 3 {
 			return greenStyle.Render(title), phases[phase]
-		} else if phase == videosPhaseStarted && phases[phase] > 0 {
+		} else if phase == videosPhaseStarted && phases[phase] >= 3 {
 			return greenStyle.Render(title), phases[phase]
 		} else {
 			return orangeStyle.Render(title), phases[phase]

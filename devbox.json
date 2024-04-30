@@ -1,14 +1,13 @@
 {
   "packages": [
-    "teller@1.5.6"
+    "teller@1.5.6",
+    "just@1.25.2"
   ],
   "shell": {
     "init_hook": [],
     "scripts": {
-      "youtube-release":  [
-        "eval \"$(teller sh)\"",
-        "youtube-release"
-      ]
+      "build": ["just build"],
+      "run": ["just run"]
     }
   }
 }
