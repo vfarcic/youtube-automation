@@ -316,7 +316,7 @@ func getAdditionalInfo(gistUrl, projectName, projectURL, relatedVideosRaw string
 	}
 	gist := ""
 	if len(gistUrl) > 0 {
-		gist = fmt.Sprintf("➡ Gist with the commands: %s\n", gistUrl)
+		gist = fmt.Sprintf("➡ Transcript and commands: %s\n", gistUrl)
 	}
 	return fmt.Sprintf("%s🔗 %s: %s\n%s", gist, projectName, projectURL, relatedVideos)
 }

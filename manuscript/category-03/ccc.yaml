@@ -14,8 +14,8 @@ edit:
     completed: 2
     total: 7
 publish:
-    completed: 0
-    total: 0
+    completed: 1
+    total: 15
 projectname: ""
 projecturl: ""
 sponsored: ""
@@ -29,7 +29,7 @@ screen: false
 head: false
 thumbnails: false
 diagrams: false
-title: ""
+title: sdsd dsadsd dsdsdsd
 description: ""
 tags: ""
 descriptiontags: ""
@@ -46,7 +46,8 @@ requestedit: true
 movie: false
 timecodes: ""
 gist: manuscript/category-03/ccc.md
-gisturl: ""
+gisturl: xxx
+hugopath: ""
 relatedvideos: ""
 playlists: []
 uploadvideo: ""

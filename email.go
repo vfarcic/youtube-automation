@@ -91,7 +91,7 @@ func (e *Email) SendEdit(from, to string, video Video) error {
 <li>Animation: Join the channel (anywhere in the video)</li>
 <li>Animation: Sponsor the channel (anywhere in the video)</li>
 <li>Lower third: %s + logo + URL (%s) (add to a few places when I mention %s)</li>
-<li>Text: Gist with the commands + an arrow pointing below (add shortly after we start showing the code)</li>
+<li>Text: Transcript and commands + an arrow pointing below (add shortly after we start showing the code)</li>
 <li>Title roll: %s</li>
 <li>Convert all text in bold (surounded with **) in the attachment into text on the screen</li>
 <li>Convert all text in italic (surounded with *) in the attachment into "special" part of the video since those are side-notes.</li>

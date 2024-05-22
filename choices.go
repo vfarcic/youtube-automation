@@ -607,9 +607,9 @@ func (c *Choices) ChoosePublish(video Video) (Video, error) {
 	} else {
 		sponsorsNotifyText = redStyle.Render(sponsorsNotifyText)
 	}
-	createGist := video.GistUrl != ""
+	createHugo := video.HugoPath != ""
 	fields := []huh.Field{
-		huh.NewConfirm().Title(c.ColorFromBool("Create Gist", createGist)).Value(&createGist),
+		huh.NewConfirm().Title(c.ColorFromBool("Create Hugo Post", createHugo)).Value(&createHugo),
 		huh.NewInput().Title(c.ColorFromString("Upload video", video.UploadVideo)).Value(&video.UploadVideo),
 		// TODO: Automate
 		huh.NewConfirm().Title(c.ColorFromBool("Twitter post", video.TweetPosted)).Value(&video.TweetPosted),
@@ -655,7 +655,7 @@ func (c *Choices) ChoosePublish(video Video) (Video, error) {
 			return Video{}, err
 		}
 		video.Publish.Completed, video.Publish.Total = c.Count([]interface{}{
-			video.GistUrl,
+			video.HugoPath,
 			video.UploadVideo,
 			video.TweetPosted,
 			video.LinkedInPosted,
@@ -674,19 +674,14 @@ func (c *Choices) ChoosePublish(video Video) (Video, error) {
 		if video.NotifiedSponsors || len(video.Sponsored) == 0 || video.Sponsored == "N/A" || video.Sponsored == "-" {
 			video.Publish.Completed++
 		}
-		if createGist && len(video.GistUrl) == 0 {
-			repo := Repo{}
-			// TODO: Remove
-			if strings.HasSuffix(video.Gist, ".sh") {
-				err = repo.CleanupGist(video.Gist)
-				if err != nil {
-					return Video{}, err
-				}
-			}
-			video.GistUrl, err = repo.Gist(video.Gist, video.Title, video.ProjectName, video.ProjectURL, video.RelatedVideos)
+		if createHugo && len(video.HugoPath) == 0 {
+			hugo := Hugo{}
+			video.HugoPath, err = hugo.Post(video.Gist, video.Title, video.ProjectName, video.ProjectURL, video.RelatedVideos)
 			if err != nil {
 				return Video{}, err
 			}
+		} else {
+			video.HugoPath = ""
 		}
 		if len(uploadVideoOrig) == 0 && len(video.UploadVideo) > 0 {
 			video.VideoId = uploadVideo(video)

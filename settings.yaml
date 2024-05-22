@@ -6,3 +6,5 @@ email:
 ai:
   endpoint: https://dotaisweden.openai.azure.com
   deployment: gpt-4-1106-preview
+hugo:
+  path: ../devopstoolkit-live/

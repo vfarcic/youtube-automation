@@ -56,6 +56,7 @@ type Video struct {
 	Timecodes           string
 	Gist                string
 	GistUrl             string
+	HugoPath            string
 	RelatedVideos       string
 	Playlists           []Playlist
 	UploadVideo         string

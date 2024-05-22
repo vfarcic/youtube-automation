@@ -18,6 +18,7 @@ type Settings struct {
 	Email   SettingsEmail
 	AI      SettingsAI
 	YouTube SettingsYouTube
+	Hugo    SettingsHugo
 }
 
 type SettingsEmail struct {
@@ -26,6 +27,10 @@ type SettingsEmail struct {
 	EditTo      string
 	FinanceTo   string
 	Password    string
+}
+
+type SettingsHugo struct {
+	Path string
 }
 
 type SettingsAI struct {
@@ -56,6 +61,7 @@ func init() {
 	rootCmd.Flags().StringVar(&settings.AI.Key, "ai-key", "", "AI key. Only Azure OpenAI is currently supported. Environment variable `AI_KEY` is supported as well. (required)")
 	rootCmd.Flags().StringVar(&settings.AI.Deployment, "ai-deployment", "", "AI Deployment. Only Azure OpenAI is currently supported. (required)")
 	rootCmd.Flags().StringVar(&settings.YouTube.APIKey, "youtube-api-key", "", "AI Deployment. Only Azure OpenAI is currently supported. (required)")
+	rootCmd.Flags().StringVar(&settings.Hugo.Path, "hugo-path", "", "Path to the repo with Hugo posts. (required)")
 	if viper.IsSet("email.from") {
 		settings.Email.From = viper.GetString("email.from")
 	} else {
@@ -100,6 +106,11 @@ func init() {
 		settings.YouTube.APIKey = os.Getenv("YOUTUBE_API_KEY")
 	} else {
 		rootCmd.MarkFlagRequired("youtube-api-key")
+	}
+	if viper.IsSet("hugo.path") {
+		settings.Hugo.Path = viper.GetString("hugo.path")
+	} else {
+		rootCmd.MarkFlagRequired("hugo-path")
 	}
 }
 
