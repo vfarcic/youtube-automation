@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"reflect"
 	"sort"
 	"strings"
@@ -203,6 +204,8 @@ func (c *Choices) ChooseCreateVideo() VideoIndex {
 	}
 	scriptContent := `## Intro
 
+FIXME: Explanation...
+
 FIXME: This is...
 
 FIXME: It's supposed to...
@@ -267,6 +270,10 @@ func (c *Choices) Count(fields []interface{}) (green, all int) {
 
 func (c *Choices) ChooseInit(video Video) (Video, error) {
 	save := true
+	explainedOrig := video.Explained
+	if len(video.Gist) == 0 {
+		video.Gist = strings.Replace(video.Path, ".yaml", ".md", 1)
+	}
 	sponsoredEmailsString := strings.Join(video.SponsoredEmails, ", ")
 	sponsoredEmailsTitle, _ := c.ColorFromSponsoredEmails("Sponsorship emails (comma separated)", video.Sponsored, video.SponsoredEmails)
 	form := huh.NewForm(
@@ -279,6 +286,8 @@ func (c *Choices) ChooseInit(video Video) (Video, error) {
 			huh.NewInput().Title(c.ColorFromString("Subject", video.Subject)).Value(&video.Subject),
 			huh.NewInput().Title(c.ColorFromString("Publish date (e.g., 2030-01-21T16:00)", video.Date)).Value(&video.Date),
 			huh.NewConfirm().Title(c.ColorFromBool("Delayed", !video.Delayed)).Value(&video.Delayed),
+			huh.NewInput().Title(c.ColorFromString("Gist path", video.Gist)).Value(&video.Gist),
+			huh.NewConfirm().Title(c.ColorFromBool("Explain Project", video.Explained)).Value(&video.Explained),
 			huh.NewConfirm().Affirmative("Save").Negative("Cancel").Value(&save),
 		),
 	)
@@ -292,6 +301,8 @@ func (c *Choices) ChooseInit(video Video) (Video, error) {
 		video.ProjectURL,
 		video.Sponsored,
 		video.Subject,
+		video.Gist,
+		video.Explained,
 		video.Date,
 	})
 	if _, completed := c.ColorFromSponsoredEmails("Sponsorship emails (comma separated)", video.Sponsored, video.SponsoredEmails); completed {
@@ -302,6 +313,19 @@ func (c *Choices) ChooseInit(video Video) (Video, error) {
 	}
 	if !video.Delayed {
 		video.Init.Completed++
+	}
+	if !explainedOrig && video.Explained {
+		cmd := exec.Command("fabric", "--pattern", "explain_project_dot", "--text", video.ProjectURL)
+		output, err := cmd.Output()
+		if err != nil {
+			return video, err
+		}
+		content, err := os.ReadFile(video.Gist)
+		if err != nil {
+			return video, err
+		}
+		contentWithExplanation := strings.Replace(string(content), "FIXME: Explanation...", string(output), 1)
+		os.WriteFile(video.Gist, []byte(contentWithExplanation), 0644)
 	}
 	video.Init.Total += 3
 	if save {
@@ -455,7 +479,6 @@ func (c *Choices) ChooseDefine(video Video) (Video, error) {
 		video.Animations = strings.TrimSpace(video.Animations)
 		formAnimations := huh.NewForm(
 			huh.NewGroup(
-				huh.NewInput().Title(c.ColorFromString("Gist path", video.Gist)).Value(&video.Gist),
 				huh.NewText().Lines(40).CharLimit(10000).Title(c.ColorFromString("Animations", video.Animations)).Value(&video.Animations).Editor("vi"),
 				huh.NewConfirm().Affirmative("Generate").Negative("Continue").Value(&generateAnimations),
 			).Title("Animations"),

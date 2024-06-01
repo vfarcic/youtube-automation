@@ -1,234 +1,58 @@
 ## Intro
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas elit metus, cursus et orci sed, dictum gravida diam. Duis accumsan, leo in efficitur feugiat, elit felis vestibulum enim, at tincidunt eros dui non est. Mauris ornare congue purus nec facilisis. Mauris a turpis quis nisl ornare ultrices vel eu sapien. Ut sit amet nisl vitae ipsum eleifend tempor. Donec vestibulum felis sit amet vehicula auctor. Cras ornare nisi odio, in tincidunt lacus ornare id.
+FIXME: PROJECT OVERVIEW
 
-TODO: Logo: okteto.png, gitpod.png
+- Crossplane is an open-source Kubernetes add-on for managing and composing infrastructure from multiple clouds.
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas elit metus, cursus et orci sed, dictum gravida diam. Duis accumsan, leo in efficitur feugiat, elit felis vestibulum enim, at tincidunt eros dui non est. Mauris ornare congue purus nec facilisis. Mauris a turpis quis nisl ornare ultrices vel eu sapien. Ut sit amet nisl vitae ipsum eleifend tempor. Donec vestibulum felis sit amet vehicula auctor. Cras ornare nisi odio, in tincidunt lacus ornare id.
+FIXME: THE PROBLEM IT ADDRESSES
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas elit metus, cursus et orci sed, dictum gravida diam. Duis accumsan, leo in efficitur feugiat, elit felis vestibulum enim, at tincidunt eros dui non est. Mauris ornare congue purus nec facilisis. Mauris a turpis quis nisl ornare ultrices vel eu sapien. Ut sit amet nisl vitae ipsum eleifend tempor. Donec vestibulum felis sit amet vehicula auctor. Cras ornare nisi odio, in tincidunt lacus ornare id.
+- It simplifies complex cloud infrastructure setup and management across multiple service providers.
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas elit metus, cursus et orci sed, dictum gravida diam. Duis accumsan, leo in efficitur feugiat, elit felis vestibulum enim, at tincidunt eros dui non est. Mauris ornare congue purus nec facilisis. Mauris a turpis quis nisl ornare ultrices vel eu sapien. Ut sit amet nisl vitae ipsum eleifend tempor. Donec vestibulum felis sit amet vehicula auctor. Cras ornare nisi odio, in tincidunt lacus ornare id.
+FIXME: THE APPROACH TO SOLVING THE PROBLEM
 
-TODO: Logos: charm-gum.png, git.png, github.png, kind.png, kubectl (there is no logo so put text instead), yq (there is no logo so put text instead), jq.svg, teller.png, aws.png, azure.png, google-cloud.png
+- Crossplane uses Kubernetes-style resources to provision and manage cloud services and infrastructure.
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas elit metus, cursus et orci sed, dictum gravida diam. Duis accumsan, leo in efficitur feugiat, elit felis vestibulum enim, at tincidunt eros dui non est. Mauris ornare congue purus nec facilisis. Mauris a turpis quis nisl ornare ultrices vel eu sapien. Ut sit amet nisl vitae ipsum eleifend tempor. Donec vestibulum felis sit amet vehicula auctor. Cras ornare nisi odio, in tincidunt lacus ornare id.
+FIXME: USAGE
 
-TODO: Thumbnail: oosQ3z_9UEM
+- Install Crossplane onto your Kubernetes cluster using Helm or a package manager.
+- Define your cloud resources using Crossplane's custom resource definitions (CRDs).
+- Apply configurations to cluster to provision cloud services with `kubectl apply`.
+- Compose your own infrastructure platforms using Crossplane's composition engine.
+- Manage infrastructure alongside applications by integrating with continuous delivery systems.
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas elit metus, cursus et orci sed, dictum gravida diam. Duis accumsan, leo in efficitur feugiat, elit felis vestibulum enim, at tincidunt eros dui non est. Mauris ornare congue purus nec facilisis. Mauris a turpis quis nisl ornare ultrices vel eu sapien. Ut sit amet nisl vitae ipsum eleifend tempor. Donec vestibulum felis sit amet vehicula auctor. Cras ornare nisi odio, in tincidunt lacus ornare id.
+FIXME: EXAMPLES
 
-TODO: Text: @ZiggleFingers (big)
+- Provision a managed PostgreSQL instance on AWS, GCP, or Azure using Crossplane.
+- Bundle cloud services into custom platforms for easy consumption by developers.
+- Automate creation of secure and compliant Kubernetes clusters across clouds.
+- Define and enforce policies for cloud resource usage within your organization.
 
-TODO: Logo: nix.png
+FIXME: LINKS
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas elit metus, cursus et orci sed, dictum gravida diam. Duis accumsan, leo in efficitur feugiat, elit felis vestibulum enim, at tincidunt eros dui non est. Mauris ornare congue purus nec facilisis. Mauris a turpis quis nisl ornare ultrices vel eu sapien. Ut sit amet nisl vitae ipsum eleifend tempor. Donec vestibulum felis sit amet vehicula auctor. Cras ornare nisi odio, in tincidunt lacus ornare id.
+- [Crossplane Documentation](https://crossplane.io/docs/)
+- [Crossplane GitHub Repository](https://github.com/crossplane/crossplane)
+- [Crossplane Community Slack](https://slack.crossplane.io/)
+- [Crossplane Twitter](https://twitter.com/crossplane_io)
+
+
+FIXME: This is...
+
+FIXME: It's supposed to...
 
 ## Setup
 
-FIXME: Install `nix` by following the instructions at https://nix.dev/install-nix.
+FIXME:
 
-## Ephemeral Shell Environments with Nix
+## FIXME:
 
-TODO: Logo: oh-my-zsh.png
+FIXME:
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas elit metus, cursus et orci sed, dictum gravida diam. Duis accumsan, leo in efficitur feugiat, elit felis vestibulum enim, at tincidunt eros dui non est. Mauris ornare congue purus nec facilisis. Mauris a turpis quis nisl ornare ultrices vel eu sapien. Ut sit amet nisl vitae ipsum eleifend tempor. Donec vestibulum felis sit amet vehicula auctor. Cras ornare nisi odio, in tincidunt lacus ornare id.
+## FIXME: Pros and Cons
 
-TODO: Logo: nix.png
+TODO: Header: Cons; Items: FIXME:
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas elit metus, cursus et orci sed, dictum gravida diam. Duis accumsan, leo in efficitur feugiat, elit felis vestibulum enim, at tincidunt eros dui non est. Mauris ornare congue purus nec facilisis. Mauris a turpis quis nisl ornare ultrices vel eu sapien. Ut sit amet nisl vitae ipsum eleifend tempor. Donec vestibulum felis sit amet vehicula auctor. Cras ornare nisi odio, in tincidunt lacus ornare id.
-
-TODO: Overlay: screen-01
-
-```sh
-gh repo clone \
-    vfarcic/crossplane-tutorial
-```
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas elit metus, cursus et orci sed, dictum gravida diam. Duis accumsan, leo in efficitur feugiat, elit felis vestibulum enim, at tincidunt eros dui non est. Mauris ornare congue purus nec facilisis. Mauris a turpis quis nisl ornare ultrices vel eu sapien. Ut sit amet nisl vitae ipsum eleifend tempor. Donec vestibulum felis sit amet vehicula auctor. Cras ornare nisi odio, in tincidunt lacus ornare id.
-
-```sh
-nix-shell --packages gh kubectl awscli2
-```
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas elit metus, cursus et orci sed, dictum gravida diam. Duis accumsan, leo in efficitur feugiat, elit felis vestibulum enim, at tincidunt eros dui non est. Mauris ornare congue purus nec facilisis. Mauris a turpis quis nisl ornare ultrices vel eu sapien. Ut sit amet nisl vitae ipsum eleifend tempor. Donec vestibulum felis sit amet vehicula auctor. Cras ornare nisi odio, in tincidunt lacus ornare id.
-
-```sh
-PS1="$ "
-```
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas elit metus, cursus et orci sed, dictum gravida diam. Duis accumsan, leo in efficitur feugiat, elit felis vestibulum enim, at tincidunt eros dui non est. Mauris ornare congue purus nec facilisis. Mauris a turpis quis nisl ornare ultrices vel eu sapien. Ut sit amet nisl vitae ipsum eleifend tempor. Donec vestibulum felis sit amet vehicula auctor. Cras ornare nisi odio, in tincidunt lacus ornare id.
-
-```sh
-gh repo clone vfarcic/crossplane-tutorial
-```
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas elit metus, cursus et orci sed, dictum gravida diam. Duis accumsan, leo in efficitur feugiat, elit felis vestibulum enim, at tincidunt eros dui non est. Mauris ornare congue purus nec facilisis. Mauris a turpis quis nisl ornare ultrices vel eu sapien. Ut sit amet nisl vitae ipsum eleifend tempor. Donec vestibulum felis sit amet vehicula auctor. Cras ornare nisi odio, in tincidunt lacus ornare id.
-
-```sh
-which gh
-```
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas elit metus, cursus et orci sed, dictum gravida diam. Duis accumsan, leo in efficitur feugiat, elit felis vestibulum enim, at tincidunt eros dui non est. Mauris ornare congue purus nec facilisis. Mauris a turpis quis nisl ornare ultrices vel eu sapien. Ut sit amet nisl vitae ipsum eleifend tempor. Donec vestibulum felis sit amet vehicula auctor. Cras ornare nisi odio, in tincidunt lacus ornare id.
-
-```sh
-which kubectl
-```
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas elit metus, cursus et orci sed, dictum gravida diam. Duis accumsan, leo in efficitur feugiat, elit felis vestibulum enim, at tincidunt eros dui non est. Mauris ornare congue purus nec facilisis. Mauris a turpis quis nisl ornare ultrices vel eu sapien. Ut sit amet nisl vitae ipsum eleifend tempor. Donec vestibulum felis sit amet vehicula auctor. Cras ornare nisi odio, in tincidunt lacus ornare id.
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas elit metus, cursus et orci sed, dictum gravida diam. Duis accumsan, leo in efficitur feugiat, elit felis vestibulum enim, at tincidunt eros dui non est. Mauris ornare congue purus nec facilisis. Mauris a turpis quis nisl ornare ultrices vel eu sapien. Ut sit amet nisl vitae ipsum eleifend tempor. Donec vestibulum felis sit amet vehicula auctor. Cras ornare nisi odio, in tincidunt lacus ornare id.
-
-```sh
-cd crossplane-tutorial
-```
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas elit metus, cursus et orci sed, dictum gravida diam. Duis accumsan, leo in efficitur feugiat, elit felis vestibulum enim, at tincidunt eros dui non est. Mauris ornare congue purus nec facilisis. Mauris a turpis quis nisl ornare ultrices vel eu sapien. Ut sit amet nisl vitae ipsum eleifend tempor. Donec vestibulum felis sit amet vehicula auctor. Cras ornare nisi odio, in tincidunt lacus ornare id.
-
-```sh
-chmod +x setup/01-managed-resources.sh
-```
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas elit metus, cursus et orci sed, dictum gravida diam. Duis accumsan, leo in efficitur feugiat, elit felis vestibulum enim, at tincidunt eros dui non est. Mauris ornare congue purus nec facilisis. Mauris a turpis quis nisl ornare ultrices vel eu sapien. Ut sit amet nisl vitae ipsum eleifend tempor. Donec vestibulum felis sit amet vehicula auctor. Cras ornare nisi odio, in tincidunt lacus ornare id.
-
-```sh
-./setup/01-managed-resources.sh
-```
-
-TODO: Logos: charm-gum.png, kind.png, kubectl (there is no logo so put text instead), yq (there is no logo so put text instead), aws.png, azure.png, google-cloud.png
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas elit metus, cursus et orci sed, dictum gravida diam. Duis accumsan, leo in efficitur feugiat, elit felis vestibulum enim, at tincidunt eros dui non est. Mauris ornare congue purus nec facilisis. Mauris a turpis quis nisl ornare ultrices vel eu sapien. Ut sit amet nisl vitae ipsum eleifend tempor. Donec vestibulum felis sit amet vehicula auctor. Cras ornare nisi odio, in tincidunt lacus ornare id.
-
-```sh
-cat setup/01-managed-resources-nix.sh
-```
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas elit metus, cursus et orci sed, dictum gravida diam. Duis accumsan, leo in efficitur feugiat, elit felis vestibulum enim, at tincidunt eros dui non est. Mauris ornare congue purus nec facilisis. Mauris a turpis quis nisl ornare ultrices vel eu sapien. Ut sit amet nisl vitae ipsum eleifend tempor. Donec vestibulum felis sit amet vehicula auctor. Cras ornare nisi odio, in tincidunt lacus ornare id.
-
-```sh
-chmod +x setup/01-managed-resources-nix.sh
-```
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas elit metus, cursus et orci sed, dictum gravida diam. Duis accumsan, leo in efficitur feugiat, elit felis vestibulum enim, at tincidunt eros dui non est. Mauris ornare congue purus nec facilisis. Mauris a turpis quis nisl ornare ultrices vel eu sapien. Ut sit amet nisl vitae ipsum eleifend tempor. Donec vestibulum felis sit amet vehicula auctor. Cras ornare nisi odio, in tincidunt lacus ornare id.
-
-```sh
-./setup/01-managed-resources-nix.sh
-```
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas elit metus, cursus et orci sed, dictum gravida diam. Duis accumsan, leo in efficitur feugiat, elit felis vestibulum enim, at tincidunt eros dui non est. Mauris ornare congue purus nec facilisis. Mauris a turpis quis nisl ornare ultrices vel eu sapien. Ut sit amet nisl vitae ipsum eleifend tempor. Donec vestibulum felis sit amet vehicula auctor. Cras ornare nisi odio, in tincidunt lacus ornare id.
-
-FIXME: Press `ctrl+c` to stop
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas elit metus, cursus et orci sed, dictum gravida diam. Duis accumsan, leo in efficitur feugiat, elit felis vestibulum enim, at tincidunt eros dui non est. Mauris ornare congue purus nec facilisis. Mauris a turpis quis nisl ornare ultrices vel eu sapien. Ut sit amet nisl vitae ipsum eleifend tempor. Donec vestibulum felis sit amet vehicula auctor. Cras ornare nisi odio, in tincidunt lacus ornare id.
-
-```sh
-./setup/01-managed-resources-nix.sh
-```
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas elit metus, cursus et orci sed, dictum gravida diam. Duis accumsan, leo in efficitur feugiat, elit felis vestibulum enim, at tincidunt eros dui non est. Mauris ornare congue purus nec facilisis. Mauris a turpis quis nisl ornare ultrices vel eu sapien. Ut sit amet nisl vitae ipsum eleifend tempor. Donec vestibulum felis sit amet vehicula auctor. Cras ornare nisi odio, in tincidunt lacus ornare id.
-
-FIXME: Press `ctrl+c` to stop
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas elit metus, cursus et orci sed, dictum gravida diam. Duis accumsan, leo in efficitur feugiat, elit felis vestibulum enim, at tincidunt eros dui non est. Mauris ornare congue purus nec facilisis. Mauris a turpis quis nisl ornare ultrices vel eu sapien. Ut sit amet nisl vitae ipsum eleifend tempor. Donec vestibulum felis sit amet vehicula auctor. Cras ornare nisi odio, in tincidunt lacus ornare id.
-
-```sh
-exit
-```
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas elit metus, cursus et orci sed, dictum gravida diam. Duis accumsan, leo in efficitur feugiat, elit felis vestibulum enim, at tincidunt eros dui non est. Mauris ornare congue purus nec facilisis. Mauris a turpis quis nisl ornare ultrices vel eu sapien. Ut sit amet nisl vitae ipsum eleifend tempor. Donec vestibulum felis sit amet vehicula auctor. Cras ornare nisi odio, in tincidunt lacus ornare id.
-
-```sh
-cd crossplane-tutorial
-```
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas elit metus, cursus et orci sed, dictum gravida diam. Duis accumsan, leo in efficitur feugiat, elit felis vestibulum enim, at tincidunt eros dui non est. Mauris ornare congue purus nec facilisis. Mauris a turpis quis nisl ornare ultrices vel eu sapien. Ut sit amet nisl vitae ipsum eleifend tempor. Donec vestibulum felis sit amet vehicula auctor. Cras ornare nisi odio, in tincidunt lacus ornare id.
-
-```sh
-cat shell.nix
-```
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas elit metus, cursus et orci sed, dictum gravida diam. Duis accumsan, leo in efficitur feugiat, elit felis vestibulum enim, at tincidunt eros dui non est. Mauris ornare congue purus nec facilisis. Mauris a turpis quis nisl ornare ultrices vel eu sapien. Ut sit amet nisl vitae ipsum eleifend tempor. Donec vestibulum felis sit amet vehicula auctor. Cras ornare nisi odio, in tincidunt lacus ornare id.
-
-```sh
-nix-shell
-```
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas elit metus, cursus et orci sed, dictum gravida diam. Duis accumsan, leo in efficitur feugiat, elit felis vestibulum enim, at tincidunt eros dui non est. Mauris ornare congue purus nec facilisis. Mauris a turpis quis nisl ornare ultrices vel eu sapien. Ut sit amet nisl vitae ipsum eleifend tempor. Donec vestibulum felis sit amet vehicula auctor. Cras ornare nisi odio, in tincidunt lacus ornare id.
-
-```sh
-PS1="$ "
-```
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas elit metus, cursus et orci sed, dictum gravida diam. Duis accumsan, leo in efficitur feugiat, elit felis vestibulum enim, at tincidunt eros dui non est. Mauris ornare congue purus nec facilisis. Mauris a turpis quis nisl ornare ultrices vel eu sapien. Ut sit amet nisl vitae ipsum eleifend tempor. Donec vestibulum felis sit amet vehicula auctor. Cras ornare nisi odio, in tincidunt lacus ornare id.
-
-```sh
-gum
-```
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas elit metus, cursus et orci sed, dictum gravida diam. Duis accumsan, leo in efficitur feugiat, elit felis vestibulum enim, at tincidunt eros dui non est. Mauris ornare congue purus nec facilisis. Mauris a turpis quis nisl ornare ultrices vel eu sapien. Ut sit amet nisl vitae ipsum eleifend tempor. Donec vestibulum felis sit amet vehicula auctor. Cras ornare nisi odio, in tincidunt lacus ornare id.
-
-```sh
-./setup/01-managed-resources.sh
-```
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas elit metus, cursus et orci sed, dictum gravida diam. Duis accumsan, leo in efficitur feugiat, elit felis vestibulum enim, at tincidunt eros dui non est. Mauris ornare congue purus nec facilisis. Mauris a turpis quis nisl ornare ultrices vel eu sapien. Ut sit amet nisl vitae ipsum eleifend tempor. Donec vestibulum felis sit amet vehicula auctor. Cras ornare nisi odio, in tincidunt lacus ornare id.
-
-```sh
-# Press `ctrl+c` to stop
-```
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas elit metus, cursus et orci sed, dictum gravida diam. Duis accumsan, leo in efficitur feugiat, elit felis vestibulum enim, at tincidunt eros dui non est. Mauris ornare congue purus nec facilisis. Mauris a turpis quis nisl ornare ultrices vel eu sapien. Ut sit amet nisl vitae ipsum eleifend tempor. Donec vestibulum felis sit amet vehicula auctor. Cras ornare nisi odio, in tincidunt lacus ornare id.
-
-```sh
-exit
-```
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas elit metus, cursus et orci sed, dictum gravida diam. Duis accumsan, leo in efficitur feugiat, elit felis vestibulum enim, at tincidunt eros dui non est. Mauris ornare congue purus nec facilisis. Mauris a turpis quis nisl ornare ultrices vel eu sapien. Ut sit amet nisl vitae ipsum eleifend tempor. Donec vestibulum felis sit amet vehicula auctor. Cras ornare nisi odio, in tincidunt lacus ornare id.
-
-TODO: Logo: oh-my-zsh.png
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas elit metus, cursus et orci sed, dictum gravida diam. Duis accumsan, leo in efficitur feugiat, elit felis vestibulum enim, at tincidunt eros dui non est. Mauris ornare congue purus nec facilisis. Mauris a turpis quis nisl ornare ultrices vel eu sapien. Ut sit amet nisl vitae ipsum eleifend tempor. Donec vestibulum felis sit amet vehicula auctor. Cras ornare nisi odio, in tincidunt lacus ornare id.
-
-```sh
-nix-shell --run $SHELL
-```
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas elit metus, cursus et orci sed, dictum gravida diam. Duis accumsan, leo in efficitur feugiat, elit felis vestibulum enim, at tincidunt eros dui non est. Mauris ornare congue purus nec facilisis. Mauris a turpis quis nisl ornare ultrices vel eu sapien. Ut sit amet nisl vitae ipsum eleifend tempor. Donec vestibulum felis sit amet vehicula auctor. Cras ornare nisi odio, in tincidunt lacus ornare id.
-
-TODO: Miki: Ignore the screen between 09:12 and 09:27.
-
-```sh
-exit
-```
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas elit metus, cursus et orci sed, dictum gravida diam. Duis accumsan, leo in efficitur feugiat, elit felis vestibulum enim, at tincidunt eros dui non est. Mauris ornare congue purus nec facilisis. Mauris a turpis quis nisl ornare ultrices vel eu sapien. Ut sit amet nisl vitae ipsum eleifend tempor. Donec vestibulum felis sit amet vehicula auctor. Cras ornare nisi odio, in tincidunt lacus ornare id.
-
-TODO: Overlay: nixos-search; Lower-third: https://search.nixos.org
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas elit metus, cursus et orci sed, dictum gravida diam. Duis accumsan, leo in efficitur feugiat, elit felis vestibulum enim, at tincidunt eros dui non est. Mauris ornare congue purus nec facilisis. Mauris a turpis quis nisl ornare ultrices vel eu sapien. Ut sit amet nisl vitae ipsum eleifend tempor. Donec vestibulum felis sit amet vehicula auctor. Cras ornare nisi odio, in tincidunt lacus ornare id.
-
-TODO: Overlay: nix-store-gc
-
-```sh
-nix-store --gc
-```
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas elit metus, cursus et orci sed, dictum gravida diam. Duis accumsan, leo in efficitur feugiat, elit felis vestibulum enim, at tincidunt eros dui non est. Mauris ornare congue purus nec facilisis. Mauris a turpis quis nisl ornare ultrices vel eu sapien. Ut sit amet nisl vitae ipsum eleifend tempor. Donec vestibulum felis sit amet vehicula auctor. Cras ornare nisi odio, in tincidunt lacus ornare id.
-
-## Nix Pros and Cons
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas elit metus, cursus et orci sed, dictum gravida diam. Duis accumsan, leo in efficitur feugiat, elit felis vestibulum enim, at tincidunt eros dui non est. Mauris ornare congue purus nec facilisis. Mauris a turpis quis nisl ornare ultrices vel eu sapien. Ut sit amet nisl vitae ipsum eleifend tempor. Donec vestibulum felis sit amet vehicula auctor. Cras ornare nisi odio, in tincidunt lacus ornare id.
-
-TODO: Logos: jenkins.png, github-actions.png, tekton.png, argo-workflows.png
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas elit metus, cursus et orci sed, dictum gravida diam. Duis accumsan, leo in efficitur feugiat, elit felis vestibulum enim, at tincidunt eros dui non est. Mauris ornare congue purus nec facilisis. Mauris a turpis quis nisl ornare ultrices vel eu sapien. Ut sit amet nisl vitae ipsum eleifend tempor. Donec vestibulum felis sit amet vehicula auctor. Cras ornare nisi odio, in tincidunt lacus ornare id.
+TODO: Header: Pros; Items: FIXME:
 
 ## Destroy
 
-```sh
-cd ..
-
-rm -rf crossplane-tutorial
-```
-
-FIXME: Delete the fork from [GitHub](https://github.com)
+FIXME:

@@ -33,6 +33,7 @@ type Video struct {
 	Subject             string
 	Date                string
 	Delayed             bool
+	Explained           bool
 	Code                bool
 	Screen              bool
 	Head                bool

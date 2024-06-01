@@ -4,7 +4,9 @@
     "just@1.25.2"
   ],
   "shell": {
-    "init_hook": [],
+    "init_hook": [
+      "export PATH=\"$HOME/.local/bin:$PATH\""
+    ],
     "scripts": {
       "build": ["just build"],
       "run": ["just run"]
