@@ -377,6 +377,47 @@ func (c *Choices) ChooseWork(video Video) (Video, error) {
 	return video, err
 }
 
+func (c *Choices) ChooseFabric(video *Video, field *string, fieldName, pattern string, addToField bool) error {
+	askAgain := true
+	content, err := os.ReadFile(video.Gist)
+	if err != nil {
+		return err
+	}
+	firstIteration := true
+	output := ""
+	for askAgain || firstIteration {
+		askAgain = false
+		if firstIteration {
+			firstIteration = false
+		} else {
+			cmd := exec.Command("fabric", "--pattern", pattern, "--text", string(content))
+			outputBytes, err := cmd.Output()
+			if err != nil {
+				return err
+			}
+			output = string(outputBytes)
+			if addToField {
+				*field = output
+			}
+		}
+		form := huh.NewForm(
+			huh.NewGroup(
+				huh.NewText().Lines(20).CharLimit(10000).Title(c.ColorFromString(fieldName, *field)).Value(field),
+				huh.NewText().Lines(20).CharLimit(10000).Title("AI Responses").Value(&output),
+				huh.NewConfirm().Affirmative("Ask").Negative("Save & Continue").Value(&askAgain),
+			).Title(fieldName),
+		)
+		err = form.Run()
+		if err != nil {
+			return err
+		}
+	}
+	yaml := YAML{}
+	yaml.WriteVideo(*video, video.Path)
+	return nil
+}
+
+// TODO: Remove
 func (c *Choices) ChooseDefineAI(video *Video, field *string, fieldName string, initialQuestion string) error {
 	firstIteration := true
 	askAgain := true
@@ -421,27 +462,19 @@ func (c *Choices) ChooseDefineAI(video *Video, field *string, fieldName string, 
 
 func (c *Choices) ChooseDefine(video Video) (Video, error) {
 	// Title
-	err := c.ChooseDefineAI(
-		&video,
-		&video.Title,
-		"Title",
-		fmt.Sprintf("Write a title for a youtube video about %s", video.Subject),
-	)
+	err := c.ChooseFabric(&video, &video.Title, "Title", "title_dot", false)
 	if err != nil {
 		return video, err
 	}
 
 	// Description
-	err = c.ChooseDefineAI(
-		&video,
-		&video.Description,
-		"Description",
-		fmt.Sprintf("Write a short description for a youtube video with the title \"%s\"", video.Title),
-	)
+	err = c.ChooseFabric(&video, &video.Description, "Description", "description_dot", true)
 	if err != nil {
 		return video, err
 	}
+
 	// Tags
+	// TODO: Change to Fabric
 	err = c.ChooseDefineAI(
 		&video,
 		&video.Tags,
@@ -452,6 +485,7 @@ func (c *Choices) ChooseDefine(video Video) (Video, error) {
 		return video, err
 	}
 	// Description tags
+	// TODO: Change to Fabric
 	err = c.ChooseDefineAI(
 		&video,
 		&video.DescriptionTags,
@@ -462,6 +496,7 @@ func (c *Choices) ChooseDefine(video Video) (Video, error) {
 		return video, err
 	}
 	// Tweet
+	// TODO: Change to Fabric
 	err = c.ChooseDefineAI(
 		&video,
 		&video.Tweet,
