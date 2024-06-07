@@ -14,7 +14,7 @@ edit:
     completed: 6
     total: 7
 publish:
-    completed: 14
+    completed: 15
     total: 15
 projectname: Something
 projecturl: https://crossplane.io
@@ -93,7 +93,7 @@ youtubecomment: true
 youtubecommentreply: true
 slides: true
 gde: true
-repo: N/A
+repo: N/Axxx
 twitterspace: true
 notifiedsponsors: true
 publishedshort: false

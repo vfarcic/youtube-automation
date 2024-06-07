@@ -734,11 +734,11 @@ func (c *Choices) ChoosePublish(video Video) (Video, error) {
 		}
 		if createHugo && len(video.HugoPath) == 0 {
 			hugo := Hugo{}
-			video.HugoPath, err = hugo.Post(video.Gist, video.Title, video.ProjectName, video.ProjectURL, video.RelatedVideos)
+			video.HugoPath, err = hugo.Post(video.Gist, video.Title, video.Date)
 			if err != nil {
 				return Video{}, err
 			}
-		} else {
+		} else if !createHugo {
 			video.HugoPath = ""
 		}
 		if len(uploadVideoOrig) == 0 && len(video.UploadVideo) > 0 {
