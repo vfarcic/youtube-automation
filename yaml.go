@@ -30,7 +30,6 @@ type Video struct {
 	Sponsored           string
 	SponsoredEmails     []string
 	SponsorshipBlocked  string
-	Subject             string
 	Date                string
 	Delayed             bool
 	Explained           bool

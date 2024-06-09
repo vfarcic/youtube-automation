@@ -3,17 +3,11 @@
 ## Run
 
 ```bash
-go run . --path something.yaml
+devbox run run
 ```
 
 ## Build
 
 ```bash
-make build # All binaries
-
-go build -o youtube-release # Single binary
-
-chmod +x youtube-release
-
-sudo mv youtube-release /usr/local/bin
+devbox run build
 ```
