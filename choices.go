@@ -338,6 +338,7 @@ func (c *Choices) ChooseWork(video Video) (Video, error) {
 	form := huh.NewForm(
 		huh.NewGroup(
 			huh.NewConfirm().Title(c.ColorFromBool("Code done", video.Code)).Value(&video.Code),
+			// TODO: Highlights using `highlights_dot` pattern
 			huh.NewConfirm().Title(c.ColorFromBool("Talking head done", video.Head)).Value(&video.Head),
 			huh.NewConfirm().Title(c.ColorFromBool("Screen done", video.Screen)).Value(&video.Screen),
 			huh.NewText().Lines(3).CharLimit(10000).Title(c.ColorFromString("Related videos", video.RelatedVideos)).Value(&video.RelatedVideos),
