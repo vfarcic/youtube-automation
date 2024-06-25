@@ -266,7 +266,7 @@ If you are interested in sponsoring this channel, please use https://calendar.ap
 💬 Live streams: https://www.youtube.com/c/DevOpsParadox
 
 %s
-`, video.Description, video.DescriptionTags, getAdditionalInfo(video.GistUrl, video.ProjectName, video.ProjectURL, video.RelatedVideos), timecodes)
+`, video.Description, video.DescriptionTags, getAdditionalInfo(video.HugoPath, video.ProjectName, video.ProjectURL, video.RelatedVideos), timecodes)
 
 	upload := &youtube.Video{
 		Snippet: &youtube.VideoSnippet{
@@ -303,7 +303,7 @@ If you are interested in sponsoring this channel, please use https://calendar.ap
 	return response.Id
 }
 
-func getAdditionalInfo(gistUrl, projectName, projectURL, relatedVideosRaw string) string {
+func getAdditionalInfo(hugoPath, projectName, projectURL, relatedVideosRaw string) string {
 	relatedVideos := ""
 	relatedVideosArray := strings.Split(relatedVideosRaw, "\n")
 	for i := range relatedVideosArray {
@@ -315,8 +315,12 @@ func getAdditionalInfo(gistUrl, projectName, projectURL, relatedVideosRaw string
 		}
 	}
 	gist := ""
-	if len(gistUrl) > 0 {
-		gist = fmt.Sprintf("➡ Transcript and commands: %s\n", gistUrl)
+	if len(hugoPath) > 0 {
+		hugoPage := strings.ReplaceAll(hugoPath, "../", "")
+		hugoPage = strings.ReplaceAll(hugoPage, "devopstoolkit-live/content/", "")
+		hugoPage = strings.ReplaceAll(hugoPage, "/_index.md", "")
+		hugoUrl := fmt.Sprintf("https://devopstoolkit.live/%s", hugoPage)
+		gist = fmt.Sprintf("➡ Transcript and commands: %s\n", hugoUrl)
 	}
 	return fmt.Sprintf("%s🔗 %s: %s\n%s", gist, projectName, projectURL, relatedVideos)
 }
