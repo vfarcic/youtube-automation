@@ -1,6 +1,6 @@
 {
   "packages": [
-    "teller@1.5.6",
+    "teller@2.0.7",
     "just@1.25.2"
   ],
   "shell": {
