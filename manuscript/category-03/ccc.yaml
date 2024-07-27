@@ -21,9 +21,9 @@ projecturl: ""
 sponsored: ""
 sponsoredemails: []
 sponsorshipblocked: ""
-subject: ""
 date: 2024-01-01T16:00
 delayed: false
+explained: false
 code: false
 screen: false
 head: false
@@ -31,6 +31,7 @@ thumbnails: false
 diagrams: false
 title: sdsd dsadsd dsdsdsd
 description: ""
+highlight: ""
 tags: ""
 descriptiontags: ""
 location: ""

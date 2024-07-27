@@ -40,6 +40,7 @@ type Video struct {
 	Diagrams            bool
 	Title               string
 	Description         string
+	Highlight           string
 	Tags                string
 	DescriptionTags     string
 	Location            string

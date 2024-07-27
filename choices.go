@@ -338,7 +338,6 @@ func (c *Choices) ChooseWork(video Video) (Video, error) {
 	form := huh.NewForm(
 		huh.NewGroup(
 			huh.NewConfirm().Title(c.ColorFromBool("Code done", video.Code)).Value(&video.Code),
-			// TODO: Highlights using `highlights_dot` pattern
 			huh.NewConfirm().Title(c.ColorFromBool("Talking head done", video.Head)).Value(&video.Head),
 			huh.NewConfirm().Title(c.ColorFromBool("Screen done", video.Screen)).Value(&video.Screen),
 			huh.NewText().Lines(3).CharLimit(10000).Title(c.ColorFromString("Related videos", video.RelatedVideos)).Value(&video.RelatedVideos),
@@ -395,6 +394,7 @@ func (c *Choices) ChooseFabric(video *Video, field *string, fieldName, pattern s
 				return err
 			}
 			output = string(outputBytes)
+			output = strings.ReplaceAll(output, "TAGS:", "")
 			if addToField {
 				*field = output
 			}
@@ -461,31 +461,37 @@ func (c *Choices) ChooseDefineAI(video *Video, field *string, fieldName string, 
 
 func (c *Choices) ChooseDefine(video Video) (Video, error) {
 	// Title
-	err := c.ChooseFabric(&video, &video.Title, "Title", "title_dot", false)
-	if err != nil {
+	if err := c.ChooseFabric(&video, &video.Title, "Title", "title_dot", false); err != nil {
 		return video, err
 	}
 
 	// Description
-	err = c.ChooseFabric(&video, &video.Description, "Description", "description_dot", true)
-	if err != nil {
+	if err := c.ChooseFabric(&video, &video.Description, "Description", "description_dot", true); err != nil {
+		return video, err
+	}
+
+	// Highlight
+	if err := c.ChooseFabric(&video, &video.Highlight, "Highlight", "highlight_dot", true); err != nil {
 		return video, err
 	}
 
 	// Tags
 	// TODO: Change to Fabric
-	err = c.ChooseDefineAI(
-		&video,
-		&video.Tags,
-		"Tags",
-		fmt.Sprintf("Write comma separated tags for a youtube video with the description \"%s\". Do not exceeed 450 characters.", video.Description),
-	)
-	if err != nil {
+	if err := c.ChooseFabric(&video, &video.Tags, "Tags", "tags_dot", true); err != nil {
 		return video, err
 	}
+	// err = c.ChooseDefineAI(
+	// 	&video,
+	// 	&video.Tags,
+	// 	"Tags",
+	// 	fmt.Sprintf("Write comma separated tags for a youtube video with the description \"%s\". Do not exceeed 450 characters.", video.Description),
+	// )
+	// if err != nil {
+	// 	return video, err
+	// }
 	// Description tags
 	// TODO: Change to Fabric
-	err = c.ChooseDefineAI(
+	err := c.ChooseDefineAI(
 		&video,
 		&video.DescriptionTags,
 		"Description Tags",
