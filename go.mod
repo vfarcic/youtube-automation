@@ -10,7 +10,7 @@ require (
 	github.com/charmbracelet/huh v0.2.2
 	github.com/charmbracelet/huh/spinner v0.0.0-20240803000013-2eb851f67645
 	github.com/charmbracelet/lipgloss v0.12.1
-	github.com/spf13/cobra v1.8.0
+	github.com/spf13/cobra v1.8.1
 	github.com/spf13/viper v1.18.1
 	golang.org/x/net v0.19.0
 	golang.org/x/oauth2 v0.15.0
