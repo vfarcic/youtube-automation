@@ -28,6 +28,7 @@ func (r *Hugo) hugoFromMarkdown(filePath, title, post string) (string, error) {
 	postDir = strings.ReplaceAll(postDir, "&", "")
 	postDir = strings.ReplaceAll(postDir, "/", "-")
 	postDir = strings.ReplaceAll(postDir, "'", "")
+	postDir = strings.ReplaceAll(postDir, "!", "")
 	postDir = strings.ToLower(postDir)
 	fullDir := categoryDir + "/" + postDir
 	os.Mkdir(fullDir, os.FileMode(0755))
