@@ -123,7 +123,7 @@ All the material is available at %s.
 	return nil
 }
 
-func (e *Email) SendSponsors(from string, to []string, videoID, sponsorshipPrice string) error {
+func (e *Email) SendSponsors(from, to string, videoID, sponsorshipPrice string) error {
 	subject := "DevOps Toolkit Video Sponsorship"
 	body := fmt.Sprintf(`Hi,
 <br><br>
@@ -131,8 +131,9 @@ The video has just been released and is available at https://youtu.be/%s. Please
 <br><br>
 I'll send the invoice for %s in a separate message.
 `, videoID, sponsorshipPrice)
-	to = append(to, settings.Email.FinanceTo)
-	err := e.Send(from, to, subject, body, "")
+	toArray := strings.Split(to, ",")
+	toArray = append(toArray, settings.Email.FinanceTo)
+	err := e.Send(from, toArray, subject, body, "")
 	if err != nil {
 		return err
 	}

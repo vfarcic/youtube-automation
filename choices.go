@@ -274,15 +274,14 @@ func (c *Choices) ChooseInit(video Video) (Video, error) {
 	if len(video.Gist) == 0 {
 		video.Gist = strings.Replace(video.Path, ".yaml", ".md", 1)
 	}
-	sponsoredEmailsString := strings.Join(video.SponsoredEmails, ", ")
-	sponsoredEmailsTitle, _ := c.ColorFromSponsoredEmails("Sponsorship emails (comma separated)", video.Sponsored, video.SponsoredEmails)
+	sponsoredEmailsTitle, _ := c.ColorFromSponsoredEmails("Sponsorship emails (comma separated)", video.Sponsorship.Amount, video.Sponsorship.Emails)
 	form := huh.NewForm(
 		huh.NewGroup(
 			huh.NewInput().Title(c.ColorFromString("Project name", video.ProjectName)).Value(&video.ProjectName),
 			huh.NewInput().Title(c.ColorFromString("Project URL", video.ProjectURL)).Value(&video.ProjectURL),
-			huh.NewInput().Title(c.ColorFromString("Sponsorship amount", video.Sponsored)).Value(&video.Sponsored),
-			huh.NewInput().Title(sponsoredEmailsTitle).Value(&sponsoredEmailsString),
-			huh.NewInput().Title(c.ColorFromStringInverse("Sponsorship blocked", video.SponsorshipBlocked)).Value(&video.SponsorshipBlocked),
+			huh.NewInput().Title(c.ColorFromString("Sponsorship amount", video.Sponsorship.Amount)).Value(&video.Sponsorship.Amount),
+			huh.NewInput().Title(sponsoredEmailsTitle).Value(&video.Sponsorship.Emails),
+			huh.NewInput().Title(c.ColorFromStringInverse("Sponsorship blocked", video.Sponsorship.Blocked)).Value(&video.Sponsorship.Blocked),
 			huh.NewInput().Title(c.ColorFromString("Publish date (e.g., 2030-01-21T16:00)", video.Date)).Value(&video.Date),
 			huh.NewConfirm().Title(c.ColorFromBool("Delayed", !video.Delayed)).Value(&video.Delayed),
 			huh.NewInput().Title(c.ColorFromString("Gist path", video.Gist)).Value(&video.Gist),
@@ -294,19 +293,25 @@ func (c *Choices) ChooseInit(video Video) (Video, error) {
 	if err != nil {
 		return Video{}, err
 	}
-	video.SponsoredEmails = deleteEmpty(strings.Split(sponsoredEmailsString, ","))
+	// TODO: Remove
+	if len(video.Sponsorship.Amount) == 0 {
+		video.Sponsorship.Amount = video.Sponsored
+	}
+	if len(video.Sponsorship.Blocked) == 0 {
+		video.Sponsorship.Blocked = video.SponsorshipBlocked
+	}
 	video.Init.Completed, video.Init.Total = c.Count([]interface{}{
 		video.ProjectName,
 		video.ProjectURL,
-		video.Sponsored,
+		video.Sponsorship.Amount,
 		video.Gist,
 		video.Explained,
 		video.Date,
 	})
-	if _, completed := c.ColorFromSponsoredEmails("Sponsorship emails (comma separated)", video.Sponsored, video.SponsoredEmails); completed {
+	if _, completed := c.ColorFromSponsoredEmails("Sponsorship emails (comma separated)", video.Sponsorship.Amount, video.Sponsorship.Emails); completed {
 		video.Init.Completed++
 	}
-	if video.SponsorshipBlocked == "" {
+	if video.Sponsorship.Blocked == "" {
 		video.Init.Completed++
 	}
 	if !video.Delayed {
@@ -591,10 +596,11 @@ func (c *Choices) ChooseEdit(video Video) (Video, error) {
 	save := true
 	requestEditOrig := video.RequestEdit
 	playlistOptions := huh.NewOptions[string]()
-	for key, value := range getYouTubePlaylists() {
+	for _, value := range getYouTubePlaylists() {
 		selected := false
-		for _, existing := range video.Playlists {
-			if key == existing.Id {
+		playlists := strings.Split(video.Playlist, ",")
+		for _, existing := range playlists {
+			if value == existing {
 				selected = true
 			}
 		}
@@ -633,7 +639,7 @@ func (c *Choices) ChooseEdit(video Video) (Video, error) {
 		video.RequestEdit,
 		video.Movie,
 		video.Slides,
-		video.Playlists,
+		video.Playlist,
 	})
 	video.Edit.Total++
 	if !strings.Contains(video.Timecodes, "TODO:") {
@@ -645,17 +651,18 @@ func (c *Choices) ChooseEdit(video Video) (Video, error) {
 			return video, err
 		}
 	}
-	video.Playlists = []Playlist{}
+	playlists = []string{}
 	if len(playlists) > 0 {
 		for _, value := range playlists {
 			if len(value) > 0 {
 				id := strings.Split(value, " - ")[1]
 				title := strings.Split(value, " - ")[0]
-				playlist := Playlist{Title: title, Id: id}
-				video.Playlists = append(video.Playlists, playlist)
+				playlist := fmt.Sprintf("%s - %s", title, id)
+				playlists = append(playlists, playlist)
 			}
 		}
 	}
+	video.Playlist = strings.Join(playlists, ";")
 	if save {
 		yaml := YAML{}
 		yaml.WriteVideo(video, video.Path)
@@ -667,7 +674,7 @@ func (c *Choices) ChoosePublish(video Video) (Video, error) {
 	save := true
 	sponsorsNotifyText := "Sponsors notify"
 	notifiedSponsorsOrig := video.NotifiedSponsors
-	if video.NotifiedSponsors || len(video.Sponsored) == 0 || video.Sponsored == "N/A" || video.Sponsored == "-" {
+	if video.NotifiedSponsors || len(video.Sponsorship.Amount) == 0 || video.Sponsorship.Amount == "N/A" || video.Sponsorship.Amount == "-" {
 		sponsorsNotifyText = greenStyle.Render(sponsorsNotifyText)
 	} else {
 		sponsorsNotifyText = redStyle.Render(sponsorsNotifyText)
@@ -736,7 +743,7 @@ func (c *Choices) ChoosePublish(video Video) (Video, error) {
 			video.Repo,
 		})
 		video.Publish.Total++
-		if video.NotifiedSponsors || len(video.Sponsored) == 0 || video.Sponsored == "N/A" || video.Sponsored == "-" {
+		if video.NotifiedSponsors || len(video.Sponsorship.Amount) == 0 || video.Sponsorship.Amount == "N/A" || video.Sponsorship.Amount == "-" {
 			video.Publish.Completed++
 		}
 		if createHugo && len(video.HugoPath) == 0 {
@@ -786,7 +793,7 @@ func (c *Choices) ChoosePublish(video Video) (Video, error) {
 		}
 		if !notifiedSponsorsOrig && video.NotifiedSponsors {
 			email := NewEmail(settings.Email.Password)
-			email.SendSponsors(settings.Email.From, video.SponsoredEmails, video.VideoId, video.Sponsored)
+			email.SendSponsors(settings.Email.From, video.Sponsorship.Emails, video.VideoId, video.Sponsorship.Blocked)
 		}
 		if !save {
 			break
@@ -797,7 +804,7 @@ func (c *Choices) ChoosePublish(video Video) (Video, error) {
 	return video, nil
 }
 
-func (c *Choices) ColorFromSponsoredEmails(title, sponsored string, sponsoredEmails []string) (string, bool) {
+func (c *Choices) ColorFromSponsoredEmails(title, sponsored string, sponsoredEmails string) (string, bool) {
 	if len(sponsored) == 0 || sponsored == "N/A" || sponsored == "-" || len(sponsoredEmails) > 0 {
 		return greenStyle.Render(title), true
 	}
@@ -880,9 +887,13 @@ func (c *Choices) ChooseVideosPhase(vi []VideoIndex) bool {
 func (c *Choices) GetVideoPhase(vi VideoIndex) int {
 	yaml := YAML{}
 	video := yaml.GetVideo(c.GetFilePath(vi.Category, vi.Name, "yaml"))
+	// TODO: Remove
+	if len(video.Sponsorship.Blocked) == 0 {
+		video.Sponsorship.Blocked = video.SponsorshipBlocked
+	}
 	if video.Delayed {
 		return videosPhaseDelayed
-	} else if len(video.SponsorshipBlocked) > 0 {
+	} else if len(video.Sponsorship.Blocked) > 0 {
 		return videosPhaseSponsoredBlocked
 	} else if len(video.Repo) > 0 {
 		return videosPhasePublished
@@ -923,13 +934,13 @@ func (c *Choices) ChooseVideos(vi []VideoIndex, phase int) {
 	})
 	for _, video := range sortedVideos {
 		title := video.Name
-		if len(video.SponsorshipBlocked) > 0 && video.SponsorshipBlocked != "-" && video.SponsorshipBlocked != "N/A" {
-			title = fmt.Sprintf("%s (%s)", title, video.SponsorshipBlocked)
+		if len(video.Sponsorship.Blocked) > 0 && video.Sponsorship.Blocked != "-" && video.Sponsorship.Blocked != "N/A" {
+			title = fmt.Sprintf("%s (%s)", title, video.Sponsorship.Blocked)
 		} else {
 			if len(video.Date) > 0 {
 				title = fmt.Sprintf("%s (%s)", title, video.Date)
 			}
-			if len(video.Sponsored) > 0 && video.Sponsored != "-" && video.Sponsored != "N/A" {
+			if len(video.Sponsorship.Amount) > 0 && video.Sponsorship.Amount != "-" && video.Sponsorship.Amount != "N/A" {
 				title = fmt.Sprintf("%s (sponsored)", title)
 			}
 		}
@@ -1010,42 +1021,6 @@ func (c *Choices) GetOptionTextFromString(title, value string) (string, bool) {
 		title = fmt.Sprintf("%s (%s)", title, value)
 	}
 	if len(value) > 0 {
-		completed = true
-	}
-	return title, completed
-}
-
-func (c *Choices) GetOptionTextFromSponsoredEmails(title, sponsored string, sponsoredEmails []string) (string, bool) {
-	completed := false
-	if len(sponsoredEmails) > 0 {
-		emailsText := strings.Join(sponsoredEmails, ", ")
-		title = fmt.Sprintf("%s (%s)", title, emailsText)
-		if len(title) > 100 {
-			title = fmt.Sprintf("%s...", title[0:100])
-		}
-		completed = true
-	} else if len(sponsored) == 0 || sponsored == "N/A" || sponsored == "-" {
-		completed = true
-	}
-	return title, completed
-}
-
-func (c *Choices) GetOptionTextFromPlaylists(title string, values []Playlist) (string, bool) {
-	completed := false
-	value := ""
-	for i := range values {
-		value = fmt.Sprintf("%s, %s", values[i].Title, value)
-	}
-	valueLength := len(value)
-	if valueLength > 100 {
-		value = fmt.Sprintf("%s...", value[0:100])
-	}
-	value = strings.TrimRight(value, ", ")
-	value = strings.ReplaceAll(value, "\n", " ")
-	if value != "" && value != "-" && value != "N/A" {
-		title = fmt.Sprintf("%s (%s)", title, value)
-	}
-	if value != "" {
 		completed = true
 	}
 	return title, completed

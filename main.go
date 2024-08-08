@@ -1,9 +1,5 @@
 package main
 
-import (
-	"strings"
-)
-
 func main() {
 	getArgs()
 	choices := Choices{}
@@ -12,12 +8,12 @@ func main() {
 	}
 }
 
-func deleteEmpty(s []string) []string {
-	var r []string
-	for _, str := range s {
-		if str != "" {
-			r = append(r, strings.TrimSpace(str))
-		}
-	}
-	return r
-}
+// func deleteEmpty(s []string) []string {
+// 	var r []string
+// 	for _, str := range s {
+// 		if str != "" {
+// 			r = append(r, strings.TrimSpace(str))
+// 		}
+// 	}
+// 	return r
+// }

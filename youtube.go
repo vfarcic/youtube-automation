@@ -379,7 +379,7 @@ type PlaylistListResponse struct {
 	} `json:"items"`
 }
 
-func getYouTubePlaylists() map[string]string {
+func getYouTubePlaylists() []string {
 	apiUrl := fmt.Sprintf(
 		"https://www.googleapis.com/youtube/v3/playlists?part=snippet&channelId=%s&key=%s&maxResults=50",
 		channelID,
@@ -402,9 +402,10 @@ func getYouTubePlaylists() map[string]string {
 		log.Fatalf("Error unmarshalling response body from YouTube: %v", err)
 	}
 
-	playlistTitles := make(map[string]string)
+	playlistTitles := []string{}
 	for _, item := range response.Items {
-		playlistTitles[item.ID] = item.Snippet.Title + " - " + item.ID
+		playlist := fmt.Sprintf("%s - %s", item.Snippet.Title, item.ID)
+		playlistTitles = append(playlistTitles, playlist)
 	}
 	return playlistTitles
 }

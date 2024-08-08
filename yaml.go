@@ -27,9 +27,9 @@ type Video struct {
 	Publish             Tasks
 	ProjectName         string
 	ProjectURL          string
-	Sponsored           string
-	SponsoredEmails     []string
-	SponsorshipBlocked  string
+	Sponsorship         Sponsorship
+	Sponsored           string // TODO: Remove
+	SponsorshipBlocked  string // TODO: Remove
 	Date                string
 	Delayed             bool
 	Explained           bool
@@ -58,7 +58,7 @@ type Video struct {
 	Gist                string
 	HugoPath            string
 	RelatedVideos       string
-	Playlists           []Playlist
+	Playlist            string
 	UploadVideo         string
 	VideoId             string
 	Tweet               string
@@ -85,9 +85,10 @@ type Tasks struct {
 	Total     int
 }
 
-type Playlist struct {
-	Title string
-	Id    string
+type Sponsorship struct {
+	Amount  string
+	Emails  string
+	Blocked string
 }
 
 func (y *YAML) GetVideo(path string) Video {
