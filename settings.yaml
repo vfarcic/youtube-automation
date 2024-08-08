@@ -8,3 +8,5 @@ ai:
   deployment: gpt-4-1106-preview
 hugo:
   path: ../devopstoolkit-live/
+youtube:
+  channelId: UCfz8x0lVzJpb_dgWm9kPVrw

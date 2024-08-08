@@ -273,6 +273,7 @@ If you are interested in sponsoring this channel, please use https://calendar.ap
 			Title:       video.Title,
 			Description: description,
 			CategoryId:  "28",
+			ChannelId:   channelID,
 		},
 		Status: &youtube.VideoStatus{
 			PrivacyStatus: "private",
