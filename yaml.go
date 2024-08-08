@@ -78,6 +78,7 @@ type Video struct {
 	TwitterSpace        bool
 	NotifiedSponsors    bool
 	PublishedShort      bool
+	Short               bool
 }
 
 type Tasks struct {

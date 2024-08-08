@@ -348,6 +348,7 @@ func (c *Choices) ChooseWork(video Video) (Video, error) {
 			huh.NewInput().Title(c.ColorFromString("Tagline ideas", video.TaglineIdeas)).Value(&video.TaglineIdeas),
 			huh.NewInput().Title(c.ColorFromString("Other logos", video.OtherLogos)).Value(&video.OtherLogos),
 			huh.NewConfirm().Title(c.ColorFromBool("Screenshots done", video.Screenshots)).Value(&video.Screenshots),
+			huh.NewConfirm().Title(c.ColorFromBool("Short done", video.Short)).Value(&video.Short),
 			huh.NewConfirm().Affirmative("Save").Negative("Cancel").Value(&save),
 		),
 	)
@@ -367,6 +368,7 @@ func (c *Choices) ChooseWork(video Video) (Video, error) {
 		video.TaglineIdeas,
 		video.OtherLogos,
 		video.Screenshots,
+		video.Short,
 	})
 	if save {
 		yaml := YAML{}
