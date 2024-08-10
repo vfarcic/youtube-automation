@@ -7,7 +7,7 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.14.0
 	github.com/atotto/clipboard v0.1.4
 	github.com/charmbracelet/huh v0.5.2
-	github.com/charmbracelet/huh/spinner v0.0.0-20240807175152-d8d2851dbc1a
+	github.com/charmbracelet/huh/spinner v0.0.0-20240809225911-cadaa638c7fa
 	github.com/charmbracelet/lipgloss v0.12.1
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/viper v1.19.0
