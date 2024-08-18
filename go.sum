@@ -31,6 +31,8 @@ github.com/charmbracelet/bubbles v0.18.0 h1:PYv1A036luoBGroX6VWjQIE9Syf2Wby2oOl/
 github.com/charmbracelet/bubbles v0.18.0/go.mod h1:08qhZhtIwzgrtBjAcJnij1t1H0ZRjwHyGsy6AL11PSw=
 github.com/charmbracelet/bubbletea v0.26.6 h1:zTCWSuST+3yZYZnVSvbXwKOPRSNZceVeqpzOLN2zq1s=
 github.com/charmbracelet/bubbletea v0.26.6/go.mod h1:dz8CWPlfCCGLFbBlTY4N7bjLiyOGDJEnd2Muu7pOWhk=
+github.com/charmbracelet/bubbletea v0.27.0 h1:Mznj+vvYuYagD9Pn2mY7fuelGvP0HAXtZYGgRBCbHvU=
+github.com/charmbracelet/bubbletea v0.27.0/go.mod h1:5MdP9XH6MbQkgGhnlxUqCNmBXf9I74KRQ8HIidRxV1Y=
 github.com/charmbracelet/huh v0.5.2 h1:ofeNkJ4iaFnzv46Njhx896DzLUe/j0L2QAf8znwzX4c=
 github.com/charmbracelet/huh v0.5.2/go.mod h1:Sf7dY0oAn6N/e3sXJFtFX9hdQLrUdO3z7AYollG9bAM=
 github.com/charmbracelet/huh/spinner v0.0.0-20240807175152-d8d2851dbc1a h1:XwSqM+RGwY365fzP9oID3IULrc7hqFz3JZUAtsklkLg=
@@ -39,6 +41,8 @@ github.com/charmbracelet/huh/spinner v0.0.0-20240809225911-cadaa638c7fa h1:R+xMd
 github.com/charmbracelet/huh/spinner v0.0.0-20240809225911-cadaa638c7fa/go.mod h1:9VssyY5pUozMRmDYlLYV20QMMcA2sHg3qnaB6PvdIm8=
 github.com/charmbracelet/huh/spinner v0.0.0-20240813141447-57c1e0379197 h1:U/sah4rdnwgKSPRkyfVeWxl/lxAZX70nCGLDKLGLZto=
 github.com/charmbracelet/huh/spinner v0.0.0-20240813141447-57c1e0379197/go.mod h1:9VssyY5pUozMRmDYlLYV20QMMcA2sHg3qnaB6PvdIm8=
+github.com/charmbracelet/huh/spinner v0.0.0-20240818204030-0fd2415b4b30 h1:SEs7ikxVcBXldlg3fV83qNvEezbiyzrNs5Luw4zPEok=
+github.com/charmbracelet/huh/spinner v0.0.0-20240818204030-0fd2415b4b30/go.mod h1:IjvIdCKusBxeBc3G24KrLfUcATNfyLqzHrIBTxRgK2U=
 github.com/charmbracelet/lipgloss v0.12.1 h1:/gmzszl+pedQpjCOH+wFkZr/N90Snz40J/NR7A0zQcs=
 github.com/charmbracelet/lipgloss v0.12.1/go.mod h1:V2CiwIuhx9S1S1ZlADfOj9HmxeMAORuz5izHb0zGbB8=
 github.com/charmbracelet/x/ansi v0.1.4 h1:IEU3D6+dWwPSgZ6HBH+v6oUuZ/nVawMiWj5831KfiLM=
@@ -235,6 +239,8 @@ golang.org/x/sys v0.0.0-20210809222454-d867a43fc93e/go.mod h1:oPkhp1MJrh7nUepCBc
 golang.org/x/sys v0.6.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.23.0 h1:YfKFowiIMvtgl1UERQoTPPToxltDeZfbj4H7dVUCwmM=
 golang.org/x/sys v0.23.0/go.mod h1:/VUhepiaJMQUp4+oa/7Zr1D23ma6VTLIYjOOTFZPUcA=
+golang.org/x/sys v0.24.0 h1:Twjiwq9dn6R1fQcyiK+wQyHWfaz/BJB+YIpzU/Cv3Xg=
+golang.org/x/sys v0.24.0/go.mod h1:/VUhepiaJMQUp4+oa/7Zr1D23ma6VTLIYjOOTFZPUcA=
 golang.org/x/text v0.3.0/go.mod h1:NqM8EUOU14njkJ3fqMW+pc6Ldnwhi/IjpwHt7yyuwOQ=
 golang.org/x/text v0.3.3/go.mod h1:5Zoc/QRtKVWzQhOtBMvqHzDpF6irO9z98xDceosuGiQ=
 golang.org/x/text v0.17.0 h1:XtiM5bkSOt+ewxlOE/aE/AKEHibwj/6gvWMl9Rsh0Qc=
