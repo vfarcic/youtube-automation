@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"net"
 	"net/http"
@@ -367,47 +366,6 @@ func setPlaylists(video Video) error {
 		return err
 	}
 	return nil
-}
-
-type PlaylistListResponse struct {
-	Items []struct {
-		ID      string `json:"id"`
-		Snippet struct {
-			Title       string `json:"title"`
-			Description string `json:"description"`
-		} `json:"snippet"`
-	} `json:"items"`
-}
-
-func getYouTubePlaylists() []string {
-	apiUrl := fmt.Sprintf(
-		"https://www.googleapis.com/youtube/v3/playlists?part=snippet&channelId=%s&key=%s&maxResults=50",
-		channelID,
-		settings.YouTube.APIKey,
-	)
-
-	resp, err := http.Get(apiUrl)
-	if err != nil {
-		log.Fatalf("Error getting response from YouTube: %v", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		log.Fatalf("Error getting response body from YouTube: %v", err)
-	}
-
-	var response PlaylistListResponse
-	if err := json.Unmarshal(body, &response); err != nil {
-		log.Fatalf("Error unmarshalling response body from YouTube: %v", err)
-	}
-
-	playlistTitles := []string{}
-	for _, item := range response.Items {
-		playlist := fmt.Sprintf("%s - %s", item.Snippet.Title, item.ID)
-		playlistTitles = append(playlistTitles, playlist)
-	}
-	return playlistTitles
 }
 
 func getYouTubeURL(videoId string) string {

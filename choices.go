@@ -353,7 +353,6 @@ func (c *Choices) ChooseWork(video Video) (Video, error) {
 			huh.NewInput().Title(c.ColorFromString("Tagline ideas", video.TaglineIdeas)).Value(&video.TaglineIdeas),
 			huh.NewInput().Title(c.ColorFromString("Other logos", video.OtherLogos)).Value(&video.OtherLogos),
 			huh.NewConfirm().Title(c.ColorFromBool("Screenshots done", video.Screenshots)).Value(&video.Screenshots),
-			huh.NewConfirm().Title(c.ColorFromBool("Short done", video.Short)).Value(&video.Short),
 			huh.NewConfirm().Affirmative("Save").Negative("Cancel").Value(&save),
 		),
 	)
@@ -373,7 +372,6 @@ func (c *Choices) ChooseWork(video Video) (Video, error) {
 		video.TaglineIdeas,
 		video.OtherLogos,
 		video.Screenshots,
-		video.Short,
 	})
 	if save {
 		yaml := YAML{}
@@ -595,18 +593,6 @@ func (c *Choices) ChooseDefine(video Video) (Video, error) {
 func (c *Choices) ChooseEdit(video Video) (Video, error) {
 	save := true
 	requestEditOrig := video.RequestEdit
-	playlistOptions := huh.NewOptions[string]()
-	for _, value := range getYouTubePlaylists() {
-		selected := false
-		playlists := strings.Split(video.Playlist, ",")
-		for _, existing := range playlists {
-			if value == existing {
-				selected = true
-			}
-		}
-		playlistOptions = append(playlistOptions, huh.NewOption(value, value).Selected(selected))
-	}
-	var playlists []string
 	timeCodesTitle := "Timecodes"
 	if strings.Contains(video.Timecodes, "TODO:") {
 		timeCodesTitle = redStyle.Render(timeCodesTitle)
@@ -621,7 +607,7 @@ func (c *Choices) ChooseEdit(video Video) (Video, error) {
 			huh.NewText().Lines(5).CharLimit(10000).Title(timeCodesTitle).Value(&video.Timecodes),
 			huh.NewConfirm().Title(c.ColorFromBool("Movie Done", video.Movie)).Value(&video.Movie),
 			huh.NewConfirm().Title(c.ColorFromBool("Slides Done", video.Slides)).Value(&video.Slides),
-			huh.NewMultiSelect[string]().Title("Playlists").Options(playlistOptions...).Value(&playlists),
+			huh.NewConfirm().Title(c.ColorFromBool("Short done", video.Short)).Value(&video.Short),
 			huh.NewConfirm().Affirmative("Save").Negative("Cancel").Value(&save),
 		),
 	)
@@ -639,7 +625,7 @@ func (c *Choices) ChooseEdit(video Video) (Video, error) {
 		video.RequestEdit,
 		video.Movie,
 		video.Slides,
-		video.Playlist,
+		video.Short,
 	})
 	video.Edit.Total++
 	if !strings.Contains(video.Timecodes, "TODO:") {
@@ -651,18 +637,6 @@ func (c *Choices) ChooseEdit(video Video) (Video, error) {
 			return video, err
 		}
 	}
-	playlists = []string{}
-	if len(playlists) > 0 {
-		for _, value := range playlists {
-			if len(value) > 0 {
-				id := strings.Split(value, " - ")[1]
-				title := strings.Split(value, " - ")[0]
-				playlist := fmt.Sprintf("%s - %s", title, id)
-				playlists = append(playlists, playlist)
-			}
-		}
-	}
-	video.Playlist = strings.Join(playlists, ";")
 	if save {
 		yaml := YAML{}
 		yaml.WriteVideo(video, video.Path)

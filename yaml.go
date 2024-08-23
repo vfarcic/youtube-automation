@@ -58,7 +58,6 @@ type Video struct {
 	Gist                string
 	HugoPath            string
 	RelatedVideos       string
-	Playlist            string
 	UploadVideo         string
 	VideoId             string
 	Tweet               string
