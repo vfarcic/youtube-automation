@@ -5,7 +5,7 @@
   ],
   "shell": {
     "init_hook": [
-      "export PATH=\"$HOME/.local/bin:$PATH\""
+      "unset GOROOT"
     ],
     "scripts": {
       "build": ["just build"],

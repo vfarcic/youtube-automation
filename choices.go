@@ -318,7 +318,7 @@ func (c *Choices) ChooseInit(video Video) (Video, error) {
 		video.Init.Completed++
 	}
 	if !explainedOrig && video.Explained {
-		cmd := exec.Command("fabric", "--pattern", "explain_project_dot", "--text", video.ProjectURL)
+		cmd := exec.Command("fabric", "--pattern", "explain_project_dot", video.ProjectURL)
 		output, err := cmd.Output()
 		if err != nil {
 			return video, err
@@ -393,7 +393,7 @@ func (c *Choices) ChooseFabric(video *Video, field *string, fieldName, pattern s
 		if firstIteration {
 			firstIteration = false
 		} else {
-			cmd := exec.Command("fabric", "--pattern", pattern, "--text", string(content))
+			cmd := exec.Command("fabric", "--pattern", pattern, string(content))
 			outputBytes, err := cmd.Output()
 			if err != nil {
 				return err
