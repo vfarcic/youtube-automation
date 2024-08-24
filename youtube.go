@@ -332,6 +332,7 @@ func uploadThumbnail(video Video) error {
 	if err != nil {
 		return err
 	}
+	// TODO: Add two additional thumbnails
 	file, err := os.Open(video.Thumbnail)
 	if err != nil {
 		return err

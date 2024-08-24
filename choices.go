@@ -601,7 +601,9 @@ func (c *Choices) ChooseEdit(video Video) (Video, error) {
 	}
 	form := huh.NewForm(
 		huh.NewGroup(
-			huh.NewInput().Title(c.ColorFromString("Thumbnail Path", video.Thumbnail)).Value(&video.Thumbnail),
+			huh.NewInput().Title(c.ColorFromString("Thumbnail 1 Path", video.Thumbnail)).Value(&video.Thumbnail),
+			huh.NewInput().Title(c.ColorFromString("Thumbnail 2 Path", video.Thumbnail02)).Value(&video.Thumbnail02),
+			huh.NewInput().Title(c.ColorFromString("Thumbnail 3 Path", video.Thumbnail03)).Value(&video.Thumbnail03),
 			huh.NewInput().Title(c.ColorFromString("Members (comma separated)", video.Members)).Value(&video.Members),
 			huh.NewConfirm().Title(c.ColorFromBool("Edit Request", video.RequestEdit)).Value(&video.RequestEdit),
 			huh.NewText().Lines(5).CharLimit(10000).Title(timeCodesTitle).Value(&video.Timecodes),
@@ -621,6 +623,8 @@ func (c *Choices) ChooseEdit(video Video) (Video, error) {
 	}
 	video.Edit.Completed, video.Edit.Total = c.Count([]interface{}{
 		video.Thumbnail,
+		video.Thumbnail02,
+		video.Thumbnail03,
 		video.Members,
 		video.RequestEdit,
 		video.Movie,
