@@ -771,7 +771,7 @@ func (c *Choices) ChoosePublish(video Video) (Video, error) {
 		}
 		if !notifiedSponsorsOrig && video.NotifiedSponsors {
 			email := NewEmail(settings.Email.Password)
-			email.SendSponsors(settings.Email.From, video.Sponsorship.Emails, video.VideoId, video.Sponsorship.Blocked)
+			email.SendSponsors(settings.Email.From, video.Sponsorship.Emails, video.VideoId, video.Sponsorship.Amount)
 		}
 		if !save {
 			break
