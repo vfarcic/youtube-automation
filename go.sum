@@ -19,6 +19,8 @@ github.com/Azure/azure-sdk-for-go/sdk/ai/azopenai v0.6.0 h1:FQOmDxJj1If0D0khZR00
 github.com/Azure/azure-sdk-for-go/sdk/ai/azopenai v0.6.0/go.mod h1:X0+PSrHOZdTjkiEhgv53HS5gplbzVVl2jd6hQRYSS3c=
 github.com/Azure/azure-sdk-for-go/sdk/ai/azopenai v0.6.1 h1:HKi1gFUC0kHiX6rniyt5UwrGidawKyltayFcGIARuhM=
 github.com/Azure/azure-sdk-for-go/sdk/ai/azopenai v0.6.1/go.mod h1:JVVfPiAgcVJ6HrD3A4CRryuEb5rFJAZ4nFYnUFsj6vs=
+github.com/Azure/azure-sdk-for-go/sdk/ai/azopenai v0.6.2 h1:Cx/DLZDK2Gaew4y+P1+CsegTonTMrwQIUz8RZvjQt3I=
+github.com/Azure/azure-sdk-for-go/sdk/ai/azopenai v0.6.2/go.mod h1:JVVfPiAgcVJ6HrD3A4CRryuEb5rFJAZ4nFYnUFsj6vs=
 github.com/Azure/azure-sdk-for-go/sdk/azcore v1.14.0 h1:nyQWyZvwGTvunIMxi1Y9uXkcyr+I7TeNrr/foo4Kpk8=
 github.com/Azure/azure-sdk-for-go/sdk/azcore v1.14.0/go.mod h1:l38EPgmsp71HHLq9j7De57JcKOWPyhrsW1Awm1JS6K0=
 github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.7.0 h1:tfLQ34V6F7tVSwoTf/4lH5sE0o6eCJuNDTmH09nDpbc=
