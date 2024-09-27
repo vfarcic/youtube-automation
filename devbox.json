@@ -9,7 +9,7 @@
     ],
     "scripts": {
       "build": ["just build"],
-      "run": ["just run"]
+      "run":   ["just run"]
     }
   }
 }
