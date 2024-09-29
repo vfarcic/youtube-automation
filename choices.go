@@ -611,7 +611,6 @@ func (c *Choices) ChooseEdit(video Video) (Video, error) {
 			huh.NewText().Lines(5).CharLimit(10000).Title(timeCodesTitle).Value(&video.Timecodes),
 			huh.NewConfirm().Title(c.ColorFromBool("Movie Done", video.Movie)).Value(&video.Movie),
 			huh.NewConfirm().Title(c.ColorFromBool("Slides Done", video.Slides)).Value(&video.Slides),
-			huh.NewConfirm().Title(c.ColorFromBool("Short done", video.Short)).Value(&video.Short),
 			huh.NewConfirm().Affirmative("Save").Negative("Cancel").Value(&save),
 		),
 	)
@@ -631,7 +630,6 @@ func (c *Choices) ChooseEdit(video Video) (Video, error) {
 		video.RequestEdit,
 		video.Movie,
 		video.Slides,
-		video.Short,
 	})
 	video.Edit.Total++
 	if !strings.Contains(video.Timecodes, "TODO:") {

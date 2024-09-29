@@ -77,8 +77,6 @@ type Video struct {
 	Repo                string
 	TwitterSpace        bool
 	NotifiedSponsors    bool
-	PublishedShort      bool
-	Short               bool
 }
 
 type Tasks struct {
