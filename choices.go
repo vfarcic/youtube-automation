@@ -398,7 +398,7 @@ func (c *Choices) ChooseFabric(video *Video, field *string, fieldName, pattern s
 			cmd := exec.Command("fabric", "--pattern", pattern, string(content))
 			outputBytes, err := cmd.Output()
 			if err != nil {
-				return err
+				return fmt.Errorf("%s\n%s", err.Error(), string(outputBytes))
 			}
 			output = string(outputBytes)
 			output = strings.ReplaceAll(output, "TAGS:", "")
