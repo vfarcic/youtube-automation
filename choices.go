@@ -902,6 +902,7 @@ func (c *Choices) ChooseVideos(vi []VideoIndex, phase int) {
 			video.Name = vi[i].Name
 			video.Path = path
 			video.Index = i
+			video.Category = vi[i].Category
 			sortedVideos = append(sortedVideos, video)
 		}
 	}
@@ -920,6 +921,9 @@ func (c *Choices) ChooseVideos(vi []VideoIndex, phase int) {
 			}
 			if len(video.Sponsorship.Amount) > 0 && video.Sponsorship.Amount != "-" && video.Sponsorship.Amount != "N/A" {
 				title = fmt.Sprintf("%s (sponsored)", title)
+			}
+			if video.Category == "ama" {
+				title = fmt.Sprintf("%s (AMA)", title)
 			}
 		}
 

@@ -20,6 +20,7 @@ type Video struct {
 	Name                string
 	Index               int
 	Path                string
+	Category            string
 	Init                Tasks
 	Work                Tasks
 	Define              Tasks
