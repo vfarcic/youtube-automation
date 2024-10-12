@@ -91,6 +91,8 @@ github.com/charmbracelet/huh/spinner v0.0.0-20240912161303-b56e9290a68e h1:7j2L0
 github.com/charmbracelet/huh/spinner v0.0.0-20240912161303-b56e9290a68e/go.mod h1:Cxhgl8N0sX9A+EQxedzzGZAalaF8fUVL+JP/pSOW8cI=
 github.com/charmbracelet/huh/spinner v0.0.0-20240917123815-c9b2c9cdb7b6 h1:qRk1YMgaWNSJmj2n0ZOiIpqGTXrP42vOrp8fCFVh3qs=
 github.com/charmbracelet/huh/spinner v0.0.0-20240917123815-c9b2c9cdb7b6/go.mod h1:Cxhgl8N0sX9A+EQxedzzGZAalaF8fUVL+JP/pSOW8cI=
+github.com/charmbracelet/huh/spinner v0.0.0-20241011224433-983a50776b31 h1:HqaYBKXy1eQBnN9tCLJJHaQ+3btqonOVh25LZ/Xaxps=
+github.com/charmbracelet/huh/spinner v0.0.0-20241011224433-983a50776b31/go.mod h1:Cxhgl8N0sX9A+EQxedzzGZAalaF8fUVL+JP/pSOW8cI=
 github.com/charmbracelet/lipgloss v0.12.1 h1:/gmzszl+pedQpjCOH+wFkZr/N90Snz40J/NR7A0zQcs=
 github.com/charmbracelet/lipgloss v0.12.1/go.mod h1:V2CiwIuhx9S1S1ZlADfOj9HmxeMAORuz5izHb0zGbB8=
 github.com/charmbracelet/lipgloss v0.13.0 h1:4X3PPeoWEDCMvzDvGmTajSyYPcZM4+y8sCA/SsA3cjw=
