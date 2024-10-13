@@ -483,7 +483,6 @@ func (c *Choices) ChooseDefine(video Video) (Video, error) {
 	}
 
 	// Tags
-	// TODO: Change to Fabric
 	if err := c.ChooseFabric(&video, &video.Tags, "Tags", "tags_dot", true); err != nil {
 		return video, err
 	}
