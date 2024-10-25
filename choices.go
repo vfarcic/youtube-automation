@@ -980,7 +980,9 @@ func (c *Choices) GetPhaseColoredText(phases map[int]int, phase int, title strin
 			return greenStyle.Render(title), phases[phase]
 		} else if phase == videosPhaseEditRequested && phases[phase] > 0 {
 			return greenStyle.Render(title), phases[phase]
-		} else if (phase == videosPhaseMaterialDone || phase == videosPhaseIdeas) && phases[phase] >= 3 {
+		} else if phase == videosPhaseMaterialDone && phases[phase] >= 4 {
+			return greenStyle.Render(title), phases[phase]
+		} else if phase == videosPhaseIdeas && phases[phase] >= 3 {
 			return greenStyle.Render(title), phases[phase]
 		} else if phase == videosPhaseStarted && phases[phase] >= 3 {
 			return greenStyle.Render(title), phases[phase]
