@@ -4,7 +4,7 @@ go 1.22.5
 
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/ai/azopenai v0.6.2
-	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.15.0
+	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.16.0
 	github.com/atotto/clipboard v0.1.4
 	github.com/charmbracelet/huh v0.6.0
 	github.com/charmbracelet/huh/spinner v0.0.0-20241028115900-20a4d21717a8

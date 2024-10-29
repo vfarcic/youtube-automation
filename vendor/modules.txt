@@ -22,7 +22,7 @@ cloud.google.com/go/compute/metadata
 # github.com/Azure/azure-sdk-for-go/sdk/ai/azopenai v0.6.2
 ## explicit; go 1.18
 github.com/Azure/azure-sdk-for-go/sdk/ai/azopenai
-# github.com/Azure/azure-sdk-for-go/sdk/azcore v1.15.0
+# github.com/Azure/azure-sdk-for-go/sdk/azcore v1.16.0
 ## explicit; go 1.18
 github.com/Azure/azure-sdk-for-go/sdk/azcore
 github.com/Azure/azure-sdk-for-go/sdk/azcore/cloud
