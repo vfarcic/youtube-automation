@@ -667,8 +667,6 @@ func (c *Choices) ChoosePublish(video Video) (Video, error) {
 		// TODO: Automate
 		huh.NewConfirm().Title(c.ColorFromBool("Slack post", video.SlackPosted)).Value(&video.SlackPosted),
 		// TODO: Automate
-		huh.NewConfirm().Title(c.ColorFromBool("Reddit post", video.RedditPosted)).Value(&video.RedditPosted),
-		// TODO: Automate
 		huh.NewConfirm().Title(c.ColorFromBool("Hacker News post", video.HNPosted)).Value(&video.HNPosted),
 		// TODO: Automate
 		huh.NewConfirm().Title(c.ColorFromBool("Technology Conversations post", video.TCPosted)).Value(&video.TCPosted),
@@ -688,7 +686,6 @@ func (c *Choices) ChoosePublish(video Video) (Video, error) {
 		tweetPostedOrig := video.TweetPosted
 		linkedInPostedOrig := video.LinkedInPosted
 		slackPostedOrig := video.SlackPosted
-		redditPostedOrig := video.RedditPosted
 		hnPostedOrig := video.HNPosted
 		tcPosted := video.TCPosted
 		twitterSpaceOrig := video.TwitterSpace
@@ -709,7 +706,6 @@ func (c *Choices) ChoosePublish(video Video) (Video, error) {
 			video.TweetPosted,
 			video.LinkedInPosted,
 			video.SlackPosted,
-			video.RedditPosted,
 			video.HNPosted,
 			video.TCPosted,
 			video.YouTubeHighlight,
@@ -751,9 +747,6 @@ func (c *Choices) ChoosePublish(video Video) (Video, error) {
 		}
 		if !slackPostedOrig && len(video.VideoId) > 0 && video.SlackPosted {
 			postSlack(video.VideoId)
-		}
-		if !redditPostedOrig && len(video.VideoId) > 0 && video.RedditPosted {
-			postReddit(video.Title, video.VideoId)
 		}
 		if !hnPostedOrig && len(video.VideoId) > 0 && video.HNPosted {
 			postHackerNews(video.Title, video.VideoId)
