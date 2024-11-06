@@ -14,13 +14,13 @@ require (
 	golang.org/x/net v0.30.0
 	golang.org/x/oauth2 v0.23.0
 	golang.org/x/text v0.19.0
-	google.golang.org/api v0.204.0
+	google.golang.org/api v0.205.0
 	gopkg.in/mail.v2 v2.3.1
 	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
-	cloud.google.com/go/auth v0.10.0 // indirect
+	cloud.google.com/go/auth v0.10.1 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.5 // indirect
 	cloud.google.com/go/compute/metadata v0.5.2 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/internal v1.10.0 // indirect
