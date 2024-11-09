@@ -79,7 +79,7 @@ github.com/charmbracelet/bubbletea
 github.com/charmbracelet/huh
 github.com/charmbracelet/huh/accessibility
 github.com/charmbracelet/huh/internal/selector
-# github.com/charmbracelet/huh/spinner v0.0.0-20241107185248-43f38f61b23f
+# github.com/charmbracelet/huh/spinner v0.0.0-20241108235012-6092b3ba5e33
 ## explicit; go 1.19
 github.com/charmbracelet/huh/spinner
 # github.com/charmbracelet/lipgloss v1.0.0
