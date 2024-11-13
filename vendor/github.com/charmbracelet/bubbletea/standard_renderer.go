@@ -34,6 +34,7 @@ type standardRenderer struct {
 	ticker             *time.Ticker
 	done               chan struct{}
 	lastRender         string
+	lastRenderedLines  []string
 	linesRendered      int
 	useANSICompressor  bool
 	once               sync.Once
@@ -174,7 +175,6 @@ func (r *standardRenderer) flush() {
 	}
 
 	newLines := strings.Split(r.buf.String(), "\n")
-	oldLines := strings.Split(r.lastRender, "\n")
 
 	// If we know the output's height, we can use it to determine how many
 	// lines we can render. We drop lines from the top of the render buffer if
@@ -184,14 +184,20 @@ func (r *standardRenderer) flush() {
 		newLines = newLines[len(newLines)-r.height:]
 	}
 
-	numLinesThisFlush := len(newLines)
 	flushQueuedMessages := len(r.queuedMessageLines) > 0 && !r.altScreenActive
 
 	if flushQueuedMessages {
 		// Dump the lines we've queued up for printing.
 		for _, line := range r.queuedMessageLines {
-			// Removing previousy rendered content at the end of line.
-			line = line + ansi.EraseLineRight
+			if ansi.StringWidth(line) < r.width {
+				// We only erase the rest of the line when the line is shorter than
+				// the width of the terminal. When the cursor reaches the end of
+				// the line, any escape sequences that follow will only affect the
+				// last cell of the line.
+
+				// Removing previously rendered content at the end of line.
+				line = line + ansi.EraseLineRight
+			}
 
 			_, _ = buf.WriteString(line)
 			_, _ = buf.WriteString("\r\n")
@@ -203,7 +209,7 @@ func (r *standardRenderer) flush() {
 	// Paint new lines.
 	for i := 0; i < len(newLines); i++ {
 		canSkip := !flushQueuedMessages && // Queuing messages triggers repaint -> we don't have access to previous frame content.
-			len(oldLines) > i && oldLines[i] == newLines[i] // Previously rendered line is the same.
+			len(r.lastRenderedLines) > i && r.lastRenderedLines[i] == newLines[i] // Previously rendered line is the same.
 
 		if _, ignore := r.ignoreLines[i]; ignore || canSkip {
 			// Unless this is the last line, move the cursor down.
@@ -221,9 +227,6 @@ func (r *standardRenderer) flush() {
 
 		line := newLines[i]
 
-		// Removing previousy rendered content at the end of line.
-		line = line + ansi.EraseLineRight
-
 		// Truncate lines wider than the width of the window to avoid
 		// wrapping, which will mess up rendering. If we don't have the
 		// width of the window this will be ignored.
@@ -235,6 +238,16 @@ func (r *standardRenderer) flush() {
 			line = ansi.Truncate(line, r.width, "")
 		}
 
+		if ansi.StringWidth(line) < r.width {
+			// We only erase the rest of the line when the line is shorter than
+			// the width of the terminal. When the cursor reaches the end of
+			// the line, any escape sequences that follow will only affect the
+			// last cell of the line.
+
+			// Removing previously rendered content at the end of line.
+			line = line + ansi.EraseLineRight
+		}
+
 		_, _ = buf.WriteString(line)
 
 		if i < len(newLines)-1 {
@@ -243,11 +256,11 @@ func (r *standardRenderer) flush() {
 	}
 
 	// Clearing left over content from last render.
-	if r.linesRendered > numLinesThisFlush {
+	if r.linesRendered > len(newLines) {
 		buf.WriteString(ansi.EraseScreenBelow)
 	}
 
-	r.linesRendered = numLinesThisFlush
+	r.linesRendered = len(newLines)
 
 	// Make sure the cursor is at the start of the last line to keep rendering
 	// behavior consistent.
@@ -262,6 +275,11 @@ func (r *standardRenderer) flush() {
 
 	_, _ = r.out.Write(buf.Bytes())
 	r.lastRender = r.buf.String()
+
+	// Save previously rendered lines for comparison in the next render. If we
+	// don't do this, we can't skip rendering lines that haven't changed.
+	// See https://github.com/charmbracelet/bubbletea/pull/1233
+	r.lastRenderedLines = newLines
 	r.buf.Reset()
 }
 
@@ -285,6 +303,7 @@ func (r *standardRenderer) write(s string) {
 
 func (r *standardRenderer) repaint() {
 	r.lastRender = ""
+	r.lastRenderedLines = nil
 }
 
 func (r *standardRenderer) clearScreen() {
@@ -292,7 +311,7 @@ func (r *standardRenderer) clearScreen() {
 	defer r.mtx.Unlock()
 
 	r.execute(ansi.EraseEntireScreen)
-	r.execute(ansi.CursorOrigin)
+	r.execute(ansi.HomeCursorPosition)
 
 	r.repaint()
 }
@@ -322,7 +341,7 @@ func (r *standardRenderer) enterAltScreen() {
 	// Note: we can't use r.clearScreen() here because the mutex is already
 	// locked.
 	r.execute(ansi.EraseEntireScreen)
-	r.execute(ansi.CursorOrigin)
+	r.execute(ansi.HomeCursorPosition)
 
 	// cmd.exe and other terminals keep separate cursor states for the AltScreen
 	// and the main buffer. We have to explicitly reset the cursor visibility
