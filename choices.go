@@ -423,48 +423,48 @@ func (c *Choices) ChooseFabric(video *Video, field *string, fieldName, pattern s
 	return nil
 }
 
-// TODO: Remove
-func (c *Choices) ChooseDefineAI(video *Video, field *string, fieldName string, initialQuestion string) error {
-	firstIteration := true
-	askAgain := true
-	question := ""
-	chat := NewAIChatYouTube(settings.AI.Endpoint, settings.AI.Key, settings.AI.Deployment)
-	history := ""
-	defer chat.Close()
-	for askAgain || firstIteration {
-		askAgain = false
-		if firstIteration {
-			firstIteration = false
-			question = initialQuestion
-		} else {
-			responses, err := chat.Chat(question)
-			if err != nil {
-				log.Fatal(err)
-			}
-			for _, resp := range responses {
-				resp = strings.ReplaceAll(resp, "\"", "")
-				*field = resp
-				history = fmt.Sprintf("%s\n%s\n---\n", history, resp)
-			}
-			question = ""
-		}
-		form := huh.NewForm(
-			huh.NewGroup(
-				huh.NewText().Lines(20).CharLimit(10000).Title(c.ColorFromString(fieldName, *field)).Value(field),
-				huh.NewText().Lines(20).CharLimit(10000).Title("AI Responses").Value(&history),
-				huh.NewInput().Title(c.ColorFromString("Question", *field)).Value(&question),
-				huh.NewConfirm().Affirmative("Ask").Negative("Save & Continue").Value(&askAgain),
-			).Title(fieldName),
-		)
-		err := form.Run()
-		if err != nil {
-			return err
-		}
-	}
-	yaml := YAML{}
-	yaml.WriteVideo(*video, video.Path)
-	return nil
-}
+// // TODO: Remove
+// func (c *Choices) ChooseDefineAI(video *Video, field *string, fieldName string, initialQuestion string) error {
+// 	firstIteration := true
+// 	askAgain := true
+// 	question := ""
+// 	chat := NewAIChatYouTube(settings.AI.Endpoint, settings.AI.Key, settings.AI.Deployment)
+// 	history := ""
+// 	defer chat.Close()
+// 	for askAgain || firstIteration {
+// 		askAgain = false
+// 		if firstIteration {
+// 			firstIteration = false
+// 			question = initialQuestion
+// 		} else {
+// 			responses, err := chat.Chat(question)
+// 			if err != nil {
+// 				log.Fatal(err)
+// 			}
+// 			for _, resp := range responses {
+// 				resp = strings.ReplaceAll(resp, "\"", "")
+// 				*field = resp
+// 				history = fmt.Sprintf("%s\n%s\n---\n", history, resp)
+// 			}
+// 			question = ""
+// 		}
+// 		form := huh.NewForm(
+// 			huh.NewGroup(
+// 				huh.NewText().Lines(20).CharLimit(10000).Title(c.ColorFromString(fieldName, *field)).Value(field),
+// 				huh.NewText().Lines(20).CharLimit(10000).Title("AI Responses").Value(&history),
+// 				huh.NewInput().Title(c.ColorFromString("Question", *field)).Value(&question),
+// 				huh.NewConfirm().Affirmative("Ask").Negative("Save & Continue").Value(&askAgain),
+// 			).Title(fieldName),
+// 		)
+// 		err := form.Run()
+// 		if err != nil {
+// 			return err
+// 		}
+// 	}
+// 	yaml := YAML{}
+// 	yaml.WriteVideo(*video, video.Path)
+// 	return nil
+// }
 
 func (c *Choices) ChooseDefine(video Video) (Video, error) {
 	// Title
@@ -486,33 +486,26 @@ func (c *Choices) ChooseDefine(video Video) (Video, error) {
 	if err := c.ChooseFabric(&video, &video.Tags, "Tags", "tags_dot", true); err != nil {
 		return video, err
 	}
-	// err = c.ChooseDefineAI(
-	// 	&video,
-	// 	&video.Tags,
-	// 	"Tags",
-	// 	fmt.Sprintf("Write comma separated tags for a youtube video with the description \"%s\". Do not exceeed 450 characters.", video.Description),
-	// )
-	// if err != nil {
-	// 	return video, err
-	// }
+
 	// Description tags
-	// TODO: Change to Fabric
-	err := c.ChooseDefineAI(
+	err := c.ChooseFabric(
 		&video,
 		&video.DescriptionTags,
 		"Description Tags",
 		fmt.Sprintf("Write up to 4 tags separated with # for a youtube video with the description \"%s\"", video.Description),
+		true,
 	)
 	if err != nil {
 		return video, err
 	}
+
 	// Tweet
-	// TODO: Change to Fabric
-	err = c.ChooseDefineAI(
+	err = c.ChooseFabric(
 		&video,
 		&video.Tweet,
 		"Tweet",
 		fmt.Sprintf("Write a Tweet about a YouTube video with the title \"%s\". Include @DevOpsToolkit into it. Use [YouTube Link] as a placeholder for the link to the vidfeo", video.Title),
+		true,
 	)
 	if err != nil {
 		return video, err
