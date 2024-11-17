@@ -257,7 +257,7 @@ Consider joining the channel: https://www.youtube.com/c/devopstoolkit/join
 If you are interested in sponsoring this channel, please visit https://devopstoolkit.live/sponsor for more information. Alternatively, feel free to contact me over Twitter or LinkedIn (see below).
 
 ▬▬▬▬▬▬ 👋 Contact me 👋 ▬▬▬▬▬▬ 
-➡ Twitter: https://twitter.com/vfarcic
+➡ BlueSky: https://vfarcic.bsky.social
 ➡ LinkedIn: https://www.linkedin.com/in/viktorfarcic/
 
 ▬▬▬▬▬▬ 🚀 Other Channels 🚀 ▬▬▬▬▬▬
