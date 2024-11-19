@@ -493,14 +493,8 @@ func (c *Choices) ChooseDefine(video Video) (Video, error) {
 	}
 
 	// Tweet
-	err = c.ChooseFabric(
-		&video,
-		&video.Tweet,
-		"Tweet",
-		fmt.Sprintf("Write a Tweet about a YouTube video with the title \"%s\". Include @DevOpsToolkit into it. Use [YouTube Link] as a placeholder for the link to the vidfeo", video.Title),
-		true,
-	)
-	if err != nil {
+	if err := c.ChooseFabric(&video, &video.Tweet, "Tweet", "tweet", true); err != nil {
+		// fmt.Sprintf("Write a Tweet about a YouTube video with the title \"%s\". Include @DevOpsToolkit into it. Use [YouTube Link] as a placeholder for the link to the vidfeo", video.Title),
 		return video, err
 	}
 
@@ -515,7 +509,7 @@ func (c *Choices) ChooseDefine(video Video) (Video, error) {
 				huh.NewConfirm().Affirmative("Generate").Negative("Continue").Value(&generateAnimations),
 			).Title("Animations"),
 		)
-		err = formAnimations.Run()
+		err := formAnimations.Run()
 		if err != nil {
 			return Video{}, err
 		}
@@ -550,7 +544,7 @@ func (c *Choices) ChooseDefine(video Video) (Video, error) {
 			huh.NewConfirm().Affirmative("Save").Negative("Cancel").Value(&save),
 		),
 	)
-	err = form.Run()
+	err := form.Run()
 	if err != nil {
 		return Video{}, err
 	}
