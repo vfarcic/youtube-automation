@@ -488,14 +488,7 @@ func (c *Choices) ChooseDefine(video Video) (Video, error) {
 	}
 
 	// Description tags
-	err := c.ChooseFabric(
-		&video,
-		&video.DescriptionTags,
-		"Description Tags",
-		fmt.Sprintf("Write up to 4 tags separated with # for a youtube video with the description \"%s\"", video.Description),
-		true,
-	)
-	if err != nil {
+	if err := c.ChooseFabric(&video, &video.DescriptionTags, "Description Tags", "description_tags_dot", true); err != nil {
 		return video, err
 	}
 
