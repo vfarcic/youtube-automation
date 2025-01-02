@@ -33,7 +33,6 @@ type Video struct {
 	SponsorshipBlocked  string // TODO: Remove
 	Date                string
 	Delayed             bool
-	Explained           bool
 	Code                bool
 	Screen              bool
 	Head                bool
