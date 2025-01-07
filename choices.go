@@ -206,11 +206,11 @@ func (c *Choices) ChooseCreateVideo() VideoIndex {
 
 FIXME: Welcome to DevOps Toolkit, the channel where we...
 
-FIXME: Explanation...
+FIXME: Shock
 
-FIXME: This is...
+FIXME: Establish expectations
 
-FIXME: It's supposed to...
+FIXME: What's the ending?
 
 ## Setup
 
@@ -937,7 +937,7 @@ func (c *Choices) GetPhaseColoredText(phases map[int]int, phase int, title strin
 			return greenStyle.Render(title), phases[phase]
 		} else if phase == videosPhaseEditRequested && phases[phase] > 0 {
 			return greenStyle.Render(title), phases[phase]
-		} else if phase == videosPhaseMaterialDone && phases[phase] >= 4 {
+		} else if phase == videosPhaseMaterialDone && phases[phase] >= 3 {
 			return greenStyle.Render(title), phases[phase]
 		} else if phase == videosPhaseIdeas && phases[phase] >= 3 {
 			return greenStyle.Render(title), phases[phase]
