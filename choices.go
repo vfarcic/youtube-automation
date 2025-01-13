@@ -997,8 +997,8 @@ func (c *Choices) getCategories() ([]huh.Option[string], error) {
 
 func (c *Choices) getIndexOptions() []huh.Option[int] {
 	return []huh.Option[int]{
-		huh.NewOption("List Videos", indexListVideos),
 		huh.NewOption("Create Video", indexCreateVideo),
+		huh.NewOption("List Videos", indexListVideos),
 		huh.NewOption("Exit", actionReturn),
 	}
 }

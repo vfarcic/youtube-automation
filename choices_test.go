@@ -50,8 +50,8 @@ func TestChoices_getIndexOptions(t *testing.T) {
 	choices := &Choices{}
 	indexOptions := choices.getIndexOptions()
 	expectedIndexOptions := []huh.Option[int]{
-		huh.NewOption("List Videos", indexListVideos),
 		huh.NewOption("Create Video", indexCreateVideo),
+		huh.NewOption("List Videos", indexListVideos),
 		huh.NewOption("Exit", actionReturn),
 	}
 	if len(indexOptions) != len(expectedIndexOptions) {
