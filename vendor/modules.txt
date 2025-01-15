@@ -1,5 +1,5 @@
-# cloud.google.com/go/auth v0.13.0
-## explicit; go 1.21
+# cloud.google.com/go/auth v0.14.0
+## explicit; go 1.22
 cloud.google.com/go/auth
 cloud.google.com/go/auth/credentials
 cloud.google.com/go/auth/credentials/internal/externalaccount
@@ -13,8 +13,8 @@ cloud.google.com/go/auth/internal/credsfile
 cloud.google.com/go/auth/internal/jwt
 cloud.google.com/go/auth/internal/transport
 cloud.google.com/go/auth/internal/transport/cert
-# cloud.google.com/go/auth/oauth2adapt v0.2.6
-## explicit; go 1.21
+# cloud.google.com/go/auth/oauth2adapt v0.2.7
+## explicit; go 1.22
 cloud.google.com/go/auth/oauth2adapt
 # cloud.google.com/go/compute/metadata v0.6.0
 ## explicit; go 1.21
@@ -82,7 +82,7 @@ github.com/go-logr/logr/funcr
 github.com/go-logr/stdr
 # github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da
 ## explicit
-# github.com/google/s2a-go v0.1.8
+# github.com/google/s2a-go v0.1.9
 ## explicit; go 1.20
 github.com/google/s2a-go
 github.com/google/s2a-go/fallback
@@ -320,7 +320,7 @@ golang.org/x/text/secure/bidirule
 golang.org/x/text/transform
 golang.org/x/text/unicode/bidi
 golang.org/x/text/unicode/norm
-# google.golang.org/api v0.216.0
+# google.golang.org/api v0.217.0
 ## explicit; go 1.22
 google.golang.org/api/googleapi
 google.golang.org/api/googleapi/transport
@@ -333,12 +333,12 @@ google.golang.org/api/option
 google.golang.org/api/option/internaloption
 google.golang.org/api/transport/http
 google.golang.org/api/youtube/v3
-# google.golang.org/genproto/googleapis/rpc v0.0.0-20250102185135-69823020774d
+# google.golang.org/genproto/googleapis/rpc v0.0.0-20250106144421-5f5ef82da422
 ## explicit; go 1.22
 google.golang.org/genproto/googleapis/rpc/code
 google.golang.org/genproto/googleapis/rpc/errdetails
 google.golang.org/genproto/googleapis/rpc/status
-# google.golang.org/grpc v1.69.2
+# google.golang.org/grpc v1.69.4
 ## explicit; go 1.22
 google.golang.org/grpc
 google.golang.org/grpc/attributes
@@ -397,7 +397,7 @@ google.golang.org/grpc/serviceconfig
 google.golang.org/grpc/stats
 google.golang.org/grpc/status
 google.golang.org/grpc/tap
-# google.golang.org/protobuf v1.36.1
+# google.golang.org/protobuf v1.36.2
 ## explicit; go 1.21
 google.golang.org/protobuf/encoding/protojson
 google.golang.org/protobuf/encoding/prototext
