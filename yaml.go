@@ -74,7 +74,6 @@ type Video struct {
 	Slides              bool
 	GDE                 bool
 	Repo                string
-	TwitterSpace        bool
 	NotifiedSponsors    bool
 }
 

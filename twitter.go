@@ -13,8 +13,3 @@ func (t *Twitter) Post(message, videoId string) {
 	clipboard.WriteAll(message)
 	println(confirmationStyle.Render("The tweet has be copied to clipboard. Please paste it into Twitter manually."))
 }
-
-func (t *Twitter) PostSpace(videoId string) {
-	clipboard.WriteAll(getYouTubeURL(videoId))
-	println(confirmationStyle.Render("The video URL has be copied to clipboard. Please paste it into Twitter manually."))
-}

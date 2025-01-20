@@ -17,6 +17,7 @@ import (
 	"golang.org/x/net/context"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
+	"google.golang.org/api/option"
 	"google.golang.org/api/youtube/v3"
 )
 
@@ -237,7 +238,12 @@ func uploadVideo(video Video) string {
 		return ""
 	}
 	client := getClient(youtube.YoutubeUploadScope)
-	service, err := youtube.New(client)
+
+	// FIXME: Remove the comment
+	// service, err := youtube.New(client)
+	ctx := context.Background()
+	service, err := youtube.NewService(ctx, option.WithHTTPClient(client))
+	// service, err := youtube.NewService(ctx, option.WithHTTPClient(client))
 	if err != nil {
 		log.Fatalf("Error creating YouTube client: %v", err)
 	}
@@ -328,45 +334,47 @@ func getAdditionalInfo(hugoPath, projectName, projectURL, relatedVideosRaw strin
 func uploadThumbnail(video Video) error {
 	client := getClient(youtube.YoutubeUploadScope)
 
-	service, err := youtube.New(client)
+	// FIXME: Remove the comment
+	// service, err := youtube.New(client)
+	ctx := context.Background()
+	service, err := youtube.NewService(ctx, option.WithHTTPClient(client))
 	if err != nil {
 		return err
 	}
-	// TODO: Add two additional thumbnails
-	file, err := os.Open(video.Thumbnail)
+	// FIXME: Rewrite into a loop (start)
+	file1, err := os.Open(video.Thumbnail)
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	file2, err := os.Open(video.Thumbnail02)
+	if err != nil {
+		return err
+	}
+	file3, err := os.Open(video.Thumbnail03)
+	if err != nil {
+		return err
+	}
+	defer file1.Close()
+	defer file2.Close()
+	defer file3.Close()
 	call := service.Thumbnails.Set(video.VideoId)
-	response, err := call.Media(file).Do()
+	response, err := call.Media(file1).Do()
+	if err != nil {
+		return err
+	}
+	fmt.Printf("Thumbnail uploaded, URL: %s\n", response.Items[0].Default.Url)
+	response, err = call.Media(file2).Do()
+	if err != nil {
+		return err
+	}
+	fmt.Printf("Thumbnail uploaded, URL: %s\n", response.Items[0].Default.Url)
+	response, err = call.Media(file3).Do()
 	if err != nil {
 		return err
 	}
 	fmt.Printf("Thumbnail uploaded, URL: %s\n", response.Items[0].Default.Url)
 	return nil
-}
-
-func setPlaylists(video Video) error {
-	client := getClient(youtube.YoutubeScope)
-	service, err := youtube.New(client)
-	if err != nil {
-		return err
-	}
-	call := service.PlaylistItems.Insert([]string{"snippet", "status"}, &youtube.PlaylistItem{
-		Snippet: &youtube.PlaylistItemSnippet{
-			PlaylistId: "PLyicRj904Z99X4rm7NFnZGD80aDK83Miv",
-			ResourceId: &youtube.ResourceId{
-				Kind:    "youtube#video",
-				VideoId: video.VideoId,
-			},
-		},
-	})
-	_, err = call.Do()
-	if err != nil {
-		return err
-	}
-	return nil
+	// FIXME: Rewrite into a loop (end)
 }
 
 func getYouTubeURL(videoId string) string {

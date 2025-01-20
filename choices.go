@@ -640,8 +640,6 @@ func (c *Choices) ChoosePublish(video Video) (Video, error) {
 		huh.NewConfirm().Title(c.ColorFromBool("Replies to comments", video.YouTubeCommentReply)).Value(&video.YouTubeCommentReply),
 		// TODO: Automate
 		huh.NewConfirm().Title(c.ColorFromBool("https://gde.advocu.com post", video.GDE)).Value(&video.GDE),
-		// TODO: Automate
-		huh.NewConfirm().Title(c.ColorFromBool("Twitter Spaces post", video.TwitterSpace)).Value(&video.TwitterSpace),
 		huh.NewInput().Title(c.ColorFromString("Code repo", video.Repo)).Value(&video.Repo),
 		huh.NewConfirm().Title(sponsorsNotifyText).Value(&video.NotifiedSponsors),
 	}
@@ -652,7 +650,6 @@ func (c *Choices) ChoosePublish(video Video) (Video, error) {
 		slackPostedOrig := video.SlackPosted
 		hnPostedOrig := video.HNPosted
 		tcPosted := video.TCPosted
-		twitterSpaceOrig := video.TwitterSpace
 		repoOrig := video.Repo
 		form := huh.NewForm(
 			huh.NewGroup(
@@ -676,7 +673,6 @@ func (c *Choices) ChoosePublish(video Video) (Video, error) {
 			video.YouTubeComment,
 			video.YouTubeCommentReply,
 			video.GDE,
-			video.TwitterSpace,
 			video.Repo,
 		})
 		video.Publish.Total++
@@ -717,9 +713,6 @@ func (c *Choices) ChoosePublish(video Video) (Video, error) {
 		}
 		if !tcPosted && len(video.VideoId) > 0 && video.TCPosted {
 			postTechnologyConversations(video.Title, video.Description, video.VideoId, video.Gist, video.ProjectName, video.ProjectURL, video.RelatedVideos)
-		}
-		if !twitterSpaceOrig && len(video.VideoId) > 0 && video.TwitterSpace {
-			twitter.PostSpace(video.VideoId)
 		}
 		if len(repoOrig) == 0 && len(video.Repo) > 0 && video.Repo != "N/A" {
 			repo := Repo{}
