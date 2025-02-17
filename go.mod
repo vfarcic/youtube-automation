@@ -8,7 +8,7 @@ require (
 	github.com/atotto/clipboard v0.1.4
 	github.com/charmbracelet/huh v0.6.0
 	github.com/charmbracelet/lipgloss v1.0.0
-	github.com/spf13/cobra v1.9.0
+	github.com/spf13/cobra v1.9.1
 	github.com/spf13/viper v1.19.0
 	golang.org/x/net v0.35.0
 	golang.org/x/oauth2 v0.26.0
