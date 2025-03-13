@@ -4,9 +4,6 @@
     "just@1.39.0"
   ],
   "shell": {
-    "init_hook": [
-      "unset GOROOT"
-    ],
     "scripts": {
       "build": ["just build"],
       "run":   ["just run"]
