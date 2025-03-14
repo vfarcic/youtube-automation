@@ -64,7 +64,6 @@ Elements:
 %s
 <li>Text: %s</li>
 <li>Screenshots: screenshot-*.png</li>
-<li>If possible, make 3 versions of the thumbnail (e.g., different color, with or without me, anything else you can think of). There's no need to make anything time-demanding. Simple variations should do. The goal is to use YouTube AB testing feature to see which thumbnail works the best.</li>
 </ul>
 %s
 `, video.Location, logos, video.Tagline, taglineIdeas)
