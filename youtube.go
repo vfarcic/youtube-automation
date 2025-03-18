@@ -341,40 +341,18 @@ func uploadThumbnail(video Video) error {
 	if err != nil {
 		return err
 	}
-	// FIXME: Rewrite into a loop (start)
-	file1, err := os.Open(video.Thumbnail)
+	file, err := os.Open(video.Thumbnail)
 	if err != nil {
 		return err
 	}
-	file2, err := os.Open(video.Thumbnail02)
-	if err != nil {
-		return err
-	}
-	file3, err := os.Open(video.Thumbnail03)
-	if err != nil {
-		return err
-	}
-	defer file1.Close()
-	defer file2.Close()
-	defer file3.Close()
+	defer file.Close()
 	call := service.Thumbnails.Set(video.VideoId)
-	response, err := call.Media(file1).Do()
-	if err != nil {
-		return err
-	}
-	fmt.Printf("Thumbnail uploaded, URL: %s\n", response.Items[0].Default.Url)
-	response, err = call.Media(file2).Do()
-	if err != nil {
-		return err
-	}
-	fmt.Printf("Thumbnail uploaded, URL: %s\n", response.Items[0].Default.Url)
-	response, err = call.Media(file3).Do()
+	response, err := call.Media(file).Do()
 	if err != nil {
 		return err
 	}
 	fmt.Printf("Thumbnail uploaded, URL: %s\n", response.Items[0].Default.Url)
 	return nil
-	// FIXME: Rewrite into a loop (end)
 }
 
 func getYouTubeURL(videoId string) string {

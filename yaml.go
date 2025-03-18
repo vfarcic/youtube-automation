@@ -50,8 +50,6 @@ type Video struct {
 	Screenshots         bool
 	RequestThumbnail    bool
 	Thumbnail           string
-	Thumbnail02         string
-	Thumbnail03         string
 	Members             string
 	Animations          string
 	RequestEdit         bool
