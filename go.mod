@@ -11,7 +11,7 @@ require (
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/viper v1.20.1
 	golang.org/x/net v0.38.0
-	golang.org/x/oauth2 v0.28.0
+	golang.org/x/oauth2 v0.29.0
 	golang.org/x/text v0.23.0
 	google.golang.org/api v0.228.0
 	gopkg.in/mail.v2 v2.3.1
