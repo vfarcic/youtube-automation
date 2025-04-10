@@ -334,11 +334,11 @@ func (c *Choices) ChooseWork(video Video) (Video, error) {
 			huh.NewText().Lines(3).CharLimit(10000).Title(c.ColorFromString("Related videos", video.RelatedVideos)).Value(&video.RelatedVideos),
 			huh.NewConfirm().Title(c.ColorFromBool("Thumbnails done", video.Thumbnails)).Value(&video.Thumbnails),
 			huh.NewConfirm().Title(c.ColorFromBool("Diagrams done", video.Diagrams)).Value(&video.Diagrams),
+			huh.NewConfirm().Title(c.ColorFromBool("Screenshots done", video.Screenshots)).Value(&video.Screenshots),
 			huh.NewInput().Title(c.ColorFromString("Files location", video.Location)).Value(&video.Location),
 			huh.NewInput().Title(c.ColorFromString("Tagline", video.Tagline)).Value(&video.Tagline),
 			huh.NewInput().Title(c.ColorFromString("Tagline ideas", video.TaglineIdeas)).Value(&video.TaglineIdeas),
 			huh.NewInput().Title(c.ColorFromString("Other logos", video.OtherLogos)).Value(&video.OtherLogos),
-			huh.NewConfirm().Title(c.ColorFromBool("Screenshots done", video.Screenshots)).Value(&video.Screenshots),
 			huh.NewConfirm().Affirmative("Save").Negative("Cancel").Value(&save),
 		),
 	)
