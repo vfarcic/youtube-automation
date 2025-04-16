@@ -1,3 +1,5 @@
+// Package textarea provides a multi-line text input component for Bubble Tea
+// applications.
 package textarea
 
 import (
@@ -24,9 +26,12 @@ const (
 	minHeight        = 1
 	defaultHeight    = 6
 	defaultWidth     = 40
-	defaultCharLimit = 400
+	defaultCharLimit = 0 // no limit
 	defaultMaxHeight = 99
 	defaultMaxWidth  = 500
+
+	// XXX: in v2, make max lines dynamic and default max lines configurable.
+	maxLines = 10000
 )
 
 // Internal messages for clipboard operations.
@@ -290,13 +295,13 @@ func New() Model {
 		style:                &blurredStyle,
 		FocusedStyle:         focusedStyle,
 		BlurredStyle:         blurredStyle,
-		cache:                memoization.NewMemoCache[line, [][]rune](defaultMaxHeight),
+		cache:                memoization.NewMemoCache[line, [][]rune](maxLines),
 		EndOfBufferCharacter: ' ',
 		ShowLineNumbers:      true,
 		Cursor:               cur,
 		KeyMap:               DefaultKeyMap,
 
-		value: make([][]rune, minHeight, defaultMaxHeight),
+		value: make([][]rune, minHeight, maxLines),
 		focus: false,
 		col:   0,
 		row:   0,
@@ -360,9 +365,8 @@ func (m *Model) insertRunesFromUserInput(runes []rune) {
 	// whatnot.
 	runes = m.san().Sanitize(runes)
 
-	var availSpace int
 	if m.CharLimit > 0 {
-		availSpace = m.CharLimit - m.Length()
+		availSpace := m.CharLimit - m.Length()
 		// If the char limit's been reached, cancel.
 		if availSpace <= 0 {
 			return
@@ -393,9 +397,9 @@ func (m *Model) insertRunesFromUserInput(runes []rune) {
 		lines = append(lines, runes[lstart:])
 	}
 
-	// Obey the maximum height limit.
-	if m.MaxHeight > 0 && len(m.value)+len(lines)-1 > m.MaxHeight {
-		allowedHeight := max(0, m.MaxHeight-len(m.value)+1)
+	// Obey the maximum line limit.
+	if maxLines > 0 && len(m.value)+len(lines)-1 > maxLines {
+		allowedHeight := max(0, maxLines-len(m.value)+1)
 		lines = lines[:allowedHeight]
 	}
 
@@ -492,7 +496,8 @@ func (m *Model) CursorDown() {
 		// Move the cursor to the start of the next line so that we can get
 		// the line information. We need to add 2 columns to account for the
 		// trailing space wrapping.
-		m.col = min(li.StartColumn+li.Width+2, len(m.value[m.row])-1)
+		const trailingSpace = 2
+		m.col = min(li.StartColumn+li.Width+trailingSpace, len(m.value[m.row])-1)
 	}
 
 	nli := m.LineInfo()
@@ -526,7 +531,8 @@ func (m *Model) CursorUp() {
 		// This can be done by moving the cursor to the start of the line and
 		// then subtracting 2 to account for the trailing space we keep on
 		// soft-wrapped lines.
-		m.col = li.StartColumn - 2
+		const trailingSpace = 2
+		m.col = li.StartColumn - trailingSpace
 	}
 
 	nli := m.LineInfo()
@@ -588,11 +594,7 @@ func (m *Model) Blur() {
 
 // Reset sets the input to its default state with no input.
 func (m *Model) Reset() {
-	startCap := m.MaxHeight
-	if startCap <= 0 {
-		startCap = defaultMaxHeight
-	}
-	m.value = make([][]rune, minHeight, startCap)
+	m.value = make([][]rune, minHeight, maxLines)
 	m.col = 0
 	m.row = 0
 	m.viewport.GotoTop()
@@ -853,13 +855,13 @@ func (m Model) LineInfo() LineInfo {
 // repositionView repositions the view of the viewport based on the defined
 // scrolling behavior.
 func (m *Model) repositionView() {
-	min := m.viewport.YOffset
-	max := min + m.viewport.Height - 1
+	minimum := m.viewport.YOffset
+	maximum := minimum + m.viewport.Height - 1
 
-	if row := m.cursorLineNumber(); row < min {
-		m.viewport.LineUp(min - row)
-	} else if row > max {
-		m.viewport.LineDown(row - max)
+	if row := m.cursorLineNumber(); row < minimum {
+		m.viewport.ScrollUp(minimum - row)
+	} else if row > maximum {
+		m.viewport.ScrollDown(row - maximum)
 	}
 }
 
@@ -1119,7 +1121,7 @@ func (m Model) View() string {
 			displayLine++
 
 			var ln string
-			if m.ShowLineNumbers {
+			if m.ShowLineNumbers { //nolint:nestif
 				if wl == 0 {
 					if m.row == l {
 						ln = style.Render(m.style.computedCursorLineNumber().Render(m.formatLineNumber(l + 1)))
@@ -1198,7 +1200,7 @@ func (m Model) View() string {
 }
 
 // formatLineNumber formats the line number for display dynamically based on
-// the maximum number of lines
+// the maximum number of lines.
 func (m Model) formatLineNumber(x any) string {
 	// XXX: ultimately we should use a max buffer height, which has yet to be
 	// implemented.
@@ -1269,11 +1271,13 @@ func (m Model) placeholderView() string {
 		case i == 0:
 			// first character of first line as cursor with character
 			m.Cursor.TextStyle = m.style.computedPlaceholder()
-			m.Cursor.SetChar(string(plines[0][0]))
+
+			ch, rest, _, _ := uniseg.FirstGraphemeClusterInString(plines[0], 0)
+			m.Cursor.SetChar(ch)
 			s.WriteString(lineStyle.Render(m.Cursor.View()))
 
 			// the rest of the first line
-			s.WriteString(lineStyle.Render(style.Render(plines[0][1:] + strings.Repeat(" ", max(0, m.width-uniseg.StringWidth(plines[0]))))))
+			s.WriteString(lineStyle.Render(style.Render(rest)))
 		// remaining lines
 		case len(plines) > i:
 			// current line placeholder text
@@ -1407,7 +1411,7 @@ func wrap(runes []rune, width int) [][]rune {
 			word = append(word, r)
 		}
 
-		if spaces > 0 {
+		if spaces > 0 { //nolint:nestif
 			if uniseg.StringWidth(string(lines[row]))+uniseg.StringWidth(string(word))+spaces > width {
 				row++
 				lines = append(lines, []rune{})
@@ -1465,18 +1469,4 @@ func clamp(v, low, high int) int {
 		low, high = high, low
 	}
 	return min(high, max(low, v))
-}
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
 }

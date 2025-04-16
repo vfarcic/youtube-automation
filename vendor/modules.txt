@@ -25,11 +25,11 @@ github.com/atotto/clipboard
 # github.com/aymanbagabas/go-osc52/v2 v2.0.1
 ## explicit; go 1.16
 github.com/aymanbagabas/go-osc52/v2
-# github.com/catppuccin/go v0.2.0
+# github.com/catppuccin/go v0.3.0
 ## explicit; go 1.19
 github.com/catppuccin/go
-# github.com/charmbracelet/bubbles v0.20.0
-## explicit; go 1.18
+# github.com/charmbracelet/bubbles v0.21.0
+## explicit; go 1.23.0
 github.com/charmbracelet/bubbles/cursor
 github.com/charmbracelet/bubbles/filepicker
 github.com/charmbracelet/bubbles/help
@@ -40,16 +40,16 @@ github.com/charmbracelet/bubbles/textarea
 github.com/charmbracelet/bubbles/textarea/memoization
 github.com/charmbracelet/bubbles/textinput
 github.com/charmbracelet/bubbles/viewport
-# github.com/charmbracelet/bubbletea v1.2.2
+# github.com/charmbracelet/bubbletea v1.3.4
 ## explicit; go 1.18
 github.com/charmbracelet/bubbletea
 # github.com/charmbracelet/colorprofile v0.2.3-0.20250311203215-f60798e515dc
 ## explicit; go 1.18
 github.com/charmbracelet/colorprofile
-# github.com/charmbracelet/huh v0.6.0
-## explicit; go 1.21
+# github.com/charmbracelet/huh v0.7.0
+## explicit; go 1.23.0
 github.com/charmbracelet/huh
-github.com/charmbracelet/huh/accessibility
+github.com/charmbracelet/huh/internal/accessibility
 github.com/charmbracelet/huh/internal/selector
 # github.com/charmbracelet/lipgloss v1.1.0
 ## explicit; go 1.18
@@ -59,7 +59,7 @@ github.com/charmbracelet/lipgloss
 github.com/charmbracelet/x/ansi
 github.com/charmbracelet/x/ansi/kitty
 github.com/charmbracelet/x/ansi/parser
-# github.com/charmbracelet/x/cellbuf v0.0.13-0.20250311204145-2c3ea96c31dd
+# github.com/charmbracelet/x/cellbuf v0.0.13
 ## explicit; go 1.18
 github.com/charmbracelet/x/cellbuf
 # github.com/charmbracelet/x/exp/strings v0.0.0-20240722160745-212f7b056ed0
