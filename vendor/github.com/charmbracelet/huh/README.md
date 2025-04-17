@@ -21,7 +21,7 @@ The above example is running from a single Go program ([source](./examples/burge
 ## Tutorial
 
 Let’s build a form for ordering burgers. To start, we’ll import the library and
-define a few variables where’ll we store answers.
+define a few variables where we'll store answers.
 
 ```go
 package main
@@ -454,7 +454,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m Model) View() string {
     if m.form.State == huh.StateCompleted {
         class := m.form.GetString("class")
-        level := m.form.GetString("level")
+        level := m.form.GetInt("level")
         return fmt.Sprintf("You selected: %s, Lvl. %d", class, level)
     }
     return m.form.View()
@@ -470,6 +470,7 @@ Tea example][example].
 [example]: https://github.com/charmbracelet/huh/blob/main/examples/bubbletea/main.go
 
 ## `Huh?` in the Wild
+
 For some `Huh?` programs in production, see:
 
 * [glyphs](https://github.com/maaslalani/glyphs): a unicode symbol picker
@@ -478,6 +479,11 @@ For some `Huh?` programs in production, see:
 * [gum](https://github.com/charmbracelet/gum): a tool for glamorous shell scripts
 * [savvy](https://github.com/getsavvyinc/savvy-cli): the easiest way to create, share, and run runbooks in the terminal
 
+## Contributing
+
+See [contributing][contribute].
+
+[contribute]: https://github.com/charmbracelet/huh/contribute
 
 ## Feedback
 

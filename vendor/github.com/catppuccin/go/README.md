@@ -6,23 +6,28 @@
 </h3>
 
 <p align="center">
-	<a href="https://github.com/caarlos0/catppuccin-go/stargazers"><img src="https://img.shields.io/github/stars/caarlos0/catppuccin-go?colorA=363a4f&colorB=b7bdf8&style=for-the-badge"></a>
-	<a href="https://github.com/caarlos0/catppuccin-go/issues"><img src="https://img.shields.io/github/issues/caarlos0/catppuccin-go?colorA=363a4f&colorB=f5a97f&style=for-the-badge"></a>
-	<a href="https://github.com/caarlos0/catppuccin-go/contributors"><img src="https://img.shields.io/github/contributors/caarlos0/catppuccin-go?colorA=363a4f&colorB=a6da95&style=for-the-badge"></a>
+	<a href="https://github.com/catppuccin/go/stargazers"><img src="https://img.shields.io/github/stars/catppuccin/go?colorA=363a4f&colorB=b7bdf8&style=for-the-badge"></a>
+	<a href="https://github.com/catppuccin/go/issues"><img src="https://img.shields.io/github/issues/catppuccin/go?colorA=363a4f&colorB=f5a97f&style=for-the-badge"></a>
+	<a href="https://github.com/catppuccin/go/contributors"><img src="https://img.shields.io/github/contributors/catppuccin/go?colorA=363a4f&colorB=a6da95&style=for-the-badge"></a>
 </p>
 
 ![Catppuccin Variants](https://raw.githubusercontent.com/catppuccin/go/main/_examples/catppuccin.gif)
 
 ## Usage
 
-1. `go get github.com/catppuccin/go`
-2. Add an`import catppuccin "github.com/catppuccin/go"` to your file
-3. Use the flavours as you wish.
+1. Run `go get github.com/catppuccin/go`.
+2. Add `import catppuccin "github.com/catppuccin/go"` to your file.
+3. Refer to the [pkg.go.dev documentation](https://pkg.go.dev/github.com/catppuccin/go) and [`_examples/main.go`](https://github.com/catppuccin/go/blob/main/_examples/main.go) for usage.
 
-## 🙋 FAQ (optional)
+## Contributing
 
--	Q: **_"Where can I find the doc?"_**\
-	A: https://pkg.go.dev/github.com/catppuccin/go
+This repository uses [Whiskers](https://github.com/catppuccin/whiskers) to generate the Go flavor files.
+
+Ensure `whiskers` and `go` are in your `$PATH`, and run:
+
+```sh
+go generate ./...
+```
 
 ## 💝 Thanks to
 

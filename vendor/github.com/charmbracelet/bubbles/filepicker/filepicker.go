@@ -1,3 +1,5 @@
+// Package filepicker provides a file picker component for Bubble Tea
+// applications.
 package filepicker
 
 import (
@@ -7,7 +9,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"sync"
+	"sync/atomic"
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
@@ -15,17 +17,10 @@ import (
 	"github.com/dustin/go-humanize"
 )
 
-var (
-	lastID int
-	idMtx  sync.Mutex
-)
+var lastID int64
 
-// Return the next ID we should use on the Model.
 func nextID() int {
-	idMtx.Lock()
-	defer idMtx.Unlock()
-	lastID++
-	return lastID
+	return int(atomic.AddInt64(&lastID, 1))
 }
 
 // New returns a new filepicker model with default styling and key bindings.
@@ -165,6 +160,9 @@ type Model struct {
 	maxStack stack
 	minStack stack
 
+	// Height of the picker.
+	//
+	// Deprecated: use [Model.SetHeight] instead.
 	Height     int
 	AutoHeight bool
 
@@ -195,10 +193,10 @@ func newStack() stack {
 	}
 }
 
-func (m *Model) pushView(selected, min, max int) {
+func (m *Model) pushView(selected, minimum, maximum int) {
 	m.selectedStack.Push(selected)
-	m.minStack.Push(min)
-	m.maxStack.Push(max)
+	m.minStack.Push(minimum)
+	m.maxStack.Push(maximum)
 }
 
 func (m *Model) popView() (int, int, int) {
@@ -238,6 +236,14 @@ func (m Model) readDir(path string, showHidden bool) tea.Cmd {
 // Init initializes the file picker model.
 func (m Model) Init() tea.Cmd {
 	return m.readDir(m.CurrentDirectory, m.ShowHidden)
+}
+
+// SetHeight sets the height of the filepicker.
+func (m *Model) SetHeight(height int) {
+	m.Height = height
+	if m.max > m.Height-1 {
+		m.max = m.min + m.Height - 1
+	}
 }
 
 // Update handles user interactions within the file picker model.
@@ -377,7 +383,7 @@ func (m Model) View() string {
 		var symlinkPath string
 		info, _ := f.Info()
 		isSymlink := info.Mode()&os.ModeSymlink != 0
-		size := strings.Replace(humanize.Bytes(uint64(info.Size())), " ", "", 1)
+		size := strings.Replace(humanize.Bytes(uint64(info.Size())), " ", "", 1) //nolint:gosec
 		name := f.Name()
 
 		if isSymlink {
@@ -386,7 +392,7 @@ func (m Model) View() string {
 
 		disabled := !m.canSelect(name) && !f.IsDir()
 
-		if m.selected == i {
+		if m.selected == i { //nolint:nestif
 			selected := ""
 			if m.ShowPermissions {
 				selected += " " + info.Mode().String()
@@ -513,11 +519,4 @@ func (m Model) canSelect(file string) bool {
 		}
 	}
 	return false
-}
-
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
 }
