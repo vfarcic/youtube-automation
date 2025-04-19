@@ -572,12 +572,10 @@ func (c *Choices) ChoosePublish(video Video) (Video, error) {
 	}
 	createHugo := video.HugoPath != ""
 	fields := []huh.Field{
-		// Automated BlueSky posting
-		huh.NewConfirm().Title(c.ColorFromBool("BlueSky post", video.BlueSkyPosted)).Value(&video.BlueSkyPosted),
 		huh.NewConfirm().Title(c.ColorFromBool("Create Hugo Post", createHugo)).Value(&createHugo),
 		huh.NewInput().Title(c.ColorFromString("Upload video", video.UploadVideo)).Value(&video.UploadVideo),
-		// TODO: Automate
-		huh.NewConfirm().Title(c.ColorFromBool("Twitter post", video.TweetPosted)).Value(&video.TweetPosted),
+		// BlueSky posting
+		huh.NewConfirm().Title(c.ColorFromBool("BlueSky post", video.BlueSkyPosted)).Value(&video.BlueSkyPosted),
 		// TODO: Automate
 		huh.NewConfirm().Title(c.ColorFromBool("LinkedIn post", video.LinkedInPosted)).Value(&video.LinkedInPosted),
 		// TODO: Automate
@@ -597,12 +595,11 @@ func (c *Choices) ChoosePublish(video Video) (Video, error) {
 	}
 	for index := range fields {
 		uploadVideoOrig := video.UploadVideo
-		tweetPostedOrig := video.TweetPosted
+		blueSkyPostedOrig := video.BlueSkyPosted
 		linkedInPostedOrig := video.LinkedInPosted
 		slackPostedOrig := video.SlackPosted
 		hnPostedOrig := video.HNPosted
 		tcPosted := video.TCPosted
-		blueSkyPostedOrig := video.BlueSkyPosted
 		repoOrig := video.Repo
 		form := huh.NewForm(
 			huh.NewGroup(
@@ -617,12 +614,11 @@ func (c *Choices) ChoosePublish(video Video) (Video, error) {
 		video.Publish.Completed, video.Publish.Total = c.Count([]interface{}{
 			video.UploadVideo,
 			video.HugoPath,
-			video.TweetPosted,
+			video.BlueSkyPosted,
 			video.LinkedInPosted,
 			video.SlackPosted,
 			video.HNPosted,
 			video.TCPosted,
-			video.BlueSkyPosted,
 			video.YouTubeHighlight,
 			video.YouTubeComment,
 			video.YouTubeCommentReply,
@@ -651,10 +647,6 @@ func (c *Choices) ChoosePublish(video Video) (Video, error) {
 - Playlists
 - Language
 - Monetization`))
-		}
-		twitter := Twitter{}
-		if !tweetPostedOrig && len(video.Tweet) > 0 && video.TweetPosted {
-			twitter.Post(video.Tweet, video.VideoId)
 		}
 		if !linkedInPostedOrig && len(video.Tweet) > 0 && video.LinkedInPosted {
 			postLinkedIn(video.Tweet, video.VideoId)

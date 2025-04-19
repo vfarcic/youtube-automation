@@ -61,7 +61,6 @@ type Video struct {
 	UploadVideo         string
 	VideoId             string
 	Tweet               string
-	TweetPosted         bool
 	LinkedInPosted      bool
 	SlackPosted         bool
 	HNPosted            bool
