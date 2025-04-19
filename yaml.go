@@ -66,6 +66,7 @@ type Video struct {
 	SlackPosted         bool
 	HNPosted            bool
 	TCPosted            bool
+	BlueSkyPosted       bool
 	YouTubeHighlight    bool
 	YouTubeComment      bool
 	YouTubeCommentReply bool

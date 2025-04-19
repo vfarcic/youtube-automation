@@ -10,3 +10,6 @@ hugo:
   path: ../devopstoolkit-live/
 youtube:
   channelId: UCfz8x0lVzJpb_dgWm9kPVrw
+bluesky:
+  identifier: vfarcic.bsky.social
+  url: https://bsky.social/xrpc

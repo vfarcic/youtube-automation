@@ -9,3 +9,4 @@ providers:
           app-email-password: EMAIL_PASSWORD
           youtube-api-key: YOUTUBE_API_KEY
           youtube-token: YOUTUBE_TOKEN
+          bluesky-password: BLUESKY_PASSWORD

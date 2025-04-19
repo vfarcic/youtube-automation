@@ -204,8 +204,6 @@ func (c *Choices) ChooseCreateVideo() VideoIndex {
 	}
 	scriptContent := `## Intro
 
-FIXME: Welcome to DevOps Toolkit, the channel where we...
-
 FIXME: Shock
 
 FIXME: Establish expectations
@@ -293,7 +291,6 @@ func (c *Choices) ChooseInit(video Video) (Video, error) {
 	if err != nil {
 		return Video{}, err
 	}
-	// TODO: Remove
 	if len(video.Sponsorship.Amount) == 0 {
 		video.Sponsorship.Amount = video.Sponsored
 	}
@@ -406,49 +403,6 @@ func (c *Choices) ChooseFabric(video *Video, field *string, fieldName, pattern s
 	yaml.WriteVideo(*video, video.Path)
 	return nil
 }
-
-// // TODO: Remove
-// func (c *Choices) ChooseDefineAI(video *Video, field *string, fieldName string, initialQuestion string) error {
-// 	firstIteration := true
-// 	askAgain := true
-// 	question := ""
-// 	chat := NewAIChatYouTube(settings.AI.Endpoint, settings.AI.Key, settings.AI.Deployment)
-// 	history := ""
-// 	defer chat.Close()
-// 	for askAgain || firstIteration {
-// 		askAgain = false
-// 		if firstIteration {
-// 			firstIteration = false
-// 			question = initialQuestion
-// 		} else {
-// 			responses, err := chat.Chat(question)
-// 			if err != nil {
-// 				log.Fatal(err)
-// 			}
-// 			for _, resp := range responses {
-// 				resp = strings.ReplaceAll(resp, "\"", "")
-// 				*field = resp
-// 				history = fmt.Sprintf("%s\n%s\n---\n", history, resp)
-// 			}
-// 			question = ""
-// 		}
-// 		form := huh.NewForm(
-// 			huh.NewGroup(
-// 				huh.NewText().Lines(20).CharLimit(10000).Title(c.ColorFromString(fieldName, *field)).Value(field),
-// 				huh.NewText().Lines(20).CharLimit(10000).Title("AI Responses").Value(&history),
-// 				huh.NewInput().Title(c.ColorFromString("Question", *field)).Value(&question),
-// 				huh.NewConfirm().Affirmative("Ask").Negative("Save & Continue").Value(&askAgain),
-// 			).Title(fieldName),
-// 		)
-// 		err := form.Run()
-// 		if err != nil {
-// 			return err
-// 		}
-// 	}
-// 	yaml := YAML{}
-// 	yaml.WriteVideo(*video, video.Path)
-// 	return nil
-// }
 
 func (c *Choices) ChooseDefine(video Video) (Video, error) {
 	// Title
@@ -618,6 +572,8 @@ func (c *Choices) ChoosePublish(video Video) (Video, error) {
 	}
 	createHugo := video.HugoPath != ""
 	fields := []huh.Field{
+		// Automated BlueSky posting
+		huh.NewConfirm().Title(c.ColorFromBool("BlueSky post", video.BlueSkyPosted)).Value(&video.BlueSkyPosted),
 		huh.NewConfirm().Title(c.ColorFromBool("Create Hugo Post", createHugo)).Value(&createHugo),
 		huh.NewInput().Title(c.ColorFromString("Upload video", video.UploadVideo)).Value(&video.UploadVideo),
 		// TODO: Automate
@@ -646,6 +602,7 @@ func (c *Choices) ChoosePublish(video Video) (Video, error) {
 		slackPostedOrig := video.SlackPosted
 		hnPostedOrig := video.HNPosted
 		tcPosted := video.TCPosted
+		blueSkyPostedOrig := video.BlueSkyPosted
 		repoOrig := video.Repo
 		form := huh.NewForm(
 			huh.NewGroup(
@@ -658,13 +615,14 @@ func (c *Choices) ChoosePublish(video Video) (Video, error) {
 			return Video{}, err
 		}
 		video.Publish.Completed, video.Publish.Total = c.Count([]interface{}{
-			video.HugoPath,
 			video.UploadVideo,
+			video.HugoPath,
 			video.TweetPosted,
 			video.LinkedInPosted,
 			video.SlackPosted,
 			video.HNPosted,
 			video.TCPosted,
+			video.BlueSkyPosted,
 			video.YouTubeHighlight,
 			video.YouTubeComment,
 			video.YouTubeCommentReply,
@@ -709,6 +667,13 @@ func (c *Choices) ChoosePublish(video Video) (Video, error) {
 		}
 		if !tcPosted && len(video.VideoId) > 0 && video.TCPosted {
 			postTechnologyConversations(video.Title, video.Description, video.VideoId, video.Gist, video.ProjectName, video.ProjectURL, video.RelatedVideos)
+		}
+		if !blueSkyPostedOrig && len(video.Tweet) > 0 && video.BlueSkyPosted {
+			if err := PostToBluesky(video.Tweet, getYouTubeURL(video.VideoId)); err != nil {
+				println(errorStyle.Render(fmt.Sprintf("Failed to post to Bluesky: %s", err.Error())))
+			} else {
+				println(confirmationStyle.Render("Successfully posted to Bluesky."))
+			}
 		}
 		if len(repoOrig) == 0 && len(video.Repo) > 0 && video.Repo != "N/A" {
 			repo := Repo{}

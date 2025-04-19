@@ -1,0 +1,227 @@
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"strings"
+	"time"
+)
+
+// BlueskyConfig holds the configuration for Bluesky
+type BlueskyConfig struct {
+	Identifier string
+	Password   string
+	URL        string
+}
+
+// BlueskyPost represents a post to be published on Bluesky
+type BlueskyPost struct {
+	Text string
+	URL  string
+}
+
+// BlueskySession holds the session information
+type BlueskySession struct {
+	AccessJWT  string `json:"accessJwt"`
+	RefreshJWT string `json:"refreshJwt"`
+	Handle     string `json:"handle"`
+	DID        string `json:"did"`
+}
+
+// loginRequest represents the login request data
+type loginRequest struct {
+	Identifier string `json:"identifier"`
+	Password   string `json:"password"`
+}
+
+// postRecord represents the record for creating a post
+type postRecord struct {
+	Text      string    `json:"text"`
+	CreatedAt time.Time `json:"createdAt"`
+	Type      string    `json:"$type"`
+}
+
+// createPostRequest represents the request to create a post
+type createPostRequest struct {
+	Collection string     `json:"collection"`
+	Repo       string     `json:"repo"`
+	Record     postRecord `json:"record"`
+}
+
+// GetBlueskyConfig retrieves Bluesky configuration from settings struct
+func GetBlueskyConfig() BlueskyConfig {
+	// Check environment variable for password first
+	password := settings.Bluesky.Password
+	if envPassword := os.Getenv("BLUESKY_PASSWORD"); envPassword != "" {
+		password = envPassword
+	}
+
+	return BlueskyConfig{
+		Identifier: settings.Bluesky.Identifier,
+		Password:   password,
+		URL:        settings.Bluesky.URL,
+	}
+}
+
+// ValidateBlueskyConfig validates the Bluesky configuration
+func ValidateBlueskyConfig(config BlueskyConfig) error {
+	// Create a masked version of the password for display
+	maskedPassword := "not provided"
+	if config.Password != "" {
+		if len(config.Password) <= 4 {
+			maskedPassword = "provided (too short)"
+		} else {
+			// Show first 2 and last 2 chars, rest masked with *
+			firstTwo := config.Password[:2]
+			lastTwo := config.Password[len(config.Password)-2:]
+			maskedPassword = fmt.Sprintf("%s%s%s",
+				firstTwo,
+				strings.Repeat("*", len(config.Password)-4),
+				lastTwo)
+		}
+	}
+
+	if config.Identifier == "" {
+		if config.Password != "" {
+			return fmt.Errorf("Bluesky credentials not configured (identifier: %s, password: %s)",
+				config.Identifier, maskedPassword)
+		}
+		// Both missing is actually fine - it means Bluesky is not being used
+		return nil
+	}
+
+	if config.Password == "" {
+		return fmt.Errorf("Bluesky password is required when identifier is provided (identifier: %s, password: %s)",
+			config.Identifier, maskedPassword)
+	}
+	return nil
+}
+
+// authenticateBluesky authenticates with the Bluesky API
+func authenticateBluesky(config BlueskyConfig) (*BlueskySession, error) {
+	// Validate configuration before attempting authentication
+	if err := ValidateBlueskyConfig(config); err != nil {
+		return nil, err
+	}
+
+	loginURL := config.URL + "/com.atproto.server.createSession"
+
+	loginData := loginRequest{
+		Identifier: config.Identifier,
+		Password:   config.Password,
+	}
+
+	jsonData, err := json.Marshal(loginData)
+	if err != nil {
+		return nil, fmt.Errorf("error marshaling login data: %w", err)
+	}
+
+	resp, err := http.Post(loginURL, "application/json", bytes.NewBuffer(jsonData))
+	if err != nil {
+		return nil, fmt.Errorf("error making login request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("login failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	var session BlueskySession
+	if err := json.NewDecoder(resp.Body).Decode(&session); err != nil {
+		return nil, fmt.Errorf("error decoding login response: %w", err)
+	}
+
+	return &session, nil
+}
+
+// CreateBlueskyPost creates a new post on Bluesky
+func CreateBlueskyPost(config BlueskyConfig, post BlueskyPost) error {
+	session, err := authenticateBluesky(config)
+	if err != nil {
+		return fmt.Errorf("authentication failed: %w", err)
+	}
+
+	// Use only the text (tweet content) for Bluesky posts
+	text := post.Text
+
+	// Ensure the text is within Bluesky's length limits (300 characters)
+	if len(text) > 300 {
+		text = text[:297] + "..."
+	}
+
+	createURL := config.URL + "/com.atproto.repo.createRecord"
+
+	postData := createPostRequest{
+		Collection: "app.bsky.feed.post",
+		Repo:       session.DID,
+		Record: postRecord{
+			Text:      text,
+			CreatedAt: time.Now().UTC(),
+			Type:      "app.bsky.feed.post",
+		},
+	}
+
+	jsonData, err := json.Marshal(postData)
+	if err != nil {
+		return fmt.Errorf("error marshaling post data: %w", err)
+	}
+
+	req, err := http.NewRequest("POST", createURL, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return fmt.Errorf("error creating post request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+session.AccessJWT)
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("error making post request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("post creation failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	return nil
+}
+
+// PostToBluesky posts content to Bluesky
+func PostToBluesky(text string, youtubeURL string) error {
+	config := GetBlueskyConfig()
+
+	// Validate the configuration
+	if err := ValidateBlueskyConfig(config); err != nil {
+		return err
+	}
+
+	if !strings.Contains(text, "[YOUTUBE]") {
+		return fmt.Errorf("text does not contain [YOUTUBE] placeholder")
+	}
+
+	if youtubeURL == "" {
+		return fmt.Errorf("YouTube URL is required")
+	}
+
+	text = strings.ReplaceAll(text, "[YOUTUBE]", youtubeURL)
+
+	// Check if the text exceeds Bluesky's character limit (300)
+	if len(text) > 300 {
+		return fmt.Errorf("text exceeds Bluesky's 300 character limit (current length: %d)", len(text))
+	}
+
+	post := BlueskyPost{
+		Text: text,
+		URL:  config.URL,
+	}
+
+	return CreateBlueskyPost(config, post)
+}

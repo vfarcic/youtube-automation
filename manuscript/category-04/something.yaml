@@ -1,6 +1,7 @@
 name: Something
 index: 0
 path: manuscript/category-04/something.yaml
+category: category-04
 init:
     completed: 10
     total: 10
@@ -14,20 +15,18 @@ edit:
     completed: 6
     total: 7
 publish:
-    completed: 15
-    total: 15
+    completed: 13
+    total: 14
 projectname: Something
 projecturl: https://crossplane.io
+sponsorship:
+    amount: ""
+    emails: ""
+    blocked: ""
 sponsored: 4k EUR
-sponsoredemails:
-    - jdoe@acme.com
-    - someone@something.com
-    - sss@sss.com
 sponsorshipblocked: ""
-subject: ci/cd
 date: 2024-01-21T16:00
 delayed: false
-explained: true
 code: true
 screen: true
 head: true
@@ -35,6 +34,7 @@ thumbnails: true
 diagrams: true
 title: 'APIs vs. Scripts: The Battle for the Soul of Platform Engineering!'
 description: "Dive into the fascinating world of platform engineering with our latest video, where we draw a unique parallel between the efficiency of restaurants and the principles of platform engineering. Discover why offering complete solutions, not just the raw \"ingredients,\" is crucial for developers to focus on their core tasks. Learn about the importance of a well-structured service catalog, akin to a restaurant's menu, and how APIs serve as the diligent waiters of the digital realm. Understand the significance of customizable services, just enough information, and observability—elements that ensure a seamless experience for developers, much like diners in a restaurant. Whether you're a developer, a platform engineer, or simply curious about efficient systems, this video serves up a feast of insights. Bon Appétit to learning! \U0001F37D️\U0001F468‍\U0001F4BB\U0001F680\n"
+highlight: ""
 tags: '#KubernetesTutorial #DevOpsTraining #ContainerManagementes, just enough    information,'
 descriptiontags: '#CI/CD #ContinuousIntegration #ContinuousDelivery'
 location: google drive
@@ -69,31 +69,21 @@ timecodes: |-
     TODO:TODO Section: Ephemeral Shell Environments with Nix
     TODO:TODO Section: Nix Pros and Cons
 gist: manuscript/category-04/something.md
-gisturl: https://gist.github.com/vfarcic/29deee52bcd5720625e969205de2f0e1
 hugopath: ""
 relatedvideos: "Argo CD - Applying GitOps Principles To Manage A Production Environment In Kubernetes: https://youtu.be/vpWQeoaiRM4\nHow To Apply GitOps To Everything - Combining Argo CD And Crossplane: https://youtu.be/yrj4lmScKHQ\nCrossplane - GitOps-based Infrastructure as Code "
-playlists:
-    - title: Shorts
-      id: PLyicRj904Z99psBRs798Xg0mhJY__4aJt
-    - title: Crossplane
-      id: PLyicRj904Z9_X62k6_XM_xlJkSyoQDkS2
-    - title: Ask Me Anything
-      id: PLyicRj904Z99d82mxPAtTtSR98g75Botj
 uploadvideo: sdsdsd
 videoid: xyz
 tweet: "\U0001F680 Boost your development superhero powers with the ultimate guide to Mastering CI/CD! \U0001F3AF\nStreamline your processes & unlock success like never before!\nDon't miss this game-changing YouTube video—your code will thank you! \U0001F4AA\n\n#DevOps #CI/CD #DevelopmentSuccess\n\nhttps://youtu.be/E_8zpztN2wA\n"
 tweetposted: true
 linkedinposted: true
 slackposted: true
-redditposted: true
 hnposted: true
 tcposted: true
+blueskyposted: true
 youtubehighlight: true
 youtubecomment: true
 youtubecommentreply: true
 slides: true
 gde: true
 repo: N/Axxx
-twitterspace: true
 notifiedsponsors: true
-publishedshort: false
