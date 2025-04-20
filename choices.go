@@ -574,7 +574,6 @@ func (c *Choices) ChoosePublish(video Video) (Video, error) {
 	fields := []huh.Field{
 		huh.NewConfirm().Title(c.ColorFromBool("Create Hugo Post", createHugo)).Value(&createHugo),
 		huh.NewInput().Title(c.ColorFromString("Upload video", video.UploadVideo)).Value(&video.UploadVideo),
-		// BlueSky posting
 		huh.NewConfirm().Title(c.ColorFromBool("BlueSky post", video.BlueSkyPosted)).Value(&video.BlueSkyPosted),
 		// TODO: Automate
 		huh.NewConfirm().Title(c.ColorFromBool("LinkedIn post", video.LinkedInPosted)).Value(&video.LinkedInPosted),
@@ -583,9 +582,10 @@ func (c *Choices) ChoosePublish(video Video) (Video, error) {
 		// TODO: Automate
 		huh.NewConfirm().Title(c.ColorFromBool("Hacker News post", video.HNPosted)).Value(&video.HNPosted),
 		// TODO: Automate
-		huh.NewConfirm().Title(c.ColorFromBool("Technology Conversations post", video.TCPosted)).Value(&video.TCPosted),
+		huh.NewConfirm().Title(c.ColorFromBool("devopstoolkit.live", video.DOTPosted)).Value(&video.DOTPosted),
 		// TODO: Automate
 		huh.NewConfirm().Title(c.ColorFromBool("YouTube Highlight", video.YouTubeHighlight)).Value(&video.YouTubeHighlight),
+		// TODO: Automate
 		huh.NewConfirm().Title(c.ColorFromBool("Pinned comment", video.YouTubeComment)).Value(&video.YouTubeComment),
 		huh.NewConfirm().Title(c.ColorFromBool("Replies to comments", video.YouTubeCommentReply)).Value(&video.YouTubeCommentReply),
 		// TODO: Automate
@@ -599,7 +599,7 @@ func (c *Choices) ChoosePublish(video Video) (Video, error) {
 		linkedInPostedOrig := video.LinkedInPosted
 		slackPostedOrig := video.SlackPosted
 		hnPostedOrig := video.HNPosted
-		tcPosted := video.TCPosted
+		dotPosted := video.DOTPosted
 		repoOrig := video.Repo
 		form := huh.NewForm(
 			huh.NewGroup(
@@ -618,7 +618,7 @@ func (c *Choices) ChoosePublish(video Video) (Video, error) {
 			video.LinkedInPosted,
 			video.SlackPosted,
 			video.HNPosted,
-			video.TCPosted,
+			video.DOTPosted,
 			video.YouTubeHighlight,
 			video.YouTubeComment,
 			video.YouTubeCommentReply,
@@ -657,7 +657,7 @@ func (c *Choices) ChoosePublish(video Video) (Video, error) {
 		if !hnPostedOrig && len(video.VideoId) > 0 && video.HNPosted {
 			postHackerNews(video.Title, video.VideoId)
 		}
-		if !tcPosted && len(video.VideoId) > 0 && video.TCPosted {
+		if !dotPosted && len(video.VideoId) > 0 && video.DOTPosted {
 			postTechnologyConversations(video.Title, video.Description, video.VideoId, video.Gist, video.ProjectName, video.ProjectURL, video.RelatedVideos)
 		}
 		if !blueSkyPostedOrig && len(video.Tweet) > 0 && video.BlueSkyPosted {

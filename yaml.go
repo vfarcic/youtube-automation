@@ -64,7 +64,7 @@ type Video struct {
 	LinkedInPosted      bool
 	SlackPosted         bool
 	HNPosted            bool
-	TCPosted            bool
+	DOTPosted           bool
 	BlueSkyPosted       bool
 	YouTubeHighlight    bool
 	YouTubeComment      bool
