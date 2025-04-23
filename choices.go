@@ -661,7 +661,7 @@ func (c *Choices) ChoosePublish(video Video) (Video, error) {
 			postTechnologyConversations(video.Title, video.Description, video.VideoId, video.Gist, video.ProjectName, video.ProjectURL, video.RelatedVideos)
 		}
 		if !blueSkyPostedOrig && len(video.Tweet) > 0 && video.BlueSkyPosted {
-			if err := PostToBluesky(video.Tweet, getYouTubeURL(video.VideoId)); err != nil {
+			if err := PostToBluesky(video.Tweet, video.VideoId); err != nil {
 				println(errorStyle.Render(fmt.Sprintf("Failed to post to Bluesky: %s", err.Error())))
 			} else {
 				println(confirmationStyle.Render("Successfully posted to Bluesky."))

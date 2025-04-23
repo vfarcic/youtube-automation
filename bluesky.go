@@ -20,8 +20,9 @@ type BlueskyConfig struct {
 
 // BlueskyPost represents a post to be published on Bluesky
 type BlueskyPost struct {
-	Text string
-	URL  string
+	Text       string
+	YouTubeURL string
+	VideoID    string
 }
 
 // BlueskySession holds the session information
@@ -38,11 +39,25 @@ type loginRequest struct {
 	Password   string `json:"password"`
 }
 
+// externalEmbed represents an external link embed
+type externalEmbed struct {
+	Type     string       `json:"$type"`
+	External externalLink `json:"external"`
+}
+
+type externalLink struct {
+	URI         string `json:"uri"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	Thumb       string `json:"thumb,omitempty"`
+}
+
 // postRecord represents the record for creating a post
 type postRecord struct {
-	Text      string    `json:"text"`
-	CreatedAt time.Time `json:"createdAt"`
-	Type      string    `json:"$type"`
+	Text      string         `json:"text"`
+	Embed     *externalEmbed `json:"embed,omitempty"`
+	CreatedAt time.Time      `json:"createdAt"`
+	Type      string         `json:"$type"`
 }
 
 // createPostRequest represents the request to create a post
@@ -166,6 +181,17 @@ func CreateBlueskyPost(config BlueskyConfig, post BlueskyPost) error {
 		},
 	}
 
+	// Add YouTube embed if URL is present
+	postData.Record.Embed = &externalEmbed{
+		Type: "app.bsky.embed.external",
+		External: externalLink{
+			URI:         post.YouTubeURL,
+			Title:       "YouTube Video",
+			Description: text,
+			Thumb:       fmt.Sprintf("https://img.youtube.com/vi/%s/maxresdefault.jpg", post.VideoID),
+		},
+	}
+
 	jsonData, err := json.Marshal(postData)
 	if err != nil {
 		return fmt.Errorf("error marshaling post data: %w", err)
@@ -195,7 +221,7 @@ func CreateBlueskyPost(config BlueskyConfig, post BlueskyPost) error {
 }
 
 // PostToBluesky posts content to Bluesky
-func PostToBluesky(text string, youtubeURL string) error {
+func PostToBluesky(text string, videoID string) error {
 	config := GetBlueskyConfig()
 
 	// Validate the configuration
@@ -206,12 +232,12 @@ func PostToBluesky(text string, youtubeURL string) error {
 	if !strings.Contains(text, "[YOUTUBE]") {
 		return fmt.Errorf("text does not contain [YOUTUBE] placeholder")
 	}
-
-	if youtubeURL == "" {
-		return fmt.Errorf("YouTube URL is required")
+	if videoID == "" {
+		return fmt.Errorf("YouTube video ID is required")
 	}
 
-	text = strings.ReplaceAll(text, "[YOUTUBE]", youtubeURL)
+	youtubeUrl := getYouTubeURL(videoID)
+	text = strings.ReplaceAll(text, "[YOUTUBE]", youtubeUrl)
 
 	// Check if the text exceeds Bluesky's character limit (300)
 	if len(text) > 300 {
@@ -219,8 +245,9 @@ func PostToBluesky(text string, youtubeURL string) error {
 	}
 
 	post := BlueskyPost{
-		Text: text,
-		URL:  config.URL,
+		Text:       text,
+		YouTubeURL: youtubeUrl,
+		VideoID:    videoID,
 	}
 
 	return CreateBlueskyPost(config, post)
