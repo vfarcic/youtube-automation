@@ -233,7 +233,7 @@ func PostToBluesky(text string, videoID string) error {
 		return fmt.Errorf("text does not contain [YOUTUBE] placeholder")
 	}
 	if videoID == "" {
-		return fmt.Errorf("YouTube URL is required")
+		return fmt.Errorf("YouTube video ID is required")
 	}
 
 	youtubeUrl := getYouTubeURL(videoID)

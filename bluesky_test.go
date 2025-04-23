@@ -161,7 +161,7 @@ func TestPostToBlueskyValidation(t *testing.T) {
 			name:     "Missing video ID",
 			text:     "Test post [YOUTUBE]",
 			videoID:  "",
-			expected: "YouTube URL is required",
+			expected: "YouTube video ID is required",
 		},
 		{
 			name:     "Text too long",
