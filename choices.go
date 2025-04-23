@@ -220,9 +220,9 @@ FIXME:
 
 ## FIXME: Pros and Cons
 
-TODO: Header: Cons; Items: FIXME:
+FIXME: Header: Cons; Items: FIXME:
 
-TODO: Header: Pros; Items: FIXME:
+FIXME: Header: Pros; Items: FIXME:
 
 ## Destroy
 
@@ -466,9 +466,9 @@ func (c *Choices) ChooseDefine(video Video) (Video, error) {
 				video.Animations = fmt.Sprintf("%s\n- %s", video.Animations, line)
 			}
 			if len(video.Timecodes) == 0 {
-				video.Timecodes = "00:00 TODO:"
+				video.Timecodes = "00:00 FIXME:"
 				for _, section := range sectionsSlice {
-					video.Timecodes = fmt.Sprintf("%s\nTODO:TODO %s", video.Timecodes, strings.TrimLeft(section, "Section: "))
+					video.Timecodes = fmt.Sprintf("%s\nFIXME:FIXME %s", video.Timecodes, strings.TrimLeft(section, "Section: "))
 				}
 			}
 		}
@@ -513,7 +513,7 @@ func (c *Choices) ChooseEdit(video Video) (Video, error) {
 	save := true
 	requestEditOrig := video.RequestEdit
 	timeCodesTitle := "Timecodes"
-	if strings.Contains(video.Timecodes, "TODO:") {
+	if strings.Contains(video.Timecodes, "FIXME:") {
 		timeCodesTitle = redStyle.Render(timeCodesTitle)
 	} else {
 		timeCodesTitle = greenStyle.Render(timeCodesTitle)
@@ -545,7 +545,7 @@ func (c *Choices) ChooseEdit(video Video) (Video, error) {
 		video.Slides,
 	})
 	video.Edit.Total++
-	if !strings.Contains(video.Timecodes, "TODO:") {
+	if !strings.Contains(video.Timecodes, "FIXME:") {
 		video.Edit.Completed++
 	}
 	if !requestEditOrig && video.RequestEdit {
