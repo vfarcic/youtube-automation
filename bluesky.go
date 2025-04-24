@@ -9,6 +9,14 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/charmbracelet/lipgloss"
+)
+
+var (
+	linkStyle = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("4")).
+		Underline(true)
 )
 
 // BlueskyConfig holds the configuration for Bluesky
@@ -155,10 +163,10 @@ func authenticateBluesky(config BlueskyConfig) (*BlueskySession, error) {
 }
 
 // CreateBlueskyPost creates a new post on Bluesky
-func CreateBlueskyPost(config BlueskyConfig, post BlueskyPost) error {
+func CreateBlueskyPost(config BlueskyConfig, post BlueskyPost) (string, error) {
 	session, err := authenticateBluesky(config)
 	if err != nil {
-		return fmt.Errorf("authentication failed: %w", err)
+		return "", fmt.Errorf("authentication failed: %w", err)
 	}
 
 	// Use only the text (tweet content) for Bluesky posts
@@ -194,12 +202,12 @@ func CreateBlueskyPost(config BlueskyConfig, post BlueskyPost) error {
 
 	jsonData, err := json.Marshal(postData)
 	if err != nil {
-		return fmt.Errorf("error marshaling post data: %w", err)
+		return "", fmt.Errorf("error marshaling post data: %w", err)
 	}
 
 	req, err := http.NewRequest("POST", createURL, bytes.NewBuffer(jsonData))
 	if err != nil {
-		return fmt.Errorf("error creating post request: %w", err)
+		return "", fmt.Errorf("error creating post request: %w", err)
 	}
 
 	req.Header.Set("Content-Type", "application/json")
@@ -208,16 +216,34 @@ func CreateBlueskyPost(config BlueskyConfig, post BlueskyPost) error {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return fmt.Errorf("error making post request: %w", err)
+		return "", fmt.Errorf("error making post request: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("post creation failed with status %d: %s", resp.StatusCode, string(body))
+		return "", fmt.Errorf("post creation failed with status %d: %s", resp.StatusCode, string(body))
 	}
 
-	return nil
+	// Parse the response to get the post URL
+	var response struct {
+		URI string `json:"uri"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+		return "", fmt.Errorf("error decoding response: %w", err)
+	}
+
+	// Convert the AT URI to a web URL
+	// Example: at://did:plc:123/app.bsky.feed.post/3k7qmjev5lr2s
+	// becomes: https://bsky.app/profile/username/post/3k7qmjev5lr2s
+	parts := strings.Split(response.URI, "/")
+	if len(parts) < 4 {
+		return "", fmt.Errorf("invalid URI format: %s", response.URI)
+	}
+	postID := parts[len(parts)-1]
+	postURL := fmt.Sprintf("https://bsky.app/profile/%s/post/%s", session.Handle, postID)
+
+	return postURL, nil
 }
 
 // PostToBluesky posts content to Bluesky
@@ -250,5 +276,11 @@ func PostToBluesky(text string, videoID string) error {
 		VideoID:    videoID,
 	}
 
-	return CreateBlueskyPost(config, post)
+	postURL, err := CreateBlueskyPost(config, post)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("\n%s\n", linkStyle.Render(postURL))
+	return nil
 }
