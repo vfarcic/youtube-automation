@@ -31,7 +31,8 @@ func TestCreateBlueskyPostWithYouTubeThumbnail(t *testing.T) {
 			}
 
 			// Verify the post content
-			if req.Record.Text != "Test post https://youtu.be/test123" {
+			expectedText := strings.ReplaceAll("Test post [YOUTUBE]", "[YOUTUBE]", "https://youtu.be/test123")
+			if req.Record.Text != expectedText {
 				t.Errorf("Unexpected post text: %s", req.Record.Text)
 			}
 
@@ -51,7 +52,11 @@ func TestCreateBlueskyPostWithYouTubeThumbnail(t *testing.T) {
 				}
 			}
 
-			w.WriteHeader(http.StatusOK)
+			// Mock the response with a post URI
+			response := map[string]string{
+				"uri": "at://did:test/app.bsky.feed.post/3k7qmjev5lr2s",
+			}
+			json.NewEncoder(w).Encode(response)
 			return
 		}
 
@@ -68,15 +73,20 @@ func TestCreateBlueskyPostWithYouTubeThumbnail(t *testing.T) {
 
 	// Create test post
 	post := BlueskyPost{
-		Text:       "Test post https://youtu.be/test123",
+		Text:       "Test post [YOUTUBE]",
 		YouTubeURL: "https://youtu.be/test123",
 		VideoID:    "test123",
 	}
 
 	// Create the post
-	err := CreateBlueskyPost(config, post)
+	postURL, err := CreateBlueskyPost(config, post)
 	if err != nil {
 		t.Fatalf("Failed to create post: %v", err)
+	}
+
+	expectedURL := "https://bsky.app/profile/test.bsky.social/post/3k7qmjev5lr2s"
+	if postURL != expectedURL {
+		t.Errorf("Expected post URL %s, got %s", expectedURL, postURL)
 	}
 }
 
