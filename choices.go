@@ -293,9 +293,6 @@ func (c *Choices) ChooseInit(video Video) (Video, error) {
 	if err != nil {
 		return Video{}, err
 	}
-	if len(video.Sponsorship.Amount) == 0 {
-		video.Sponsorship.Amount = video.Sponsored
-	}
 	video.Init.Completed, video.Init.Total = c.Count([]interface{}{
 		video.ProjectName,
 		video.ProjectURL,
