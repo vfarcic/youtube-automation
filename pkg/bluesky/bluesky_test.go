@@ -1,4 +1,4 @@
-package main
+package bluesky
 
 import (
 	"encoding/json"
@@ -13,7 +13,7 @@ func TestCreateBlueskyPostWithYouTubeThumbnail(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/com.atproto.server.createSession" {
 			// Mock authentication response
-			session := BlueskySession{
+			session := Session{
 				AccessJWT:  "test-jwt",
 				RefreshJWT: "test-refresh-jwt",
 				Handle:     "test.bsky.social",
@@ -31,7 +31,7 @@ func TestCreateBlueskyPostWithYouTubeThumbnail(t *testing.T) {
 			}
 
 			// Verify the post content
-			expectedText := strings.ReplaceAll("Test post [YOUTUBE]", "[YOUTUBE]", "https://youtu.be/test123")
+			expectedText := "https://youtu.be/test123"
 			if req.Record.Text != expectedText {
 				t.Errorf("Unexpected post text: %s", req.Record.Text)
 			}
@@ -65,21 +65,21 @@ func TestCreateBlueskyPostWithYouTubeThumbnail(t *testing.T) {
 	defer server.Close()
 
 	// Create test config
-	config := BlueskyConfig{
+	config := Config{
 		Identifier: "test.bsky.social",
 		Password:   "test-password",
 		URL:        server.URL,
 	}
 
 	// Create test post
-	post := BlueskyPost{
-		Text:       "Test post [YOUTUBE]",
+	post := Post{
+		Text:       "https://youtu.be/test123",
 		YouTubeURL: "https://youtu.be/test123",
 		VideoID:    "test123",
 	}
 
 	// Create the post
-	postURL, err := CreateBlueskyPost(config, post)
+	postURL, err := CreatePost(config, post)
 	if err != nil {
 		t.Fatalf("Failed to create post: %v", err)
 	}
@@ -90,12 +90,12 @@ func TestCreateBlueskyPostWithYouTubeThumbnail(t *testing.T) {
 	}
 }
 
-func TestPostToBluesky(t *testing.T) {
+func TestSendPost(t *testing.T) {
 	// Create a test server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/com.atproto.server.createSession" {
 			// Mock authentication response
-			session := BlueskySession{
+			session := Session{
 				AccessJWT:  "test-jwt",
 				RefreshJWT: "test-refresh-jwt",
 				Handle:     "test.bsky.social",
@@ -113,7 +113,7 @@ func TestPostToBluesky(t *testing.T) {
 			}
 
 			// Verify the post content
-			expectedText := strings.ReplaceAll("Test post [YOUTUBE]", "[YOUTUBE]", "https://youtu.be/test123")
+			expectedText := "https://youtu.be/test123"
 			if req.Record.Text != expectedText {
 				t.Errorf("Unexpected post text: %s", req.Record.Text)
 			}
@@ -134,7 +134,11 @@ func TestPostToBluesky(t *testing.T) {
 				}
 			}
 
-			w.WriteHeader(http.StatusOK)
+			// Mock the response with a post URI
+			response := map[string]string{
+				"uri": "at://did:test/app.bsky.feed.post/3k7qmjev5lr2s",
+			}
+			json.NewEncoder(w).Encode(response)
 			return
 		}
 
@@ -142,19 +146,28 @@ func TestPostToBluesky(t *testing.T) {
 	}))
 	defer server.Close()
 
-	// Set up test settings
-	settings.Bluesky.Identifier = "test.bsky.social"
-	settings.Bluesky.Password = "test-password"
-	settings.Bluesky.URL = server.URL
+	// Create test config
+	config := Config{
+		Identifier: "test.bsky.social",
+		Password:   "test-password",
+		URL:        server.URL,
+	}
 
 	// Test posting
-	err := PostToBluesky("Test post [YOUTUBE]", "test123")
+	err := SendPost(config, "Test post [YOUTUBE]", "test123")
 	if err != nil {
 		t.Fatalf("Failed to post to Bluesky: %v", err)
 	}
 }
 
-func TestPostToBlueskyValidation(t *testing.T) {
+func TestSendPostValidation(t *testing.T) {
+	// Create test config
+	config := Config{
+		Identifier: "test.bsky.social",
+		Password:   "test-password",
+		URL:        "http://example.com",
+	}
+
 	tests := []struct {
 		name     string
 		text     string
@@ -183,7 +196,7 @@ func TestPostToBlueskyValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := PostToBluesky(tt.text, tt.videoID)
+			err := SendPost(config, tt.text, tt.videoID)
 			if err == nil {
 				t.Error("Expected error but got nil")
 			}

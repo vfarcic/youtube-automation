@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"devopstoolkitseries/youtube-automation/pkg/bluesky"
+
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
 	"golang.org/x/text/cases"
@@ -661,7 +663,12 @@ func (c *Choices) ChoosePublish(video Video) (Video, error) {
 			postTechnologyConversations(video.Title, video.Description, video.VideoId, video.Gist, video.ProjectName, video.ProjectURL, video.RelatedVideos)
 		}
 		if !blueSkyPostedOrig && len(video.Tweet) > 0 && video.BlueSkyPosted {
-			if err := PostToBluesky(video.Tweet, video.VideoId); err != nil {
+			config := bluesky.Config{
+				Identifier: settings.Bluesky.Identifier,
+				Password:   settings.Bluesky.Password,
+				URL:        settings.Bluesky.URL,
+			}
+			if err := bluesky.SendPost(config, video.Tweet, video.VideoId); err != nil {
 				println(errorStyle.Render(fmt.Sprintf("Failed to post to Bluesky: %s", err.Error())))
 			} else {
 				println(confirmationStyle.Render("Successfully posted to Bluesky."))
