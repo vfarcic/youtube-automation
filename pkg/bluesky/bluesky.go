@@ -270,6 +270,13 @@ func SendPost(config Config, text string, videoID string) error {
 		VideoID:    videoID,
 	}
 
-	_, err := CreatePost(config, post)
-	return err
+	postURL, err := CreatePost(config, post)
+	if err != nil {
+		return err
+	}
+
+	// Print the URL to the Bluesky post
+	fmt.Println("Posted to Bluesky:", postURL)
+
+	return nil
 }
