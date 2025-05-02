@@ -293,12 +293,6 @@ func (c *Choices) ChooseInit(video Video) (Video, error) {
 	if err != nil {
 		return Video{}, err
 	}
-	if len(video.Sponsorship.Amount) == 0 {
-		video.Sponsorship.Amount = video.Sponsored
-	}
-	if len(video.Sponsorship.Blocked) == 0 {
-		video.Sponsorship.Blocked = video.SponsorshipBlocked
-	}
 	video.Init.Completed, video.Init.Total = c.Count([]interface{}{
 		video.ProjectName,
 		video.ProjectURL,
@@ -774,10 +768,6 @@ func (c *Choices) ChooseVideosPhase(vi []VideoIndex) bool {
 func (c *Choices) GetVideoPhase(vi VideoIndex) int {
 	yaml := YAML{}
 	video := yaml.GetVideo(c.GetFilePath(vi.Category, vi.Name, "yaml"))
-	// TODO: Remove
-	if len(video.Sponsorship.Blocked) == 0 {
-		video.Sponsorship.Blocked = video.SponsorshipBlocked
-	}
 	if video.Delayed {
 		return videosPhaseDelayed
 	} else if len(video.Sponsorship.Blocked) > 0 {

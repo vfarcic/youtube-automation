@@ -29,8 +29,6 @@ type Video struct {
 	ProjectName         string
 	ProjectURL          string
 	Sponsorship         Sponsorship
-	Sponsored           string // TODO: Remove
-	SponsorshipBlocked  string // TODO: Remove
 	Date                string
 	Delayed             bool
 	Code                bool
