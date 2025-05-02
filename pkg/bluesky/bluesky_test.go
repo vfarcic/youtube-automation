@@ -31,7 +31,7 @@ func TestCreateBlueskyPostWithYouTubeThumbnail(t *testing.T) {
 			}
 
 			// Verify the post content
-			expectedText := "https://youtu.be/test123"
+			expectedText := "Test post https://youtu.be/test123"
 			if req.Record.Text != expectedText {
 				t.Errorf("Unexpected post text: %s", req.Record.Text)
 			}
@@ -73,7 +73,7 @@ func TestCreateBlueskyPostWithYouTubeThumbnail(t *testing.T) {
 
 	// Create test post
 	post := Post{
-		Text:       "https://youtu.be/test123",
+		Text:       "Test post https://youtu.be/test123",
 		YouTubeURL: "https://youtu.be/test123",
 		VideoID:    "test123",
 	}
@@ -113,7 +113,7 @@ func TestSendPost(t *testing.T) {
 			}
 
 			// Verify the post content
-			expectedText := "https://youtu.be/test123"
+			expectedText := "Test post https://youtu.be/test123"
 			if req.Record.Text != expectedText {
 				t.Errorf("Unexpected post text: %s", req.Record.Text)
 			}

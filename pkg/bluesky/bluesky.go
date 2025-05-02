@@ -265,7 +265,7 @@ func SendPost(config Config, text string, videoID string) error {
 	}
 
 	post := Post{
-		Text:       youtubeUrl, // Only use the URL as the text for test consistency
+		Text:       finalText,
 		YouTubeURL: youtubeUrl,
 		VideoID:    videoID,
 	}
