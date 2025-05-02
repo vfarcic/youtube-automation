@@ -1,4 +1,4 @@
-package main
+package bluesky
 
 import (
 	"bytes"
@@ -19,22 +19,22 @@ var (
 		Underline(true)
 )
 
-// BlueskyConfig holds the configuration for Bluesky
-type BlueskyConfig struct {
+// Config holds the configuration for Bluesky
+type Config struct {
 	Identifier string
 	Password   string
 	URL        string
 }
 
-// BlueskyPost represents a post to be published on Bluesky
-type BlueskyPost struct {
+// Post represents a post to be published on Bluesky
+type Post struct {
 	Text       string
 	YouTubeURL string
 	VideoID    string
 }
 
-// BlueskySession holds the session information
-type BlueskySession struct {
+// Session holds the session information
+type Session struct {
 	AccessJWT  string `json:"accessJwt"`
 	RefreshJWT string `json:"refreshJwt"`
 	Handle     string `json:"handle"`
@@ -75,23 +75,22 @@ type createPostRequest struct {
 	Record     postRecord `json:"record"`
 }
 
-// GetBlueskyConfig retrieves Bluesky configuration from settings struct
-func GetBlueskyConfig() BlueskyConfig {
+// GetConfig retrieves Bluesky configuration from the provided settings
+func GetConfig(identifier, password, url string) Config {
 	// Check environment variable for password first
-	password := settings.Bluesky.Password
 	if envPassword := os.Getenv("BLUESKY_PASSWORD"); envPassword != "" {
 		password = envPassword
 	}
 
-	return BlueskyConfig{
-		Identifier: settings.Bluesky.Identifier,
+	return Config{
+		Identifier: identifier,
 		Password:   password,
-		URL:        settings.Bluesky.URL,
+		URL:        url,
 	}
 }
 
-// ValidateBlueskyConfig validates the Bluesky configuration
-func ValidateBlueskyConfig(config BlueskyConfig) error {
+// ValidateConfig validates the Bluesky configuration
+func ValidateConfig(config Config) error {
 	// Create a masked version of the password for display
 	maskedPassword := "not provided"
 	if config.Password != "" {
@@ -124,10 +123,10 @@ func ValidateBlueskyConfig(config BlueskyConfig) error {
 	return nil
 }
 
-// authenticateBluesky authenticates with the Bluesky API
-func authenticateBluesky(config BlueskyConfig) (*BlueskySession, error) {
+// authenticate authenticates with the Bluesky API
+func authenticate(config Config) (*Session, error) {
 	// Validate configuration before attempting authentication
-	if err := ValidateBlueskyConfig(config); err != nil {
+	if err := ValidateConfig(config); err != nil {
 		return nil, err
 	}
 
@@ -154,7 +153,7 @@ func authenticateBluesky(config BlueskyConfig) (*BlueskySession, error) {
 		return nil, fmt.Errorf("login failed with status %d: %s", resp.StatusCode, string(body))
 	}
 
-	var session BlueskySession
+	var session Session
 	if err := json.NewDecoder(resp.Body).Decode(&session); err != nil {
 		return nil, fmt.Errorf("error decoding login response: %w", err)
 	}
@@ -162,9 +161,9 @@ func authenticateBluesky(config BlueskyConfig) (*BlueskySession, error) {
 	return &session, nil
 }
 
-// CreateBlueskyPost creates a new post on Bluesky
-func CreateBlueskyPost(config BlueskyConfig, post BlueskyPost) (string, error) {
-	session, err := authenticateBluesky(config)
+// CreatePost creates a new post on Bluesky
+func CreatePost(config Config, post Post) (string, error) {
+	session, err := authenticate(config)
 	if err != nil {
 		return "", fmt.Errorf("authentication failed: %w", err)
 	}
@@ -246,41 +245,38 @@ func CreateBlueskyPost(config BlueskyConfig, post BlueskyPost) (string, error) {
 	return postURL, nil
 }
 
-// PostToBluesky posts content to Bluesky
-func PostToBluesky(text string, videoID string) error {
-	config := GetBlueskyConfig()
-
-	// Validate the configuration
-	if err := ValidateBlueskyConfig(config); err != nil {
-		return err
-	}
-
+// SendPost posts content to Bluesky
+func SendPost(config Config, text string, videoID string) error {
+	// Validate input
 	if !strings.Contains(text, "[YOUTUBE]") {
 		return fmt.Errorf("text does not contain [YOUTUBE] placeholder")
 	}
+
 	if videoID == "" {
 		return fmt.Errorf("YouTube video ID is required")
 	}
 
-	youtubeUrl := getYouTubeURL(videoID)
-	text = strings.ReplaceAll(text, "[YOUTUBE]", youtubeUrl)
+	// Calculate final text length with YouTube URL instead of placeholder
+	youtubeUrl := fmt.Sprintf("https://youtu.be/%s", videoID)
+	finalText := strings.ReplaceAll(text, "[YOUTUBE]", youtubeUrl)
 
-	// Check if the text exceeds Bluesky's character limit (300)
-	if len(text) > 300 {
-		return fmt.Errorf("text exceeds Bluesky's 300 character limit (current length: %d)", len(text))
+	if len(finalText) > 300 {
+		return fmt.Errorf("text exceeds Bluesky's 300 character limit")
 	}
 
-	post := BlueskyPost{
-		Text:       text,
+	post := Post{
+		Text:       finalText,
 		YouTubeURL: youtubeUrl,
 		VideoID:    videoID,
 	}
 
-	postURL, err := CreateBlueskyPost(config, post)
+	postURL, err := CreatePost(config, post)
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("\n%s\n", linkStyle.Render(postURL))
+	// Print the URL to the Bluesky post
+	fmt.Println("Posted to Bluesky:", postURL)
+
 	return nil
 }

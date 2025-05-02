@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"os"
+
+	"devopstoolkitseries/youtube-automation/pkg/bluesky"
 )
 
 func main() {
@@ -11,13 +13,13 @@ func main() {
 
 	// Validate Bluesky configuration if identifier is set
 	if settings.Bluesky.Identifier != "" {
-		config := BlueskyConfig{
+		config := bluesky.Config{
 			Identifier: settings.Bluesky.Identifier,
 			Password:   settings.Bluesky.Password,
 			URL:        settings.Bluesky.URL,
 		}
 
-		if err := ValidateBlueskyConfig(config); err != nil {
+		if err := bluesky.ValidateConfig(config); err != nil {
 			fmt.Fprintf(os.Stderr, "Bluesky configuration error: %s\n", err)
 			os.Exit(1)
 		}
