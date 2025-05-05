@@ -1,0 +1,34 @@
+email:
+  from: invalid-email
+  thumbnailTo: 123456
+  editTo: []
+  financeTo: null
+ai:
+  endpoint: not-a-url
+  deployment: 12345
+  apiKey: ""
+hugo:
+  path: /non/existent/path
+  url: invalid:url:format
+youtube:
+  apiKey: "too-short"
+  channelId: 12345
+  clientId: 12345
+  clientSecret: 12345
+bluesky:
+  identifier: invalid@identifier
+  url: not-a-valid-url
+  password: ""
+slack:
+  webhook: ftp://invalid.url
+  channel: invalid-channel
+linkedin:
+  clientId: ""
+  clientSecret: true
+hackernews:
+  username: ""
+  password: 12345
+defaults:
+  category: 12345
+  tags: ["not", "a", "string"]
+  location: true 

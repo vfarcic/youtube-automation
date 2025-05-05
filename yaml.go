@@ -84,6 +84,13 @@ type Sponsorship struct {
 	Blocked string
 }
 
+// NewYAML creates a new YAML instance with default values
+func NewYAML(indexPath string) *YAML {
+	return &YAML{
+		IndexPath: indexPath,
+	}
+}
+
 func (y *YAML) GetVideo(path string) Video {
 	var video Video
 	data, err := os.ReadFile(path)

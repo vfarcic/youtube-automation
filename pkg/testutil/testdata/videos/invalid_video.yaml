@@ -1,0 +1,30 @@
+Name: "Missing Quote Example
+Index: not-a-number
+Path: /videos/invalid-path
+Category: kubernetes
+Init:
+  Completed: 3
+  Total: "should be a number"
+Work:
+  Completed: one
+  Total four
+Define:
+  - This should be an object, not an array
+Edit:
+  Completed: 0
+  Total: 5
+  Extra: "This key doesn't belong here"
+Publish:
+  Completed: 0
+# Missing Total field for Publish
+ProjectName: "K8s Operator Framework"
+# Missing several required fields
+
+Title: "This video has
+  an unterminated quote and indentation issues
+Description: >
+  This is a multiline description
+  but it has incorrect formatting
+    and indentation problems
+
+Tags: ["this", "should", "be", "a", "string", "not", "an", "array"] 

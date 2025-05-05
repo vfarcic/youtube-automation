@@ -1,0 +1,163 @@
+<context>
+# Overview  
+This document outlines the requirements for reorganizing the YouTube Automation project to follow Go best practices. The goal is to improve code maintainability, readability, and performance by adhering to standard Go conventions and patterns.
+
+# Core Features  
+- Standard package organization
+- Clear separation of concerns
+- Consistent error handling
+- Well-defined interfaces
+- Proper dependency management
+- Improved code documentation
+</context>
+<PRD>
+# YouTube Automation Project - Code Reorganization Requirements
+
+## Project Overview
+YouTube Automation is a CLI tool for managing the YouTube video creation process, from initial planning through publication and promotion across various platforms. The application needs to be reorganized to follow Go best practices for improved maintainability and extensibility.
+
+## Reorganization Objectives
+- Improve code organization and package structure
+- Standardize error handling and logging
+- Enhance separation of concerns
+- Establish consistent naming conventions
+- Implement proper interfaces and dependency injection
+- Improve code documentation and comments
+- Optimize performance through better patterns
+
+## Technical Implementation Requirements
+
+### 1. Package Structure
+
+#### 1.1 Domain-Driven Package Organization
+- Reorganize packages based on domain functionality rather than technical concerns
+- Create clear boundaries between different business domains
+- Follow Go standard project layout patterns:
+  - `/cmd` - Main applications for the project
+  - `/pkg` - Library code that's publicly usable
+  - `/internal` - Private code specific to this application
+  - `/api` - API definitions and protocols
+  - `/configs` - Configuration file templates/examples
+  - `/test` or `/testdata` - Additional test data and test helpers
+
+#### 1.2 Command Structure
+- Move main application entry points to `/cmd/youtube-automation/`
+- Separate CLI frameworks from business logic
+- Implement clean subcommand structure using Cobra correctly
+- Keep command handlers thin, delegating to domain services
+
+#### 1.3 Internal vs. Public API
+- Move non-public components to `/internal/`
+- Expose only necessary APIs in `/pkg/`
+- Define clear interfaces for public consumption
+- Document API stability guarantees
+
+### 2. Code Organization
+
+#### 2.1 Interfaces and Dependency Injection
+- Define clean interfaces for all external dependencies
+- Implement dependency injection for better testability
+- Place interfaces in consumer packages, not implementation packages
+- Follow interface segregation principle (small, focused interfaces)
+
+#### 2.2 Error Handling
+- Standardize error creation and handling
+- Use error wrapping with `fmt.Errorf("... %w", err)` 
+- Create domain-specific error types when needed
+- Avoid using `panic` except for truly unrecoverable errors
+- Properly propagate errors up the call stack
+
+#### 2.3 Logging Strategy
+- Implement a consistent logging approach
+- Use appropriate log levels (debug, info, warn, error)
+- Include contextual information in log messages
+- Make logs useful for both development and production debugging
+
+#### 2.4 Configuration
+- Consolidate configuration handling
+- Use a clean approach for config loading from files and environment
+- Implement validation for all configuration
+- Document all configuration options
+
+### 3. Code Quality Improvements
+
+#### 3.1 Naming Conventions
+- Follow Go naming conventions consistently:
+  - Use MixedCaps or mixedCaps rather than underscores
+  - Keep package names short, clear, and lowercase
+  - Use meaningful but concise variable names
+  - Abbreviate only when the abbreviation is well-known
+
+#### 3.2 Comments and Documentation
+- Add package-level documentation comments
+- Document all exported functions, types, and variables
+- Include example usage for complex functionality
+- Keep comments up-to-date with code changes
+
+#### 3.3 Code Structure
+- Keep functions focused and small
+- Minimize nested code blocks
+- Avoid global state
+- Group related functions together
+
+#### 3.4 Performance Considerations
+- Optimize file operations with proper buffering
+- Reduce unnecessary memory allocations
+- Consider concurrency for appropriate operations
+- Implement timeouts for external operations
+
+### 4. Dependency Management
+
+#### 4.1 Vendor Management
+- Use Go modules for dependency management
+- Pin dependency versions appropriately
+- Document third-party dependencies
+- Minimize dependency surface area
+
+#### 4.2 Internal Dependencies
+- Establish clear dependency hierarchy between packages
+- Avoid circular dependencies
+- Use dependency injection for cross-package dependencies
+- Create facades when needed to simplify complex subsystems
+
+## Implementation Strategy
+
+### Phase 1: Analysis and Planning
+1. Analyze current package structure
+2. Identify domain boundaries
+3. Define new package structure
+4. Create migration plan
+
+### Phase 2: Core Restructuring
+1. Establish new package hierarchy
+2. Move code to appropriate packages
+3. Define interfaces for component boundaries
+4. Implement dependency injection patterns
+
+### Phase 3: Code Quality Improvements
+1. Standardize error handling
+2. Improve logging
+3. Add/update documentation
+4. Fix naming inconsistencies
+
+### Phase 4: Testing and Validation
+1. Verify all functionality works with new structure
+2. Run performance benchmarks
+3. Ensure test coverage is maintained
+4. Update documentation with new structure
+
+## Success Criteria
+- All functionality preserved after reorganization
+- Improved package organization
+- Consistent error handling and logging
+- Clear interface boundaries
+- Comprehensive documentation
+- Maintained or improved test coverage
+- No circular dependencies
+
+## Dependencies
+- Go 1.16 or higher
+- Current project dependencies
+- Static analysis tools (e.g., golangci-lint)
+- Documentation generation tools
+</PRD> 

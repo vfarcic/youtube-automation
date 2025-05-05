@@ -71,6 +71,12 @@ github.com/charmbracelet/x/term
 # github.com/dustin/go-humanize v1.0.1
 ## explicit; go 1.16
 github.com/dustin/go-humanize
+# github.com/emersion/go-sasl v0.0.0-20241020182733-b788ff22d5a6
+## explicit; go 1.12
+github.com/emersion/go-sasl
+# github.com/emersion/go-smtp v0.22.0
+## explicit; go 1.13
+github.com/emersion/go-smtp
 # github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f
 ## explicit; go 1.16
 github.com/erikgeiser/coninput

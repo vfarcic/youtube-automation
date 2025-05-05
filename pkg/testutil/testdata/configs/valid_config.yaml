@@ -1,0 +1,35 @@
+email:
+  from: user@example.com
+  thumbnailTo: designer@example.com
+  editTo: editor@example.com
+  financeTo: finance@example.com
+ai:
+  endpoint: https://openai.azure.com
+  deployment: gpt-4-1106-preview
+  model: gpt-4-1106-preview
+  apiKey: ${OPENAI_API_KEY}
+hugo:
+  path: ../website/
+  url: https://example.com
+youtube:
+  apiKey: ${YOUTUBE_API_KEY}
+  channelId: UC123456789ABCDEFGHI
+  clientId: youtube-client-123.apps.googleusercontent.com
+  clientSecret: ${YOUTUBE_CLIENT_SECRET}
+bluesky:
+  identifier: user.bsky.social
+  url: https://bsky.social/xrpc
+  password: ${BLUESKY_APP_PASSWORD}
+slack:
+  webhook: https://hooks.slack.com/services/T123456/B123456/abcdef123456
+  channel: "#announcements"
+linkedin:
+  clientId: linkedin-client-123
+  clientSecret: ${LINKEDIN_CLIENT_SECRET}
+hackernews:
+  username: hnuser
+  password: ${HN_PASSWORD}
+defaults:
+  category: "technology"
+  tags: "software,development,tutorial"
+  location: "Remote" 
