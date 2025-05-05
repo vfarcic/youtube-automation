@@ -8,6 +8,9 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// osExit is a variable to allow mocking os.Exit in tests
+var osExit = os.Exit
+
 var rootCmd = &cobra.Command{
 	Use:   "youtube-release",
 	Short: "youtube-release is a super fancy CLI for releasing YouTube videos.",
@@ -140,6 +143,6 @@ func init() {
 func getArgs() {
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintf(os.Stderr, "Whoops. There was an error while executing the CLI '%s'", err)
-		os.Exit(1)
+		osExit(1)
 	}
 }
