@@ -1,0 +1,67 @@
+Name: "Implementing Kubernetes Operators"
+Index: 42
+Path: "/videos/implementing-k8s-operators"
+Category: "kubernetes"
+Init:
+  Completed: 3
+  Total: 3
+Work:
+  Completed: 2
+  Total: 4
+Define:
+  Completed: 0
+  Total: 3
+Edit:
+  Completed: 0
+  Total: 5
+Publish:
+  Completed: 0
+  Total: 7
+ProjectName: "K8s Operator Framework"
+ProjectURL: "https://github.com/operator-framework/operator-sdk"
+Sponsorship:
+  Amount: "2000"
+  Emails: "sponsor@company.com"
+  Blocked: ""
+Date: "2023-12-15"
+Delayed: false
+Code: true
+Screen: true
+Head: true
+Thumbnails: true
+Diagrams: true
+Title: "How to Implement Kubernetes Operators with Go"
+Description: "Learn how to build, deploy, and manage Kubernetes Operators using the Operator SDK with Go."
+Highlight: "Building custom controllers for automating complex applications"
+Tags: "kubernetes,operators,golang,cloud-native"
+DescriptionTags: "#kubernetes #operators #golang #cloudnative"
+Location: "Remote"
+Tagline: "Automate complex Kubernetes applications with custom controllers"
+TaglineIdeas: "Building resilient infrastructure with custom operators"
+OtherLogos: "CNCF,Kubernetes"
+Screenshots: true
+RequestThumbnail: true
+Thumbnail: "k8s-operators.jpg"
+Members: "true"
+Animations: "Operator lifecycle diagram at 5:20"
+RequestEdit: true
+Movie: false
+Timecodes: "00:00 Introduction, 02:15 What are Operators, 10:30 Creating an Operator, 25:45 Testing"
+Gist: "Learn how to extend Kubernetes functionality by creating custom resource definitions and controllers"
+HugoPath: "content/posts/implementing-kubernetes-operators"
+RelatedVideos: "kubernetes-controllers,helm-vs-operators"
+UploadVideo: "kubernetes-operators.mp4"
+VideoId: "k8s-op-123xyz"
+Tweet: "Learn how to build #Kubernetes Operators with #Golang in my new tutorial. Create custom controllers to manage complex applications with the Operator SDK."
+LinkedInPosted: false
+SlackPosted: false
+HNPosted: false
+DOTPosted: false
+BlueSkyPosted: false
+YouTubeHighlight: true
+YouTubeComment: true
+YouTubeCommentReply: false
+Slides: true
+GDE: true
+Repo: "https://github.com/vfarcic/k8s-operator-example"
+NotifiedSponsors: false 

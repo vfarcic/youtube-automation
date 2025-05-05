@@ -1,0 +1,22 @@
+email:
+  from: user@example.com
+  # Missing thumbnailTo, editTo, financeTo
+ai:
+  endpoint: https://openai.azure.com
+  deployment: gpt-4-1106-preview
+  # Missing apiKey
+hugo:
+  path: ../website/
+  # Missing url
+youtube:
+  channelId: UC123456789ABCDEFGHI
+  # Missing apiKey, clientId, clientSecret
+# Missing bluesky configuration
+slack:
+  webhook: https://hooks.slack.com/services/T123456/B123456/abcdef123456
+  # Missing channel
+# Missing linkedin configuration
+# Missing hackernews configuration
+defaults:
+  category: "technology"
+  # Missing tags, location 

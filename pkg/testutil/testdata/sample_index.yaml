@@ -1,0 +1,16 @@
+videos:
+  - id: "test123"
+    title: "Sample Test Video"
+    phase: "init"
+  - id: "test456"
+    title: "Another Test Video"
+    phase: "work"
+  - id: "test789"
+    title: "Published Test Video"
+    phase: "published"
+phases:
+  - "init"
+  - "work"
+  - "define"
+  - "edit"
+  - "publish" 

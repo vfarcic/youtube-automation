@@ -123,6 +123,9 @@ func startWebServer() (codeCh chan string, err error) {
 	return codeCh, nil
 }
 
+// Make exec.Command replaceable for testing
+var execCommand = exec.Command
+
 // openURL opens a browser window to the specified location.
 // This code originally appeared at:
 //
@@ -131,11 +134,11 @@ func openURL(url string) error {
 	var err error
 	switch runtime.GOOS {
 	case "linux":
-		err = exec.Command("xdg-open", url).Start()
+		err = execCommand("xdg-open", url).Start()
 	case "windows":
-		err = exec.Command("rundll32", "url.dll,FileProtocolHandler", "http://localhost:4001/").Start()
+		err = execCommand("rundll32", "url.dll,FileProtocolHandler", "http://localhost:4001/").Start()
 	case "darwin":
-		err = exec.Command("open", url).Start()
+		err = execCommand("open", url).Start()
 	default:
 		err = fmt.Errorf("cannot open URL %s on this platform", url)
 	}

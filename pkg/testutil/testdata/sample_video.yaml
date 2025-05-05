@@ -1,0 +1,16 @@
+title: "Sample Test Video"
+description: "This is a sample video file for testing"
+id: "test123"
+url: "https://youtu.be/test123"
+phase: "init"
+tasks:
+  - name: "Create script"
+    completed: false
+  - name: "Record video"
+    completed: false
+  - name: "Edit video"
+    completed: false
+tags:
+  - "test"
+  - "sample"
+  - "fixture" 
