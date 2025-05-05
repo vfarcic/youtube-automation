@@ -139,13 +139,19 @@ func CaptureOutput(t testing.TB, fn func()) string {
 	}
 	os.Stdout = w
 
+	// Create a channel for error reporting from goroutine
+	errCh := make(chan error, 1)
+	outCh := make(chan string, 1)
+
 	// Capture output in a separate goroutine
-	outCh := make(chan string)
 	go func() {
 		var buf bytes.Buffer
 		_, err := io.Copy(&buf, r)
 		if err != nil {
-			t.Errorf("Failed to copy output: %v", err)
+			// Send error through channel instead of directly calling t.Errorf
+			errCh <- fmt.Errorf("Failed to copy output: %v", err)
+		} else {
+			errCh <- nil
 		}
 		outCh <- buf.String()
 	}()
@@ -155,6 +161,12 @@ func CaptureOutput(t testing.TB, fn func()) string {
 	// Restore stdout and get captured output
 	w.Close()
 	os.Stdout = oldStdout
+
+	// Check for errors from the goroutine
+	if err := <-errCh; err != nil {
+		t.Errorf("%v", err)
+	}
+
 	return <-outCh
 }
 
@@ -170,11 +182,17 @@ func ProvideInput(t testing.TB, input string, fn func()) {
 	}
 	os.Stdin = r
 
+	// Create a channel for error reporting from goroutine
+	errCh := make(chan error, 1)
+
 	// Write input in a separate goroutine
 	go func() {
 		_, err := w.Write([]byte(input))
 		if err != nil {
-			t.Errorf("Failed to write input: %v", err)
+			// Send error through channel instead of directly calling t.Errorf
+			errCh <- fmt.Errorf("Failed to write input: %v", err)
+		} else {
+			errCh <- nil
 		}
 		w.Close()
 	}()
@@ -183,6 +201,11 @@ func ProvideInput(t testing.TB, input string, fn func()) {
 
 	// Restore stdin
 	os.Stdin = oldStdin
+
+	// Check for errors from the goroutine
+	if err := <-errCh; err != nil {
+		t.Errorf("%v", err)
+	}
 }
 
 // ---- Structure Comparison Helpers ----
