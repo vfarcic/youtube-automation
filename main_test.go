@@ -1,6 +1,7 @@
 package main
 
 import (
+	"devopstoolkitseries/youtube-automation/pkg/testutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -81,6 +82,18 @@ func TestVideoPhaseTransitions(t *testing.T) {
 	// Create a test video file
 	testVideoPath := filepath.Join(testCategoryDir, "test-video.yaml")
 
+	// Define phase constants
+	phaseConstants := testutil.VideoPhaseConstants{
+		PhaseIdeas:            videosPhaseIdeas,
+		PhaseStarted:          videosPhaseStarted,
+		PhaseMaterialDone:     videosPhaseMaterialDone,
+		PhaseEditRequested:    videosPhaseEditRequested,
+		PhasePublishPending:   videosPhasePublishPending,
+		PhasePublished:        videosPhasePublished,
+		PhaseDelayed:          videosPhaseDelayed,
+		PhaseSponsoredBlocked: videosPhaseSponsoredBlocked,
+	}
+
 	// Define function to test a video's phase
 	testPhase := func(video Video, expectedPhase int, message string) {
 		// Write the video to the file
@@ -90,25 +103,8 @@ func TestVideoPhaseTransitions(t *testing.T) {
 		// Read the video directly without mocking
 		video = y.GetVideo(testVideoPath)
 
-		// Determine the phase based on the video data
-		var phase int
-		if video.Delayed {
-			phase = videosPhaseDelayed
-		} else if len(video.Sponsorship.Blocked) > 0 {
-			phase = videosPhaseSponsoredBlocked
-		} else if len(video.Repo) > 0 {
-			phase = videosPhasePublished
-		} else if len(video.UploadVideo) > 0 && len(video.Tweet) > 0 {
-			phase = videosPhasePublishPending
-		} else if video.RequestEdit {
-			phase = videosPhaseEditRequested
-		} else if video.Code && video.Screen && video.Head && video.Diagrams {
-			phase = videosPhaseMaterialDone
-		} else if len(video.Date) > 0 {
-			phase = videosPhaseStarted
-		} else {
-			phase = videosPhaseIdeas
-		}
+		// Use the common helper function to determine the phase
+		phase := testutil.DetermineVideoPhase(video, phaseConstants)
 
 		if phase != expectedPhase {
 			t.Errorf("Expected phase %s to be %d, got %d", message, expectedPhase, phase)
