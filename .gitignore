@@ -38,9 +38,4 @@ tasks.json
 tasks/
 
 # Coverage files
-coverage/
-*.out
-coverage.html
-*.out.tmp
-*.test
-coverage.txt 
+*coverage*
