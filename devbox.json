@@ -2,7 +2,8 @@
   "packages": [
     "teller@2.0.7",
     "just@1.40.0",
-    "git@2.48.1"
+    "git@2.48.1",
+    "yq-go@4.45.1"
   ],
   "shell": {
     "scripts": {
