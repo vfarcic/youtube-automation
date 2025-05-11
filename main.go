@@ -25,7 +25,7 @@ func main() {
 		}
 	}
 
-	choices := Choices{}
+	choices := NewChoices()
 	for {
 		choices.ChooseIndex()
 	}

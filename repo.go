@@ -7,6 +7,8 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+
+	"devopstoolkitseries/youtube-automation/pkg/utils"
 )
 
 type Repo struct{}
@@ -43,12 +45,21 @@ func (r *Repo) Update(repo, title, videoID string) error {
 			return err
 		}
 	}
-	cmdDelete := exec.Command("rm", "-rf", repo)
-	_, err = cmdDelete.CombinedOutput()
-	if err != nil {
-		return err
+	// Confirmation before deleting the repository
+	confirmMsg := fmt.Sprintf("Are you sure you want to delete the local repository clone at '%s'?", repo)
+	if utils.ConfirmAction(confirmMsg) {
+		cmdDelete := exec.Command("rm", "-rf", repo)
+		_, err = cmdDelete.CombinedOutput()
+		if err != nil {
+			return err // Return error from rm -rf
+		}
+		fmt.Printf("Local repository clone '%s' deleted successfully.\n", repo) // Optional: success message
+	} else {
+		fmt.Printf("Deletion of local repository clone '%s' cancelled.\n", repo)
+		// Optionally, return a specific error or nil if cancellation is not an error for the caller
+		// For now, if cancelled, we don't return an error, implying the Update was "successful" in not deleting.
 	}
-	return err
+	return nil // Ensure a return path if confirmation is no, or if rm -rf succeeds. Original code had `return err` which would be from the last git command if rm -rf wasn't run or succeeded.
 }
 
 func (r *Repo) GetAnimations(filePath string) (animations, sections []string, err error) {

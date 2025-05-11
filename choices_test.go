@@ -13,6 +13,17 @@ import (
 	"golang.org/x/text/language"
 )
 
+// mockConfirmer is a mock implementation of the confirmer interface for testing.
+type mockConfirmer struct {
+	shouldConfirm bool
+	messageArg    string
+}
+
+func (m *mockConfirmer) Confirm(message string) bool {
+	m.messageArg = message
+	return m.shouldConfirm
+}
+
 // TestPhaseTransitions tests the phase transition functionality in the Choices struct
 func TestPhaseTransitions(t *testing.T) {
 	// Create a temporary directory for test files
@@ -107,7 +118,7 @@ func TestPhaseTransitions(t *testing.T) {
 // TestTaskCompletion tests the task completion tracking functionality in the Choices struct
 func TestTaskCompletion(t *testing.T) {
 	// Create a test Choices struct
-	c := Choices{}
+	c := NewChoices()
 
 	// Test counting completed tasks
 	fields := []interface{}{
@@ -229,7 +240,7 @@ func TestFilteringAndSorting(t *testing.T) {
 
 // TestColorFormatFunctions tests the color formatting functions individually
 func TestColorFormatFunctions(t *testing.T) {
-	c := Choices{}
+	c := NewChoices()
 
 	// Just verify these functions don't panic and return non-empty strings
 	// We're testing the logic, not the actual colors
@@ -293,7 +304,7 @@ func TestColorFormatFunctions(t *testing.T) {
 
 // TestGetPhaseText tests the phase text formatting
 func TestGetPhaseText(t *testing.T) {
-	c := Choices{}
+	c := NewChoices()
 
 	// Test with all tasks completed
 	completedTasks := Tasks{
@@ -338,7 +349,7 @@ func TestGetPhaseText(t *testing.T) {
 
 // TestGetPhaseColoredText tests the phase colored text functionality
 func TestGetPhaseColoredText(t *testing.T) {
-	c := Choices{}
+	c := NewChoices()
 
 	// Test with videos in phase
 	phases := map[int]int{
@@ -373,7 +384,7 @@ func TestGetPhaseColoredText(t *testing.T) {
 
 // TestInputValidation tests the input validation functions
 func TestInputValidation(t *testing.T) {
-	c := Choices{}
+	c := NewChoices()
 
 	// Test IsEmpty with empty string
 	if err := c.IsEmpty(""); err == nil {
@@ -414,7 +425,7 @@ func TestInputValidation(t *testing.T) {
 
 // TestUtilityFunctions tests the utility functions in Choices
 func TestUtilityFunctions(t *testing.T) {
-	c := Choices{}
+	c := NewChoices()
 
 	// Test GetDirPath
 	dirPath := c.GetDirPath("Test Category")
@@ -576,7 +587,7 @@ func TestUtilityFunctions(t *testing.T) {
 
 // TestColorFromSponsoredEmails tests the ColorFromSponsoredEmails function
 func TestColorFromSponsoredEmails(t *testing.T) {
-	c := Choices{}
+	c := NewChoices()
 
 	testCases := []struct {
 		name            string
@@ -636,7 +647,7 @@ func TestColorFromSponsoredEmails(t *testing.T) {
 
 // TestGetIndexOptions tests the getIndexOptions function
 func TestGetIndexOptions(t *testing.T) {
-	c := Choices{}
+	c := NewChoices()
 
 	options := c.getIndexOptions()
 
@@ -670,7 +681,7 @@ func TestGetIndexOptions(t *testing.T) {
 
 // TestGetActionOptions tests the getActionOptions function
 func TestGetActionOptions(t *testing.T) {
-	c := Choices{}
+	c := NewChoices()
 
 	options := c.getActionOptions()
 
@@ -704,7 +715,7 @@ func TestGetActionOptions(t *testing.T) {
 
 // TestIsEmpty checks the IsEmpty function
 func TestIsEmpty(t *testing.T) {
-	c := Choices{}
+	c := NewChoices()
 
 	testCases := []struct {
 		name        string
@@ -788,7 +799,7 @@ func TestGetCategories(t *testing.T) {
 	}
 
 	// Test getCategories
-	c := Choices{}
+	c := NewChoices()
 	options, err := c.getCategories()
 	if err != nil {
 		t.Fatalf("getCategories(): unexpected error: %v", err)
@@ -822,7 +833,7 @@ func TestGetCategories(t *testing.T) {
 
 // TestGetOptionTextFromStringExtended tests edge cases of GetOptionTextFromString
 func TestGetOptionTextFromStringExtended(t *testing.T) {
-	c := Choices{}
+	c := NewChoices()
 
 	// Test very long string (over 100 chars)
 	longText := strings.Repeat("abcdefghij", 15) // 150 chars
@@ -886,7 +897,7 @@ func TestGetOptionTextFromStringExtended(t *testing.T) {
 
 // TestGetPhaseColoredTextComplete tests all branches of GetPhaseColoredText
 func TestGetPhaseColoredTextComplete(t *testing.T) {
-	c := Choices{}
+	c := NewChoices()
 
 	// Create a test phases map
 	phases := map[int]int{
@@ -984,7 +995,7 @@ func TestGetCreateVideoFields(t *testing.T) {
 	}
 
 	// Test getCreateVideoFields
-	c := Choices{}
+	c := NewChoices()
 	var name, category string
 	var save bool
 
@@ -1054,7 +1065,7 @@ func TestChooseCreateVideo(t *testing.T) {
 	}
 
 	// Create a test instance of Choices with mocked methods
-	origChoices := Choices{}
+	origChoices := NewChoices()
 
 	// For this test, rather than mocking internal workings of huh interactive forms,
 	// we'll just test the non-interactive parts and verify file creation
@@ -1245,7 +1256,7 @@ func TestCustomGetVideoPhase(t *testing.T) {
 // TestChooseVideosPhaseCounting tests that ChooseVideosPhase counts videos by phase correctly
 func TestChooseVideosPhaseCounting(t *testing.T) {
 	// Create a test instance with a mock for GetVideoPhase
-	c := Choices{}
+	c := NewChoices()
 
 	// Create video indices for different phases
 	videoIndices := []VideoIndex{
@@ -1313,7 +1324,7 @@ func TestChooseVideosPhaseCounting(t *testing.T) {
 
 // TestCountComprehensive tests the Count function with various input types
 func TestCountComprehensive(t *testing.T) {
-	c := Choices{}
+	c := NewChoices()
 
 	// Test with various data types and edge cases
 	testCases := []struct {
@@ -1437,7 +1448,7 @@ func TestIsCompleted(t *testing.T) {
 
 // TestColorFromBoolComprehensive tests the ColorFromBool function more comprehensively
 func TestColorFromBoolComprehensive(t *testing.T) {
-	c := Choices{}
+	c := NewChoices()
 
 	// Test with various titles and both true/false values
 	testCases := []struct {
@@ -1476,7 +1487,7 @@ func TestColorFromBoolComprehensive(t *testing.T) {
 
 // TestColorFromStringComprehensive tests the ColorFromString function more thoroughly
 func TestColorFromStringComprehensive(t *testing.T) {
-	c := Choices{}
+	c := NewChoices()
 
 	// Test cases with various titles and values
 	testCases := []struct {
@@ -1555,7 +1566,7 @@ func TestGetCreateVideoFieldsError(t *testing.T) {
 	}
 
 	// Test getCreateVideoFields with no manuscript directory
-	c := Choices{}
+	c := NewChoices()
 	var name, category string
 	var save bool
 
@@ -1589,9 +1600,227 @@ func TestGetCategoriesError(t *testing.T) {
 	}
 
 	// Test getCategories with no manuscript directory
-	c := Choices{}
+	c := NewChoices()
 	_, err = c.getCategories()
 	if err == nil {
-		t.Error("getCategories should return error when manuscript directory doesn't exist")
+		t.Errorf("Expected error when manuscript directory does not exist, got nil")
+	}
+}
+
+func TestPerformVideoFileDeletions(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "perform-delete-test-")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	choices := NewChoices() // Use constructor, though confirmer is not used in performVideoFileDeletions
+
+	tests := []struct {
+		name            string
+		setupYAML       bool
+		setupMD         bool
+		expectYAMLErr   bool
+		expectMDErr     bool
+		yamlShouldExist bool // after deletion attempt
+		mdShouldExist   bool // after deletion attempt
+	}{
+		{
+			name:            "both files exist",
+			setupYAML:       true,
+			setupMD:         true,
+			expectYAMLErr:   false,
+			expectMDErr:     false,
+			yamlShouldExist: false,
+			mdShouldExist:   false,
+		},
+		{
+			name:            "only YAML exists",
+			setupYAML:       true,
+			setupMD:         false,
+			expectYAMLErr:   false,
+			expectMDErr:     false, // os.Remove on non-existent is not an error by default in current impl.
+			yamlShouldExist: false,
+			mdShouldExist:   false, // Never existed
+		},
+		{
+			name:            "only MD exists",
+			setupYAML:       false,
+			setupMD:         true,
+			expectYAMLErr:   false, // os.Remove on non-existent is not an error
+			expectMDErr:     false,
+			yamlShouldExist: false, // Never existed
+			mdShouldExist:   false,
+		},
+		{
+			name:            "neither file exists",
+			setupYAML:       false,
+			setupMD:         false,
+			expectYAMLErr:   false, // os.Remove on non-existent is not an error
+			expectMDErr:     false, // os.Remove on non-existent is not an error
+			yamlShouldExist: false, // Never existed
+			mdShouldExist:   false, // Never existed
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			yamlPath := filepath.Join(tempDir, "video.yaml")
+			mdPath := filepath.Join(tempDir, "video.md")
+
+			// Cleanup any files from previous test run within this iteration
+			_ = os.Remove(yamlPath)
+			_ = os.Remove(mdPath)
+
+			if tt.setupYAML {
+				if _, err := os.Create(yamlPath); err != nil {
+					t.Fatalf("Failed to create test YAML file: %v", err)
+				}
+			}
+			if tt.setupMD {
+				if _, err := os.Create(mdPath); err != nil {
+					t.Fatalf("Failed to create test MD file: %v", err)
+				}
+			}
+
+			yamlErr, mdErr := choices.performVideoFileDeletions(yamlPath, mdPath)
+
+			if (yamlErr != nil) != tt.expectYAMLErr {
+				t.Errorf("performVideoFileDeletions() yamlError = %v, wantErr %v", yamlErr, tt.expectYAMLErr)
+			}
+			if (mdErr != nil) != tt.expectMDErr {
+				t.Errorf("performVideoFileDeletions() mdError = %v, wantErr %v", mdErr, tt.expectMDErr)
+			}
+
+			_, yamlStatErr := os.Stat(yamlPath)
+			if (os.IsNotExist(yamlStatErr)) == tt.yamlShouldExist {
+				t.Errorf("YAML file existence check failed: got not_exist=%v, want should_exist=%v", os.IsNotExist(yamlStatErr), tt.yamlShouldExist)
+			}
+
+			_, mdStatErr := os.Stat(mdPath)
+			pathExists := !os.IsNotExist(mdStatErr)
+			if !tt.mdShouldExist && pathExists {
+				t.Errorf("Expected MD file to be deleted, but it exists at %s.", mdPath)
+			} else if tt.mdShouldExist && !pathExists && tt.setupMD {
+				t.Errorf("Expected MD file to exist, but it was deleted from %s.", mdPath)
+			}
+		})
+	}
+}
+
+func TestHandleDeleteVideoAction(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "handle-delete-test-")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	initialVideoIndices := []VideoIndex{
+		{Name: "video1", Category: "catA"},
+		{Name: "video2_to_delete", Category: "catA"},
+		{Name: "video3", Category: "catB"},
+	}
+
+	videoToDelete := Video{
+		Name:     "video2_to_delete",
+		Category: "catA",
+		Path:     filepath.Join(tempDir, "video2_to_delete.yaml"),
+		Index:    1, // Index in initialVideoIndices
+	}
+
+	tests := []struct {
+		name               string
+		confirm            bool
+		setupFiles         bool // whether to create dummy .yaml and .md for deletion
+		expectFilesDeleted bool
+		expectIndicesLen   int
+		expectError        bool
+	}{
+		{
+			name:               "user confirms deletion, files exist",
+			confirm:            true,
+			setupFiles:         true,
+			expectFilesDeleted: true,
+			expectIndicesLen:   2,
+			expectError:        false,
+		},
+		{
+			name:               "user cancels deletion, files exist",
+			confirm:            false,
+			setupFiles:         true,
+			expectFilesDeleted: false,
+			expectIndicesLen:   3,
+			expectError:        false,
+		},
+		{
+			name:               "user confirms deletion, files do not exist",
+			confirm:            true,
+			setupFiles:         false,
+			expectFilesDeleted: false, // they never existed
+			expectIndicesLen:   2,     // index should still be updated
+			expectError:        false, // Logged errors in func, but not returned as fatal
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mc := &mockConfirmer{shouldConfirm: tt.confirm}
+			choices := &Choices{confirmer: mc}
+
+			yamlPath := videoToDelete.Path
+			mdPath := strings.ReplaceAll(yamlPath, ".yaml", ".md")
+
+			// Clean up any residue from previous test iterations
+			_ = os.Remove(yamlPath)
+			_ = os.Remove(mdPath)
+
+			if tt.setupFiles {
+				if _, err := os.Create(yamlPath); err != nil {
+					t.Fatalf("Failed to create test YAML: %v", err)
+				}
+				if _, err := os.Create(mdPath); err != nil {
+					t.Fatalf("Failed to create test MD: %v", err)
+				}
+			}
+
+			// Make a copy of initialVideoIndices for this test run
+			testVideoIndices := make([]VideoIndex, len(initialVideoIndices))
+			copy(testVideoIndices, initialVideoIndices)
+
+			updatedIndices, err := choices.handleDeleteVideoAction(videoToDelete, testVideoIndices)
+
+			if (err != nil) != tt.expectError {
+				t.Errorf("handleDeleteVideoAction() error = %v, wantErr %v", err, tt.expectError)
+				return
+			}
+
+			if len(updatedIndices) != tt.expectIndicesLen {
+				t.Errorf("Expected %d indices after action, got %d", tt.expectIndicesLen, len(updatedIndices))
+			}
+
+			expectedMsg := fmt.Sprintf("Are you sure you want to delete video '%s' and its associated files (.md, .yaml)?", videoToDelete.Name)
+			if tt.confirm || !tt.confirm { // Message is always constructed
+				if mc.messageArg != expectedMsg {
+					t.Errorf("Expected confirmation message '%s', got '%s'", expectedMsg, mc.messageArg)
+				}
+			}
+
+			// Check file existence based on whether they were expected to be deleted
+			_, yamlStatErr := os.Stat(yamlPath)
+			pathExists := !os.IsNotExist(yamlStatErr)
+			if tt.expectFilesDeleted && pathExists {
+				t.Errorf("Expected YAML file to be deleted, but it exists.")
+			} else if !tt.expectFilesDeleted && !pathExists && tt.setupFiles {
+				t.Errorf("Expected YAML file to exist, but it was deleted.")
+			}
+
+			_, mdStatErr := os.Stat(mdPath)
+			pathExists = !os.IsNotExist(mdStatErr)
+			if tt.expectFilesDeleted && pathExists {
+				t.Errorf("Expected MD file to be deleted, but it exists.")
+			} else if !tt.expectFilesDeleted && !pathExists && tt.setupFiles {
+				t.Errorf("Expected MD file to exist, but it was deleted.")
+			}
+		})
 	}
 }
