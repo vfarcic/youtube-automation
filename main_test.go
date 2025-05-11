@@ -158,7 +158,7 @@ func TestVideoPhaseTransitions(t *testing.T) {
 // TestVideoTaskCompletion tests the task completion tracking functionality
 func TestVideoTaskCompletion(t *testing.T) {
 	// Create a test Choices struct
-	c := Choices{}
+	c := NewChoices()
 
 	// Test counting completed tasks
 	fields := []interface{}{

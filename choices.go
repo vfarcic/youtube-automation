@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"devopstoolkitseries/youtube-automation/pkg/bluesky"
+	"devopstoolkitseries/youtube-automation/pkg/utils"
 
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
@@ -19,7 +20,27 @@ import (
 	"golang.org/x/text/language"
 )
 
-type Choices struct{}
+// confirmer defines an interface for confirming actions.
+// This allows for mocking in tests.
+type confirmer interface {
+	Confirm(message string) bool
+}
+
+// defaultConfirmer is the default implementation of confirmer using utils.ConfirmAction.
+type defaultConfirmer struct{}
+
+func (dc defaultConfirmer) Confirm(message string) bool {
+	return utils.ConfirmAction(message)
+}
+
+type Choices struct {
+	confirmer confirmer
+}
+
+// NewChoices creates a new instance of Choices with the default confirmer.
+func NewChoices() *Choices {
+	return &Choices{confirmer: defaultConfirmer{}}
+}
 
 var redStyle = lipgloss.NewStyle().
 	Bold(true).
@@ -847,21 +868,72 @@ func (c *Choices) ChooseVideos(vi []VideoIndex, phase int) {
 	}
 	switch selectedAction {
 	case actionEdit:
-		choices := Choices{}
+		choices := NewChoices()
 		choices.ChoosePhase(selectedVideo)
 	case actionDelete:
-		shPath := strings.ReplaceAll(selectedVideo.Path, ".yaml", ".md")
-		if os.Remove(shPath) != nil {
-			panic(err)
+		var err error
+		vi, err = c.handleDeleteVideoAction(selectedVideo, vi)
+		if err != nil {
+			log.Printf("Error during video deletion process: %v", err)
 		}
-		os.Remove(selectedVideo.Path)
-		// selectedVideoIndex = vi[len(vi)-1]
-		vi = append(vi[:selectedVideo.Index], vi[selectedVideo.Index+1:]...)
 	case actionReturn:
 		return
 	}
 	yaml := YAML{IndexPath: "index.yaml"}
 	yaml.WriteIndex(vi)
+}
+
+// performVideoFileDeletions attempts to delete the YAML and Markdown files for a video.
+// It returns separate errors for YAML and MD file deletions if they occur.
+func (c *Choices) performVideoFileDeletions(yamlPath, mdPath string) (yamlError, mdError error) {
+	if _, err := os.Stat(mdPath); err == nil {
+		if err := os.Remove(mdPath); err != nil {
+			mdError = fmt.Errorf("error deleting MD file %s: %w", mdPath, err)
+		}
+	} else if !os.IsNotExist(err) {
+		mdError = fmt.Errorf("error checking MD file %s: %w", mdPath, err)
+	}
+
+	if _, err := os.Stat(yamlPath); err == nil {
+		if err := os.Remove(yamlPath); err != nil {
+			yamlError = fmt.Errorf("error deleting YAML file %s: %w", yamlPath, err)
+		}
+	} else if !os.IsNotExist(err) {
+		yamlError = fmt.Errorf("error checking YAML file %s: %w", yamlPath, err)
+	}
+
+	return
+}
+
+// handleDeleteVideoAction handles the process of confirming and deleting a video and its associated files.
+// It returns the updated slice of VideoIndex and an error if the deletion logic itself encounters an issue.
+func (c *Choices) handleDeleteVideoAction(selectedVideo Video, allVideoIndices []VideoIndex) ([]VideoIndex, error) {
+	confirmMsg := fmt.Sprintf("Are you sure you want to delete video '%s' and its associated files (.md, .yaml)?", selectedVideo.Name)
+
+	if c.confirmer.Confirm(confirmMsg) {
+		mdPath := strings.ReplaceAll(selectedVideo.Path, ".yaml", ".md")
+
+		yamlErr, mdErr := c.performVideoFileDeletions(selectedVideo.Path, mdPath)
+
+		if yamlErr != nil {
+			log.Printf(yamlErr.Error())
+		}
+		if mdErr != nil {
+			log.Printf(mdErr.Error())
+		}
+
+		if selectedVideo.Index < 0 || selectedVideo.Index >= len(allVideoIndices) {
+			return allVideoIndices, fmt.Errorf("selected video index %d is out of bounds for video indices slice (len %d)", selectedVideo.Index, len(allVideoIndices))
+		}
+
+		updatedIndices := append(allVideoIndices[:selectedVideo.Index], allVideoIndices[selectedVideo.Index+1:]...)
+
+		fmt.Println(confirmationStyle.Render(fmt.Sprintf("Video '%s' and associated files deleted.", selectedVideo.Name)))
+		return updatedIndices, nil
+	} else {
+		fmt.Println(orangeStyle.Render("Deletion cancelled."))
+		return allVideoIndices, nil
+	}
 }
 
 func (c *Choices) IsEmpty(str string) error {
@@ -950,7 +1022,6 @@ func (c *Choices) getActionOptions() []huh.Option[int] {
 	return []huh.Option[int]{
 		huh.NewOption("Edit", actionEdit),
 		huh.NewOption("Delete", actionDelete),
-		// TODO: Add the option to move video files to a different directory
 		huh.NewOption("Return", actionReturn),
 	}
 }
