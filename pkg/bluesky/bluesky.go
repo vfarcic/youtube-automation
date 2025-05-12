@@ -28,9 +28,10 @@ type Config struct {
 
 // Post represents a post to be published on Bluesky
 type Post struct {
-	Text       string
-	YouTubeURL string
-	VideoID    string
+	Text          string
+	YouTubeURL    string
+	VideoID       string
+	ThumbnailPath string
 }
 
 // Session holds the session information
@@ -47,6 +48,19 @@ type loginRequest struct {
 	Password   string `json:"password"`
 }
 
+// blobLink represents the reference to an uploaded blob
+type blobLink struct {
+	Link string `json:"$link"`
+}
+
+// blobRef represents a reference to an uploaded image blob
+type blobRef struct {
+	Type     string   `json:"$type"`
+	Ref      blobLink `json:"ref"`
+	MimeType string   `json:"mimeType"`
+	Size     int64    `json:"size"`
+}
+
 // externalEmbed represents an external link embed
 type externalEmbed struct {
 	Type     string       `json:"$type"`
@@ -54,10 +68,10 @@ type externalEmbed struct {
 }
 
 type externalLink struct {
-	URI         string `json:"uri"`
-	Title       string `json:"title"`
-	Description string `json:"description"`
-	Thumb       string `json:"thumb,omitempty"`
+	URI         string   `json:"uri"`
+	Title       string   `json:"title"`
+	Description string   `json:"description"`
+	Thumb       *blobRef `json:"thumb,omitempty"`
 }
 
 // postRecord represents the record for creating a post
@@ -73,6 +87,11 @@ type createPostRequest struct {
 	Collection string     `json:"collection"`
 	Repo       string     `json:"repo"`
 	Record     postRecord `json:"record"`
+}
+
+// uploadBlobResponse represents the response from uploading a blob
+type uploadBlobResponse struct {
+	Blob blobRef `json:"blob"`
 }
 
 // GetConfig retrieves Bluesky configuration from the provided settings
@@ -161,6 +180,62 @@ func authenticate(config Config) (*Session, error) {
 	return &session, nil
 }
 
+// uploadThumbnail uploads an image from a URL to Bluesky and returns a blob reference
+func uploadThumbnail(config Config, session *Session, thumbnailPath string) (*blobRef, error) {
+	// 1. Read the image from the local file path
+	file, err := os.Open(thumbnailPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open thumbnail file %s: %w", thumbnailPath, err)
+	}
+	defer file.Close()
+
+	// Read the image data into memory
+	imageData, err := io.ReadAll(file)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read thumbnail image data: %w", err)
+	}
+
+	// 2. Detect the MIME type (use http.DetectContentType for simplicity)
+	mimeType := http.DetectContentType(imageData)
+	if !strings.HasPrefix(mimeType, "image/") {
+		return nil, fmt.Errorf("downloaded file is not a recognized image type: %s", mimeType)
+	}
+
+	// 3. Send a POST request to uploadBlob endpoint
+	uploadURL := config.URL + "/com.atproto.repo.uploadBlob"
+
+	req, err := http.NewRequest("POST", uploadURL, bytes.NewReader(imageData))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create upload request: %w", err)
+	}
+
+	// 4. Set headers
+	req.Header.Set("Content-Type", mimeType)
+	req.Header.Set("Authorization", "Bearer "+session.AccessJWT)
+
+	// Execute the request
+	client := &http.Client{}
+	uploadResp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute upload request: %w", err)
+	}
+	defer uploadResp.Body.Close()
+
+	if uploadResp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(uploadResp.Body)
+		return nil, fmt.Errorf("thumbnail upload failed with status %d: %s", uploadResp.StatusCode, string(bodyBytes))
+	}
+
+	// 5. Parse the JSON response
+	var blobResp uploadBlobResponse
+	if err := json.NewDecoder(uploadResp.Body).Decode(&blobResp); err != nil {
+		return nil, fmt.Errorf("failed to decode upload response: %w", err)
+	}
+
+	// 6. Return the blobRef struct (make sure it's a pointer)
+	return &blobResp.Blob, nil
+}
+
 // CreatePost creates a new post on Bluesky
 func CreatePost(config Config, post Post) (string, error) {
 	session, err := authenticate(config)
@@ -188,16 +263,34 @@ func CreatePost(config Config, post Post) (string, error) {
 		},
 	}
 
-	// Add YouTube embed if URL is present
-	postData.Record.Embed = &externalEmbed{
-		Type: "app.bsky.embed.external",
-		External: externalLink{
-			URI:         post.YouTubeURL,
-			Title:       "YouTube Video",
-			Description: text,
-			Thumb:       fmt.Sprintf("https://img.youtube.com/vi/%s/maxresdefault.jpg", post.VideoID),
-		},
+	// Prepare embed data
+	var embed *externalEmbed
+	if post.YouTubeURL != "" {
+		embed = &externalEmbed{
+			Type: "app.bsky.embed.external",
+			External: externalLink{
+				URI:         post.YouTubeURL,
+				Title:       "YouTube Video",
+				Description: text,
+			},
+		}
+
+		// Construct thumbnail URL and attempt upload
+		if post.VideoID != "" {
+			if post.ThumbnailPath != "" {
+				thumbBlob, err := uploadThumbnail(config, session, post.ThumbnailPath)
+				if err != nil {
+					// Log warning but continue without thumbnail
+					fmt.Printf("Warning: Failed to upload Bluesky thumbnail from path %s: %v\n", post.ThumbnailPath, err)
+				} else {
+					embed.External.Thumb = thumbBlob
+				}
+			} else {
+				fmt.Printf("Warning: No local thumbnail path provided for video %s, skipping Bluesky thumbnail.\n", post.VideoID)
+			}
+		}
 	}
+	postData.Record.Embed = embed
 
 	jsonData, err := json.Marshal(postData)
 	if err != nil {
@@ -246,7 +339,7 @@ func CreatePost(config Config, post Post) (string, error) {
 }
 
 // SendPost posts content to Bluesky
-func SendPost(config Config, text string, videoID string) error {
+func SendPost(config Config, text string, videoID string, thumbnailPath string) error {
 	// Validate input
 	if !strings.Contains(text, "[YOUTUBE]") {
 		return fmt.Errorf("text does not contain [YOUTUBE] placeholder")
@@ -254,6 +347,10 @@ func SendPost(config Config, text string, videoID string) error {
 
 	if videoID == "" {
 		return fmt.Errorf("YouTube video ID is required")
+	}
+
+	if thumbnailPath == "" {
+		return fmt.Errorf("Thumbnail path is required for Bluesky post")
 	}
 
 	// Calculate final text length with YouTube URL instead of placeholder
@@ -265,9 +362,10 @@ func SendPost(config Config, text string, videoID string) error {
 	}
 
 	post := Post{
-		Text:       finalText,
-		YouTubeURL: youtubeUrl,
-		VideoID:    videoID,
+		Text:          finalText,
+		YouTubeURL:    youtubeUrl,
+		VideoID:       videoID,
+		ThumbnailPath: thumbnailPath,
 	}
 
 	postURL, err := CreatePost(config, post)

@@ -683,7 +683,7 @@ func (c *Choices) ChoosePublish(video Video) (Video, error) {
 				Password:   settings.Bluesky.Password,
 				URL:        settings.Bluesky.URL,
 			}
-			if err := bluesky.SendPost(config, video.Tweet, video.VideoId); err != nil {
+			if err := bluesky.SendPost(config, video.Tweet, video.VideoId, video.Thumbnail); err != nil {
 				println(errorStyle.Render(fmt.Sprintf("Failed to post to Bluesky: %s", err.Error())))
 			} else {
 				println(confirmationStyle.Render("Successfully posted to Bluesky."))

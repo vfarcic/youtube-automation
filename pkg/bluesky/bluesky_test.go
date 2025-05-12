@@ -2,6 +2,7 @@ package bluesky
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -21,6 +22,34 @@ func TestCreateBlueskyPostWithYouTubeThumbnail(t *testing.T) {
 				DID:        "did:test",
 			}
 			json.NewEncoder(w).Encode(session)
+			return
+		}
+
+		// Mock blob upload endpoint
+		if r.URL.Path == "/com.atproto.repo.uploadBlob" {
+			if r.Method != http.MethodPost {
+				w.WriteHeader(http.StatusMethodNotAllowed)
+				return
+			}
+			// Verify content type (optional, but good practice)
+			contentType := r.Header.Get("Content-Type")
+			if !strings.HasPrefix(contentType, "image/") { // Basic check
+				w.WriteHeader(http.StatusBadRequest)
+				w.Write([]byte(`{"error": "InvalidContentType", "message": "Expected image content type"}`))
+				return
+			}
+			bodyBytes, _ := io.ReadAll(r.Body)
+			mockedBlob := blobRef{
+				Type: "blob",
+				Ref: blobLink{
+					Link: "bafkreiTESTBLOBREF123", // Example CID link
+				},
+				MimeType: contentType, // Use the detected/sent content type
+				Size:     int64(len(bodyBytes)),
+			}
+			response := uploadBlobResponse{Blob: mockedBlob}
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(response)
 			return
 		}
 
@@ -48,8 +77,19 @@ func TestCreateBlueskyPostWithYouTubeThumbnail(t *testing.T) {
 				if embed.External.URI != "https://youtu.be/test123" {
 					t.Errorf("Unexpected embed URI: %s", embed.External.URI)
 				}
-				if embed.External.Thumb != "https://img.youtube.com/vi/test123/maxresdefault.jpg" {
-					t.Errorf("Unexpected thumbnail URL: %s", embed.External.Thumb)
+				if embed.External.Thumb == nil {
+					t.Error("Expected thumbnail blob reference, but got nil")
+				} else {
+					thumb := embed.External.Thumb
+					if thumb.Type != "blob" {
+						t.Errorf("Unexpected thumbnail type: %s", thumb.Type)
+					}
+					if thumb.Ref.Link != "bafkreiTESTBLOBREF123" {
+						t.Errorf("Unexpected thumbnail ref link: %s", thumb.Ref.Link)
+					}
+					// We don't know the exact size/mimetype beforehand in test, so skip strict check
+					// if thumb.MimeType != "image/jpeg" { ... }
+					// if thumb.Size == 0 { ... }
 				}
 			}
 
@@ -72,11 +112,34 @@ func TestCreateBlueskyPostWithYouTubeThumbnail(t *testing.T) {
 		URL:        server.URL,
 	}
 
+	// Create a temporary file for the thumbnail path
+	tempFile, err := os.CreateTemp("", "test-thumbnail-*.jpg")
+	if err != nil {
+		t.Fatalf("Failed to create temp file: %v", err)
+	}
+	defer os.Remove(tempFile.Name()) // Clean up the file afterwards
+	// Write minimal valid JPEG data
+	jpegData := []byte{
+		0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01,
+		0x01, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0xff, 0xdb, 0x00, 0x43,
+		0x00, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
+		0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
+		0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
+		0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0xff, 0xc0, 0x00,
+		0x0b, 0x08, 0x00, 0x01, 0x00, 0x01, 0x01, 0x01, 0x11, 0x00, 0xff, 0xc4,
+		0x00, 0x14, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0xff, 0xda, 0x00, 0x08, 0x01,
+		0x01, 0x00, 0x00, 0x3f, 0x00, 0xd2, 0xff, 0xd9,
+	}
+	tempFile.Write(jpegData)
+	tempFile.Close()
+
 	// Create test post
 	post := Post{
-		Text:       "Test post https://youtu.be/test123",
-		YouTubeURL: "https://youtu.be/test123",
-		VideoID:    "test123",
+		Text:          "Test post https://youtu.be/test123",
+		YouTubeURL:    "https://youtu.be/test123",
+		VideoID:       "test123",
+		ThumbnailPath: tempFile.Name(), // Use the temp file path
 	}
 
 	// Create the post
@@ -106,6 +169,30 @@ func TestSendPost(t *testing.T) {
 			return
 		}
 
+		// Mock blob upload endpoint (needed for SendPost which calls CreatePost)
+		if r.URL.Path == "/com.atproto.repo.uploadBlob" {
+			if r.Method != http.MethodPost {
+				w.WriteHeader(http.StatusMethodNotAllowed)
+				return
+			}
+			contentType := r.Header.Get("Content-Type")
+			if !strings.HasPrefix(contentType, "image/") {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+			bodyBytes, _ := io.ReadAll(r.Body)
+			mockedBlob := blobRef{
+				Type:     "blob",
+				Ref:      blobLink{Link: "bafkreiTESTBLOBREF123"},
+				MimeType: contentType,
+				Size:     int64(len(bodyBytes)),
+			}
+			response := uploadBlobResponse{Blob: mockedBlob}
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(response)
+			return
+		}
+
 		if r.URL.Path == "/com.atproto.repo.createRecord" {
 			// Parse the request body
 			var req createPostRequest
@@ -130,8 +217,19 @@ func TestSendPost(t *testing.T) {
 				if embed.External.URI != "https://youtu.be/test123" {
 					t.Errorf("Unexpected embed URI: %s", embed.External.URI)
 				}
-				if embed.External.Thumb != "https://img.youtube.com/vi/test123/maxresdefault.jpg" {
-					t.Errorf("Unexpected thumbnail URL: %s", embed.External.Thumb)
+				if embed.External.Thumb == nil {
+					t.Error("Expected thumbnail blob reference, but got nil")
+				} else {
+					thumb := embed.External.Thumb
+					if thumb.Type != "blob" {
+						t.Errorf("Unexpected thumbnail type: %s", thumb.Type)
+					}
+					if thumb.Ref.Link != "bafkreiTESTBLOBREF123" {
+						t.Errorf("Unexpected thumbnail ref link: %s", thumb.Ref.Link)
+					}
+					// We don't know the exact size/mimetype beforehand in test, so skip strict check
+					// if thumb.MimeType != "image/jpeg" { ... }
+					// if thumb.Size == 0 { ... }
 				}
 			}
 
@@ -147,6 +245,28 @@ func TestSendPost(t *testing.T) {
 	}))
 	defer server.Close()
 
+	// Create a temporary file for the thumbnail path
+	tempFile, err := os.CreateTemp("", "test-sendpost-thumbnail-*.jpg")
+	if err != nil {
+		t.Fatalf("Failed to create temp file for SendPost: %v", err)
+	}
+	defer os.Remove(tempFile.Name())
+	// Write minimal valid JPEG data
+	jpegData := []byte{
+		0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01,
+		0x01, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0xff, 0xdb, 0x00, 0x43,
+		0x00, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
+		0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
+		0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
+		0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0xff, 0xc0, 0x00,
+		0x0b, 0x08, 0x00, 0x01, 0x00, 0x01, 0x01, 0x01, 0x11, 0x00, 0xff, 0xc4,
+		0x00, 0x14, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0xff, 0xda, 0x00, 0x08, 0x01,
+		0x01, 0x00, 0x00, 0x3f, 0x00, 0xd2, 0xff, 0xd9,
+	}
+	tempFile.Write(jpegData)
+	tempFile.Close()
+
 	// Create test config
 	config := Config{
 		Identifier: "test.bsky.social",
@@ -155,7 +275,7 @@ func TestSendPost(t *testing.T) {
 	}
 
 	// Test posting
-	err := SendPost(config, "Test post [YOUTUBE]", "test123")
+	err = SendPost(config, "Test post [YOUTUBE]", "test123", tempFile.Name())
 	if err != nil {
 		t.Fatalf("Failed to post to Bluesky: %v", err)
 	}
@@ -170,34 +290,45 @@ func TestSendPostValidation(t *testing.T) {
 	}
 
 	tests := []struct {
-		name     string
-		text     string
-		videoID  string
-		expected string
+		name          string
+		text          string
+		videoID       string
+		thumbnailPath string // Add thumbnail path for validation
+		expected      string
 	}{
 		{
-			name:     "Missing YouTube placeholder",
-			text:     "Test post without placeholder",
-			videoID:  "test123",
-			expected: "text does not contain [YOUTUBE] placeholder",
+			name:          "Missing YouTube placeholder",
+			text:          "Test post without placeholder",
+			videoID:       "test123",
+			thumbnailPath: "dummy.jpg", // Path doesn't need to exist for this validation
+			expected:      "text does not contain [YOUTUBE] placeholder",
 		},
 		{
-			name:     "Missing video ID",
-			text:     "Test post [YOUTUBE]",
-			videoID:  "",
-			expected: "YouTube video ID is required",
+			name:          "Missing video ID",
+			text:          "Test post [YOUTUBE]",
+			videoID:       "",
+			thumbnailPath: "dummy.jpg",
+			expected:      "YouTube video ID is required",
 		},
 		{
-			name:     "Text too long",
-			text:     strings.Repeat("a", 301) + " [YOUTUBE]",
-			videoID:  "test123",
-			expected: "text exceeds Bluesky's 300 character limit",
+			name:          "Missing thumbnail path",
+			text:          "Test post [YOUTUBE]",
+			videoID:       "test123",
+			thumbnailPath: "", // Empty path
+			expected:      "Thumbnail path is required for Bluesky post",
+		},
+		{
+			name:          "Text too long",
+			text:          strings.Repeat("a", 301) + " [YOUTUBE]",
+			videoID:       "test123",
+			thumbnailPath: "dummy.jpg",
+			expected:      "text exceeds Bluesky's 300 character limit",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := SendPost(config, tt.text, tt.videoID)
+			err := SendPost(config, tt.text, tt.videoID, tt.thumbnailPath)
 			if err == nil {
 				t.Error("Expected error but got nil")
 			}

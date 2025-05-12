@@ -362,4 +362,44 @@ func main() {
 			t.Log("Expected write error, but operation succeeded (possibly running with elevated permissions)")
 		}
 	})
+
+	t.Run("Post with question mark in title", func(t *testing.T) {
+		title := "What is Go? A Test Post"
+		date := "2023-05-16T10:00" // Using a slightly different date
+
+		hugoPath, err := hugo.Post(testFilePath, title, date)
+		if err != nil {
+			t.Fatalf("Hugo.Post failed with question mark in title: %v", err)
+		}
+
+		// Assert that the path does not contain '?'
+		if strings.Contains(hugoPath, "?") {
+			t.Errorf("Generated path still contains '?': %s", hugoPath)
+		}
+
+		// Construct expected sanitized path
+		// Current sanitization in hugo.go: " ", "-", "(", "", ")", "", ":", "", "&", "", "/", "-", "'", "", "!", ""
+		// We expect "?" to be ""
+		sanitizedTitle := "what-is-go-a-test-post" // Manually sanitized based on existing and expected rules
+		expectedPath := filepath.Join(tempDir, "content", "test-category", sanitizedTitle, "_index.md")
+
+		if hugoPath != expectedPath {
+			t.Errorf("Expected path: %s, got: %s", expectedPath, hugoPath)
+		}
+
+		// Check file exists
+		if _, err := os.Stat(hugoPath); os.IsNotExist(err) {
+			t.Errorf("Hugo post file was not created at: %s", hugoPath)
+		}
+	})
+
+	t.Run("Post with gist N/A", func(t *testing.T) {
+		hugoPath, err := hugo.Post("N/A", "Test Title", "2023-05-15T12:00")
+		if err != nil {
+			t.Errorf("Expected no error for N/A gist, got: %v", err)
+		}
+		if hugoPath != "" {
+			t.Errorf("Expected empty path for N/A gist, got: %s", hugoPath)
+		}
+	})
 }
