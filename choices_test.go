@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/charmbracelet/lipgloss"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )
@@ -1820,6 +1821,91 @@ func TestHandleDeleteVideoAction(t *testing.T) {
 				t.Errorf("Expected MD file to be deleted, but it exists.")
 			} else if !tt.expectFilesDeleted && !pathExists && tt.setupFiles {
 				t.Errorf("Expected MD file to exist, but it was deleted.")
+			}
+		})
+	}
+}
+
+// TestGetVideoTitleForDisplay tests the title generation logic including styling.
+func TestGetVideoTitleForDisplay(t *testing.T) {
+	c := NewChoices()
+
+	// Define the style locally in the test, matching choices.go
+	localOrangeStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("3"))
+
+	tests := []struct {
+		name         string
+		video        Video
+		expectStyled bool
+		expectedStr  string // Base string without styling
+	}{
+		{
+			name:         "Regular Video",
+			video:        Video{Name: "MyVideo", Date: "2024-01-01T10:00"},
+			expectStyled: false,
+			expectedStr:  "MyVideo (2024-01-01T10:00)",
+		},
+		{
+			name:         "Sponsored Video",
+			video:        Video{Name: "SponsorVid", Sponsorship: Sponsorship{Amount: "100"}},
+			expectStyled: true, // Should be yellow
+			expectedStr:  "SponsorVid (sponsored)",
+		},
+		{
+			name:         "Sponsored Video with Date",
+			video:        Video{Name: "SponsorDate", Date: "2024-02-02T11:00", Sponsorship: Sponsorship{Amount: "50"}},
+			expectStyled: true, // Should be yellow
+			expectedStr:  "SponsorDate (2024-02-02T11:00) (sponsored)",
+		},
+		{
+			name:         "Blocked Video",
+			video:        Video{Name: "BlockedVid", Sponsorship: Sponsorship{Blocked: "Conflict"}},
+			expectStyled: false,
+			expectedStr:  "BlockedVid (Conflict)",
+		},
+		{
+			name:         "Sponsored but Blocked Video",
+			video:        Video{Name: "SponsorBlock", Sponsorship: Sponsorship{Amount: "200", Blocked: "Late"}},
+			expectStyled: false, // Blocked takes precedence, no yellow
+			expectedStr:  "SponsorBlock (Late)",
+		},
+		{
+			name:         "AMA Video",
+			video:        Video{Name: "AMATime", Category: "ama"},
+			expectStyled: false,
+			expectedStr:  "AMATime (AMA)",
+		},
+		{
+			name:         "Sponsored AMA Video",
+			video:        Video{Name: "SponsorAMA", Category: "ama", Sponsorship: Sponsorship{Amount: "100"}},
+			expectStyled: true, // Should be yellow
+			expectedStr:  "SponsorAMA (sponsored) (AMA)",
+		},
+		{
+			name:         "Sponsored AMA Video with Date",
+			video:        Video{Name: "SponsorAMADate", Date: "2024-03-03T12:00", Category: "ama", Sponsorship: Sponsorship{Amount: "50"}},
+			expectStyled: true, // Should be yellow
+			expectedStr:  "SponsorAMADate (2024-03-03T12:00) (sponsored) (AMA)",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actual := c.getVideoTitleForDisplay(tt.video)
+
+			if tt.expectStyled {
+				// Compare actual output with locally rendered expected string
+				expectedStyledStr := localOrangeStyle.Render(tt.expectedStr)
+				if actual != expectedStyledStr {
+					t.Errorf("Expected styled string '%s', got '%s'", expectedStyledStr, actual)
+				}
+			} else {
+				// For unstyled strings, ensure it matches the base expected string
+				if actual != tt.expectedStr {
+					t.Errorf("Expected unstyled string '%s', got '%s'", tt.expectedStr, actual)
+				}
 			}
 		})
 	}

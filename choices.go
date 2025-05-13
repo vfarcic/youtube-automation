@@ -832,22 +832,8 @@ func (c *Choices) ChooseVideos(vi []VideoIndex, phase int) {
 		return date1.Before(date2)
 	})
 	for _, video := range sortedVideos {
-		title := video.Name
-		if len(video.Sponsorship.Blocked) > 0 && video.Sponsorship.Blocked != "-" && video.Sponsorship.Blocked != "N/A" {
-			title = fmt.Sprintf("%s (%s)", title, video.Sponsorship.Blocked)
-		} else {
-			if len(video.Date) > 0 {
-				title = fmt.Sprintf("%s (%s)", title, video.Date)
-			}
-			if len(video.Sponsorship.Amount) > 0 && video.Sponsorship.Amount != "-" && video.Sponsorship.Amount != "N/A" {
-				title = fmt.Sprintf("%s (sponsored)", title)
-			}
-			if video.Category == "ama" {
-				title = fmt.Sprintf("%s (AMA)", title)
-			}
-		}
-
-		options = append(options, huh.NewOption(title, video))
+		titleString := c.getVideoTitleForDisplay(video)
+		options = append(options, huh.NewOption(titleString, video))
 	}
 	form := huh.NewForm(
 		huh.NewGroup(
@@ -881,6 +867,36 @@ func (c *Choices) ChooseVideos(vi []VideoIndex, phase int) {
 	}
 	yaml := YAML{IndexPath: "index.yaml"}
 	yaml.WriteIndex(vi)
+}
+
+// New helper function to generate the display title for a video
+func (c *Choices) getVideoTitleForDisplay(video Video) string {
+	title := video.Name
+	isSponsored := len(video.Sponsorship.Amount) > 0 && video.Sponsorship.Amount != "-" && video.Sponsorship.Amount != "N/A"
+	isBlocked := len(video.Sponsorship.Blocked) > 0 && video.Sponsorship.Blocked != "-" && video.Sponsorship.Blocked != "N/A"
+
+	if isBlocked {
+		title = fmt.Sprintf("%s (%s)", title, video.Sponsorship.Blocked)
+	} else {
+		if len(video.Date) > 0 {
+			title = fmt.Sprintf("%s (%s)", title, video.Date)
+		}
+		if isSponsored {
+			// Append sponsorship text; styling applied later if needed
+			title = fmt.Sprintf("%s (sponsored)", title)
+		}
+		if video.Category == "ama" {
+			title = fmt.Sprintf("%s (AMA)", title)
+		}
+	}
+
+	// Apply orange style only if sponsored and not blocked
+	if isSponsored && !isBlocked {
+		// return yellowStyle.Render(title) // Apply the yellow style
+		return orangeStyle.Render(title) // Use orangeStyle instead
+	} else {
+		return title
+	}
 }
 
 // performVideoFileDeletions attempts to delete the YAML and Markdown files for a video.
