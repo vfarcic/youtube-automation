@@ -22,7 +22,7 @@ all: clean build
 # Clean the project
 clean:
 	$(GOCLEAN)
-	rm -f $(BINARY_NAME)
+	rm -f $(BINARY_NAME) $(BINARY_NAME)_*.*
 
 # Build binaries for all platforms
 build: $(OS_ARCHS)
@@ -37,15 +37,32 @@ $(OS_ARCHS):
 build-local:
 	CGO_ENABLED=0 $(GOBUILD) -ldflags="-X main.version=$(VERSION)" -o $(BINARY_NAME) .
 
-# Target to bump the patch version and tag
-bump-patch:
-	$(eval LATEST_TAG := $(shell git tag --list "v[0-9]*.[0-9]*.[0-9]*" --sort=-v:refname | head -n 1))
-	$(eval CURRENT_VERSION := $(if $(LATEST_TAG),$(LATEST_TAG),v0.0.0))
-	$(eval NEXT_VERSION := $(shell echo $(CURRENT_VERSION) | awk -F'.' '{$$NF = $$NF + 1;} 1' OFS='.'))
-	@echo "Current version: $(CURRENT_VERSION)"
-	@echo "Next version (patch): $(NEXT_VERSION)"
-	git tag $(NEXT_VERSION)
-	@echo "Tagged with $(NEXT_VERSION)"
-	@echo "Run 'git push --tags' to push the new tag."
+# Common logic to get current version or default
+GET_CURRENT_VERSION = $(strip $(shell git tag --list "v[0-9]*.[0-9]*.[0-9]*" --sort=-v:refname | head -n 1 || echo "v0.0.0"))
 
-.PHONY: clean build build-local bump-patch
+# Macro to perform the tagging and echo messages
+define BUMP_AND_TAG
+    @echo "Current version: $(1)"
+    @echo "Next version ($(2) bump): $(3)"
+    git tag $(3)
+    @echo "Tagged with $(3)"
+    @echo "Run 'git push --tags' to push the new tag."
+endef
+
+# Default: Bump minor version
+bump-version:
+	$(eval CURRENT_VERSION := $(call GET_CURRENT_VERSION))
+	$(eval NEXT_VERSION := $(shell echo $(CURRENT_VERSION) | awk -F'[v.]' '{printf "v%d.%d.0", $$2, $$3+1}'))
+	$(call BUMP_AND_TAG,$(CURRENT_VERSION),minor,$(NEXT_VERSION))
+
+bump-patch:
+	$(eval CURRENT_VERSION := $(call GET_CURRENT_VERSION))
+	$(eval NEXT_VERSION := $(shell echo $(CURRENT_VERSION) | awk -F'[v.]' '{printf "v%d.%d.%d", $$2, $$3, $$4+1}'))
+	$(call BUMP_AND_TAG,$(CURRENT_VERSION),patch,$(NEXT_VERSION))
+
+bump-major:
+	$(eval CURRENT_VERSION := $(call GET_CURRENT_VERSION))
+	$(eval NEXT_VERSION := $(shell echo $(CURRENT_VERSION) | awk -F'[v.]' '{printf "v%d.0.0", $$2+1}'))
+	$(call BUMP_AND_TAG,$(CURRENT_VERSION),major,$(NEXT_VERSION))
+
+.PHONY: clean build build-local bump-version bump-patch bump-major
