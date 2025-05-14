@@ -1,0 +1,61 @@
+name: Create Release and Upload Binaries
+
+on:
+  push:
+    branches:
+      - main # Triggers on push/merge to main
+
+permissions:
+  contents: write # Needed to create releases, upload assets, and push tags
+
+jobs:
+  build-and-release:
+    name: Build and Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetch all history for all tags and branches
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.3' # From go.mod toolchain
+
+      - name: Configure Git User
+        run: |
+          git config user.name "GitHub Actions Bot"
+          git config user.email "actions@github.com"
+
+      - name: Determine Next Version
+        id: next_version
+        run: echo "VERSION=$(make get-next-minor-version)" >> $GITHUB_OUTPUT
+
+      - name: Create and Push New Tag
+        env:
+          NEXT_VERSION: ${{ steps.next_version.outputs.VERSION }}
+        run: |
+          echo "Creating tag: $NEXT_VERSION"
+          git tag $NEXT_VERSION ${{ github.sha }} # Tag the commit that triggered the workflow
+          git push origin $NEXT_VERSION
+
+      - name: Build release binaries
+        run: make build # Makefile uses 'git describe' which will use the new tag
+
+      - name: List built assets (for debugging)
+        run: ls -lh youtube-release_*
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NEXT_VERSION: ${{ steps.next_version.outputs.VERSION }}
+        run: |
+          gh release create $NEXT_VERSION \
+            --generate-notes \
+            --target ${{ github.sha }} \
+            ./youtube-release_darwin_amd64 \
+            ./youtube-release_darwin_arm64 \
+            ./youtube-release_linux_amd64 \
+            ./youtube-release_linux_arm64 \
+            ./youtube-release_windows_amd64 

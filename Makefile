@@ -49,6 +49,24 @@ define BUMP_AND_TAG
     @echo "Run 'git push --tags' to push the new tag."
 endef
 
+# Target to echo the next minor version string without tagging
+get-next-minor-version:
+	$(eval CURRENT_VERSION := $(call GET_CURRENT_VERSION))
+	$(eval NEXT_VERSION := $(shell echo $(CURRENT_VERSION) | awk -F'[v.]' '{printf "v%d.%d.0", $$2, $$3+1}'))
+	@echo $(NEXT_VERSION)
+
+# Target to echo the next patch version string without tagging
+get-next-patch-version:
+	$(eval CURRENT_VERSION := $(call GET_CURRENT_VERSION))
+	$(eval NEXT_VERSION := $(shell echo $(CURRENT_VERSION) | awk -F'[v.]' '{printf "v%d.%d.%d", $$2, $$3, $$4+1}'))
+	@echo $(NEXT_VERSION)
+
+# Target to echo the next major version string without tagging
+get-next-major-version:
+	$(eval CURRENT_VERSION := $(call GET_CURRENT_VERSION))
+	$(eval NEXT_VERSION := $(shell echo $(CURRENT_VERSION) | awk -F'[v.]' '{printf "v%d.0.0", $$2+1}'))
+	@echo $(NEXT_VERSION)
+
 # Default: Bump minor version
 bump-version:
 	$(eval CURRENT_VERSION := $(call GET_CURRENT_VERSION))
@@ -65,4 +83,4 @@ bump-major:
 	$(eval NEXT_VERSION := $(shell echo $(CURRENT_VERSION) | awk -F'[v.]' '{printf "v%d.0.0", $$2+1}'))
 	$(call BUMP_AND_TAG,$(CURRENT_VERSION),major,$(NEXT_VERSION))
 
-.PHONY: clean build build-local bump-version bump-patch bump-major
+.PHONY: clean build build-local bump-version bump-patch bump-major get-next-minor-version get-next-patch-version get-next-major-version
