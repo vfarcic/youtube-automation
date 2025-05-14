@@ -42,3 +42,6 @@ tasks/
 
 # Test analysis files
 brittle_tests_report.txt
+
+# Cursor MCP configuration
+.cursor/mcp.json
