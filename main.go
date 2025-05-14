@@ -7,7 +7,15 @@ import (
 	"devopstoolkitseries/youtube-automation/pkg/bluesky"
 )
 
+var version = "dev" // Will be overwritten by linker flags during release build
+
 func main() {
+	// Check for version flag before anything else
+	if len(os.Args) > 1 && (os.Args[1] == "--version" || os.Args[1] == "version") {
+		fmt.Println(version)
+		os.Exit(0)
+	}
+
 	// Parse CLI arguments and load configuration
 	getArgs()
 
