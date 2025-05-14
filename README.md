@@ -118,3 +118,5 @@ This project aims for a test coverage goal of 80%. To check current test coverag
 This will generate a detailed coverage report, an HTML visualization, and identify areas needing improvement.
 
 For comprehensive testing documentation including guidelines, examples, and best practices, see the [Testing Guide](docs/testing.md). Additional testing examples and patterns can be found in the [examples directory](docs/examples/).
+
+<!-- Test comment for release automation -->
