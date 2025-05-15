@@ -3,6 +3,8 @@ package main
 import (
 	"errors"
 	"fmt"
+
+	// "io" // Comment out if not used elsewhere after removals
 	"log"
 	"os"
 	"os/exec"
@@ -19,6 +21,16 @@ import (
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )
+
+/*
+// Directory represents a selectable directory option.
+// Name is for display, Path is the actual file system path.
+// Used by getAvailableDirectories and selectTargetDirectory.
+type Directory struct {
+	Name string
+	Path string
+}
+*/
 
 // confirmer defines an interface for confirming actions.
 // This allows for mocking in tests.
@@ -88,8 +100,11 @@ const videosPhaseIdeas = 7
 const indexCreateVideo = 0
 const indexListVideos = 1
 
-const actionEdit = 0
-const actionDelete = 1
+const (
+	actionEdit = iota
+	actionDelete
+	actionMoveFiles
+)
 const actionReturn = 99
 
 func (c *Choices) ChooseIndex() {
@@ -1038,6 +1053,132 @@ func (c *Choices) getActionOptions() []huh.Option[int] {
 	return []huh.Option[int]{
 		huh.NewOption("Edit", actionEdit),
 		huh.NewOption("Delete", actionDelete),
+		huh.NewOption("Move Video", actionMoveFiles),
 		huh.NewOption("Return", actionReturn),
 	}
 }
+
+/*
+// getAvailableDirectories scans the ./manuscript directory and its direct subdirectories
+// to provide a list of available directories for moving video files.
+// It formats the directory names for display (e.g., "go-programming" becomes "Go Programming").
+// It handles one level of subdirectory nesting for naming (e.g., "parent/child" becomes "Parent Child").
+func (c *Choices) getAvailableDirectories() ([]Directory, error) {
+	baseDir := "manuscript"
+	dirs := []Directory{}
+
+	absBaseDir, err := filepath.Abs(baseDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get absolute path for %s: %w", baseDir, err)
+	}
+	// log.Printf("[DEBUG] getAvailableDirectories: absBaseDir = %s", absBaseDir) // DEBUG LOG
+
+	// Read the base manuscript directory
+	level1Entries, err := os.ReadDir(tabsBaseDir)
+	if err != nil {
+		// log.Printf("[DEBUG] getAvailableDirectories: failed to read manuscript directory %s: %v", absBaseDir, err) // DEBUG LOG
+		return nil, fmt.Errorf("failed to read manuscript directory %s: %w", absBaseDir, err)
+	}
+
+	for _, entry1 := range level1Entries {
+		if entry1.IsDir() {
+			level1Path := filepath.Join(tabsBaseDir, entry1.Name())
+
+			// Check for subdirectories (level 2)
+			level2Entries, err := os.ReadDir(level1Path)
+			addedLevel2 := false
+			if err == nil { // If no error, means it's readable, could have subdirs
+				for _, entry2 := range level2Entries {
+					if entry2.IsDir() {
+						level2Path := filepath.Join(level1Path, entry2.Name())
+						displayName := toTitleCase(entry1.Name()) + " " + toTitleCase(entry2.Name())
+						dirs = append(dirs, Directory{Name: displayName, Path: level2Path})
+						addedLevel2 = true
+					}
+				}
+			}
+
+			// If no level 2 directories were added, add the level 1 directory itself
+			if !addedLevel2 {
+				displayName := toTitleCase(entry1.Name())
+				dirs = append(dirs, Directory{Name: displayName, Path: level1Path})
+			}
+		}
+	}
+
+	// Sort directories by name for consistent display
+	sort.Slice(dirs, func(i, j int) bool {
+		return dirs[i].Name < dirs[j].Name
+	})
+
+	// log.Printf("[DEBUG] getAvailableDirectories: found %d directories: %+v", len(dirs), dirs) // DEBUG LOG
+	return dirs, nil
+}
+*/
+
+/*
+// toTitleCase converts a kebab-case or snake_case string to Title Case.
+// e.g., "go-programming" becomes "Go Programming".
+func toTitleCase(s string) string {
+	words := strings.Fields(strings.ReplaceAll(strings.ReplaceAll(s, "-", " "), "_", " "))
+	for i, word := range words {
+		if len(word) > 0 {
+			words[i] = strings.ToUpper(string(word[0])) + strings.ToLower(word[1:])
+		}
+	}
+	return strings.Join(words, " ")
+}
+*/
+
+/*
+// selectTargetDirectory presents a list of available directories (from getAvailableDirectories)
+// to the user for selection via a huh.Form. It uses the provided io.Reader and io.Writer
+// for testing purposes, allowing simulation of user input and capturing output.
+func (c *Choices) selectTargetDirectory(input io.Reader, output io.Writer) (Directory, error) {
+	availableDirs, err := c.getAvailableDirectories()
+	if err != nil {
+		return Directory{}, fmt.Errorf("failed to get available directories: %w", err)
+	}
+
+	if len(availableDirs) == 0 {
+		// log.Println("[DEBUG] selectTargetDirectory: No available directories found condition met.") // DEBUG LOG
+		return Directory{}, errors.New("no available directories found in manuscript path to move the video to")
+	}
+	// log.Printf("[DEBUG] selectTargetDirectory: %d available directories found, proceeding to form.", len(availableDirs)) // DEBUG LOG
+
+	huhOptions := make([]huh.Option[string], len(availableDirs))
+	for i, dir := range availableDirs {
+		huhOptions[i] = huh.NewOption(dir.Name, dir.Path)
+	}
+
+	var selectedPath string
+
+	form := huh.NewForm(
+		huh.NewGroup(
+			huh.NewSelect[string]().
+				Title("Move video to which directory?").
+				Options(huhOptions...). // Spread the slice into variadic arguments
+				Value(&selectedPath),
+		),
+	)
+
+	// Apply the custom input, output, and a base theme for testability
+	form = form.WithTheme(huh.ThemeBase()).WithInput(input).WithOutput(output)
+
+	err = form.Run()
+	if err != nil {
+		if errors.Is(err, huh.ErrUserAborted) {
+			return Directory{}, fmt.Errorf("directory selection aborted by user: %w", err)
+		}
+		return Directory{}, fmt.Errorf("directory selection form failed: %w", err)
+	}
+
+	for _, dir := range availableDirs {
+		if dir.Path == selectedPath {
+			return dir, nil
+		}
+	}
+
+	return Directory{}, fmt.Errorf("internal error: selected path '%s' not found in available directories", selectedPath)
+}
+*/

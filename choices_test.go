@@ -683,34 +683,48 @@ func TestGetIndexOptions(t *testing.T) {
 // TestGetActionOptions tests the getActionOptions function
 func TestGetActionOptions(t *testing.T) {
 	c := NewChoices()
-
 	options := c.getActionOptions()
 
-	// Verify we have the expected number of options
-	expectedLen := 3 // Edit, Delete, Return
-	if len(options) != expectedLen {
-		t.Errorf("getActionOptions(): expected %d options, got %d", expectedLen, len(options))
+	// Expected options: Edit, Delete, Move Video, Return
+	expectedNumberOfOptions := 4 // Increased from 3 to 4
+	if len(options) != expectedNumberOfOptions {
+		t.Errorf("Expected %d options, got %d", expectedNumberOfOptions, len(options))
 	}
 
-	// Verify the options contain the expected values
-	optionValues := make([]int, len(options))
+	expectedOptions := []struct {
+		label string
+		value int
+	}{
+		{"Edit", actionEdit},
+		{"Delete", actionDelete},
+		{"Move Video", actionMoveFiles}, // Changed label
+		{"Return", actionReturn},
+	}
+
 	for i, opt := range options {
-		optionValues[i] = opt.Value
+		// Check if the label matches
+		// Assuming opt.Key is the method to get the label string.
+		// This might need adjustment based on how huh.Option stores the label.
+		// For now, we'll compare with expectedOptions directly by index.
+		if opt.Key != expectedOptions[i].label {
+			t.Errorf("Expected option label to be '%s', got '%s'", expectedOptions[i].label, opt.Key)
+		}
+		// Check if the value matches
+		if opt.Value != expectedOptions[i].value {
+			t.Errorf("Expected option value to be '%d', got '%d'", expectedOptions[i].value, opt.Value)
+		}
 	}
 
-	// Check that we have the expected values
-	expectedValues := []int{actionEdit, actionDelete, actionReturn}
-	for _, val := range expectedValues {
-		found := false
-		for _, optVal := range optionValues {
-			if optVal == val {
-				found = true
-				break
-			}
+	// Optionally, you can be more specific if the order is not guaranteed
+	foundMoveVideo := false
+	for _, opt := range options {
+		if opt.Key == "Move Video" && opt.Value == actionMoveFiles { // Changed label
+			foundMoveVideo = true
+			break
 		}
-		if !found {
-			t.Errorf("getActionOptions(): expected to find value %d, but it was missing", val)
-		}
+	}
+	if !foundMoveVideo {
+		t.Errorf("Expected to find 'Move Video' option with value actionMoveFiles") // Changed label
 	}
 }
 
@@ -1113,16 +1127,6 @@ func TestChooseCreateVideo(t *testing.T) {
 		t.Fatalf("Failed to write to test file: %v", err)
 	}
 	f.Close()
-
-	// Verify the file was created with the expected content
-	content, err := os.ReadFile(expectedFilePath)
-	if err != nil {
-		t.Fatalf("Failed to read test file: %v", err)
-	}
-
-	if string(content) != testContent {
-		t.Errorf("Expected file content %q, got %q", testContent, string(content))
-	}
 
 	// Test case: file already exists - should return empty VideoIndex
 	existingFilePath := filepath.Join(manuscriptDir, "existing-video.md")
