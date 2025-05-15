@@ -1,11 +1,15 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
+
+	// "io" // Comment out if not used elsewhere after removals
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"reflect"
 	"sort"
 	"strings"
@@ -19,6 +23,22 @@ import (
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )
+
+// Video struct is defined in yaml.go
+
+// Directory represents a selectable directory option.
+// Name is for display, Path is the actual file system path.
+// Used by getAvailableDirectories and selectTargetDirectory.
+type Directory struct {
+	Name string
+	Path string
+}
+
+// DirectorySelector defines an interface for selecting a directory.
+// This allows for mocking in tests.
+type DirectorySelector interface {
+	SelectDirectory(input *bytes.Buffer) (Directory, error)
+}
 
 // confirmer defines an interface for confirming actions.
 // This allows for mocking in tests.
@@ -34,12 +54,18 @@ func (dc defaultConfirmer) Confirm(message string) bool {
 }
 
 type Choices struct {
-	confirmer confirmer
+	confirmer   confirmer
+	getDirsFunc func() ([]Directory, error)
+	dirSelector DirectorySelector // New field for injecting directory selection behavior
 }
 
-// NewChoices creates a new instance of Choices with the default confirmer.
+// NewChoices creates a new instance of Choices with the default confirmer,
+// default directory listing function, and default directory selector.
 func NewChoices() *Choices {
-	return &Choices{confirmer: defaultConfirmer{}}
+	c := &Choices{confirmer: defaultConfirmer{}}
+	c.getDirsFunc = c.doGetAvailableDirectories
+	c.dirSelector = c // Choices implements DirectorySelector via selectTargetDirectory
+	return c
 }
 
 var redStyle = lipgloss.NewStyle().
@@ -88,8 +114,11 @@ const videosPhaseIdeas = 7
 const indexCreateVideo = 0
 const indexListVideos = 1
 
-const actionEdit = 0
-const actionDelete = 1
+const (
+	actionEdit = iota
+	actionDelete
+	actionMoveFiles
+)
 const actionReturn = 99
 
 func (c *Choices) ChooseIndex() {
@@ -782,7 +811,7 @@ func (c *Choices) ChooseVideosPhase(vi []VideoIndex) bool {
 	if selection == actionReturn {
 		return true
 	}
-	c.ChooseVideos(vi, selection)
+	c.ChooseVideos(vi, selection, nil)
 	return false
 }
 
@@ -808,7 +837,7 @@ func (c *Choices) GetVideoPhase(vi VideoIndex) int {
 	}
 }
 
-func (c *Choices) ChooseVideos(vi []VideoIndex, phase int) {
+func (c *Choices) ChooseVideos(vi []VideoIndex, phase int, input *bytes.Buffer) {
 	var selectedVideo Video
 	var selectedAction int
 	options := huh.NewOptions[Video]()
@@ -847,7 +876,10 @@ func (c *Choices) ChooseVideos(vi []VideoIndex, phase int) {
 				Value(&selectedAction),
 		),
 	)
-
+	form = form.WithTheme(nil)
+	if input != nil {
+		form = form.WithInput(input)
+	}
 	err := form.Run()
 	if err != nil {
 		log.Fatal(err)
@@ -862,6 +894,47 @@ func (c *Choices) ChooseVideos(vi []VideoIndex, phase int) {
 		if err != nil {
 			log.Printf("Error during video deletion process: %v", err)
 		}
+	case actionMoveFiles:
+		targetDir, err := c.dirSelector.SelectDirectory(input)
+		if err != nil {
+			if errors.Is(err, huh.ErrUserAborted) {
+				fmt.Println(orangeStyle.Render("Move video action cancelled."))
+			} else {
+				log.Printf("Error selecting target directory: %v", err)
+			}
+		} else {
+			// Get current paths and video base name
+			currentYAMLPath := selectedVideo.Path
+			ext := filepath.Ext(currentYAMLPath)
+			videoBaseFileName := strings.TrimSuffix(filepath.Base(currentYAMLPath), ext)
+			currentMDPath := strings.TrimSuffix(currentYAMLPath, ext) + ".md"
+
+			// Perform the move
+			newYAMLPath, _, err := utils.MoveVideoFiles(currentYAMLPath, currentMDPath, targetDir.Path, videoBaseFileName)
+			if err != nil {
+				log.Printf("Error moving video files for '%s': %v", selectedVideo.Name, err)
+			} else {
+				// Update index.yaml
+				newCategory := filepath.Base(targetDir.Path)
+				updated := false
+				for i, videoIdx := range vi {
+					if videoIdx.Name == selectedVideo.Name && videoIdx.Category == selectedVideo.Category {
+						vi[i].Category = newCategory
+						updated = true
+						break
+					}
+				}
+
+				if updated {
+					yamlOps := NewYAML("index.yaml")
+					yamlOps.WriteIndex(vi)
+					fmt.Println(confirmationStyle.Render(fmt.Sprintf("Video '%s' moved to %s and index updated.", selectedVideo.Name, targetDir.Name)))
+				} else {
+					log.Printf("Could not find video '%s' in index to update its category after moving. Files moved to %s.", selectedVideo.Name, newYAMLPath)
+				}
+			}
+		}
+		return // Exit ChooseVideos to force a refresh from main or phase selection
 	case actionReturn:
 		return
 	}
@@ -1038,6 +1111,101 @@ func (c *Choices) getActionOptions() []huh.Option[int] {
 	return []huh.Option[int]{
 		huh.NewOption("Edit", actionEdit),
 		huh.NewOption("Delete", actionDelete),
+		huh.NewOption("Move Video", actionMoveFiles),
 		huh.NewOption("Return", actionReturn),
 	}
+}
+
+// getAvailableDirectories now calls the injectable function.
+func (c *Choices) getAvailableDirectories() ([]Directory, error) {
+	return c.getDirsFunc()
+}
+
+// doGetAvailableDirectories is the actual implementation that will be refactored.
+// TODO: Implement actual directory scanning logic.
+func (c *Choices) doGetAvailableDirectories() ([]Directory, error) {
+	// Placeholder implementation that TestGetAvailableDirectories_Basic expects
+	// return []Directory{
+	// 	{Name: "Default Videos", Path: "manuscript/videos"},
+	// }, nil
+
+	var availableDirs []Directory
+	manuscriptPath := "manuscript" // Relative path to scan
+
+	files, err := os.ReadDir(manuscriptPath)
+	if err != nil {
+		// If the manuscript directory doesn't exist, return empty list and no error,
+		// as per original behavior of getCategories if manuscript dir is missing.
+		if os.IsNotExist(err) {
+			return []Directory{}, nil
+		}
+		return nil, fmt.Errorf("failed to read manuscript directory '%s': %w", manuscriptPath, err)
+	}
+
+	caser := cases.Title(language.AmericanEnglish)
+	for _, file := range files {
+		if file.IsDir() {
+			displayName := caser.String(strings.ReplaceAll(file.Name(), "-", " "))
+			dirPath := filepath.Join(manuscriptPath, file.Name())
+			availableDirs = append(availableDirs, Directory{Name: displayName, Path: dirPath})
+		}
+	}
+
+	// Sort by display name for consistent order
+	sort.Slice(availableDirs, func(i, j int) bool {
+		return availableDirs[i].Name < availableDirs[j].Name
+	})
+
+	return availableDirs, nil
+}
+
+// toHuhOptionsDirectory converts a slice of Directory to a slice of huh.Option[Directory]
+// to be used with huh.NewSelect.
+func (c *Choices) toHuhOptionsDirectory(dirs []Directory) []huh.Option[Directory] {
+	options := make([]huh.Option[Directory], len(dirs))
+	for i, dir := range dirs {
+		// The key for the option is the display name, the value is the Directory struct itself.
+		options[i] = huh.NewOption(dir.Name, dir)
+	}
+	return options
+}
+
+// This is the actual implementation, renamed.
+func (c *Choices) doSelectTargetDirectory(input *bytes.Buffer) (Directory, error) {
+	availableDirs, err := c.getAvailableDirectories()
+	if err != nil {
+		return Directory{}, fmt.Errorf("failed to get available directories: %w", err)
+	}
+
+	if len(availableDirs) == 0 {
+		return Directory{}, errors.New("no available directories to choose from")
+	}
+
+	var selectedDir Directory
+	huhOptions := c.toHuhOptionsDirectory(availableDirs)
+
+	form := huh.NewForm(
+		huh.NewGroup(
+			huh.NewSelect[Directory]().
+				Title("Select target directory").
+				Options(huhOptions...).
+				Value(&selectedDir),
+		),
+	)
+	form = form.WithTheme(nil)
+	if input != nil {
+		form = form.WithInput(input)
+	}
+
+	if err := form.Run(); err != nil {
+		return Directory{}, err
+	}
+
+	return selectedDir, nil
+}
+
+// SelectDirectory makes *Choices implement the DirectorySelector interface.
+// It calls the actual implementation.
+func (c *Choices) SelectDirectory(input *bytes.Buffer) (Directory, error) {
+	return c.doSelectTargetDirectory(input)
 }

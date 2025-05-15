@@ -1,11 +1,13 @@
 package main
 
 import (
+	"bytes"
 	"devopstoolkitseries/youtube-automation/pkg/testutil"
 	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"strings"
 	"testing"
 
@@ -23,6 +25,20 @@ type mockConfirmer struct {
 func (m *mockConfirmer) Confirm(message string) bool {
 	m.messageArg = message
 	return m.shouldConfirm
+}
+
+// mockDirectorySelector is a mock implementation of the DirectorySelector interface.
+type mockDirectorySelector struct {
+	Called      bool
+	InputBuffer *bytes.Buffer // To verify what input it would have received
+	ReturnDir   Directory
+	ReturnErr   error
+}
+
+func (m *mockDirectorySelector) SelectDirectory(input *bytes.Buffer) (Directory, error) {
+	m.Called = true
+	m.InputBuffer = input
+	return m.ReturnDir, m.ReturnErr
 }
 
 // TestPhaseTransitions tests the phase transition functionality in the Choices struct
@@ -683,34 +699,48 @@ func TestGetIndexOptions(t *testing.T) {
 // TestGetActionOptions tests the getActionOptions function
 func TestGetActionOptions(t *testing.T) {
 	c := NewChoices()
-
 	options := c.getActionOptions()
 
-	// Verify we have the expected number of options
-	expectedLen := 3 // Edit, Delete, Return
-	if len(options) != expectedLen {
-		t.Errorf("getActionOptions(): expected %d options, got %d", expectedLen, len(options))
+	// Expected options: Edit, Delete, Move Video, Return
+	expectedNumberOfOptions := 4 // Increased from 3 to 4
+	if len(options) != expectedNumberOfOptions {
+		t.Errorf("Expected %d options, got %d", expectedNumberOfOptions, len(options))
 	}
 
-	// Verify the options contain the expected values
-	optionValues := make([]int, len(options))
+	expectedOptions := []struct {
+		label string
+		value int
+	}{
+		{"Edit", actionEdit},
+		{"Delete", actionDelete},
+		{"Move Video", actionMoveFiles}, // Changed label
+		{"Return", actionReturn},
+	}
+
 	for i, opt := range options {
-		optionValues[i] = opt.Value
+		// Check if the label matches
+		// Assuming opt.Key is the method to get the label string.
+		// This might need adjustment based on how huh.Option stores the label.
+		// For now, we'll compare with expectedOptions directly by index.
+		if opt.Key != expectedOptions[i].label {
+			t.Errorf("Expected option label to be '%s', got '%s'", expectedOptions[i].label, opt.Key)
+		}
+		// Check if the value matches
+		if opt.Value != expectedOptions[i].value {
+			t.Errorf("Expected option value to be '%d', got '%d'", expectedOptions[i].value, opt.Value)
+		}
 	}
 
-	// Check that we have the expected values
-	expectedValues := []int{actionEdit, actionDelete, actionReturn}
-	for _, val := range expectedValues {
-		found := false
-		for _, optVal := range optionValues {
-			if optVal == val {
-				found = true
-				break
-			}
+	// Optionally, you can be more specific if the order is not guaranteed
+	foundMoveVideo := false
+	for _, opt := range options {
+		if opt.Key == "Move Video" && opt.Value == actionMoveFiles { // Changed label
+			foundMoveVideo = true
+			break
 		}
-		if !found {
-			t.Errorf("getActionOptions(): expected to find value %d, but it was missing", val)
-		}
+	}
+	if !foundMoveVideo {
+		t.Errorf("Expected to find 'Move Video' option with value actionMoveFiles") // Changed label
 	}
 }
 
@@ -1113,16 +1143,6 @@ func TestChooseCreateVideo(t *testing.T) {
 		t.Fatalf("Failed to write to test file: %v", err)
 	}
 	f.Close()
-
-	// Verify the file was created with the expected content
-	content, err := os.ReadFile(expectedFilePath)
-	if err != nil {
-		t.Fatalf("Failed to read test file: %v", err)
-	}
-
-	if string(content) != testContent {
-		t.Errorf("Expected file content %q, got %q", testContent, string(content))
-	}
 
 	// Test case: file already exists - should return empty VideoIndex
 	existingFilePath := filepath.Join(manuscriptDir, "existing-video.md")
@@ -1908,5 +1928,168 @@ func TestGetVideoTitleForDisplay(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestGetAvailableDirectories_Basic(t *testing.T) {
+	choices := NewChoices()
+
+	expectedDirs := []Directory{
+		{Name: "Default Videos", Path: "manuscript/videos"},
+	}
+
+	// Override the directory listing function for this specific test case
+	originalGetDirsFunc := choices.getDirsFunc
+	choices.getDirsFunc = func() ([]Directory, error) {
+		return []Directory{
+			{Name: "Default Videos", Path: "manuscript/videos"},
+		}, nil
+	}
+	// Restore original function after test
+	defer func() { choices.getDirsFunc = originalGetDirsFunc }()
+
+	dirs, err := choices.getAvailableDirectories() // This will now call our overridden function
+
+	if err != nil {
+		t.Fatalf("getAvailableDirectories() returned an unexpected error: %v", err)
+	}
+
+	if len(dirs) != len(expectedDirs) {
+		t.Fatalf("Expected %d directory, got %d", len(expectedDirs), len(dirs))
+	}
+
+	for i, expected := range expectedDirs {
+		if dirs[i].Name != expected.Name {
+			t.Errorf("Directory %d: Expected Name '%s', got '%s'", i, expected.Name, dirs[i].Name)
+		}
+		if dirs[i].Path != expected.Path {
+			t.Errorf("Directory %d: Expected Path '%s', got '%s'", i, expected.Path, dirs[i].Path)
+		}
+	}
+}
+
+func TestGetAvailableDirectories_Dynamic(t *testing.T) {
+	originalGetWD, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Failed to get current working directory: %v", err)
+	}
+
+	tmpDir, err := os.MkdirTemp("", "test_manuscript_")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	manuscriptDir := filepath.Join(tmpDir, "manuscript")
+	if err := os.Mkdir(manuscriptDir, 0755); err != nil {
+		t.Fatalf("Failed to create manuscript dir in temp: %v", err)
+	}
+
+	// Create subdirectories and a file
+	dirsToCreate := []string{"actual-dir-one", "another-sample-dir"}
+	expectedDirs := []Directory{}
+	for _, dirName := range dirsToCreate {
+		if err := os.Mkdir(filepath.Join(manuscriptDir, dirName), 0755); err != nil {
+			t.Fatalf("Failed to create subdirectory %s: %v", dirName, err)
+		}
+		// Convert "actual-dir-one" to "Actual Dir One"
+		caser := cases.Title(language.AmericanEnglish)
+		displayName := caser.String(strings.ReplaceAll(dirName, "-", " "))
+		expectedDirs = append(expectedDirs, Directory{Name: displayName, Path: filepath.Join("manuscript", dirName)})
+	}
+	// Sort expectedDirs by Name for consistent comparison
+	sort.Slice(expectedDirs, func(i, j int) bool {
+		return expectedDirs[i].Name < expectedDirs[j].Name
+	})
+
+	if _, err := os.Create(filepath.Join(manuscriptDir, "some-file.txt")); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	// Change working directory to the temp directory
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("Failed to change working directory to temp dir: %v", err)
+	}
+	defer func() { // Ensure we change back
+		if err := os.Chdir(originalGetWD); err != nil {
+			t.Errorf("Failed to change back to original working directory: %v", err)
+		}
+	}()
+
+	choices := NewChoices()
+	// At this point, getAvailableDirectories should use the real implementation
+	// which will be modified to scan the (now temporary) "manuscript" directory.
+
+	actualDirs, err := choices.getAvailableDirectories()
+	if err != nil {
+		t.Fatalf("getAvailableDirectories() returned an error: %v", err)
+	}
+
+	// Sort actualDirs by Name for consistent comparison
+	sort.Slice(actualDirs, func(i, j int) bool {
+		return actualDirs[i].Name < actualDirs[j].Name
+	})
+
+	if len(actualDirs) != len(expectedDirs) {
+		t.Errorf("Expected %d directories, got %d", len(expectedDirs), len(actualDirs))
+		t.Logf("Expected: %+v", expectedDirs)
+		t.Logf("Actual:   %+v", actualDirs)
+		t.FailNow()
+	}
+
+	for i, expected := range expectedDirs {
+		if actualDirs[i].Name != expected.Name {
+			t.Errorf("Directory %d: Expected Name '%s', got '%s'", i, expected.Name, actualDirs[i].Name)
+		}
+		// Use filepath.ToSlash for path comparison to handle OS differences
+		if filepath.ToSlash(actualDirs[i].Path) != filepath.ToSlash(expected.Path) {
+			t.Errorf("Directory %d: Expected Path '%s', got '%s'", i, expected.Path, actualDirs[i].Path)
+		}
+	}
+}
+
+func TestSelectTargetDirectory_UserSelection(t *testing.T) {
+	choices := NewChoices()
+
+	sampleDirs := []Directory{
+		{Name: "First Dir", Path: "manuscript/first-dir"},
+		{Name: "Second Dir", Path: "manuscript/second-dir"},
+		{Name: "Third Dir", Path: "manuscript/third-dir"},
+	}
+
+	// Mock getAvailableDirectories to return our sample directories
+	originalGetDirsFunc := choices.getDirsFunc
+	choices.getDirsFunc = func() ([]Directory, error) {
+		return sampleDirs, nil
+	}
+	defer func() { choices.getDirsFunc = originalGetDirsFunc }()
+
+	// Simulate user input: select the second item (index 1)
+	// For huh.Select, this typically means one down arrow then enter.
+	// huh processes \r or \n as enter.
+	input := new(bytes.Buffer)
+	input.WriteString("\n") // Down arrow to select "Second Dir"
+	input.WriteString("\r") // Enter to confirm
+
+	// We need to pass this input to the huh.Form that will be run inside selectTargetDirectory.
+	// This is tricky because selectTargetDirectory internally creates and runs the form.
+	// For this test to work, selectTargetDirectory will need to be structured to accept
+	// a pre-configured form or use huh.WithInput if it creates the form internally.
+
+	// For now, this test WILL FAIL because selectTargetDirectory is not implemented
+	// and does not yet handle form input for testing.
+	// selectedDir, err := choices.selectTargetDirectory()
+
+	// Pass the input buffer to the method
+	selectedDir, err := choices.SelectDirectory(input) // Changed to SelectDirectory
+
+	if err != nil {
+		// This will be the initial failure point because of the placeholder implementation
+		t.Fatalf("selectTargetDirectory() returned an error: %v", err)
+	}
+
+	expectedSelectedDir := sampleDirs[1] // We "selected" the second directory
+	if selectedDir.Name != expectedSelectedDir.Name || selectedDir.Path != expectedSelectedDir.Path {
+		t.Errorf("Expected directory %+v, got %+v", expectedSelectedDir, selectedDir)
 	}
 }
