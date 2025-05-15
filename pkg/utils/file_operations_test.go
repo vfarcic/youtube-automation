@@ -257,3 +257,69 @@ func TestMoveFile(t *testing.T) {
 	// Such a test would require setting up different mount points or mock filesystems.
 	// For now, we'll assume same-filesystem moves.
 }
+
+func TestMoveVideoFiles(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "test_move_video_files_")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Setup source and target directories
+	sourceCatDir := filepath.Join(tempDir, "manuscript", "old-category")
+	targetCatDir := filepath.Join(tempDir, "manuscript", "new-category")
+	if err := os.MkdirAll(sourceCatDir, 0755); err != nil {
+		t.Fatalf("Failed to create source category dir: %v", err)
+	}
+	// Target directory might or might not exist; MoveFile should handle its creation if needed for the file path.
+	// For MoveVideoFiles, we expect targetDirectoryPath to be an existing dir or one MoveFile can create a parent for.
+	// Let's ensure the parent of the target file path exists if targetDirectoryPath is deep.
+	if err := os.MkdirAll(targetCatDir, 0755); err != nil {
+		t.Fatalf("Failed to create target category dir: %v", err)
+	}
+
+	videoBaseName := "my-test-video"
+	currentYAMLPath := filepath.Join(sourceCatDir, videoBaseName+".yaml")
+	currentMDPath := filepath.Join(sourceCatDir, videoBaseName+".md")
+
+	// Create dummy source files
+	if _, err := os.Create(currentYAMLPath); err != nil {
+		t.Fatalf("Failed to create source YAML: %v", err)
+	}
+	if _, err := os.Create(currentMDPath); err != nil {
+		t.Fatalf("Failed to create source MD: %v", err)
+	}
+
+	// Expected new paths
+	expectedNewYAMLPath := filepath.Join(targetCatDir, videoBaseName+".yaml")
+	expectedNewMDPath := filepath.Join(targetCatDir, videoBaseName+".md")
+	_ = expectedNewYAMLPath // Avoid declared and not used
+	_ = expectedNewMDPath   // Avoid declared and not used
+
+	// Call the function
+	newYAMLPath, newMDPath, err := MoveVideoFiles(currentYAMLPath, currentMDPath, targetCatDir, videoBaseName)
+
+	// Uncomment and use assertions
+	if err != nil {
+		t.Fatalf("MoveVideoFiles() error = %v", err)
+	}
+	if newYAMLPath != expectedNewYAMLPath {
+		t.Errorf("Expected new YAML path %s, got %s", expectedNewYAMLPath, newYAMLPath)
+	}
+	if newMDPath != expectedNewMDPath {
+		t.Errorf("Expected new MD path %s, got %s", expectedNewMDPath, newMDPath)
+	}
+	// Assert files moved
+	if _, err := os.Stat(expectedNewYAMLPath); os.IsNotExist(err) {
+		t.Errorf("Expected YAML file to be moved to %s, but it was not found", expectedNewYAMLPath)
+	}
+	if _, err := os.Stat(expectedNewMDPath); os.IsNotExist(err) {
+		t.Errorf("Expected MD file to be moved to %s, but it was not found", expectedNewMDPath)
+	}
+	if _, err := os.Stat(currentYAMLPath); !os.IsNotExist(err) {
+		t.Errorf("Expected source YAML file %s to be removed, but it still exists", currentYAMLPath)
+	}
+	if _, err := os.Stat(currentMDPath); !os.IsNotExist(err) {
+		t.Errorf("Expected source MD file %s to be removed, but it still exists", currentMDPath)
+	}
+}
