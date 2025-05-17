@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"devopstoolkitseries/youtube-automation/pkg/testutil"
+	"devopstoolkitseries/youtube-automation/pkg/utils"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -10,6 +11,7 @@ import (
 	"sort"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/charmbracelet/lipgloss"
 	"golang.org/x/text/cases"
@@ -1849,86 +1851,168 @@ func TestHandleDeleteVideoAction(t *testing.T) {
 // TestGetVideoTitleForDisplay tests the title generation logic including styling.
 func TestGetVideoTitleForDisplay(t *testing.T) {
 	c := NewChoices()
+	localOrangeStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("3"))
+	localFarFutureStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("6")) // Cyan, not bold
 
-	// Define the style locally in the test, matching choices.go
-	localOrangeStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("3"))
+	testNow := time.Date(2024, time.January, 15, 12, 0, 0, 0, time.UTC) // A consistent "now" for test logic
 
 	tests := []struct {
 		name         string
 		video        Video
-		expectStyled bool
-		expectedStr  string // Base string without styling
+		phase        int    // Add phase to test phase-specific styling
+		expectStyled bool   // True if any special styling (orange, cyan) is expected
+		expectedStr  string // Base string without styling, but with (date), (S), (B), (AMA) markers
+		// expectedRenderedStr string // The fully styled string (optional, if we want to check exact rendering)
 	}{
 		{
-			name:         "Regular Video",
+			name:         "Regular Video in non-Started phase",
 			video:        Video{Name: "MyVideo", Date: "2024-01-01T10:00"},
+			phase:        videosPhasePublished, // Not 'Started'
 			expectStyled: false,
 			expectedStr:  "MyVideo (2024-01-01T10:00)",
 		},
 		{
-			name:         "Sponsored Video",
+			name:         "Sponsored Video in non-Started phase",
 			video:        Video{Name: "SponsorVid", Sponsorship: Sponsorship{Amount: "100"}},
-			expectStyled: true, // Should be yellow
+			phase:        videosPhasePublished, // Not 'Started'
+			expectStyled: true,                 // Orange for sponsored
 			expectedStr:  "SponsorVid (S)",
 		},
 		{
-			name:         "Sponsored Video with Date",
+			name:         "Sponsored Video with Date in non-Started phase",
 			video:        Video{Name: "SponsorDate", Date: "2024-02-02T11:00", Sponsorship: Sponsorship{Amount: "50"}},
-			expectStyled: true, // Should be yellow
+			phase:        videosPhasePublished, // Not 'Started'
+			expectStyled: true,                 // Orange for sponsored
 			expectedStr:  "SponsorDate (2024-02-02T11:00) (S)",
 		},
 		{
-			name:         "Blocked Video",
-			video:        Video{Name: "BlockedVid", Sponsorship: Sponsorship{Blocked: "Conflict"}},
+			name:         "Blocked Video (should not be orange or cyan)",
+			video:        Video{Name: "BlockedVid", Sponsorship: Sponsorship{Blocked: "Reason"}},
+			phase:        videosPhaseStarted,
+			expectStyled: false, // Blocked style is default, not orange/cyan
+			expectedStr:  "BlockedVid (Reason)",
+		},
+		{
+			name:         "Sponsored but Blocked Video (should not be orange or cyan)",
+			video:        Video{Name: "SponsorBlock", Sponsorship: Sponsorship{Amount: "100", Blocked: "DMCA"}},
+			phase:        videosPhaseStarted,
+			expectStyled: false, // Blocked style takes precedence
+			expectedStr:  "SponsorBlock (DMCA)",
+		},
+		{
+			name:         "AMA Video (should append AMA)",
+			video:        Video{Name: "AmaTime", Category: "ama"},
+			phase:        videosPhaseIdeas,
+			expectStyled: false, // AMA itself is not a style, but part of the string
+			expectedStr:  "AmaTime (AMA)",
+		},
+		{
+			name:         "Sponsored AMA Video (orange style, appends AMA)",
+			video:        Video{Name: "SponsoredAMA", Category: "ama", Sponsorship: Sponsorship{Amount: "20"}},
+			phase:        videosPhaseIdeas,
+			expectStyled: true, // Orange for sponsored
+			expectedStr:  "SponsoredAMA (S) (AMA)",
+		},
+		{
+			name: "Far Future Video (>3 months) in Started Phase (cyan style)",
+			// Date is more than 3 months from testNow (2024-01-15)
+			video:        Video{Name: "FutureVid", Date: testNow.AddDate(0, 3, 1).Format("2006-01-02T15:04")},
+			phase:        videosPhaseStarted,
+			expectStyled: true, // Cyan for far future in Started
+			expectedStr:  fmt.Sprintf("FutureVid (%s)", testNow.AddDate(0, 3, 1).Format("2006-01-02T15:04")),
+		},
+		{
+			name: "Not Far Future Video (exactly 3 months) in Started Phase (no cyan style)",
+			// Date is exactly 3 months from testNow
+			video:        Video{Name: "EdgeFuture", Date: testNow.AddDate(0, 3, 0).Format("2006-01-02T15:04")},
+			phase:        videosPhaseStarted,
+			expectStyled: false, // Not > 3 months
+			expectedStr:  fmt.Sprintf("EdgeFuture (%s)", testNow.AddDate(0, 3, 0).Format("2006-01-02T15:04")),
+		},
+		{
+			name:         "Far Future Video BUT in Published Phase (no cyan style)",
+			video:        Video{Name: "FuturePublished", Date: testNow.AddDate(0, 4, 0).Format("2006-01-02T15:04")},
+			phase:        videosPhasePublished, // Not 'Started'
+			expectStyled: false,                // No cyan because not in Started phase
+			expectedStr:  fmt.Sprintf("FuturePublished (%s)", testNow.AddDate(0, 4, 0).Format("2006-01-02T15:04")),
+		},
+		{
+			name:         "Sponsored Far Future Video in Started Phase (cyan style, not orange; also (S))",
+			video:        Video{Name: "SponsorFuture", Date: testNow.AddDate(0, 4, 0).Format("2006-01-02T15:04"), Sponsorship: Sponsorship{Amount: "100"}},
+			phase:        videosPhaseStarted,
+			expectStyled: true, // Cyan for far future takes precedence over orange in Started phase
+			expectedStr:  fmt.Sprintf("SponsorFuture (%s) (S)", testNow.AddDate(0, 4, 0).Format("2006-01-02T15:04")),
+		},
+		{
+			name:         "Video with no date",
+			video:        Video{Name: "NoDateVid"},
+			phase:        videosPhaseStarted,
 			expectStyled: false,
-			expectedStr:  "BlockedVid (Conflict)",
-		},
-		{
-			name:         "Sponsored but Blocked Video",
-			video:        Video{Name: "SponsorBlock", Sponsorship: Sponsorship{Amount: "200", Blocked: "Late"}},
-			expectStyled: false, // Blocked takes precedence, no yellow, no (S)
-			expectedStr:  "SponsorBlock (Late)",
-		},
-		{
-			name:         "AMA Video",
-			video:        Video{Name: "AMATime", Category: "ama"},
-			expectStyled: false,
-			expectedStr:  "AMATime (AMA)",
-		},
-		{
-			name:         "Sponsored AMA Video",
-			video:        Video{Name: "SponsorAMA", Category: "ama", Sponsorship: Sponsorship{Amount: "100"}},
-			expectStyled: true, // Should be yellow
-			expectedStr:  "SponsorAMA (S) (AMA)",
-		},
-		{
-			name:         "Sponsored AMA Video with Date",
-			video:        Video{Name: "SponsorAMADate", Date: "2024-03-03T12:00", Category: "ama", Sponsorship: Sponsorship{Amount: "50"}},
-			expectStyled: true, // Should be yellow
-			expectedStr:  "SponsorAMADate (2024-03-03T12:00) (S) (AMA)",
+			expectedStr:  "NoDateVid",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Pass a neutral phase (e.g., videosPhasePublished) for existing test cases,
-			// as they are not designed to test the farFutureStyle specific to videosPhaseStarted.
-			actual := c.getVideoTitleForDisplay(tt.video, videosPhasePublished)
+			// Pass the fixed testNow as the referenceTime
+			actualRendered := c.getVideoTitleForDisplay(tt.video, tt.phase, testNow)
 
-			if tt.expectStyled {
-				// Compare actual output with locally rendered expected string
-				expectedStyledStr := localOrangeStyle.Render(tt.expectedStr)
-				if actual != expectedStyledStr {
-					t.Errorf("Expected styled string '%s', got '%s'", expectedStyledStr, actual)
-				}
-			} else {
-				// For unstyled strings, ensure it matches the base expected string
-				if actual != tt.expectedStr {
-					t.Errorf("Expected unstyled string '%s', got '%s'", tt.expectedStr, actual)
+			// Basic check for expected substring (the core name)
+			if !strings.Contains(actualRendered, tt.video.Name) {
+				t.Errorf("getVideoTitleForDisplay() for video '%s' did not contain video name. Got: %s", tt.video.Name, actualRendered)
+			}
+
+			// Check styling by comparing with how lipgloss would render the base string
+			var expectedRenderedBase string
+			if tt.phase == videosPhaseStarted && tt.video.Date != "" {
+				isFarFuture, _ := utils.IsFarFutureDate(tt.video.Date, "2006-01-02T15:04", testNow)
+				if isFarFuture {
+					expectedRenderedBase = localFarFutureStyle.Render(tt.expectedStr)
 				}
 			}
+			if expectedRenderedBase == "" && tt.video.Sponsorship.Amount != "" && tt.video.Sponsorship.Amount != "-" && tt.video.Sponsorship.Amount != "N/A" && (tt.video.Sponsorship.Blocked == "" || tt.video.Sponsorship.Blocked == "-" || tt.video.Sponsorship.Blocked == "N/A") {
+				expectedRenderedBase = localOrangeStyle.Render(tt.expectedStr)
+			}
+
+			if expectedRenderedBase == "" { // Default style (no special color)
+				expectedRenderedBase = tt.expectedStr
+			}
+
+			if actualRendered != expectedRenderedBase {
+				// This comparison can be tricky if tt.expectedStr itself needs styling before becoming the base for another style.
+				// The logic above tries to determine the *final* expected style.
+				// Let's refine the check:
+				// 1. Determine if farFutureStyle should apply
+				// 2. Else, determine if orangeStyle should apply
+				// 3. Else, use default
+				finalExpectedRendered := ""
+				isFarFutureCheck, _ := utils.IsFarFutureDate(tt.video.Date, "2006-01-02T15:04", testNow)
+				isSponsoredCheck := tt.video.Sponsorship.Amount != "" && tt.video.Sponsorship.Amount != "-" && tt.video.Sponsorship.Amount != "N/A"
+				isBlockedCheck := tt.video.Sponsorship.Blocked != "" && tt.video.Sponsorship.Blocked != "-" && tt.video.Sponsorship.Blocked != "N/A"
+
+				if tt.phase == videosPhaseStarted && isFarFutureCheck {
+					finalExpectedRendered = localFarFutureStyle.Render(tt.expectedStr)
+				} else if isSponsoredCheck && !isBlockedCheck {
+					finalExpectedRendered = localOrangeStyle.Render(tt.expectedStr)
+				} else {
+					finalExpectedRendered = tt.expectedStr // No special styling
+				}
+
+				if actualRendered != finalExpectedRendered {
+					t.Errorf("getVideoTitleForDisplay() rendered output mismatch\\nExpected: %s\\nActual:   %s\\n(Video: %s, Phase: %d, Date: %s, Sponsored: %s, Blocked: %s)",
+						finalExpectedRendered, actualRendered, tt.video.Name, tt.phase, tt.video.Date, tt.video.Sponsorship.Amount, tt.video.Sponsorship.Blocked)
+				}
+			}
+
+			// Check if the unstyled content matches expectedStr,
+			// For this, we need a way to "unstyle" or to reconstruct the expected unstyled parts.
+			// This is inherently what tt.expectedStr is for.
+			// The current getVideoTitleForDisplay logic builds the string with markers like (date), (S), etc.
+			// then applies a style to the whole thing. So, the `tt.expectedStr` should match the
+			// string *before* lipgloss.Render() is called on it in the SUT.
+			// This is hard to test perfectly without exposing the unstyled intermediate string from SUT or replicating its logic perfectly.
+			// The check against `finalExpectedRendered` is the most robust for now.
+
 		})
 	}
 }

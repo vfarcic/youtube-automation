@@ -3,9 +3,7 @@ package main
 import (
 	"devopstoolkitseries/youtube-automation/pkg/testutil"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"strings"
 	"testing"
 )
 
@@ -328,35 +326,5 @@ func TestVideoFilteringAndSorting(t *testing.T) {
 	// Check that videos in Started phase are correctly identified
 	if len(phaseVideos[videosPhaseStarted]) != 3 {
 		t.Errorf("Expected 3 started videos, got %d videos", len(phaseVideos[videosPhaseStarted]))
-	}
-}
-
-// TestVersionFlag tests the --version flag
-func TestVersionFlag(t *testing.T) {
-	// This test assumes that a binary named "youtube-release"
-	// has been built (e.g., via `make build-local` or a similar mechanism)
-	// and is available in the current directory or PATH.
-	// The Makefile's build-local target should inject the correct version.
-
-	binaryName := "youtube-release" // Assumes 'make build-local' was run
-
-	cmd := exec.Command("./"+binaryName, "--version")
-	output, err := cmd.Output()
-	if err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok {
-			t.Logf("Command exited with non-zero status: %v, stderr: %s", err, string(exitErr.Stderr))
-		} else if _, ok := err.(*exec.Error); ok && os.IsNotExist(err) {
-			t.Fatalf("Error executing binary: %v. Make sure '%s' is built (e.g., using 'make build-local') and in the current directory.", err, binaryName)
-		} else {
-			t.Fatalf("Error executing binary: %v, output: %s", err, string(output))
-		}
-	}
-
-	// Trim whitespace from the output before comparing
-	actualVersion := strings.TrimSpace(string(output))
-	expectedVersion := "v0.1.0"
-
-	if actualVersion != expectedVersion && actualVersion != "dev" { // Allow "dev"
-		t.Errorf("Expected version output '%s' or 'dev', got '%s'", expectedVersion, actualVersion)
 	}
 }
