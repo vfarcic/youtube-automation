@@ -887,25 +887,22 @@ func (c *Choices) ChooseVideos(vi []VideoIndex, phase int, input *bytes.Buffer) 
 		return date1.Before(date2)
 	})
 	for _, video := range sortedVideos {
-		titleString := c.getVideoTitleForDisplay(video, phase)
+		titleString := c.getVideoTitleForDisplay(video, phase, time.Now())
 		options = append(options, huh.NewOption(titleString, video))
 	}
+	options = append(options, huh.NewOption("Return", Video{Name: "Return"}))
+
+	currentTheme := getCustomHuhTheme()
+
 	form := huh.NewForm(
 		huh.NewGroup(
 			huh.NewSelect[Video]().
-				Title("Which video would you like to work on?").
+				Title("Choose a video").
 				Options(options...).
 				Value(&selectedVideo),
-			huh.NewSelect[int]().
-				Title("What would you like to do with the video?").
-				Options(c.getActionOptions()...).
-				Value(&selectedAction),
 		),
-	)
-	form = form.WithTheme(getCustomHuhTheme())
-	if input != nil {
-		form = form.WithInput(input)
-	}
+	).WithTheme(currentTheme)
+
 	err := form.Run()
 	if err != nil {
 		log.Fatal(err)
@@ -969,7 +966,7 @@ func (c *Choices) ChooseVideos(vi []VideoIndex, phase int, input *bytes.Buffer) 
 }
 
 // New helper function to generate the display title for a video
-func (c *Choices) getVideoTitleForDisplay(video Video, currentPhase int) string {
+func (c *Choices) getVideoTitleForDisplay(video Video, currentPhase int, referenceTime time.Time) string {
 	title := video.Name
 	isSponsored := len(video.Sponsorship.Amount) > 0 && video.Sponsorship.Amount != "-" && video.Sponsorship.Amount != "N/A"
 	isBlocked := len(video.Sponsorship.Blocked) > 0 && video.Sponsorship.Blocked != "-" && video.Sponsorship.Blocked != "N/A"
@@ -979,7 +976,7 @@ func (c *Choices) getVideoTitleForDisplay(video Video, currentPhase int) string 
 
 	if video.Date != "" {
 		var err error
-		isFarFuture, err = utils.IsFarFutureDate(video.Date, "2006-01-02T15:04", time.Now())
+		isFarFuture, err = utils.IsFarFutureDate(video.Date, "2006-01-02T15:04", referenceTime)
 		if err != nil {
 			log.Printf("Error checking if date is far future for video '%s': %v", video.Name, err)
 			// isFarFuture remains false
