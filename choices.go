@@ -80,6 +80,9 @@ var orangeStyle = lipgloss.NewStyle().
 	Bold(true).
 	Foreground(lipgloss.Color("3"))
 
+var farFutureStyle = lipgloss.NewStyle().
+	Foreground(lipgloss.Color("6")) // Cyan
+
 var confirmationStyle = lipgloss.NewStyle().
 	Bold(true).
 	Foreground(lipgloss.Color("#FFFFFF")).
@@ -101,6 +104,29 @@ var errorStyle = lipgloss.NewStyle().
 	PaddingRight(5).
 	MarginTop(1).
 	MarginBottom(1)
+
+// getCustomHuhTheme creates a custom theme for huh forms.
+// This theme allows pre-rendered styles for unselected options to show through
+// and applies a distinct style for selected options.
+func getCustomHuhTheme() *huh.Theme {
+	theme := huh.ThemeCharm() // Start with a copy of the Charm theme
+
+	// For UNSELECTED options:
+	// Apply an empty style. This allows pre-rendered styles (like cyan for far-future videos)
+	// from getVideoTitleForDisplay to be visible in the resting state.
+	theme.Focused.UnselectedOption = lipgloss.NewStyle()
+
+	// For SELECTED options (when hovered/active):
+	// Apply a style that gives clear visual feedback and overrides pre-rendered styles.
+	// Reverse(true) swaps the item's foreground and background colors.
+	theme.Focused.SelectedOption = lipgloss.NewStyle().Reverse(true)
+
+	// Ensure the selector (e.g., '>') remains styled as per Charm theme (fuchsia).
+	// This might be inherited correctly, but re-asserting to be safe.
+	theme.Focused.SelectSelector = lipgloss.NewStyle().Foreground(lipgloss.Color("#F780E2")).SetString("> ")
+
+	return theme
+}
 
 const videosPhasePublished = 0
 const videosPhasePublishPending = 1
@@ -861,7 +887,7 @@ func (c *Choices) ChooseVideos(vi []VideoIndex, phase int, input *bytes.Buffer) 
 		return date1.Before(date2)
 	})
 	for _, video := range sortedVideos {
-		titleString := c.getVideoTitleForDisplay(video)
+		titleString := c.getVideoTitleForDisplay(video, phase)
 		options = append(options, huh.NewOption(titleString, video))
 	}
 	form := huh.NewForm(
@@ -876,7 +902,7 @@ func (c *Choices) ChooseVideos(vi []VideoIndex, phase int, input *bytes.Buffer) 
 				Value(&selectedAction),
 		),
 	)
-	form = form.WithTheme(nil)
+	form = form.WithTheme(getCustomHuhTheme())
 	if input != nil {
 		form = form.WithInput(input)
 	}
@@ -943,33 +969,51 @@ func (c *Choices) ChooseVideos(vi []VideoIndex, phase int, input *bytes.Buffer) 
 }
 
 // New helper function to generate the display title for a video
-func (c *Choices) getVideoTitleForDisplay(video Video) string {
+func (c *Choices) getVideoTitleForDisplay(video Video, currentPhase int) string {
 	title := video.Name
 	isSponsored := len(video.Sponsorship.Amount) > 0 && video.Sponsorship.Amount != "-" && video.Sponsorship.Amount != "N/A"
 	isBlocked := len(video.Sponsorship.Blocked) > 0 && video.Sponsorship.Blocked != "-" && video.Sponsorship.Blocked != "N/A"
 
-	if isBlocked {
-		title = fmt.Sprintf("%s (%s)", title, video.Sponsorship.Blocked)
+	displayStyle := lipgloss.NewStyle() // Default style
+	var isFarFuture bool = false
+
+	if video.Date != "" {
+		var err error
+		isFarFuture, err = utils.IsFarFutureDate(video.Date, "2006-01-02T15:04", time.Now())
+		if err != nil {
+			log.Printf("Error checking if date is far future for video '%s': %v", video.Name, err)
+			// isFarFuture remains false
+		}
+	}
+
+	if currentPhase == videosPhaseStarted && isFarFuture {
+		displayStyle = farFutureStyle
+	} else if isSponsored && !isBlocked { // Apply orange if sponsored and not blocked, and not overridden by farFuture in Started phase
+		displayStyle = orangeStyle
+	}
+
+	// Construct the title string
+	if isBlocked { // Blocked takes precedence for display string modification
+		// Display the block reason if available, otherwise just (B)
+		blockDisplay := video.Sponsorship.Blocked
+		if blockDisplay == "" || blockDisplay == "-" || blockDisplay == "N/A" { // Check if actual reason exists
+			blockDisplay = "B"
+		}
+		title = fmt.Sprintf("%s (%s)", title, blockDisplay)
 	} else {
 		if len(video.Date) > 0 {
 			title = fmt.Sprintf("%s (%s)", title, video.Date)
 		}
-		if isSponsored {
-			// Append sponsorship text; styling applied later if needed
-			title = fmt.Sprintf("%s (sponsored)", title)
-		}
-		if video.Category == "ama" {
-			title = fmt.Sprintf("%s (AMA)", title)
+		if isSponsored { // Not blocked, add (S) if sponsored
+			title = fmt.Sprintf("%s (S)", title)
 		}
 	}
 
-	// Apply orange style only if sponsored and not blocked
-	if isSponsored && !isBlocked {
-		// return yellowStyle.Render(title) // Apply the yellow style
-		return orangeStyle.Render(title) // Use orangeStyle instead
-	} else {
-		return title
+	if video.Category == "ama" { // Append (AMA) regardless of other states if category is ama
+		title = fmt.Sprintf("%s (AMA)", title)
 	}
+
+	return displayStyle.Render(title)
 }
 
 // performVideoFileDeletions attempts to delete the YAML and Markdown files for a video.
