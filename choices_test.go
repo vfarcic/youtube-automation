@@ -1871,13 +1871,13 @@ func TestGetVideoTitleForDisplay(t *testing.T) {
 			name:         "Sponsored Video",
 			video:        Video{Name: "SponsorVid", Sponsorship: Sponsorship{Amount: "100"}},
 			expectStyled: true, // Should be yellow
-			expectedStr:  "SponsorVid (sponsored)",
+			expectedStr:  "SponsorVid (S)",
 		},
 		{
 			name:         "Sponsored Video with Date",
 			video:        Video{Name: "SponsorDate", Date: "2024-02-02T11:00", Sponsorship: Sponsorship{Amount: "50"}},
 			expectStyled: true, // Should be yellow
-			expectedStr:  "SponsorDate (2024-02-02T11:00) (sponsored)",
+			expectedStr:  "SponsorDate (2024-02-02T11:00) (S)",
 		},
 		{
 			name:         "Blocked Video",
@@ -1888,7 +1888,7 @@ func TestGetVideoTitleForDisplay(t *testing.T) {
 		{
 			name:         "Sponsored but Blocked Video",
 			video:        Video{Name: "SponsorBlock", Sponsorship: Sponsorship{Amount: "200", Blocked: "Late"}},
-			expectStyled: false, // Blocked takes precedence, no yellow
+			expectStyled: false, // Blocked takes precedence, no yellow, no (S)
 			expectedStr:  "SponsorBlock (Late)",
 		},
 		{
@@ -1901,19 +1901,21 @@ func TestGetVideoTitleForDisplay(t *testing.T) {
 			name:         "Sponsored AMA Video",
 			video:        Video{Name: "SponsorAMA", Category: "ama", Sponsorship: Sponsorship{Amount: "100"}},
 			expectStyled: true, // Should be yellow
-			expectedStr:  "SponsorAMA (sponsored) (AMA)",
+			expectedStr:  "SponsorAMA (S) (AMA)",
 		},
 		{
 			name:         "Sponsored AMA Video with Date",
 			video:        Video{Name: "SponsorAMADate", Date: "2024-03-03T12:00", Category: "ama", Sponsorship: Sponsorship{Amount: "50"}},
 			expectStyled: true, // Should be yellow
-			expectedStr:  "SponsorAMADate (2024-03-03T12:00) (sponsored) (AMA)",
+			expectedStr:  "SponsorAMADate (2024-03-03T12:00) (S) (AMA)",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			actual := c.getVideoTitleForDisplay(tt.video)
+			// Pass a neutral phase (e.g., videosPhasePublished) for existing test cases,
+			// as they are not designed to test the farFutureStyle specific to videosPhaseStarted.
+			actual := c.getVideoTitleForDisplay(tt.video, videosPhasePublished)
 
 			if tt.expectStyled {
 				// Compare actual output with locally rendered expected string

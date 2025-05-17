@@ -11,3 +11,4 @@ providers:
           youtube-token: YOUTUBE_TOKEN
           bluesky-password: BLUESKY_PASSWORD
           anthropic-api-key: ANTHROPIC_API_KEY
+          github-token: GITHUB_TOKEN
