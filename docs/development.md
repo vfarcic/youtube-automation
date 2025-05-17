@@ -7,7 +7,7 @@ This guide provides instructions for setting up your development environment, bu
 When starting a new development session with your AI assistant, use the following prompt:
 
 ```
-New session started. Please retrieve and process the rules from the `memory` MCP.
+Retrieve and process all information from the `memory` MCP knowledge graph to guide our session.
 ```
 
 ## Prerequisites
