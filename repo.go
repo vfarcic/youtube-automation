@@ -62,15 +62,14 @@ func (r *Repo) Update(repo, title, videoID string) error {
 	return nil // Ensure a return path if confirmation is no, or if rm -rf succeeds. Original code had `return err` which would be from the last git command if rm -rf wasn't run or succeeded.
 }
 
+// GetAnimations extracts animation cues and section titles from the specified markdown file.
+// It processes the file line by line:
+//   - Lines starting with "TODO:" are considered animation cues; the text after "TODO:" (trimmed) is added to the animations list.
+//   - Lines starting with "## " are considered section headers, unless they are "## Intro", "## Setup", or "## Destroy".
+//     The text after "## " (trimmed), prefixed with "Section: ", is added to both the animations and sections lists.
+//
+// It returns a slice of animation strings, a slice of section title strings, and any error encountered.
 func (r *Repo) GetAnimations(filePath string) (animations, sections []string, err error) {
-	if strings.HasSuffix(filePath, ".sh") {
-		return r.getAnimationsFromScript(filePath)
-	}
-	return r.getAnimationsFromMarkdown(filePath)
-}
-
-// TODO: Remove
-func (r *Repo) getAnimationsFromScript(filePath string) (animations, sections []string, err error) {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return nil, nil, err
@@ -81,47 +80,7 @@ func (r *Repo) getAnimationsFromScript(filePath string) (animations, sections []
 	for scanner.Scan() {
 		line := scanner.Text()
 		line = strings.TrimSpace(line)
-		line = strings.ReplaceAll(line, " ", " ")
-		if strings.HasPrefix(line, "#") && strings.HasSuffix(line, "#") && !strings.HasPrefix(line, "##") {
-			foundIt := false
-			for _, value := range []string{"# [[title]] #", "# Intro #", "# Setup #", "# Destroy #"} {
-				if line == value {
-					foundIt = true
-					break
-				}
-			}
-			if !foundIt {
-				line = strings.ReplaceAll(line, "#", "")
-				line = strings.TrimSpace(line)
-				line = fmt.Sprintf("Section: %s", line)
-				animations = append(animations, line)
-				sections = append(sections, line)
-			}
-		} else if strings.HasPrefix(line, "# TODO:") {
-			line = strings.ReplaceAll(line, "# TODO:", "")
-			line = strings.TrimSpace(line)
-			animations = append(animations, line)
-		}
-	}
-	if err := scanner.Err(); err != nil {
-		return nil, nil, err
-	}
-
-	return animations, sections, nil
-}
-
-func (r *Repo) getAnimationsFromMarkdown(filePath string) (animations, sections []string, err error) {
-	file, err := os.Open(filePath)
-	if err != nil {
-		return nil, nil, err
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		line := scanner.Text()
-		line = strings.TrimSpace(line)
-		line = strings.ReplaceAll(line, " ", " ")
+		line = strings.ReplaceAll(line, " ", " ") // Non-breaking space
 		if strings.HasPrefix(line, "TODO:") {
 			line = strings.ReplaceAll(line, "TODO:", "")
 			line = strings.TrimSpace(line)
@@ -147,6 +106,12 @@ func (r *Repo) getAnimationsFromMarkdown(filePath string) (animations, sections 
 		return nil, nil, err
 	}
 
+	if animations == nil {
+		animations = []string{}
+	}
+	if sections == nil {
+		sections = []string{}
+	}
 	return animations, sections, nil
 }
 
