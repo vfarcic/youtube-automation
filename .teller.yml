@@ -12,3 +12,4 @@ providers:
           bluesky-password: BLUESKY_PASSWORD
           anthropic-api-key: ANTHROPIC_API_KEY
           github-token: GITHUB_TOKEN
+          google-gemini-api-key: GOOGLE_GEMINI_API_KEY

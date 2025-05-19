@@ -21,5 +21,14 @@ def --env "main setup" [] {
     }
 
     main apply mcp --anthropic-api-key $anthropic_key --github-token $github_token
+
+    print $"
+We're (ansi yellow_bold)not yet done(ansi reset).
+Please perform the following actions manually:
+1. (ansi yellow_bold)Install Go(ansi reset) \(https://go.dev/doc/install\) if you don't have it already.
+2. (ansi yellow_bold)Install Cursor(ansi reset) \(https://www.cursor.com/downloads\) if you don't have it already.
+3. If you did NOT already (ansi yellow_bold)set `code` alias(ansi reset), open Cursor, press `cmd+shift+p` and select `Shell Command: Install 'code' command`.
+4. (ansi yellow_bold)Close Cursor(ansi reset).
+"
     
 }
