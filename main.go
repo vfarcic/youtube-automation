@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"devopstoolkitseries/youtube-automation/internal/configuration"
 	"devopstoolkitseries/youtube-automation/pkg/bluesky"
 )
 
@@ -17,14 +18,14 @@ func main() {
 	}
 
 	// Parse CLI arguments and load configuration
-	getArgs()
+	configuration.GetArgs()
 
 	// Validate Bluesky configuration if identifier is set
-	if settings.Bluesky.Identifier != "" {
+	if configuration.GlobalSettings.Bluesky.Identifier != "" {
 		config := bluesky.Config{
-			Identifier: settings.Bluesky.Identifier,
-			Password:   settings.Bluesky.Password,
-			URL:        settings.Bluesky.URL,
+			Identifier: configuration.GlobalSettings.Bluesky.Identifier,
+			Password:   configuration.GlobalSettings.Bluesky.Password,
+			URL:        configuration.GlobalSettings.Bluesky.URL,
 		}
 
 		if err := bluesky.ValidateConfig(config); err != nil {

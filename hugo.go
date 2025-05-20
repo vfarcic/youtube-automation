@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"devopstoolkitseries/youtube-automation/internal/configuration"
 )
 
 type Hugo struct{}
@@ -22,14 +24,14 @@ func (r *Hugo) Post(gist, title, date string) (string, error) {
 
 func (r *Hugo) hugoFromMarkdown(filePath, title, post string) (string, error) {
 	// Convert the manuscript path to a content path
-	relPath, err := filepath.Rel(filepath.Join(settings.Hugo.Path, "manuscript"), filepath.Dir(filePath))
+	relPath, err := filepath.Rel(filepath.Join(configuration.GlobalSettings.Hugo.Path, "manuscript"), filepath.Dir(filePath))
 	if err != nil {
 		// If we can't make a relative path, try to extract the category from the path structure
 		relPath = filepath.Base(filepath.Dir(filePath))
 	}
 
 	// Use filepath.Join for proper path construction
-	categoryDir := filepath.Join(settings.Hugo.Path, "content", relPath)
+	categoryDir := filepath.Join(configuration.GlobalSettings.Hugo.Path, "content", relPath)
 
 	// Sanitize the title for use as a directory name
 	postDir := title

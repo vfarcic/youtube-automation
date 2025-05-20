@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"devopstoolkitseries/youtube-automation/internal/configuration"
 	repository "devopstoolkitseries/youtube-automation/internal/repository"
 	"devopstoolkitseries/youtube-automation/internal/storage"
 	"devopstoolkitseries/youtube-automation/pkg/bluesky"
@@ -568,8 +569,8 @@ func (c *Choices) ChooseDefine(video storage.Video) (storage.Video, error) {
 		video.Tweet,
 	})
 	if !requestThumbnailOrig && video.RequestThumbnail {
-		email := NewEmail(settings.Email.Password)
-		if errSend := email.SendThumbnail(settings.Email.From, settings.Email.ThumbnailTo, video); errSend != nil {
+		email := NewEmail(configuration.GlobalSettings.Email.Password)
+		if errSend := email.SendThumbnail(configuration.GlobalSettings.Email.From, configuration.GlobalSettings.Email.ThumbnailTo, video); errSend != nil {
 			return storage.Video{}, fmt.Errorf("failed to send thumbnail email: %w", errSend)
 		}
 	}
@@ -620,8 +621,8 @@ func (c *Choices) ChooseEdit(video storage.Video) (storage.Video, error) {
 		video.Edit.Completed++
 	}
 	if !requestEditOrig && video.RequestEdit {
-		email := NewEmail(settings.Email.Password)
-		if errSend := email.SendEdit(settings.Email.From, settings.Email.EditTo, video); errSend != nil { // Renamed err
+		email := NewEmail(configuration.GlobalSettings.Email.Password)
+		if errSend := email.SendEdit(configuration.GlobalSettings.Email.From, configuration.GlobalSettings.Email.EditTo, video); errSend != nil { // Renamed err
 			return video, errSend // Return error from SendEdit
 		}
 	}
@@ -731,9 +732,9 @@ func (c *Choices) ChoosePublish(video storage.Video) (storage.Video, error) {
 		}
 		if !blueSkyPostedOrig && len(video.Tweet) > 0 && video.BlueSkyPosted {
 			config := bluesky.Config{
-				Identifier: settings.Bluesky.Identifier,
-				Password:   settings.Bluesky.Password,
-				URL:        settings.Bluesky.URL,
+				Identifier: configuration.GlobalSettings.Bluesky.Identifier,
+				Password:   configuration.GlobalSettings.Bluesky.Password,
+				URL:        configuration.GlobalSettings.Bluesky.URL,
 			}
 			if errBluesky := bluesky.SendPost(config, video.Tweet, video.VideoId, video.Thumbnail); errBluesky != nil {
 				println(errorStyle.Render(fmt.Sprintf("Failed to post to Bluesky: %s", errBluesky.Error())))
@@ -753,8 +754,8 @@ func (c *Choices) ChoosePublish(video storage.Video) (storage.Video, error) {
 			}
 		}
 		if !notifiedSponsorsOrig && video.NotifiedSponsors {
-			email := NewEmail(settings.Email.Password)
-			email.SendSponsors(settings.Email.From, video.Sponsorship.Emails, video.VideoId, video.Sponsorship.Amount)
+			email := NewEmail(configuration.GlobalSettings.Email.Password)
+			email.SendSponsors(configuration.GlobalSettings.Email.From, video.Sponsorship.Emails, video.VideoId, video.Sponsorship.Amount)
 		}
 		if !save {
 			break

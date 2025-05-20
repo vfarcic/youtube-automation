@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"devopstoolkitseries/youtube-automation/internal/configuration"
 	"devopstoolkitseries/youtube-automation/internal/storage"
 
 	gomail "gopkg.in/mail.v2"
@@ -130,10 +131,10 @@ func (e *Email) SendSponsors(from, to string, videoID, sponsorshipPrice string) 
 <br><br>
 The video has just been released and is available at https://youtu.be/%s. Please let me know what you think or if you have any questions.
 <br><br>
-I'll send the invoice for %s in a separate message.
+I\'ll send the invoice for %s in a separate message.
 `, videoID, sponsorshipPrice)
 	toArray := strings.Split(to, ",")
-	toArray = append(toArray, settings.Email.FinanceTo)
+	toArray = append(toArray, configuration.GlobalSettings.Email.FinanceTo)
 	err := e.Send(from, toArray, subject, body, "")
 	if err != nil {
 		return err

@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"devopstoolkitseries/youtube-automation/internal/configuration"
 	"devopstoolkitseries/youtube-automation/internal/storage"
 
 	"github.com/emersion/go-smtp"
@@ -233,13 +234,13 @@ func TestEmailFunctionality(t *testing.T) {
 	}
 
 	// Save original email config and restore after test
-	originalEmail := settings.Email
+	originalEmail := configuration.GlobalSettings.Email
 	defer func() {
-		settings.Email = originalEmail
+		configuration.GlobalSettings.Email = originalEmail
 	}()
 
 	// Configure test email settings
-	settings.Email = SettingsEmail{
+	configuration.GlobalSettings.Email = configuration.SettingsEmail{
 		From:        "test@example.com",
 		ThumbnailTo: "thumbnail@example.com",
 		EditTo:      "edit@example.com",
