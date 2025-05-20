@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"devopstoolkitseries/youtube-automation/internal/storage"
 	"devopstoolkitseries/youtube-automation/pkg/bluesky"
 	"devopstoolkitseries/youtube-automation/pkg/utils"
 
@@ -149,7 +150,7 @@ const actionReturn = 99
 
 func (c *Choices) ChooseIndex() {
 	var selectedIndex int
-	yaml := YAML{IndexPath: "index.yaml"}
+	yaml := storage.YAML{IndexPath: "index.yaml"}
 	form := huh.NewForm(
 		huh.NewGroup(
 			huh.NewSelect[int]().
@@ -183,7 +184,7 @@ func (c *Choices) ChooseIndex() {
 	}
 }
 
-func (c *Choices) GetPhaseText(text string, task Tasks) string {
+func (c *Choices) GetPhaseText(text string, task storage.Tasks) string {
 	text = fmt.Sprintf("%s (%d/%d)", text, task.Completed, task.Total)
 	if task.Completed == task.Total && task.Total > 0 {
 		return greenStyle.Render(text)
@@ -191,7 +192,7 @@ func (c *Choices) GetPhaseText(text string, task Tasks) string {
 	return orangeStyle.Render(text)
 }
 
-func (c *Choices) ChoosePhase(video Video) {
+func (c *Choices) ChoosePhase(video storage.Video) {
 	returnVar := false
 	errorMsg := ""
 	for !returnVar {
@@ -257,7 +258,7 @@ func (c *Choices) ChoosePhase(video Video) {
 	}
 }
 
-func (c *Choices) ChooseCreateVideo() VideoIndex {
+func (c *Choices) ChooseCreateVideo() storage.VideoIndex {
 	var name, category string
 	save := true
 	fields, err := c.getCreateVideoFields(&name, &category, &save)
@@ -269,7 +270,7 @@ func (c *Choices) ChooseCreateVideo() VideoIndex {
 	if err != nil {
 		log.Fatal(err)
 	}
-	vi := VideoIndex{
+	vi := storage.VideoIndex{
 		Name:     name,
 		Category: category,
 	}
@@ -316,7 +317,7 @@ FIXME:
 		f.Write([]byte(scriptContent))
 		return vi
 	}
-	return VideoIndex{}
+	return storage.VideoIndex{}
 }
 
 func (c *Choices) GetDirPath(category string) string {
@@ -346,7 +347,7 @@ func (c *Choices) Count(fields []interface{}) (green, all int) {
 	return green, all
 }
 
-func (c *Choices) ChooseInit(video Video) (Video, error) {
+func (c *Choices) ChooseInit(video storage.Video) (storage.Video, error) {
 	save := true
 	if len(video.Gist) == 0 {
 		video.Gist = strings.Replace(video.Path, ".yaml", ".md", 1)
@@ -367,7 +368,7 @@ func (c *Choices) ChooseInit(video Video) (Video, error) {
 	)
 	err := form.Run()
 	if err != nil {
-		return Video{}, err
+		return storage.Video{}, err
 	}
 	video.Init.Completed, video.Init.Total = c.Count([]interface{}{
 		video.ProjectName,
@@ -387,13 +388,13 @@ func (c *Choices) ChooseInit(video Video) (Video, error) {
 	}
 	video.Init.Total += 3
 	if save {
-		yaml := YAML{}
+		yaml := storage.YAML{}
 		yaml.WriteVideo(video, video.Path)
 	}
 	return video, err
 }
 
-func (c *Choices) ChooseWork(video Video) (Video, error) {
+func (c *Choices) ChooseWork(video storage.Video) (storage.Video, error) {
 	save := true
 	form := huh.NewForm(
 		huh.NewGroup(
@@ -413,7 +414,7 @@ func (c *Choices) ChooseWork(video Video) (Video, error) {
 	)
 	err := form.Run()
 	if err != nil {
-		return Video{}, err
+		return storage.Video{}, err
 	}
 	video.Work.Completed, video.Work.Total = c.Count([]interface{}{
 		video.Code,
@@ -429,13 +430,13 @@ func (c *Choices) ChooseWork(video Video) (Video, error) {
 		video.Screenshots,
 	})
 	if save {
-		yaml := YAML{}
+		yaml := storage.YAML{}
 		yaml.WriteVideo(video, video.Path)
 	}
 	return video, err
 }
 
-func (c *Choices) ChooseFabric(video *Video, field *string, fieldName, pattern string, addToField bool) error {
+func (c *Choices) ChooseFabric(video *storage.Video, field *string, fieldName, pattern string, addToField bool) error {
 	askAgain := true
 	content, err := os.ReadFile(video.Gist)
 	if err != nil {
@@ -471,12 +472,12 @@ func (c *Choices) ChooseFabric(video *Video, field *string, fieldName, pattern s
 			return err
 		}
 	}
-	yaml := YAML{}
+	yaml := storage.YAML{}
 	yaml.WriteVideo(*video, video.Path)
 	return nil
 }
 
-func (c *Choices) ChooseDefine(video Video) (Video, error) {
+func (c *Choices) ChooseDefine(video storage.Video) (storage.Video, error) {
 	// Title
 	if err := c.ChooseFabric(&video, &video.Title, "Title", "title_dot", false); err != nil {
 		return video, err
@@ -521,7 +522,7 @@ func (c *Choices) ChooseDefine(video Video) (Video, error) {
 		)
 		err := formAnimations.Run()
 		if err != nil {
-			return Video{}, err
+			return storage.Video{}, err
 		}
 		if generateAnimations {
 			video.Animations = ""
@@ -532,7 +533,7 @@ func (c *Choices) ChooseDefine(video Video) (Video, error) {
 				panic(err)
 			}
 			if err != nil {
-				return Video{}, err
+				return storage.Video{}, err
 			}
 			for _, line := range linesSlice {
 				video.Animations = fmt.Sprintf("%s\n- %s", video.Animations, line)
@@ -556,7 +557,7 @@ func (c *Choices) ChooseDefine(video Video) (Video, error) {
 	)
 	err := form.Run()
 	if err != nil {
-		return Video{}, err
+		return storage.Video{}, err
 	}
 	video.Define.Completed, video.Define.Total = c.Count([]interface{}{
 		video.Title,
@@ -575,13 +576,13 @@ func (c *Choices) ChooseDefine(video Video) (Video, error) {
 		}
 	}
 	if save {
-		yaml := YAML{}
+		yaml := storage.YAML{}
 		yaml.WriteVideo(video, video.Path)
 	}
 	return video, err
 }
 
-func (c *Choices) ChooseEdit(video Video) (Video, error) {
+func (c *Choices) ChooseEdit(video storage.Video) (storage.Video, error) {
 	save := true
 	requestEditOrig := video.RequestEdit
 	timeCodesTitle := "Timecodes"
@@ -603,10 +604,10 @@ func (c *Choices) ChooseEdit(video Video) (Video, error) {
 	)
 	err := form.Run()
 	if err != nil {
-		return Video{}, err
+		return storage.Video{}, err
 	}
 	if save {
-		yaml := YAML{}
+		yaml := storage.YAML{}
 		yaml.WriteVideo(video, video.Path)
 	}
 	video.Edit.Completed, video.Edit.Total = c.Count([]interface{}{
@@ -627,13 +628,13 @@ func (c *Choices) ChooseEdit(video Video) (Video, error) {
 		}
 	}
 	if save {
-		yaml := YAML{}
+		yaml := storage.YAML{}
 		yaml.WriteVideo(video, video.Path)
 	}
 	return video, err
 }
 
-func (c *Choices) ChoosePublish(video Video) (Video, error) {
+func (c *Choices) ChoosePublish(video storage.Video) (storage.Video, error) {
 	save := true
 	sponsorsNotifyText := "Sponsors notify"
 	notifiedSponsorsOrig := video.NotifiedSponsors
@@ -681,7 +682,7 @@ func (c *Choices) ChoosePublish(video Video) (Video, error) {
 		)
 		err := form.Run()
 		if err != nil {
-			return Video{}, err
+			return storage.Video{}, err
 		}
 		video.Publish.Completed, video.Publish.Total = c.Count([]interface{}{
 			video.UploadVideo,
@@ -705,7 +706,7 @@ func (c *Choices) ChoosePublish(video Video) (Video, error) {
 			hugo := Hugo{}
 			video.HugoPath, err = hugo.Post(video.Gist, video.Title, video.Date)
 			if err != nil {
-				return Video{}, err
+				return storage.Video{}, err
 			}
 		} else if !createHugo {
 			video.HugoPath = ""
@@ -755,7 +756,7 @@ func (c *Choices) ChoosePublish(video Video) (Video, error) {
 		if !save {
 			break
 		}
-		yaml := YAML{}
+		yaml := storage.YAML{}
 		yaml.WriteVideo(video, video.Path)
 	}
 	return video, nil
@@ -789,7 +790,7 @@ func (c *Choices) ColorFromBool(title string, value bool) string {
 	return redStyle.Render(title)
 }
 
-func (c *Choices) ChooseVideosPhase(vi []VideoIndex) bool {
+func (c *Choices) ChooseVideosPhase(vi []storage.VideoIndex) bool {
 	var selection int
 	phases := make(map[int]int)
 	for i := range vi {
@@ -841,8 +842,8 @@ func (c *Choices) ChooseVideosPhase(vi []VideoIndex) bool {
 	return false
 }
 
-func (c *Choices) GetVideoPhase(vi VideoIndex) int {
-	yaml := YAML{}
+func (c *Choices) GetVideoPhase(vi storage.VideoIndex) int {
+	yaml := storage.YAML{}
 	video := yaml.GetVideo(c.GetFilePath(vi.Category, vi.Name, "yaml"))
 	if video.Delayed {
 		return videosPhaseDelayed
@@ -863,15 +864,15 @@ func (c *Choices) GetVideoPhase(vi VideoIndex) int {
 	}
 }
 
-func (c *Choices) ChooseVideos(vi []VideoIndex, phase int, input *bytes.Buffer) {
-	var selectedVideo Video
+func (c *Choices) ChooseVideos(vi []storage.VideoIndex, phase int, input *bytes.Buffer) {
+	var selectedVideo storage.Video
 	var selectedAction int
-	options := huh.NewOptions[Video]()
-	sortedVideos := []Video{}
+	options := huh.NewOptions[storage.Video]()
+	sortedVideos := []storage.Video{}
 	for i := range vi {
 		videoPhase := c.GetVideoPhase(vi[i])
 		if videoPhase == phase {
-			yaml := YAML{}
+			yaml := storage.YAML{}
 			path := c.GetFilePath(vi[i].Category, vi[i].Name, "yaml")
 			video := yaml.GetVideo(path)
 			video.Name = vi[i].Name
@@ -890,13 +891,13 @@ func (c *Choices) ChooseVideos(vi []VideoIndex, phase int, input *bytes.Buffer) 
 		titleString := c.getVideoTitleForDisplay(video, phase, time.Now())
 		options = append(options, huh.NewOption(titleString, video))
 	}
-	options = append(options, huh.NewOption("Return", Video{Name: "Return"}))
+	options = append(options, huh.NewOption("Return", storage.Video{Name: "Return"}))
 
 	currentTheme := getCustomHuhTheme()
 
 	form := huh.NewForm(
 		huh.NewGroup(
-			huh.NewSelect[Video]().
+			huh.NewSelect[storage.Video]().
 				Title("Choose a video").
 				Options(options...).
 				Value(&selectedVideo),
@@ -976,7 +977,7 @@ func (c *Choices) ChooseVideos(vi []VideoIndex, phase int, input *bytes.Buffer) 
 				}
 
 				if updated {
-					yamlOps := NewYAML("index.yaml")
+					yamlOps := storage.YAML{IndexPath: "index.yaml"}
 					yamlOps.WriteIndex(vi)
 					fmt.Println(confirmationStyle.Render(fmt.Sprintf("Video '%s' moved to %s and index updated.", selectedVideo.Name, targetDir.Name)))
 				} else {
@@ -988,12 +989,12 @@ func (c *Choices) ChooseVideos(vi []VideoIndex, phase int, input *bytes.Buffer) 
 	case actionReturn:
 		return
 	}
-	yaml := YAML{IndexPath: "index.yaml"}
+	yaml := storage.YAML{IndexPath: "index.yaml"}
 	yaml.WriteIndex(vi)
 }
 
 // New helper function to generate the display title for a video
-func (c *Choices) getVideoTitleForDisplay(video Video, currentPhase int, referenceTime time.Time) string {
+func (c *Choices) getVideoTitleForDisplay(video storage.Video, currentPhase int, referenceTime time.Time) string {
 	title := video.Name
 	isSponsored := len(video.Sponsorship.Amount) > 0 && video.Sponsorship.Amount != "-" && video.Sponsorship.Amount != "N/A"
 	isBlocked := len(video.Sponsorship.Blocked) > 0 && video.Sponsorship.Blocked != "-" && video.Sponsorship.Blocked != "N/A"
@@ -1064,7 +1065,7 @@ func (c *Choices) performVideoFileDeletions(yamlPath, mdPath string) (yamlError,
 
 // handleDeleteVideoAction handles the process of confirming and deleting a video and its associated files.
 // It returns the updated slice of VideoIndex and an error if the deletion logic itself encounters an issue.
-func (c *Choices) handleDeleteVideoAction(selectedVideo Video, allVideoIndices []VideoIndex) ([]VideoIndex, error) {
+func (c *Choices) handleDeleteVideoAction(selectedVideo storage.Video, allVideoIndices []storage.VideoIndex) ([]storage.VideoIndex, error) {
 	confirmMsg := fmt.Sprintf("Are you sure you want to delete video '%s' and its associated files (.md, .yaml)?", selectedVideo.Name)
 
 	if c.confirmer.Confirm(confirmMsg) {

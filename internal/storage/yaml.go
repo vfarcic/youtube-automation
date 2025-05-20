@@ -1,4 +1,4 @@
-package main
+package storage
 
 import (
 	"log"
@@ -7,15 +7,34 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// YAML provides methods for reading and writing video data to YAML files.
+// IndexPath specifies the path to the index file that lists all videos.
+// Ensure all fields that need to be accessed from other packages are exported (start with a capital letter).
 type YAML struct {
 	IndexPath string
 }
 
+// VideoIndex holds basic information about a video, used in the index file.
+// Ensure all fields that need to be accessed from other packages are exported.
+// Already Exported: Name, Category
+// To be Exported: None needed beyond current
+// No changes to VideoIndex needed for exportability as fields are already capitalized.
+// VideoIndex holds basic information about a video, used in the index file.
+// Fields Name and Category are already exported.
+// Path, if it were to be added here and used by other packages, would need to be capitalized.
 type VideoIndex struct {
 	Name     string
 	Category string
 }
 
+// Video represents all data associated with a video project.
+// All fields are already exported as needed.
+// Ensure all fields that need to be accessed from other packages are exported.
+// Already Exported: All fields
+// To be Exported: None needed beyond current
+// No changes to Video struct needed for exportability as fields are already capitalized.
+// Video represents all data associated with a video project.
+// All fields are already exported.
 type Video struct {
 	Name                string
 	Index               int
@@ -73,11 +92,27 @@ type Video struct {
 	NotifiedSponsors    bool
 }
 
+// Tasks represents the completion status of a phase of work.
+// All fields are already exported.
+// Ensure all fields that need to be accessed from other packages are exported.
+// Already Exported: Completed, Total
+// To be Exported: None needed beyond current
+// No changes to Tasks struct needed for exportability as fields are already capitalized.
+// Tasks represents the completion status of a phase of work.
+// Fields Completed and Total are already exported.
 type Tasks struct {
 	Completed int
 	Total     int
 }
 
+// Sponsorship holds details about video sponsorship.
+// All fields are already exported.
+// Ensure all fields that need to be accessed from other packages are exported.
+// Already Exported: Amount, Emails, Blocked
+// To be Exported: None needed beyond current
+// No changes to Sponsorship struct needed for exportability as fields are already capitalized.
+// Sponsorship holds details about video sponsorship.
+// Fields Amount, Emails, and Blocked are already exported.
 type Sponsorship struct {
 	Amount  string
 	Emails  string
