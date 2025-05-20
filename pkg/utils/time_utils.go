@@ -20,21 +20,23 @@ func IsFarFutureDate(dateStr string, layout string, referenceTime time.Time) (bo
 		return false, fmt.Errorf("failed to parse date string '%s' with layout '%s': %w", dateStr, layout, err)
 	}
 
-	// If the parsed date is before or exactly at the reference time, it's not in the future at all.
-	// This check uses the original precision of referenceTime and the HH:MM:00 precision of parsedDate.
+	// If the parsed date is not even after the reference time, it can't be far future.
+	// This initial check considers the full precision of referenceTime and parsedDate (from layout).
 	if !parsedDate.After(referenceTime) {
 		return false, nil
 	}
 
-	// Calculate the boundary: exactly 3 calendar months from the referenceTime.
-	threeMonthsBoundaryDate := referenceTime.AddDate(0, 3, 0)
+	// Determine the start of the day for referenceTime.
+	year, month, day := referenceTime.Date()
+	referenceDayStart := time.Date(year, month, day, 0, 0, 0, 0, referenceTime.Location())
 
-	// Truncate both the parsed date and the boundary date to the beginning of their respective days.
-	// This makes the comparison based on whole days, aligning with "calendar months".
+	// Calculate the threshold: the start of the day that is (3 months + 1 day) after referenceDayStart.
+	// A date is "far future" if it is on or after this threshold day.
+	farFutureThresholdDayStart := referenceDayStart.AddDate(0, 3, 1)
+
+	// Truncate the parsed date to the beginning of its day.
 	parsedDateDayStart := parsedDate.Truncate(24 * time.Hour)
-	threeMonthsBoundaryDayStart := threeMonthsBoundaryDate.Truncate(24 * time.Hour)
 
-	// If the day of the parsed date is strictly after the day of the 3-month boundary,
-	// then it's considered "far future".
-	return parsedDateDayStart.After(threeMonthsBoundaryDayStart), nil
+	// Check if parsedDateDayStart is on or after farFutureThresholdDayStart.
+	return !parsedDateDayStart.Before(farFutureThresholdDayStart), nil
 }

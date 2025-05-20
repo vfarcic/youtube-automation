@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"devopstoolkitseries/youtube-automation/internal/configuration"
+	"devopstoolkitseries/youtube-automation/internal/notification"
 	repository "devopstoolkitseries/youtube-automation/internal/repository"
 	"devopstoolkitseries/youtube-automation/internal/storage"
 	"devopstoolkitseries/youtube-automation/pkg/bluesky"
@@ -569,7 +570,7 @@ func (c *Choices) ChooseDefine(video storage.Video) (storage.Video, error) {
 		video.Tweet,
 	})
 	if !requestThumbnailOrig && video.RequestThumbnail {
-		email := NewEmail(configuration.GlobalSettings.Email.Password)
+		email := notification.NewEmail(configuration.GlobalSettings.Email.Password)
 		if errSend := email.SendThumbnail(configuration.GlobalSettings.Email.From, configuration.GlobalSettings.Email.ThumbnailTo, video); errSend != nil {
 			return storage.Video{}, fmt.Errorf("failed to send thumbnail email: %w", errSend)
 		}
@@ -621,20 +622,16 @@ func (c *Choices) ChooseEdit(video storage.Video) (storage.Video, error) {
 		video.Edit.Completed++
 	}
 	if !requestEditOrig && video.RequestEdit {
-		email := NewEmail(configuration.GlobalSettings.Email.Password)
-		if errSend := email.SendEdit(configuration.GlobalSettings.Email.From, configuration.GlobalSettings.Email.EditTo, video); errSend != nil { // Renamed err
-			return video, errSend // Return error from SendEdit
+		email := notification.NewEmail(configuration.GlobalSettings.Email.Password)
+		if errSend := email.SendEdit(configuration.GlobalSettings.Email.From, configuration.GlobalSettings.Email.EditTo, video); errSend != nil {
+			return video, errSend
 		}
 	}
-	// if save { // Already saved above
-	// 	yaml := storage.YAML{}
-	// 	yaml.WriteVideo(video, video.Path)
-	// }
-	return video, nil // Return nil error if successful
+	return video, nil
 }
 
 func (c *Choices) ChoosePublish(video storage.Video) (storage.Video, error) {
-	var errorMsg string // DECLARED
+	var errorMsg string
 	save := true
 	sponsorsNotifyText := "Sponsors notify"
 	notifiedSponsorsOrig := video.NotifiedSponsors
@@ -745,16 +742,16 @@ func (c *Choices) ChoosePublish(video storage.Video) (storage.Video, error) {
 
 		if len(repoOrig) == 0 && len(video.Repo) > 0 && video.Repo != "N/A" {
 			fmt.Printf("Updating repository %s...\n", video.Repo)
-			repo := repository.Repo{}                                                               // UPDATED
-			if errUpdate := repo.Update(video.Repo, video.Title, video.VideoId); errUpdate != nil { // Renamed err
-				errorMsg = fmt.Sprintf("Failed to update repository %s: %v", video.Repo, errUpdate) // ASSIGNED
+			repo := repository.Repo{}
+			if errUpdate := repo.Update(video.Repo, video.Title, video.VideoId); errUpdate != nil {
+				errorMsg = fmt.Sprintf("Failed to update repository %s: %v", video.Repo, errUpdate)
 				fmt.Println(errorStyle.Render(errorMsg))
 			} else {
 				fmt.Println(confirmationStyle.Render(fmt.Sprintf("Repository %s updated successfully.", video.Repo)))
 			}
 		}
 		if !notifiedSponsorsOrig && video.NotifiedSponsors {
-			email := NewEmail(configuration.GlobalSettings.Email.Password)
+			email := notification.NewEmail(configuration.GlobalSettings.Email.Password)
 			email.SendSponsors(configuration.GlobalSettings.Email.From, video.Sponsorship.Emails, video.VideoId, video.Sponsorship.Amount)
 		}
 		if !save {
@@ -942,13 +939,13 @@ func (c *Choices) ChooseVideos(vi []storage.VideoIndex, phase int, input *bytes.
 		choices := NewChoices() // Create new choices instance for fresh state if needed
 		choices.ChoosePhase(selectedVideo)
 	case actionDelete:
-		var delErr error // Renamed err
+		var delErr error
 		vi, delErr = c.handleDeleteVideoAction(selectedVideo, vi)
 		if delErr != nil {
 			log.Printf("Error during video deletion process: %v", delErr)
 		}
 	case actionMoveFiles:
-		targetDir, selErr := c.dirSelector.SelectDirectory(input) // Renamed err
+		targetDir, selErr := c.dirSelector.SelectDirectory(input)
 		if selErr != nil {
 			if errors.Is(selErr, huh.ErrUserAborted) {
 				fmt.Println(orangeStyle.Render("Move video action cancelled."))
@@ -961,7 +958,7 @@ func (c *Choices) ChooseVideos(vi []storage.VideoIndex, phase int, input *bytes.
 			videoBaseFileName := strings.TrimSuffix(filepath.Base(currentYAMLPath), ext)
 			currentMDPath := strings.TrimSuffix(currentYAMLPath, ext) + ".md"
 
-			newYAMLPath, _, moveErr := utils.MoveVideoFiles(currentYAMLPath, currentMDPath, targetDir.Path, videoBaseFileName) // Renamed err
+			newYAMLPath, _, moveErr := utils.MoveVideoFiles(currentYAMLPath, currentMDPath, targetDir.Path, videoBaseFileName)
 			if moveErr != nil {
 				log.Printf("Error moving video files for '%s': %v", selectedVideo.Name, moveErr)
 			} else {
@@ -1001,7 +998,7 @@ func (c *Choices) getVideoTitleForDisplay(video storage.Video, currentPhase int,
 	var isFarFuture bool = false
 
 	if video.Date != "" {
-		var dateErr error // Renamed err
+		var dateErr error
 		isFarFuture, dateErr = utils.IsFarFutureDate(video.Date, "2006-01-02T15:04", referenceTime)
 		if dateErr != nil {
 			log.Printf("Error checking if date is far future for video '%s': %v", video.Name, dateErr)
@@ -1037,16 +1034,16 @@ func (c *Choices) getVideoTitleForDisplay(video storage.Video, currentPhase int,
 }
 
 func (c *Choices) performVideoFileDeletions(yamlPath, mdPath string) (yamlError, mdError error) {
-	if _, statErr := os.Stat(mdPath); statErr == nil { // Renamed err
-		if rmErr := os.Remove(mdPath); rmErr != nil { // Renamed err
+	if _, statErr := os.Stat(mdPath); statErr == nil {
+		if rmErr := os.Remove(mdPath); rmErr != nil {
 			mdError = fmt.Errorf("error deleting MD file %s: %w", mdPath, rmErr)
 		}
 	} else if !os.IsNotExist(statErr) {
 		mdError = fmt.Errorf("error checking MD file %s: %w", mdPath, statErr)
 	}
 
-	if _, statErr := os.Stat(yamlPath); statErr == nil { // Renamed err
-		if rmErr := os.Remove(yamlPath); rmErr != nil { // Renamed err
+	if _, statErr := os.Stat(yamlPath); statErr == nil {
+		if rmErr := os.Remove(yamlPath); rmErr != nil {
 			yamlError = fmt.Errorf("error deleting YAML file %s: %w", yamlPath, rmErr)
 		}
 	} else if !os.IsNotExist(statErr) {
