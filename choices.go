@@ -907,6 +907,33 @@ func (c *Choices) ChooseVideos(vi []VideoIndex, phase int, input *bytes.Buffer) 
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	if selectedVideo.Name == "Return" {
+		return // User chose to return from video selection
+	}
+
+	// Prompt for action on the selected video
+	actionOptions := c.getActionOptions()
+	actionForm := huh.NewForm(
+		huh.NewGroup(
+			huh.NewSelect[int]().
+				Title(fmt.Sprintf("Choose action for %s", selectedVideo.Name)).
+				Options(actionOptions...).
+				Value(&selectedAction),
+		),
+	).WithTheme(currentTheme) // Or use a default theme if preferred for this prompt
+
+	err = actionForm.Run()
+	if err != nil {
+		// Handle error, perhaps log and return, or if it's ErrUserAborted, just return
+		if errors.Is(err, huh.ErrUserAborted) {
+			fmt.Println(orangeStyle.Render("Action selection cancelled."))
+			return
+		}
+		log.Printf("Error running action form: %v", err)
+		return
+	}
+
 	switch selectedAction {
 	case actionEdit:
 		choices := NewChoices()
