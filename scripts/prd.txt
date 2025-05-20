@@ -156,6 +156,10 @@ This phase will be executed with an extremely incremental approach.
 3. Ensure test coverage is maintained
 4. Update documentation with new structure
 
+## Development Workflow Notes
+- **Atomic Commits per Task:** Upon the completion of each defined task in the project plan (which may encompass multiple file moves or refactoring steps), all related changes should be committed with a clear, descriptive message referencing the task.
+- **Push After Each Task:** Immediately after committing, the changes for the completed task should be pushed to the remote repository to ensure continuous integration and backup of work.
+
 ## Success Criteria
 - All functionality preserved after reorganization
 - Improved package organization
