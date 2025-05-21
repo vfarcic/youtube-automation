@@ -8,40 +8,55 @@ import (
 	"devopstoolkitseries/youtube-automation/pkg/slack"
 	
 	"github.com/atotto/clipboard"
+	"github.com/charmbracelet/lipgloss"
+)
+
+// Define styles for consistent UI rendering
+var (
+	confirmationStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("10"))  // Green text for success
+	errorStyle        = lipgloss.NewStyle().Foreground(lipgloss.Color("9"))   // Red text for errors
 )
 
 func postSlack(videoId string) {
 	// For backward compatibility - still copy to clipboard as backup
 	clipboard.WriteAll(getYouTubeURL(videoId))
 	
-	// Get the video from storage - if we can't find it, fall back to old behavior
-	video, found := findVideoByID(videoId)
-	if !found {
+	// Check if Slack token is configured
+	if configuration.GlobalSettings.Slack.Token == "" {
 		println(confirmationStyle.Render("The video URL has been copied to clipboard. Please paste it into Slack manually."))
+		println("(Configure a Slack token to enable automatic posting)")
 		return
 	}
 	
-	// Try to post to Slack with the API if token is configured
-	if configuration.GlobalSettings.Slack.Token != "" {
-		config := slack.Config{
-			Token:         configuration.GlobalSettings.Slack.Token,
-			DefaultChannel: configuration.GlobalSettings.Slack.DefaultChannel,
-			Reactions:     configuration.GlobalSettings.Slack.Reactions,
-		}
-		
-		if err := slack.PostMessage(config, video); err != nil {
-			log.Printf("Failed to post to Slack: %v", err)
-			println(errorStyle.Render("Failed to automatically post to Slack. The video URL has been copied to clipboard instead. Please paste it manually."))
-		} else {
-			// Update the video metadata with posting status
+	// Create a dummy video object with just the VideoId if we can't find it
+	video := storage.Video{
+		VideoId: videoId,
+		Title:   "YouTube Video",
+	}
+	
+	// Try to find the complete video by ID for better formatting
+	if completeVideo, found := findVideoByID(videoId); found {
+		video = completeVideo
+	}
+	
+	// Post to Slack with the API
+	config := slack.Config{
+		Token:         configuration.GlobalSettings.Slack.Token,
+		DefaultChannel: configuration.GlobalSettings.Slack.DefaultChannel,
+		Reactions:     configuration.GlobalSettings.Slack.Reactions,
+	}
+	
+	if err := slack.PostMessage(config, video); err != nil {
+		log.Printf("Failed to post to Slack: %v", err)
+		println(errorStyle.Render("Failed to automatically post to Slack. The video URL has been copied to clipboard instead. Please paste it manually."))
+	} else {
+		// Update the video metadata with posting status if we found the complete video
+		if video.Path != "" {
 			yaml := storage.YAML{}
 			yaml.WriteVideo(video, video.Path)
-			
-			println(confirmationStyle.Render("Successfully posted to Slack."))
 		}
-	} else {
-		println(confirmationStyle.Render("The video URL has been copied to clipboard. Please paste it into Slack manually."))
-		println("(Configure a Slack token to enable automatic posting)")
+		
+		println(confirmationStyle.Render("Successfully posted to Slack."))
 	}
 }
 
@@ -52,16 +67,12 @@ func findVideoByID(videoId string) (storage.Video, bool) {
 	videos := yaml.GetIndex()
 	
 	for _, vi := range videos {
-		video := yaml.GetVideo(GetVideoPath(vi.Category, vi.Name))
+		videoPath := "manuscript/" + vi.Category + "/" + vi.Name + ".yaml"
+		video := yaml.GetVideo(videoPath)
 		if video.VideoId == videoId {
 			return video, true
 		}
 	}
 	
 	return storage.Video{}, false
-}
-
-// GetVideoPath constructs the path to a video's YAML file
-func GetVideoPath(category, name string) string {
-	return "manuscript/" + category + "/" + name + ".yaml"
 }

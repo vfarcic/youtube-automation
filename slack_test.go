@@ -1,15 +1,19 @@
 package main
 
 import (
-	"os"
-	"path/filepath"
 	"testing"
 
 	"devopstoolkitseries/youtube-automation/internal/configuration"
-	"devopstoolkitseries/youtube-automation/internal/storage"
 
 	"github.com/atotto/clipboard"
+	"github.com/charmbracelet/lipgloss"
 )
+
+func init() {
+	// Initialize styles for testing
+	confirmationStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("10"))
+	errorStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("9"))
+}
 
 func TestPostSlack(t *testing.T) {
 	// Save original clipboard content to restore later
@@ -23,42 +27,44 @@ func TestPostSlack(t *testing.T) {
 		clipboard.WriteAll(originalContent)
 	}()
 
-	// Create a temporary index file for testing
-	tmpDir, err := os.MkdirTemp("", "slack-test")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tmpDir)
+	// Save original Slack token to restore after tests
+	originalToken := configuration.GlobalSettings.Slack.Token
+	defer func() {
+		configuration.GlobalSettings.Slack.Token = originalToken
+	}()
 
 	// Test cases
 	tests := []struct {
 		name     string
 		videoId  string
 		wantClip string
-		setupEnv bool // Whether to set up the Slack token env var
+		token    string // Slack token to use
 	}{
 		{
-			name:     "Basic video ID",
+			name:     "Basic video ID without token",
 			videoId:  "abc123",
 			wantClip: "https://youtu.be/abc123",
-			setupEnv: false,
+			token:    "", // No token means it should fall back to clipboard
 		},
 		{
 			name:     "Empty video ID",
 			videoId:  "",
 			wantClip: "https://youtu.be/",
-			setupEnv: false,
+			token:    "",
 		},
 		{
 			name:     "Video ID with special characters",
 			videoId:  "xyz-789_ABC",
 			wantClip: "https://youtu.be/xyz-789_ABC",
-			setupEnv: false,
+			token:    "",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// Set up token for this test
+			configuration.GlobalSettings.Slack.Token = tt.token
+			
 			// Call the function being tested
 			postSlack(tt.videoId)
 
