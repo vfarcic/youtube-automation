@@ -707,11 +707,11 @@ func (c *Choices) ChoosePublish(video storage.Video) (storage.Video, error) {
 		}
 
 		if len(uploadVideoOrig) == 0 && len(video.UploadVideo) > 0 {
-			video.VideoId = uploadVideo(video) // uploadVideo only returns a string
+			video.VideoId = uploadVideo(&video)
 
-			if err := uploadThumbnail(video); err != nil { // uploadThumbnail returns an error; call directly
+			if err := uploadThumbnail(video); err != nil {
 				// Preserve existing behavior of printing to console, but also return the error
-				errorMsg := fmt.Sprintf("Failed to upload thumbnail: %v", err)
+				errorMsg = fmt.Sprintf("Failed to upload thumbnail: %v", err)
 				println(errorStyle.Render(errorMsg))
 				return video, fmt.Errorf(errorMsg) // Return the error
 			}

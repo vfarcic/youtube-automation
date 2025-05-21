@@ -14,11 +14,13 @@ import (
 	"runtime"
 	"strings"
 
+	"devopstoolkitseries/youtube-automation/internal/configuration"
 	"devopstoolkitseries/youtube-automation/internal/storage"
 
 	"golang.org/x/net/context"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
+	"google.golang.org/api/googleapi"
 	"google.golang.org/api/option"
 	"google.golang.org/api/youtube/v3"
 )
@@ -233,7 +235,7 @@ func saveToken(file string, token *oauth2.Token) {
 	json.NewEncoder(f).Encode(token)
 }
 
-func uploadVideo(video storage.Video) string {
+func uploadVideo(video *storage.Video) string {
 	if video.UploadVideo == "" {
 		log.Fatalf("You must provide a filename of a video file to upload")
 		return ""
@@ -299,18 +301,47 @@ If you are interested in sponsoring this channel, please visit https://devopstoo
 	if strings.Trim(video.Tags, "") != "" {
 		upload.Snippet.Tags = strings.Split(video.Tags, ",")
 	}
+
+	// Determine languages to set
+	finalDefaultLanguage := video.Language
+	if finalDefaultLanguage == "" {
+		finalDefaultLanguage = configuration.GlobalSettings.VideoDefaults.Language // Guaranteed non-empty by cli.go
+	}
+
+	finalDefaultAudioLanguage := video.AudioLanguage
+	if finalDefaultAudioLanguage == "" {
+		finalDefaultAudioLanguage = configuration.GlobalSettings.VideoDefaults.AudioLanguage // Guaranteed non-empty by cli.go
+	}
+
+	upload.Snippet.DefaultLanguage = finalDefaultLanguage
+	upload.Snippet.DefaultAudioLanguage = finalDefaultAudioLanguage
+
 	call := service.Videos.Insert([]string{"snippet", "status"}, upload)
 	file, err := os.Open(video.UploadVideo)
-	defer file.Close()
 	if err != nil {
 		log.Fatalf("Error opening %v: %v", video.UploadVideo, err)
 	}
 
 	response, err := call.Media(file).Do()
+	file.Close()
 	if err != nil {
-		log.Fatalf("Error getting response from YouTube: %v", err)
+		log.Fatalf("Error getting response from YouTube during insert: %v", err)
 	}
 	fmt.Printf("Upload successful! Video ID: %v\n", response.Id)
+
+	// Save the applied languages back to the video struct
+	video.AppliedLanguage = finalDefaultLanguage
+	video.AppliedAudioLanguage = finalDefaultAudioLanguage
+	log.Printf("DEBUG: Language %s and Audio Language %s stored in video struct for video ID %s", video.AppliedLanguage, video.AppliedAudioLanguage, response.Id)
+
+	adapter := &youtubeServiceAdapter{service: service} // Create adapter
+	err = updateVideoLanguage(adapter, response.Id, finalDefaultLanguage, finalDefaultAudioLanguage)
+	if err != nil {
+		log.Printf("Error updating video languages for video ID %s: %v", response.Id, err)
+	} else {
+		fmt.Printf("Successfully set language to %s and audio language to %s for video ID %s\n", finalDefaultLanguage, finalDefaultAudioLanguage, response.Id)
+	}
+
 	return response.Id
 }
 
@@ -362,4 +393,49 @@ func uploadThumbnail(video storage.Video) error {
 
 func getYouTubeURL(videoId string) string {
 	return fmt.Sprintf("https://youtu.be/%s", videoId)
+}
+
+// videoUpdateDoer defines an interface for the Do() method of a video update call.
+type videoUpdateDoer interface {
+	Do(opts ...googleapi.CallOption) (*youtube.Video, error)
+}
+
+// videoServiceUpdater defines an interface for the Update() method of a video service.
+type videoServiceUpdater interface {
+	Update(part []string, video *youtube.Video) videoUpdateDoer
+}
+
+// youtubeServiceAdapter adapts *youtube.Service to the videoServiceUpdater interface.
+type youtubeServiceAdapter struct {
+	service *youtube.Service
+}
+
+// Update calls the underlying YouTube service's Videos.Update method.
+func (a *youtubeServiceAdapter) Update(part []string, video *youtube.Video) videoUpdateDoer {
+	return a.service.Videos.Update(part, video)
+}
+
+func updateVideoLanguage(updater videoServiceUpdater, videoID string, languageCode string, audioLanguageCode string) error {
+	// Determine final language codes with fallbacks
+	finalLangCode := languageCode
+	if finalLangCode == "" {
+		finalLangCode = configuration.GlobalSettings.VideoDefaults.Language // Guaranteed non-empty by cli.go
+	}
+
+	finalAudioLangCode := audioLanguageCode
+	if finalAudioLangCode == "" {
+		finalAudioLangCode = configuration.GlobalSettings.VideoDefaults.AudioLanguage // Guaranteed non-empty by cli.go
+	}
+
+	updateVideo := &youtube.Video{
+		Id: videoID,
+		Snippet: &youtube.VideoSnippet{
+			DefaultLanguage:      finalLangCode,
+			DefaultAudioLanguage: finalAudioLangCode,
+		},
+	}
+
+	updateCall := updater.Update([]string{"snippet"}, updateVideo)
+	_, err := updateCall.Do()
+	return err
 }
