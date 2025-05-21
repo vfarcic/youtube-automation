@@ -23,6 +23,7 @@ type Settings struct {
 	YouTube SettingsYouTube `yaml:"youtube"`
 	Hugo    SettingsHugo    `yaml:"hugo"`
 	Bluesky SettingsBluesky `yaml:"bluesky"`
+	Slack   SettingsSlack   `yaml:"slack"`
 }
 
 type SettingsEmail struct {
@@ -53,6 +54,12 @@ type SettingsBluesky struct {
 	URL        string `yaml:"url"`
 }
 
+type SettingsSlack struct {
+	Token         string   `yaml:"token"`
+	DefaultChannel string  `yaml:"defaultChannel"`
+	Reactions     []string `yaml:"reactions"`
+}
+
 var GlobalSettings Settings
 
 func init() {
@@ -81,6 +88,10 @@ func init() {
 	if GlobalSettings.Bluesky.URL == "" {
 		GlobalSettings.Bluesky.URL = "https://bsky.social/xrpc"
 	}
+	
+	// Slack configuration
+	RootCmd.Flags().StringVar(&GlobalSettings.Slack.Token, "slack-token", GlobalSettings.Slack.Token, "Slack token for posting messages. Environment variable `SLACK_TOKEN` is supported as well.")
+	RootCmd.Flags().StringVar(&GlobalSettings.Slack.DefaultChannel, "slack-default-channel", GlobalSettings.Slack.DefaultChannel, "Default Slack channel for posting when no category-specific channel is defined.")
 
 	// Check required fields and environment variables
 	if GlobalSettings.Email.From == "" {
@@ -121,6 +132,11 @@ func init() {
 		GlobalSettings.YouTube.APIKey = envYouTubeKey
 	} else if GlobalSettings.YouTube.APIKey == "" {
 		RootCmd.MarkFlagRequired("youtube-api-key")
+	}
+	
+	// Check Slack environment variables
+	if envSlackToken := os.Getenv("SLACK_TOKEN"); envSlackToken != "" {
+		GlobalSettings.Slack.Token = envSlackToken
 	}
 
 	if GlobalSettings.Hugo.Path == "" {

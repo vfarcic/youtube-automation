@@ -80,6 +80,8 @@ type Video struct {
 	Tweet               string
 	LinkedInPosted      bool
 	SlackPosted         bool
+	SlackPostTimestamp  string
+	SlackPostChannels   []string
 	HNPosted            bool
 	DOTPosted           bool
 	BlueSkyPosted       bool
