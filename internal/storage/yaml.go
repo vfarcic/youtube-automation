@@ -36,60 +36,64 @@ type VideoIndex struct {
 // Video represents all data associated with a video project.
 // All fields are already exported.
 type Video struct {
-	Name                string
-	Index               int
-	Path                string
-	Category            string
-	Init                Tasks
-	Work                Tasks
-	Define              Tasks
-	Edit                Tasks
-	Publish             Tasks
-	ProjectName         string
-	ProjectURL          string
-	Sponsorship         Sponsorship
-	Date                string
-	Delayed             bool
-	Code                bool
-	Screen              bool
-	Head                bool
-	Thumbnails          bool
-	Diagrams            bool
-	Title               string
-	Description         string
-	Highlight           string
-	Tags                string
-	DescriptionTags     string
-	Location            string
-	Tagline             string
-	TaglineIdeas        string
-	OtherLogos          string
-	Screenshots         bool
-	RequestThumbnail    bool
-	Thumbnail           string
-	Members             string
-	Animations          string
-	RequestEdit         bool
-	Movie               bool
-	Timecodes           string
-	Gist                string
-	HugoPath            string
-	RelatedVideos       string
-	UploadVideo         string
-	VideoId             string
-	Tweet               string
-	LinkedInPosted      bool
-	SlackPosted         bool
-	HNPosted            bool
-	DOTPosted           bool
-	BlueSkyPosted       bool
-	YouTubeHighlight    bool
-	YouTubeComment      bool
-	YouTubeCommentReply bool
-	Slides              bool
-	GDE                 bool
-	Repo                string
-	NotifiedSponsors    bool
+	Name                 string
+	Index                int
+	Path                 string
+	Category             string
+	Init                 Tasks
+	Work                 Tasks
+	Define               Tasks
+	Edit                 Tasks
+	Publish              Tasks
+	ProjectName          string
+	ProjectURL           string
+	Sponsorship          Sponsorship
+	Date                 string
+	Delayed              bool
+	Screen               bool
+	Head                 bool
+	Thumbnails           bool
+	Diagrams             bool
+	Title                string
+	Description          string
+	Highlight            string
+	Tags                 string
+	DescriptionTags      string
+	Location             string
+	Tagline              string
+	TaglineIdeas         string
+	OtherLogos           string
+	Screenshots          bool
+	RequestThumbnail     bool
+	Thumbnail            string
+	Language             string
+	Members              string
+	Animations           string
+	RequestEdit          bool
+	Movie                bool
+	Timecodes            string
+	HugoPath             string
+	RelatedVideos        string
+	UploadVideo          string
+	VideoId              string
+	Tweet                string
+	LinkedInPosted       bool
+	SlackPosted          bool
+	HNPosted             bool
+	DOTPosted            bool
+	BlueSkyPosted        bool
+	YouTubeHighlight     bool
+	YouTubeComment       bool
+	YouTubeCommentReply  bool
+	Slides               bool
+	GDE                  bool
+	Repo                 string
+	NotifiedSponsors     bool
+	AppliedLanguage      string `yaml:"appliedLanguage,omitempty"`
+	AppliedAudioLanguage string `yaml:"appliedAudioLanguage,omitempty"`
+	AudioLanguage        string `yaml:"audioLanguage,omitempty"`
+	Gist                 string `yaml:"gist,omitempty"`
+	Code                 bool   `yaml:"code,omitempty"`
 }
 
 // Tasks represents the completion status of a phase of work.

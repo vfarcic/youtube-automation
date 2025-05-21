@@ -18,11 +18,12 @@ var RootCmd = &cobra.Command{
 }
 
 type Settings struct {
-	Email   SettingsEmail   `yaml:"email"`
-	AI      SettingsAI      `yaml:"ai"`
-	YouTube SettingsYouTube `yaml:"youtube"`
-	Hugo    SettingsHugo    `yaml:"hugo"`
-	Bluesky SettingsBluesky `yaml:"bluesky"`
+	Email         SettingsEmail         `yaml:"email"`
+	AI            SettingsAI            `yaml:"ai"`
+	YouTube       SettingsYouTube       `yaml:"youtube"`
+	Hugo          SettingsHugo          `yaml:"hugo"`
+	Bluesky       SettingsBluesky       `yaml:"bluesky"`
+	VideoDefaults SettingsVideoDefaults `yaml:"videoDefaults"`
 }
 
 type SettingsEmail struct {
@@ -53,6 +54,11 @@ type SettingsBluesky struct {
 	URL        string `yaml:"url"`
 }
 
+type SettingsVideoDefaults struct {
+	Language      string `yaml:"language"`
+	AudioLanguage string `yaml:"audioLanguage"`
+}
+
 var GlobalSettings Settings
 
 func init() {
@@ -78,8 +84,21 @@ func init() {
 	RootCmd.Flags().StringVar(&GlobalSettings.Bluesky.Identifier, "bluesky-identifier", GlobalSettings.Bluesky.Identifier, "Bluesky username/identifier (e.g., username.bsky.social)")
 	RootCmd.Flags().StringVar(&GlobalSettings.Bluesky.Password, "bluesky-password", GlobalSettings.Bluesky.Password, "Bluesky password. Environment variable `BLUESKY_PASSWORD` is supported as well.")
 	RootCmd.Flags().StringVar(&GlobalSettings.Bluesky.URL, "bluesky-url", GlobalSettings.Bluesky.URL, "Bluesky API URL")
+	RootCmd.Flags().StringVar(&GlobalSettings.VideoDefaults.Language, "video-defaults-language", "", "Default language for videos (e.g., 'en', 'es')")
+	RootCmd.Flags().StringVar(&GlobalSettings.VideoDefaults.AudioLanguage, "video-defaults-audio-language", "", "Default audio language for videos (e.g., 'en', 'es')")
+
+	// Default Bluesky URL if not set by file or flag
 	if GlobalSettings.Bluesky.URL == "" {
 		GlobalSettings.Bluesky.URL = "https://bsky.social/xrpc"
+	}
+
+	// Added for PRD: Automated Video Language Setting
+	// Default video language if not set by file or flag (flag default is 'en')
+	if GlobalSettings.VideoDefaults.Language == "" {
+		GlobalSettings.VideoDefaults.Language = "en"
+	}
+	if GlobalSettings.VideoDefaults.AudioLanguage == "" {
+		GlobalSettings.VideoDefaults.AudioLanguage = "en"
 	}
 
 	// Check required fields and environment variables

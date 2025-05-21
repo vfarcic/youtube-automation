@@ -1,3 +1,6 @@
+# For detailed configuration options and explanations, please refer to docs/configuration.md
+# Example: https://github.com/someuser/someproject/blob/main/docs/configuration.md
+
 email:
   from: viktor@farcic.com
   thumbnailTo: viktor@farcic.com
@@ -13,3 +16,7 @@ youtube:
 bluesky:
   identifier: vfarcic.bsky.social
   url: https://bsky.social/xrpc
+# Added for PRD: Automated Video Language Setting
+videoDefaults:
+  language: "en"
+  audioLanguage: "en"

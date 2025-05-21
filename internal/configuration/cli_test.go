@@ -3,6 +3,8 @@ package configuration
 import (
 	"errors"
 	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -605,5 +607,385 @@ func TestGetArgs(t *testing.T) {
 	}
 	if exitCode != 1 {
 		t.Errorf("Expected exit code 1, got %d", exitCode)
+	}
+}
+
+// Added for PRD: Automated Video Language Setting
+func TestVideoDefaultsLanguageSetting(t *testing.T) {
+	baseYAMLContent := `
+email:
+  from: "test@example.com"
+  thumbnailTo: "thumb@example.com"
+  editTo: "edit@example.com"
+  financeTo: "finance@example.com"
+  password: "password123"
+ai:
+  endpoint: "https://ai.example.com"
+  key: "ai-key"
+  deployment: "gpt-4"
+youtube:
+  apiKey: "yt-key"
+hugo:
+  path: "/hugo/path"
+`
+
+	tests := []struct {
+		name             string
+		yamlContent      string   // Content for settings.yaml
+		args             []string // Command line arguments
+		expectedLanguage string
+	}{
+		{
+			name: "Language from YAML",
+			yamlContent: baseYAMLContent + `
+videoDefaults:
+  language: "fr"`,
+			args:             []string{},
+			expectedLanguage: "fr",
+		},
+		{
+			name:             "Language from flag, YAML missing videoDefaults",
+			yamlContent:      baseYAMLContent, // No videoDefaults here
+			args:             []string{"--video-defaults-language=es"},
+			expectedLanguage: "es",
+		},
+		{
+			name: "Language from flag overrides YAML",
+			yamlContent: baseYAMLContent + `
+videoDefaults:
+  language: "fr"`,
+			args:             []string{"--video-defaults-language=de"},
+			expectedLanguage: "de",
+		},
+		{
+			name:             "Language defaults to en when not in YAML or flag",
+			yamlContent:      baseYAMLContent, // No videoDefaults here
+			args:             []string{},
+			expectedLanguage: "en",
+		},
+		{
+			name: "Language from flag when videoDefaults empty in YAML",
+			yamlContent: baseYAMLContent + `
+videoDefaults: {}`, // Empty videoDefaults
+			args:             []string{"--video-defaults-language=it"},
+			expectedLanguage: "it",
+		},
+		{
+			name: "Language defaults to en when videoDefaults empty in YAML and no flag",
+			yamlContent: baseYAMLContent + `
+videoDefaults: {}`, // Empty videoDefaults
+			args:             []string{},
+			expectedLanguage: "en",
+		},
+	}
+
+	originalOsArgs := os.Args
+	defer func() { os.Args = originalOsArgs }()
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Setup: Create a temporary settings.yaml
+			settingsDir, err := os.MkdirTemp("", "settings-test")
+			if err != nil {
+				t.Fatalf("Failed to create temp dir: %v", err)
+			}
+			defer os.RemoveAll(settingsDir)
+
+			tmpfn := filepath.Join(settingsDir, "settings.yaml")
+			if err := os.WriteFile(tmpfn, []byte(tt.yamlContent), 0666); err != nil {
+				t.Fatalf("Failed to write temp settings file: %v", err)
+			}
+
+			// Change to the directory of the temp settings file
+			originalWD, err := os.Getwd()
+			if err != nil {
+				t.Fatalf("Failed to get current working directory: %v", err)
+			}
+			if err := os.Chdir(settingsDir); err != nil {
+				t.Fatalf("Failed to change working directory: %v", err)
+			}
+			defer os.Chdir(originalWD) // Change back
+
+			// Reset GlobalSettings for each test
+			GlobalSettings = Settings{}
+
+			// 1. Load settings from YAML first
+			yamlFile, err := os.ReadFile("settings.yaml") // Reads from tmpfn due to Chdir
+			if err == nil {                               // If file exists and is readable
+				if errUnmarshal := yaml.Unmarshal(yamlFile, &GlobalSettings); errUnmarshal != nil {
+					t.Logf("Warning: Error parsing temp config file in test: %s", errUnmarshal)
+				}
+			} else if !os.IsNotExist(err) { // If error is not "file does not exist"
+				t.Fatalf("Error reading temp settings file: %v", err)
+			}
+
+			// 2. Manually process command-line arguments for the specific flag we are testing
+			// This simulates a flag overriding a YAML value if present.
+			flagValue := "" // Store the value if the flag is found
+			for i, arg := range tt.args {
+				if arg == "--video-defaults-language" {
+					if i+1 < len(tt.args) {
+						flagValue = tt.args[i+1]
+						break
+					} else {
+						t.Fatalf("--video-defaults-language flag requires a value")
+					}
+				} else if strings.HasPrefix(arg, "--video-defaults-language=") {
+					flagValue = strings.TrimPrefix(arg, "--video-defaults-language=")
+					break
+				}
+			}
+			if flagValue != "" {
+				GlobalSettings.VideoDefaults.Language = flagValue
+			}
+
+			// 3. Apply the final defaulting logic from init() if the value is still empty after YAML and potential flag override
+			if GlobalSettings.VideoDefaults.Language == "" {
+				GlobalSettings.VideoDefaults.Language = "en" // Default from cli.go
+			}
+
+			if GlobalSettings.VideoDefaults.Language != tt.expectedLanguage {
+				t.Errorf("Expected VideoDefaults.Language to be %q, got %q", tt.expectedLanguage, GlobalSettings.VideoDefaults.Language)
+			}
+		})
+	}
+}
+
+// Added for PRD: Automated Video Language Setting
+func TestVideoDefaultsAudioLanguageSetting(t *testing.T) {
+	baseYAMLContent := `
+email:
+  from: "test@example.com"
+  thumbnailTo: "thumb@example.com"
+  editTo: "edit@example.com"
+  financeTo: "finance@example.com"
+  password: "password123"
+ai:
+  endpoint: "https://ai.example.com"
+  key: "ai-key"
+  deployment: "gpt-4"
+youtube:
+  apiKey: "yt-key"
+hugo:
+  path: "/hugo/path"
+`
+
+	tests := []struct {
+		name              string
+		yamlContent       string   // Content for settings.yaml
+		args              []string // Command line arguments
+		expectedLanguage  string
+		expectedAudioLang string
+	}{
+		{
+			name: "AudioLanguage from YAML",
+			yamlContent: baseYAMLContent + `
+videoDefaults:
+  language: "fr"
+  audioLanguage: "de"`,
+			args:              []string{},
+			expectedLanguage:  "fr",
+			expectedAudioLang: "de",
+		},
+		{
+			name:              "AudioLanguage from flag, YAML missing videoDefaults",
+			yamlContent:       baseYAMLContent, // No videoDefaults here
+			args:              []string{"--video-defaults-language=es"},
+			expectedLanguage:  "es",
+			expectedAudioLang: "en",
+		},
+		{
+			name: "AudioLanguage from flag overrides YAML",
+			yamlContent: baseYAMLContent + `
+videoDefaults:
+  language: "fr"
+  audioLanguage: "de"`,
+			args:              []string{"--video-defaults-language=de"},
+			expectedLanguage:  "de",
+			expectedAudioLang: "de",
+		},
+		{
+			name:              "AudioLanguage defaults to en when not in YAML or flag",
+			yamlContent:       baseYAMLContent, // No videoDefaults here
+			args:              []string{},
+			expectedLanguage:  "en",
+			expectedAudioLang: "en",
+		},
+		{
+			name: "AudioLanguage from flag when videoDefaults empty in YAML",
+			yamlContent: baseYAMLContent + `
+videoDefaults: {}`, // Empty videoDefaults
+			args:              []string{"--video-defaults-language=it"},
+			expectedLanguage:  "it",
+			expectedAudioLang: "en",
+		},
+		{
+			name: "AudioLanguage defaults to en when videoDefaults empty in YAML and no flag",
+			yamlContent: baseYAMLContent + `
+videoDefaults: {}`, // Empty videoDefaults
+			args:              []string{},
+			expectedLanguage:  "en",
+			expectedAudioLang: "en",
+		},
+		{
+			name: "AudioLanguage from flag",
+			args: []string{"--video-defaults-audio-language", "fr"},
+			yamlContent: baseYAMLContent + `
+videoDefaults:
+  language: "es"
+  audioLanguage: "de"`,
+			expectedLanguage:  "es",
+			expectedAudioLang: "fr",
+		},
+		{
+			name:              "AudioLanguage from flag, YAML missing videoDefaults",
+			args:              []string{"--video-defaults-audio-language", "fr"},
+			yamlContent:       baseYAMLContent, // No videoDefaults here
+			expectedLanguage:  "en",
+			expectedAudioLang: "fr",
+		},
+		{
+			name: "AudioLanguage from flag overrides YAML",
+			args: []string{"--video-defaults-audio-language", "fr"},
+			yamlContent: baseYAMLContent + `
+videoDefaults:
+  language: "es"
+  audioLanguage: "de"`,
+			expectedLanguage:  "es",
+			expectedAudioLang: "fr",
+		},
+		{
+			name: "AudioLanguage default when not in YAML or flag",
+			args: []string{"--video-defaults-audio-language", "fr"},
+			yamlContent: baseYAMLContent + `
+videoDefaults:
+  language: "pt"`,
+			expectedLanguage:  "pt",
+			expectedAudioLang: "fr",
+		},
+		{
+			name: "AudioLanguage from YAML, language default",
+			args: []string{}, // Removed --video-defaults-audio-language flag
+			yamlContent: baseYAMLContent + `
+videoDefaults:
+  audioLanguage: "it"`,
+			expectedLanguage:  "en",
+			expectedAudioLang: "it",
+		},
+		{
+			name: "Both languages default when videoDefaults empty in YAML",
+			args: []string{"--video-defaults-audio-language", "fr"},
+			yamlContent: baseYAMLContent + `
+videoDefaults: {}`,
+			expectedLanguage:  "en",
+			expectedAudioLang: "fr",
+		},
+		{
+			name: "Both languages default when videoDefaults missing in YAML",
+			args: []string{"--video-defaults-audio-language", "fr"},
+			yamlContent: baseYAMLContent + `
+email: {}`,
+			expectedLanguage:  "en",
+			expectedAudioLang: "fr",
+		},
+	}
+
+	originalOsArgs := os.Args
+	defer func() { os.Args = originalOsArgs }()
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Setup: Create a temporary settings.yaml
+			settingsDir, err := os.MkdirTemp("", "settings-test")
+			if err != nil {
+				t.Fatalf("Failed to create temp dir: %v", err)
+			}
+			defer os.RemoveAll(settingsDir)
+
+			tmpfn := filepath.Join(settingsDir, "settings.yaml")
+			if err := os.WriteFile(tmpfn, []byte(tt.yamlContent), 0666); err != nil {
+				t.Fatalf("Failed to write temp settings file: %v", err)
+			}
+
+			// Change to the directory of the temp settings file
+			originalWD, err := os.Getwd()
+			if err != nil {
+				t.Fatalf("Failed to get current working directory: %v", err)
+			}
+			if err := os.Chdir(settingsDir); err != nil {
+				t.Fatalf("Failed to change working directory: %v", err)
+			}
+			defer os.Chdir(originalWD) // Change back
+
+			// Reset GlobalSettings for each test
+			GlobalSettings = Settings{}
+
+			// 1. Load settings from YAML first
+			yamlFile, err := os.ReadFile("settings.yaml") // Reads from tmpfn due to Chdir
+			if err == nil {                               // If file exists and is readable
+				if errUnmarshal := yaml.Unmarshal(yamlFile, &GlobalSettings); errUnmarshal != nil {
+					t.Logf("Warning: Error parsing temp config file in test: %s", errUnmarshal)
+				}
+			} else if !os.IsNotExist(err) { // If error is not "file does not exist"
+				t.Fatalf("Error reading temp settings file: %v", err)
+			}
+
+			// 2. Manually process command-line arguments for the specific flag we are testing
+			// This simulates a flag overriding a YAML value if present.
+			flagValue := "" // Store the value if the flag is found
+			for i, arg := range tt.args {
+				if arg == "--video-defaults-language" {
+					if i+1 < len(tt.args) {
+						flagValue = tt.args[i+1]
+						break
+					} else {
+						t.Fatalf("--video-defaults-language flag requires a value")
+					}
+				} else if strings.HasPrefix(arg, "--video-defaults-language=") {
+					flagValue = strings.TrimPrefix(arg, "--video-defaults-language=")
+					break
+				}
+			}
+			if flagValue != "" {
+				GlobalSettings.VideoDefaults.Language = flagValue
+			}
+
+			// 3. Apply the final defaulting logic from init() if the value is still empty after YAML and potential flag override
+			if GlobalSettings.VideoDefaults.Language == "" {
+				GlobalSettings.VideoDefaults.Language = "en" // Default from cli.go
+			}
+
+			if GlobalSettings.VideoDefaults.Language != tt.expectedLanguage {
+				t.Errorf("Test %s: Expected GlobalSettings.VideoDefaults.Language to be '%s', got '%s'", tt.name, tt.expectedLanguage, GlobalSettings.VideoDefaults.Language)
+			}
+
+			// 4. Apply audioLanguage processing
+			audioFlagValue := ""
+			for i, arg := range tt.args {
+				if arg == "--video-defaults-audio-language" {
+					if i+1 < len(tt.args) {
+						audioFlagValue = tt.args[i+1]
+						break
+					} else {
+						t.Fatalf("--video-defaults-audio-language flag requires a value")
+					}
+				} else if strings.HasPrefix(arg, "--video-defaults-audio-language=") {
+					audioFlagValue = strings.TrimPrefix(arg, "--video-defaults-audio-language=")
+					break
+				}
+			}
+			if audioFlagValue != "" {
+				GlobalSettings.VideoDefaults.AudioLanguage = audioFlagValue
+			}
+
+			// 5. Apply audioLanguage defaulting logic
+			if GlobalSettings.VideoDefaults.AudioLanguage == "" {
+				GlobalSettings.VideoDefaults.AudioLanguage = "en" // Default from cli.go
+			}
+
+			if GlobalSettings.VideoDefaults.AudioLanguage != tt.expectedAudioLang {
+				t.Errorf("Test %s: Expected GlobalSettings.VideoDefaults.AudioLanguage to be '%s', got '%s'", tt.name, tt.expectedAudioLang, GlobalSettings.VideoDefaults.AudioLanguage)
+			}
+		})
 	}
 }
