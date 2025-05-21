@@ -18,6 +18,7 @@ Retrieve and process all information from the `memory` MCP knowledge graph to gu
 - Email account for notifications
 - Hugo site repository (optional)
 - Bluesky account (optional)
+- Slack API token (optional)
 
 ## Configuration
 
@@ -39,6 +40,12 @@ youtube:
 bluesky:
   identifier: username.bsky.social
   url: https://bsky.social/xrpc
+slack:
+  token: xoxb-your-slack-token
+  defaultChannel: general
+  reactions:
+    - thumbsup
+    - rocket
 ```
 
 Environment variables can also be used for sensitive information:
@@ -46,6 +53,7 @@ Environment variables can also be used for sensitive information:
 - `AI_KEY`
 - `YOUTUBE_API_KEY`
 - `BLUESKY_PASSWORD`
+- `SLACK_TOKEN`
 
 ## Running the Tool
 
@@ -91,6 +99,8 @@ youtube-release [flags]
 - `--bluesky-identifier` - Bluesky username
 - `--bluesky-password` - Bluesky password
 - `--bluesky-url` - Bluesky API URL
+- `--slack-token` - Slack API token for posting messages
+- `--slack-default-channel` - Default Slack channel for posting when no category-specific channel is defined
 
 ## Project Structure
 
@@ -100,6 +110,8 @@ youtube-release [flags]
 - `email.go` - Email notification system
 - `hugo.go` - Hugo integration
 - `bluesky.go` - Bluesky social media integration
+- `slack.go` - Slack messaging integration
+- `pkg/slack/` - Slack API package
 
 ## Contributing
 
@@ -117,4 +129,8 @@ This project aims for a test coverage goal of 80%. To check current test coverag
 
 This will generate a detailed coverage report, an HTML visualization, and identify areas needing improvement.
 
-For comprehensive testing documentation including guidelines, examples, and best practices, see the [Testing Guide](docs/testing.md). Additional testing examples and patterns can be found in the [examples directory](docs/examples/). 
+For comprehensive testing documentation including guidelines, examples, and best practices, see the [Testing Guide](docs/testing.md). Additional testing examples and patterns can be found in the [examples directory](docs/examples/).
+
+## Integrations
+
+- [Slack Integration Guide](slack.md) - Detailed information about the Slack integration 

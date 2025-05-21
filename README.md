@@ -7,6 +7,7 @@ A Go-based command-line tool for automating the YouTube video publishing workflo
 - Automated YouTube video uploads with metadata
 - Integration with Hugo for blog post publishing
 - Bluesky social media posting
+- Slack integration for automated notifications
 
 ## Development
 
