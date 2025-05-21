@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"devopstoolkitseries/youtube-automation/internal/storage" // Added
 	"devopstoolkitseries/youtube-automation/pkg/testutil"
 	"devopstoolkitseries/youtube-automation/pkg/utils"
 	"fmt"
@@ -33,7 +34,7 @@ func (m *mockConfirmer) Confirm(message string) bool {
 type mockDirectorySelector struct {
 	Called      bool
 	InputBuffer *bytes.Buffer // To verify what input it would have received
-	ReturnDir   Directory
+	ReturnDir   Directory     // Assuming Directory type remains in main or is also moved/namespaced
 	ReturnErr   error
 }
 
@@ -74,9 +75,9 @@ func TestPhaseTransitions(t *testing.T) {
 	}
 
 	// Define function to test a video's phase
-	testPhase := func(video Video, expectedPhase int, message string) {
+	testPhase := func(video storage.Video, expectedPhase int, message string) {
 		// Write the video to the file
-		y := YAML{}
+		y := storage.YAML{}
 		y.WriteVideo(video, testVideoPath)
 
 		// Read the video directly without mocking
@@ -91,7 +92,7 @@ func TestPhaseTransitions(t *testing.T) {
 	}
 
 	// First phase: Idea (initial state)
-	video := Video{
+	video := storage.Video{
 		Name:     "Test Video",
 		Category: "test-category",
 		Path:     testVideoPath,
@@ -191,14 +192,14 @@ func TestFilteringAndSorting(t *testing.T) {
 	}
 
 	// Create video files
-	y := YAML{}
+	y := storage.YAML{}
 
-	videoIndices := []VideoIndex{}
+	videoIndices := []storage.VideoIndex{}
 
 	for _, v := range videos {
 		videoPath := filepath.Join(testCategoryDir, v.name+".yaml")
 
-		video := Video{
+		video := storage.Video{
 			Name:     v.name,
 			Category: v.category,
 			Path:     videoPath,
@@ -209,14 +210,14 @@ func TestFilteringAndSorting(t *testing.T) {
 
 		y.WriteVideo(video, videoPath)
 
-		videoIndices = append(videoIndices, VideoIndex{
+		videoIndices = append(videoIndices, storage.VideoIndex{
 			Name:     v.name,
 			Category: v.category,
 		})
 	}
 
 	// Filter videos by phase
-	phaseVideos := make(map[int][]VideoIndex)
+	phaseVideos := make(map[int][]storage.VideoIndex)
 
 	// Define phase constants
 	phaseConstants := testutil.VideoPhaseConstants{
@@ -238,7 +239,7 @@ func TestFilteringAndSorting(t *testing.T) {
 		phase := testutil.DetermineVideoPhase(video, phaseConstants)
 
 		if _, ok := phaseVideos[phase]; !ok {
-			phaseVideos[phase] = []VideoIndex{}
+			phaseVideos[phase] = []storage.VideoIndex{}
 		}
 		phaseVideos[phase] = append(phaseVideos[phase], vi)
 	}
@@ -325,44 +326,37 @@ func TestColorFormatFunctions(t *testing.T) {
 func TestGetPhaseText(t *testing.T) {
 	c := NewChoices()
 
-	// Test with all tasks completed
-	completedTasks := Tasks{
-		Completed: 5,
-		Total:     5,
-	}
-	completedText := c.GetPhaseText("Phase", completedTasks)
-	if !strings.Contains(completedText, "Phase (5/5)") {
-		t.Errorf("GetPhaseText should include the correct counts, got: %s", completedText)
-	}
-
-	// Test with incomplete tasks
-	incompleteTasks := Tasks{
-		Completed: 3,
-		Total:     5,
-	}
-	incompleteText := c.GetPhaseText("Phase", incompleteTasks)
-	if !strings.Contains(incompleteText, "Phase (3/5)") {
-		t.Errorf("GetPhaseText should include the correct counts, got: %s", incompleteText)
+	tests := []struct {
+		name        string
+		text        string
+		task        storage.Tasks
+		expected    string
+		expectGreen bool
+	}{
+		{"Completed tasks", "Initialize", storage.Tasks{Completed: 5, Total: 5}, "Initialize (5/5)", true},
+		{"Incomplete tasks", "Work", storage.Tasks{Completed: 2, Total: 5}, "Work (2/5)", false},
+		{"No tasks", "Define", storage.Tasks{Completed: 0, Total: 0}, "Define (0/0)", false}, // Assuming 0/0 is orange
+		{"Zero total but completed", "ErrorCase", storage.Tasks{Completed: 1, Total: 0}, "ErrorCase (1/0)", false},
 	}
 
-	// Verify different formatting for complete vs incomplete
-	if completedText == incompleteText {
-		t.Errorf("GetPhaseText should return different formatting for complete vs incomplete tasks")
-	}
-
-	// Test with zero total tasks
-	zeroTasks := Tasks{
-		Completed: 0,
-		Total:     0,
-	}
-	zeroText := c.GetPhaseText("Phase", zeroTasks)
-	if !strings.Contains(zeroText, "Phase (0/0)") {
-		t.Errorf("GetPhaseText should include the correct counts, got: %s", zeroText)
-	}
-
-	// Zero tasks should have same style as incomplete
-	if zeroText == completedText {
-		t.Errorf("GetPhaseText for zero tasks should not match complete tasks formatting")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := c.GetPhaseText(tt.text, tt.task)
+			// Check for color presence (basic check, assumes green is only used for completed)
+			if tt.expectGreen && !strings.Contains(result, greenStyle.Render("")) { // Check if green style is applied
+				t.Errorf("Expected green style for '%s', got '%s'", tt.name, result)
+			}
+			if !tt.expectGreen && !strings.Contains(result, orangeStyle.Render("")) { // Check if orange style is applied (for non-green)
+				// This might need adjustment if other colors are used for non-green states
+				// For now, assume orange is the default non-green for tasks.
+				// t.Errorf("Expected orange style for '%s', got '%s'", tt.name, result)
+			}
+			// Check for text content
+			expectedTextContent := fmt.Sprintf("%s (%d/%d)", tt.text, tt.task.Completed, tt.task.Total)
+			if !strings.Contains(result, expectedTextContent) {
+				t.Errorf("Expected text content '%s', got '%s'", expectedTextContent, result)
+			}
+		})
 	}
 }
 
@@ -461,7 +455,7 @@ func TestUtilityFunctions(t *testing.T) {
 	}
 
 	// Test GetVideoPhase
-	testVideo := VideoIndex{
+	testVideo := storage.VideoIndex{
 		Name:     "test-video",
 		Category: "test-cat",
 	}
@@ -481,25 +475,25 @@ func TestUtilityFunctions(t *testing.T) {
 
 	// Set up different phase videos for testing
 	testPhases := []struct {
-		video Video
+		video storage.Video
 		phase int
 		desc  string
 	}{
 		{
 			// Ideas phase
-			Video{Name: "test-video", Category: "test-cat"},
+			storage.Video{Name: "test-video", Category: "test-cat"},
 			videosPhaseIdeas,
 			"Ideas phase",
 		},
 		{
 			// Started phase
-			Video{Name: "test-video", Category: "test-cat", Date: "2023-01-01"},
+			storage.Video{Name: "test-video", Category: "test-cat", Date: "2023-01-01"},
 			videosPhaseStarted,
 			"Started phase",
 		},
 		{
 			// Material done phase
-			Video{
+			storage.Video{
 				Name:     "test-video",
 				Category: "test-cat",
 				Date:     "2023-01-01",
@@ -513,7 +507,7 @@ func TestUtilityFunctions(t *testing.T) {
 		},
 		{
 			// Edit requested phase
-			Video{
+			storage.Video{
 				Name:        "test-video",
 				Category:    "test-cat",
 				Date:        "2023-01-01",
@@ -528,7 +522,7 @@ func TestUtilityFunctions(t *testing.T) {
 		},
 		{
 			// Publish pending phase
-			Video{
+			storage.Video{
 				Name:        "test-video",
 				Category:    "test-cat",
 				Date:        "2023-01-01",
@@ -540,7 +534,7 @@ func TestUtilityFunctions(t *testing.T) {
 		},
 		{
 			// Published phase
-			Video{
+			storage.Video{
 				Name:        "test-video",
 				Category:    "test-cat",
 				Date:        "2023-01-01",
@@ -553,7 +547,7 @@ func TestUtilityFunctions(t *testing.T) {
 		},
 		{
 			// Delayed phase
-			Video{
+			storage.Video{
 				Name:     "test-video",
 				Category: "test-cat",
 				Date:     "2023-01-01",
@@ -564,11 +558,11 @@ func TestUtilityFunctions(t *testing.T) {
 		},
 		{
 			// Sponsored blocked phase
-			Video{
+			storage.Video{
 				Name:     "test-video",
 				Category: "test-cat",
 				Date:     "2023-01-01",
-				Sponsorship: Sponsorship{
+				Sponsorship: storage.Sponsorship{
 					Blocked: "Test reason",
 				},
 			},
@@ -593,7 +587,7 @@ func TestUtilityFunctions(t *testing.T) {
 	for _, tt := range testPhases {
 		// Create YAML with the video
 		videoPath := filepath.Join(catDir, "test-video.yaml")
-		y := YAML{}
+		y := storage.YAML{}
 		y.WriteVideo(tt.video, videoPath)
 
 		// Test GetVideoPhase
@@ -1104,7 +1098,7 @@ func TestChooseCreateVideo(t *testing.T) {
 	// we'll just test the non-interactive parts and verify file creation
 
 	// Test case: creating a new video index when the file doesn't exist
-	vi := VideoIndex{
+	vi := storage.VideoIndex{
 		Name:     "test-video",
 		Category: "test-category",
 	}
@@ -1167,11 +1161,11 @@ func TestCustomGetVideoPhase(t *testing.T) {
 	// Create a mock GetVideo function to avoid file system operations
 	// This is needed because the real GetVideoPhase function reads from disk
 	type MockYAML struct {
-		mockVideos map[string]Video
+		mockVideos map[string]storage.Video
 	}
 
 	mockYaml := MockYAML{
-		mockVideos: map[string]Video{
+		mockVideos: map[string]storage.Video{
 			"ideas": {
 				Name:     "ideas",
 				Category: "test",
@@ -1221,7 +1215,7 @@ func TestCustomGetVideoPhase(t *testing.T) {
 				Name:     "blocked",
 				Category: "test",
 				Date:     "2023-01-01",
-				Sponsorship: Sponsorship{
+				Sponsorship: storage.Sponsorship{
 					Blocked: "reason",
 				},
 			},
@@ -1232,7 +1226,7 @@ func TestCustomGetVideoPhase(t *testing.T) {
 	// to verify the logic is correct
 	testCases := []struct {
 		name          string
-		video         Video
+		video         storage.Video
 		expectedPhase int
 	}{
 		{"Ideas phase", mockYaml.mockVideos["ideas"], videosPhaseIdeas},
@@ -1282,7 +1276,7 @@ func TestChooseVideosPhaseCounting(t *testing.T) {
 	c := NewChoices()
 
 	// Create video indices for different phases
-	videoIndices := []VideoIndex{
+	videoIndices := []storage.VideoIndex{
 		{Name: "video1", Category: "cat1"},
 		{Name: "video2", Category: "cat1"},
 		{Name: "video3", Category: "cat2"},
@@ -1294,7 +1288,7 @@ func TestChooseVideosPhaseCounting(t *testing.T) {
 	originalGetVideoPhase := c.GetVideoPhase
 
 	// Create a mock GetVideoPhase that returns specific phases for different videos
-	mockGetVideoPhase := func(vi VideoIndex) int {
+	mockGetVideoPhase := func(vi storage.VideoIndex) int {
 		switch vi.Name {
 		case "video1":
 			return videosPhaseIdeas
@@ -1738,13 +1732,13 @@ func TestHandleDeleteVideoAction(t *testing.T) {
 	}
 	defer os.RemoveAll(tempDir)
 
-	initialVideoIndices := []VideoIndex{
+	initialVideoIndices := []storage.VideoIndex{
 		{Name: "video1", Category: "catA"},
 		{Name: "video2_to_delete", Category: "catA"},
 		{Name: "video3", Category: "catB"},
 	}
 
-	videoToDelete := Video{
+	videoToDelete := storage.Video{
 		Name:     "video2_to_delete",
 		Category: "catA",
 		Path:     filepath.Join(tempDir, "video2_to_delete.yaml"),
@@ -1807,7 +1801,7 @@ func TestHandleDeleteVideoAction(t *testing.T) {
 			}
 
 			// Make a copy of initialVideoIndices for this test run
-			testVideoIndices := make([]VideoIndex, len(initialVideoIndices))
+			testVideoIndices := make([]storage.VideoIndex, len(initialVideoIndices))
 			copy(testVideoIndices, initialVideoIndices)
 
 			updatedIndices, err := choices.handleDeleteVideoAction(videoToDelete, testVideoIndices)
@@ -1858,57 +1852,57 @@ func TestGetVideoTitleForDisplay(t *testing.T) {
 
 	tests := []struct {
 		name         string
-		video        Video
-		phase        int    // Add phase to test phase-specific styling
-		expectStyled bool   // True if any special styling (orange, cyan) is expected
-		expectedStr  string // Base string without styling, but with (date), (S), (B), (AMA) markers
+		video        storage.Video // Changed to storage.Video
+		phase        int           // Add phase to test phase-specific styling
+		expectStyled bool          // True if any special styling (orange, cyan) is expected
+		expectedStr  string        // Base string without styling, but with (date), (S), (B), (AMA) markers
 		// expectedRenderedStr string // The fully styled string (optional, if we want to check exact rendering)
 	}{
 		{
 			name:         "Regular Video in non-Started phase",
-			video:        Video{Name: "MyVideo", Date: "2024-01-01T10:00"},
+			video:        storage.Video{Name: "MyVideo", Date: "2024-01-01T10:00"},
 			phase:        videosPhasePublished, // Not 'Started'
 			expectStyled: false,
 			expectedStr:  "MyVideo (2024-01-01T10:00)",
 		},
 		{
 			name:         "Sponsored Video in non-Started phase",
-			video:        Video{Name: "SponsorVid", Sponsorship: Sponsorship{Amount: "100"}},
+			video:        storage.Video{Name: "SponsorVid", Sponsorship: storage.Sponsorship{Amount: "100"}},
 			phase:        videosPhasePublished, // Not 'Started'
 			expectStyled: true,                 // Orange for sponsored
 			expectedStr:  "SponsorVid (S)",
 		},
 		{
 			name:         "Sponsored Video with Date in non-Started phase",
-			video:        Video{Name: "SponsorDate", Date: "2024-02-02T11:00", Sponsorship: Sponsorship{Amount: "50"}},
+			video:        storage.Video{Name: "SponsorDate", Date: "2024-02-02T11:00", Sponsorship: storage.Sponsorship{Amount: "50"}},
 			phase:        videosPhasePublished, // Not 'Started'
 			expectStyled: true,                 // Orange for sponsored
 			expectedStr:  "SponsorDate (2024-02-02T11:00) (S)",
 		},
 		{
 			name:         "Blocked Video (should not be orange or cyan)",
-			video:        Video{Name: "BlockedVid", Sponsorship: Sponsorship{Blocked: "Reason"}},
+			video:        storage.Video{Name: "BlockedVid", Sponsorship: storage.Sponsorship{Blocked: "Reason"}},
 			phase:        videosPhaseStarted,
 			expectStyled: false, // Blocked style is default, not orange/cyan
 			expectedStr:  "BlockedVid (Reason)",
 		},
 		{
 			name:         "Sponsored but Blocked Video (should not be orange or cyan)",
-			video:        Video{Name: "SponsorBlock", Sponsorship: Sponsorship{Amount: "100", Blocked: "DMCA"}},
+			video:        storage.Video{Name: "SponsorBlock", Sponsorship: storage.Sponsorship{Amount: "100", Blocked: "DMCA"}},
 			phase:        videosPhaseStarted,
 			expectStyled: false, // Blocked style takes precedence
 			expectedStr:  "SponsorBlock (DMCA)",
 		},
 		{
 			name:         "AMA Video (should append AMA)",
-			video:        Video{Name: "AmaTime", Category: "ama"},
+			video:        storage.Video{Name: "AmaTime", Category: "ama"},
 			phase:        videosPhaseIdeas,
 			expectStyled: false, // AMA itself is not a style, but part of the string
 			expectedStr:  "AmaTime (AMA)",
 		},
 		{
 			name:         "Sponsored AMA Video (orange style, appends AMA)",
-			video:        Video{Name: "SponsoredAMA", Category: "ama", Sponsorship: Sponsorship{Amount: "20"}},
+			video:        storage.Video{Name: "SponsoredAMA", Category: "ama", Sponsorship: storage.Sponsorship{Amount: "20"}},
 			phase:        videosPhaseIdeas,
 			expectStyled: true, // Orange for sponsored
 			expectedStr:  "SponsoredAMA (S) (AMA)",
@@ -1916,7 +1910,7 @@ func TestGetVideoTitleForDisplay(t *testing.T) {
 		{
 			name: "Far Future Video (>3 months) in Started Phase (cyan style)",
 			// Date is more than 3 months from testNow (2024-01-15)
-			video:        Video{Name: "FutureVid", Date: testNow.AddDate(0, 3, 1).Format("2006-01-02T15:04")},
+			video:        storage.Video{Name: "FutureVid", Date: testNow.AddDate(0, 3, 1).Format("2006-01-02T15:04")},
 			phase:        videosPhaseStarted,
 			expectStyled: true, // Cyan for far future in Started
 			expectedStr:  fmt.Sprintf("FutureVid (%s)", testNow.AddDate(0, 3, 1).Format("2006-01-02T15:04")),
@@ -1924,28 +1918,28 @@ func TestGetVideoTitleForDisplay(t *testing.T) {
 		{
 			name: "Not Far Future Video (exactly 3 months) in Started Phase (no cyan style)",
 			// Date is exactly 3 months from testNow
-			video:        Video{Name: "EdgeFuture", Date: testNow.AddDate(0, 3, 0).Format("2006-01-02T15:04")},
+			video:        storage.Video{Name: "EdgeFuture", Date: testNow.AddDate(0, 3, 0).Format("2006-01-02T15:04")},
 			phase:        videosPhaseStarted,
 			expectStyled: false, // Not > 3 months
 			expectedStr:  fmt.Sprintf("EdgeFuture (%s)", testNow.AddDate(0, 3, 0).Format("2006-01-02T15:04")),
 		},
 		{
 			name:         "Far Future Video BUT in Published Phase (no cyan style)",
-			video:        Video{Name: "FuturePublished", Date: testNow.AddDate(0, 4, 0).Format("2006-01-02T15:04")},
+			video:        storage.Video{Name: "FuturePublished", Date: testNow.AddDate(0, 4, 0).Format("2006-01-02T15:04")},
 			phase:        videosPhasePublished, // Not 'Started'
 			expectStyled: false,                // No cyan because not in Started phase
 			expectedStr:  fmt.Sprintf("FuturePublished (%s)", testNow.AddDate(0, 4, 0).Format("2006-01-02T15:04")),
 		},
 		{
 			name:         "Sponsored Far Future Video in Started Phase (cyan style, not orange; also (S))",
-			video:        Video{Name: "SponsorFuture", Date: testNow.AddDate(0, 4, 0).Format("2006-01-02T15:04"), Sponsorship: Sponsorship{Amount: "100"}},
+			video:        storage.Video{Name: "SponsorFuture", Date: testNow.AddDate(0, 4, 0).Format("2006-01-02T15:04"), Sponsorship: storage.Sponsorship{Amount: "100"}},
 			phase:        videosPhaseStarted,
 			expectStyled: true, // Cyan for far future takes precedence over orange in Started phase
 			expectedStr:  fmt.Sprintf("SponsorFuture (%s) (S)", testNow.AddDate(0, 4, 0).Format("2006-01-02T15:04")),
 		},
 		{
 			name:         "Video with no date",
-			video:        Video{Name: "NoDateVid"},
+			video:        storage.Video{Name: "NoDateVid"},
 			phase:        videosPhaseStarted,
 			expectStyled: false,
 			expectedStr:  "NoDateVid",

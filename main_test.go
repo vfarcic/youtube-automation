@@ -1,6 +1,7 @@
 package main
 
 import (
+	"devopstoolkitseries/youtube-automation/internal/storage"
 	"devopstoolkitseries/youtube-automation/pkg/testutil"
 	"os"
 	"path/filepath"
@@ -30,17 +31,17 @@ func TestCreateVideo(t *testing.T) {
 
 	// Create YAML file directly
 	yamlFilePath := filepath.Join(testCategoryDir, "test-video.yaml")
-	y := YAML{}
+	y := storage.YAML{}
 
-	video := Video{
+	video := storage.Video{
 		Name:     "Test Video",
 		Category: "test-category",
 		Path:     yamlFilePath,
-		Init:     Tasks{Completed: 0, Total: 5},
-		Work:     Tasks{Completed: 0, Total: 11},
-		Define:   Tasks{Completed: 0, Total: 8},
-		Edit:     Tasks{Completed: 0, Total: 6},
-		Publish:  Tasks{Completed: 0, Total: 5},
+		Init:     storage.Tasks{Completed: 0, Total: 5},
+		Work:     storage.Tasks{Completed: 0, Total: 11},
+		Define:   storage.Tasks{Completed: 0, Total: 8},
+		Edit:     storage.Tasks{Completed: 0, Total: 6},
+		Publish:  storage.Tasks{Completed: 0, Total: 5},
 	}
 
 	y.WriteVideo(video, yamlFilePath)
@@ -95,9 +96,9 @@ func TestVideoPhaseTransitions(t *testing.T) {
 	}
 
 	// Define function to test a video's phase
-	testPhase := func(video Video, expectedPhase int, message string) {
+	testPhase := func(video storage.Video, expectedPhase int, message string) {
 		// Write the video to the file
-		y := YAML{}
+		y := storage.YAML{}
 		y.WriteVideo(video, testVideoPath)
 
 		// Read the video directly without mocking
@@ -112,7 +113,7 @@ func TestVideoPhaseTransitions(t *testing.T) {
 	}
 
 	// First phase: Idea (initial state)
-	video := Video{
+	video := storage.Video{
 		Name:     "Test Video",
 		Category: "test-category",
 		Path:     testVideoPath,
@@ -259,14 +260,14 @@ func TestVideoFilteringAndSorting(t *testing.T) {
 	}
 
 	// Create video files
-	y := YAML{}
+	y := storage.YAML{}
 
-	videoIndices := []VideoIndex{}
+	videoIndices := []storage.VideoIndex{}
 
 	for _, v := range videos {
 		videoPath := filepath.Join(testCategoryDir, v.name+".yaml")
 
-		video := Video{
+		video := storage.Video{
 			Name:     v.name,
 			Category: v.category,
 			Path:     videoPath,
@@ -277,14 +278,14 @@ func TestVideoFilteringAndSorting(t *testing.T) {
 
 		y.WriteVideo(video, videoPath)
 
-		videoIndices = append(videoIndices, VideoIndex{
+		videoIndices = append(videoIndices, storage.VideoIndex{
 			Name:     v.name,
 			Category: v.category,
 		})
 	}
 
 	// Filter videos by phase
-	phaseVideos := make(map[int][]VideoIndex)
+	phaseVideos := make(map[int][]storage.VideoIndex)
 
 	for _, vi := range videoIndices {
 		// Read the video directly

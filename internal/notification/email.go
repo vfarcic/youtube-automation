@@ -1,8 +1,11 @@
-package main
+package notification
 
 import (
 	"fmt"
 	"strings"
+
+	"devopstoolkitseries/youtube-automation/internal/configuration"
+	"devopstoolkitseries/youtube-automation/internal/storage"
 
 	gomail "gopkg.in/mail.v2"
 )
@@ -34,7 +37,7 @@ func (e *Email) Send(from string, to []string, subject, body string, attachmentP
 	return nil
 }
 
-func (e *Email) SendThumbnail(from, to string, video Video) error {
+func (e *Email) SendThumbnail(from, to string, video storage.Video) error {
 	logos := ""
 	if video.ProjectURL != "" && video.ProjectURL != "-" && video.ProjectURL != "N/A" {
 		logos = video.ProjectURL
@@ -74,7 +77,7 @@ Elements:
 	return nil
 }
 
-func (e *Email) SendEdit(from, to string, video Video) error {
+func (e *Email) SendEdit(from, to string, video storage.Video) error {
 	if len(video.Gist) == 0 {
 		return fmt.Errorf("Gist is empty")
 	}
@@ -128,10 +131,10 @@ func (e *Email) SendSponsors(from, to string, videoID, sponsorshipPrice string) 
 <br><br>
 The video has just been released and is available at https://youtu.be/%s. Please let me know what you think or if you have any questions.
 <br><br>
-I'll send the invoice for %s in a separate message.
+I\'ll send the invoice for %s in a separate message.
 `, videoID, sponsorshipPrice)
 	toArray := strings.Split(to, ",")
-	toArray = append(toArray, settings.Email.FinanceTo)
+	toArray = append(toArray, configuration.GlobalSettings.Email.FinanceTo)
 	err := e.Send(from, toArray, subject, body, "")
 	if err != nil {
 		return err

@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"devopstoolkitseries/youtube-automation/internal/configuration"
 )
 
 // TestNewHugo tests creating a new Hugo instance
@@ -26,14 +28,14 @@ func TestHugoFunctionErrors(t *testing.T) {
 	defer os.RemoveAll(tempDir)
 
 	// Save original settings and restore after test
-	originalSettings := settings
+	originalSettings := configuration.GlobalSettings
 	defer func() {
-		settings = originalSettings
+		configuration.GlobalSettings = originalSettings
 	}()
 
 	// Setup test settings
-	settings = Settings{
-		Hugo: SettingsHugo{
+	configuration.GlobalSettings = configuration.Settings{
+		Hugo: configuration.SettingsHugo{
 			Path: tempDir,
 		},
 	}
@@ -118,14 +120,14 @@ func TestHugoIntegration(t *testing.T) {
 	}
 
 	// Save original settings and restore after test
-	originalSettings := settings
+	originalSettings := configuration.GlobalSettings
 	defer func() {
-		settings = originalSettings
+		configuration.GlobalSettings = originalSettings
 	}()
 
 	// Setup test settings
-	settings = Settings{
-		Hugo: SettingsHugo{
+	configuration.GlobalSettings = configuration.Settings{
+		Hugo: configuration.SettingsHugo{
 			Path: tempDir,
 		},
 	}

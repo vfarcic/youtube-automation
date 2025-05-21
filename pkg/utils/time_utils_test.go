@@ -6,7 +6,7 @@ import (
 )
 
 func TestIsFarFutureDate(t *testing.T) {
-	now := time.Now()
+	now := time.Now().Truncate(time.Second)
 	layout := "2006-01-02T15:04"
 
 	tests := []struct {

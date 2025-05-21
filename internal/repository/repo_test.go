@@ -1,4 +1,4 @@
-package main
+package repository
 
 import (
 	"os"
@@ -75,7 +75,7 @@ func TestGetAnimationsFromMarkdownLogic(t *testing.T) {
 		},
 	}
 
-	repo := Repo{} // Assuming Repo is the struct with GetAnimations method
+	repo := Repo{} // Changed to direct instantiation
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

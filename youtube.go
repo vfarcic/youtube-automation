@@ -14,6 +14,8 @@ import (
 	"runtime"
 	"strings"
 
+	"devopstoolkitseries/youtube-automation/internal/storage"
+
 	"golang.org/x/net/context"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -231,7 +233,7 @@ func saveToken(file string, token *oauth2.Token) {
 	json.NewEncoder(f).Encode(token)
 }
 
-func uploadVideo(video Video) string {
+func uploadVideo(video storage.Video) string {
 	if video.UploadVideo == "" {
 		log.Fatalf("You must provide a filename of a video file to upload")
 		return ""
@@ -334,7 +336,7 @@ func getAdditionalInfo(hugoPath, projectName, projectURL, relatedVideosRaw strin
 	return fmt.Sprintf("%s🔗 %s: %s\n%s", gist, projectName, projectURL, relatedVideos)
 }
 
-func uploadThumbnail(video Video) error {
+func uploadThumbnail(video storage.Video) error {
 	client := getClient(youtube.YoutubeUploadScope)
 
 	// FIXME: Remove the comment

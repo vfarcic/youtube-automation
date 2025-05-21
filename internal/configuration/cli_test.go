@@ -1,4 +1,4 @@
-package main
+package configuration
 
 import (
 	"errors"
@@ -539,16 +539,16 @@ func TestRequiredFlagValidation(t *testing.T) {
 // TestGetArgs tests the getArgs function in isolation
 func TestGetArgs(t *testing.T) {
 	// Save original rootCmd for restoration later
-	originalRootCmd := rootCmd
+	originalRootCmd := RootCmd
 	defer func() {
-		rootCmd = originalRootCmd
+		RootCmd = originalRootCmd
 	}()
 
 	// Create a mock rootCmd for testing
 	executeCount := 0
 	executeErr := error(nil)
 
-	rootCmd = &cobra.Command{
+	RootCmd = &cobra.Command{
 		Use:   "test",
 		Short: "Test command",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -567,7 +567,7 @@ func TestGetArgs(t *testing.T) {
 	_, w, _ := os.Pipe()
 	os.Stderr = w
 
-	getArgs()
+	GetArgs()
 	w.Close()
 
 	// Verify the command was executed once
@@ -596,7 +596,7 @@ func TestGetArgs(t *testing.T) {
 	_, w, _ = os.Pipe()
 	os.Stderr = w
 
-	getArgs()
+	GetArgs()
 	w.Close()
 
 	// Verify exit was called with code 1

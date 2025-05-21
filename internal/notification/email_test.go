@@ -1,4 +1,4 @@
-package main
+package notification
 
 import (
 	"fmt"
@@ -10,6 +10,9 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"devopstoolkitseries/youtube-automation/internal/configuration"
+	"devopstoolkitseries/youtube-automation/internal/storage"
 
 	"github.com/emersion/go-smtp"
 )
@@ -231,13 +234,13 @@ func TestEmailFunctionality(t *testing.T) {
 	}
 
 	// Save original email config and restore after test
-	originalEmail := settings.Email
+	originalEmail := configuration.GlobalSettings.Email
 	defer func() {
-		settings.Email = originalEmail
+		configuration.GlobalSettings.Email = originalEmail
 	}()
 
 	// Configure test email settings
-	settings.Email = SettingsEmail{
+	configuration.GlobalSettings.Email = configuration.SettingsEmail{
 		From:        "test@example.com",
 		ThumbnailTo: "thumbnail@example.com",
 		EditTo:      "edit@example.com",
@@ -246,7 +249,7 @@ func TestEmailFunctionality(t *testing.T) {
 	}
 
 	// Create test video
-	video := Video{
+	video := storage.Video{
 		ProjectName:  "Test Project",
 		ProjectURL:   "https://test-project.com",
 		OtherLogos:   "Other Logo",
@@ -258,9 +261,8 @@ func TestEmailFunctionality(t *testing.T) {
 		Title:        "Test Title",
 		VideoId:      "test-video-id",
 		Gist:         gistPath,
+		Sponsorship:  storage.Sponsorship{Amount: "$500", Emails: "sponsor1@example.com,sponsor2@example.com"},
 	}
-	video.Sponsorship.Emails = "sponsor1@example.com,sponsor2@example.com"
-	video.Sponsorship.Amount = "$500"
 
 	// Create the email client
 	email := NewEmail("test-password")
