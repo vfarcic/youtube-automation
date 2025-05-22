@@ -46,3 +46,6 @@ brittle_tests_report.txt
 
 # Cursor MCP configuration
 .cursor/mcp.json
+
+# Coverage baseline summary
+coverage_baseline_summary.txt
