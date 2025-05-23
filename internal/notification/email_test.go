@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"devopstoolkitseries/youtube-automation/internal/configuration"
-	"devopstoolkitseries/youtube-automation/internal/storage"
+	"devopstoolkit/youtube-automation/internal/configuration"
+	"devopstoolkit/youtube-automation/internal/storage"
 
 	"github.com/emersion/go-smtp"
 )

@@ -49,3 +49,7 @@ brittle_tests_report.txt
 
 # Coverage baseline summary
 coverage_baseline_summary.txt
+
+.roo/
+
+.mcp.json
