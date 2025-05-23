@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"strings"
 
-	"devopstoolkitseries/youtube-automation/internal/configuration"
-	"devopstoolkitseries/youtube-automation/internal/storage"
+	"devopstoolkit/youtube-automation/internal/configuration"
+	"devopstoolkit/youtube-automation/internal/storage"
 
-	gomail "gopkg.in/mail.v2"
+	gomail "gopkg.in/gomail.v2"
 )
 
 type Email struct {

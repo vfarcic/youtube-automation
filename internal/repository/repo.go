@@ -8,7 +8,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"devopstoolkitseries/youtube-automation/pkg/utils"
+	"devopstoolkit/youtube-automation/pkg/utils"
 )
 
 type Repo struct{}

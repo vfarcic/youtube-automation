@@ -5,6 +5,9 @@ GOCLEAN = $(GOCMD) clean
 
 # Output binary name
 BINARY_NAME = youtube-release
+# Source directory for the main application
+CMD_DIR = cmd/youtube-automation
+
 # Determine version from git tag or commit hash. Prioritize exact match to a tag.
 VERSION := $(shell git describe --tags --exact-match 2>/dev/null || git describe --always --dirty --exclude 'youtube-automation*' 2>/dev/null || echo "dev")
 
@@ -30,12 +33,12 @@ build: $(OS_ARCHS)
 $(OS_ARCHS):
 	$(eval OS := $(word 1, $(subst /, ,$@)))
 	$(eval ARCH := $(word 2, $(subst /, ,$@)))
-	CGO_ENABLED=0 GOOS=$(OS) GOARCH=$(ARCH) $(GOBUILD) -ldflags="-X main.version=$(VERSION)" -o $(BINARY_NAME)_$(OS)_$(ARCH) .
+	CGO_ENABLED=0 GOOS=$(OS) GOARCH=$(ARCH) $(GOBUILD) -ldflags="-X main.version=$(VERSION)" -o $(BINARY_NAME)_$(OS)_$(ARCH) ./$(CMD_DIR)
 
 # Build a single binary for the current platform, named simply $(BINARY_NAME)
 # This is useful for local testing, like the TestVersionFlag.
 build-local:
-	CGO_ENABLED=0 $(GOBUILD) -ldflags="-X main.version=$(VERSION)" -o $(BINARY_NAME) .
+	CGO_ENABLED=0 $(GOBUILD) -ldflags="-X main.version=$(VERSION)" -o $(BINARY_NAME) ./$(CMD_DIR)
 
 # Common logic to get current version or default
 GET_CURRENT_VERSION = $(strip $(shell git tag --list "v[0-9]*.[0-9]*.[0-9]*" --sort=-v:refname | head -n 1 || echo "v0.0.0"))
@@ -83,4 +86,4 @@ bump-major:
 	$(eval NEXT_VERSION := $(shell echo $(CURRENT_VERSION) | awk -F'[v.]' '{printf "v%d.0.0", $$2+1}'))
 	$(call BUMP_AND_TAG,$(CURRENT_VERSION),major,$(NEXT_VERSION))
 
-.PHONY: clean build build-local bump-version bump-patch bump-major get-next-minor-version get-next-patch-version get-next-major-version
+.PHONY: build build-local clean test
