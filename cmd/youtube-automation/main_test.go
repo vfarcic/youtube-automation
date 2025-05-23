@@ -45,7 +45,9 @@ func TestCreateVideo(t *testing.T) {
 		Publish:  storage.Tasks{Completed: 0, Total: 5},
 	}
 
-	y.WriteVideo(video, yamlFilePath)
+	if err := y.WriteVideo(video, yamlFilePath); err != nil {
+		t.Fatalf("Failed to write initial test video YAML: %v", err)
+	}
 
 	// Verify the files were created
 	if _, err := os.Stat(mdFilePath); os.IsNotExist(err) {
@@ -100,7 +102,9 @@ func TestVideoPhaseTransitions(t *testing.T) {
 	testPhase := func(video storage.Video, expectedPhase int, message string) {
 		// Write the video to the file
 		y := storage.YAML{}
-		y.WriteVideo(video, testVideoPath)
+		if err := y.WriteVideo(video, testVideoPath); err != nil {
+			t.Fatalf("Failed to write test video YAML for phase '%s': %v", message, err)
+		}
 
 		// Read the video directly without mocking
 		video = y.GetVideo(testVideoPath)

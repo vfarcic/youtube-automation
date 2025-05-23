@@ -47,7 +47,7 @@ func (r *Repo) Update(repo, title, videoID string) error {
 	}
 	// Confirmation before deleting the repository
 	confirmMsg := fmt.Sprintf("Are you sure you want to delete the local repository clone at '%s'?", repo)
-	if utils.ConfirmAction(confirmMsg) {
+	if utils.ConfirmAction(confirmMsg, nil) {
 		cmdDelete := exec.Command("rm", "-rf", repo)
 		_, err = cmdDelete.CombinedOutput()
 		if err != nil {

@@ -1,6 +1,0 @@
----
-description: 
-globs: 
-alwaysApply: true
----
-Get rules what to do and how to do it from `memory` MCP. 

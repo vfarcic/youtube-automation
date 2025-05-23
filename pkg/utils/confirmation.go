@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/charmbracelet/huh"
@@ -9,8 +10,9 @@ import (
 
 // ConfirmAction prompts the user for confirmation.
 // message: The confirmation message to display
+// inputReader: Optional reader for testability. If nil, defaults to os.Stdin behavior.
 // Returns: Whether the action is confirmed
-func ConfirmAction(message string) bool {
+func ConfirmAction(message string, inputReader io.Reader) bool {
 	var confirmed bool
 
 	// Create confirmation prompt using huh library
@@ -24,11 +26,18 @@ func ConfirmAction(message string) bool {
 		),
 	)
 
+	if inputReader != nil {
+		form = form.WithInput(inputReader)
+	}
+
 	// Run the form
 	err := form.Run()
 	if err != nil {
+		// In tests with controlled input, an error might mean the input was exhausted
+		// or the form was aborted by specific sequences. Non-interactive huh.ErrUserAborted
+		// might not apply, but other errors can occur if input is malformed or incomplete.
 		fmt.Fprintf(os.Stderr, "Error displaying confirmation prompt: %v\n", err)
-		return false
+		return false // Default to false on form error
 	}
 
 	return confirmed
