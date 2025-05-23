@@ -2,12 +2,15 @@ package configuration
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/spf13/cobra"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 )
 
@@ -988,4 +991,69 @@ email: {}`,
 			}
 		})
 	}
+}
+
+// Helper function to compare string slices (order matters)
+func compareStringSlices(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i, v := range a {
+		if v != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func TestSlackSettingsLoading(t *testing.T) {
+	// Define the YAML content for the test
+	slackYAMLContent := `
+slack:
+  targetChannelIDs:
+    - "C123YAML"
+    - "C456YAML"
+`
+	// Create a temporary settings.yaml file with the Slack configuration
+	settingsDir, cleanup := setupTestSettings(t, slackYAMLContent)
+	defer cleanup()
+
+	// Store original working directory and change to the temp directory
+	// where settings.yaml was created, so that init() can find it.
+	originalWd, err := os.Getwd()
+	require.NoError(t, err, "Failed to get current working directory")
+	err = os.Chdir(filepath.Dir(settingsDir)) // settingsDir is the path to settings.yaml, so Dir gives the directory
+	require.NoError(t, err, "Failed to change to temp directory")
+	defer func() {
+		err = os.Chdir(originalWd)
+		require.NoError(t, err, "Failed to restore original working directory")
+	}()
+
+	// Reset GlobalSettings to ensure a clean state for this test
+	GlobalSettings = Settings{}
+	// Re-initialize cobra command to avoid pollution from other tests, if flags were an issue.
+	// For this specific test (YAML loading), direct unmarshal is safer if init() has side effects.
+
+	// Directly load and unmarshal the test settings file into a new Settings instance
+	// This avoids re-running the full init() which registers flags and might have other side effects.
+	testLocalSettings := Settings{}
+	yamlFile, err := os.ReadFile("settings.yaml") // Reads from the temp dir
+	require.NoError(t, err, "Failed to read temporary settings.yaml")
+	err = yaml.Unmarshal(yamlFile, &testLocalSettings)
+	require.NoError(t, err, "Failed to unmarshal YAML from temporary settings.yaml")
+
+	// Expected Slack settings
+	expectedSlackSettings := SettingsSlack{
+		TargetChannelIDs: []string{"C123YAML", "C456YAML"},
+	}
+
+	// Assert that the Slack settings are loaded correctly
+	assert.True(t, compareStringSlices(testLocalSettings.Slack.TargetChannelIDs, expectedSlackSettings.TargetChannelIDs),
+		fmt.Sprintf("Slack.TargetChannelIDs = %v, want %v", testLocalSettings.Slack.TargetChannelIDs, expectedSlackSettings.TargetChannelIDs))
+
+	// Additionally, if we want to test the global instance after a fresh init logic:
+	// This is a bit more involved due to init() being an init function.
+	// One would typically refactor the core loading logic from init() into a separate
+	// function to test it in isolation without re-running all flag setup.
+	// For now, the direct unmarshal test above is safer and more targeted for YAML loading.
 }

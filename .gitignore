@@ -55,3 +55,7 @@ coverage_baseline_summary.txt
 .mcp.json
 
 cover.out
+
+# Temporary PRD files
+scripts/prd_*.md
+scripts/prd_*.txt
