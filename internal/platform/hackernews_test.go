@@ -6,6 +6,18 @@ import (
 	"testing"
 )
 
+// mockStyle is a mock implementation for styles that have a Render method.
+// It's defined here to be accessible by other test files in the platform package.
+type mockStyle struct{}
+
+// Render returns the first string passed to it, or an empty string.
+func (m mockStyle) Render(text ...string) string {
+	if len(text) == 0 {
+		return ""
+	}
+	return text[0] // Simple mock behavior
+}
+
 // TestHackerNewsOutput verifies the format of HackerNews post message
 func TestHackerNewsOutput(t *testing.T) {
 	// Mock getYouTubeURL function

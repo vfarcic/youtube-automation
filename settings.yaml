@@ -20,3 +20,8 @@ bluesky:
 videoDefaults:
   language: "en"
   audioLanguage: "en"
+
+slack:
+  targetChannelIDs:
+    - "C0123EXAMPLE1" # Placeholder: e.g., #announcements
+    - "C0456EXAMPLE2" # Placeholder: e.g., #new-videos

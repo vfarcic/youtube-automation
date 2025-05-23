@@ -24,6 +24,7 @@ type Settings struct {
 	Hugo          SettingsHugo          `yaml:"hugo"`
 	Bluesky       SettingsBluesky       `yaml:"bluesky"`
 	VideoDefaults SettingsVideoDefaults `yaml:"videoDefaults"`
+	Slack         SettingsSlack         `yaml:"slack"`
 }
 
 type SettingsEmail struct {
@@ -57,6 +58,10 @@ type SettingsBluesky struct {
 type SettingsVideoDefaults struct {
 	Language      string `yaml:"language"`
 	AudioLanguage string `yaml:"audioLanguage"`
+}
+
+type SettingsSlack struct {
+	TargetChannelIDs []string `yaml:"targetChannelIDs"`
 }
 
 var GlobalSettings Settings

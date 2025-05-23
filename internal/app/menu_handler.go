@@ -19,6 +19,7 @@ import (
 	"devopstoolkit/youtube-automation/internal/platform"
 	"devopstoolkit/youtube-automation/internal/platform/bluesky"
 	"devopstoolkit/youtube-automation/internal/publishing"
+	"devopstoolkit/youtube-automation/internal/slack"
 	"devopstoolkit/youtube-automation/internal/storage"
 	"devopstoolkit/youtube-automation/internal/ui"
 	"devopstoolkit/youtube-automation/internal/video"
@@ -80,7 +81,7 @@ func (m *MenuHandler) countCompletedTasks(fields []interface{}) (completed int, 
 		}
 		switch valueType.Kind() {
 		case reflect.String:
-			if len(field.(string)) > 0 && field.(string) != "N/A" && field.(string) != "-" {
+			if len(field.(string)) > 0 && field.(string) != "-" { // Field is complete if not empty and not just a dash
 				completed++
 			}
 		case reflect.Bool:
@@ -100,7 +101,7 @@ func (m *MenuHandler) countCompletedTasks(fields []interface{}) (completed int, 
 
 // Helper for form titles based on string value
 func (m *MenuHandler) colorTitleString(title, value string) string {
-	if len(value) > 0 && value != "N/A" && value != "-" {
+	if len(value) > 0 && value != "-" { // Green if not empty and not just a dash
 		return m.greenStyle.Render(title)
 	}
 	return m.orangeStyle.Render(title)
@@ -1134,8 +1135,33 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 
 				// Action: Slack Post
 				if !originalSlackPosted && updatedVideo.SlackPosted && updatedVideo.VideoId != "" {
-					platform.PostSlack(updatedVideo.VideoId, publishing.GetYouTubeURL, m.confirmationStyle)
-					// No programmatic error to catch here. updatedVideo.SlackPosted reflects intent.
+					// Load and validate Slack configuration
+					if err := slack.LoadAndValidateSlackConfig(""); err != nil { // Use default settings.yaml
+						log.Printf(m.errorStyle.Render(fmt.Sprintf("Failed to load Slack configuration: %v", err)))
+						updatedVideo.SlackPosted = false // Revert intent
+						// For now, treat as critical similar to BlueSky post error
+						return fmt.Errorf("failed to load Slack configuration: %w", err)
+					}
+
+					// Create Slack service using the globally loaded config
+					slackService, err := slack.NewSlackService(slack.GlobalSlackConfig)
+					if err != nil {
+						log.Printf(m.errorStyle.Render(fmt.Sprintf("Failed to create Slack service: %v", err)))
+						updatedVideo.SlackPosted = false // Revert intent
+						return fmt.Errorf("failed to create Slack service: %w", err)
+					}
+
+					// Post video to Slack
+					err = slackService.PostVideo(&updatedVideo, updatedVideo.Path)
+					if err != nil {
+						log.Printf(m.errorStyle.Render(fmt.Sprintf("Failed to post video to Slack: %v", err)))
+						updatedVideo.SlackPosted = false // Revert intent
+						// Decide if this should be a critical error that stops saving. For now, yes.
+						return fmt.Errorf("failed to post video to Slack: %w", err)
+					} else {
+						fmt.Println(m.confirmationStyle.Render("Successfully posted to Slack."))
+						// updatedVideo.SlackPosted remains true as set by the user and confirmed by successful action
+					}
 				} else if originalSlackPosted && !updatedVideo.SlackPosted { // User deselected
 					updatedVideo.SlackPosted = false
 				}
@@ -1174,7 +1200,7 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 					log.Println(m.orangeStyle.Render(fmt.Sprintf("TODO: Implement repository update for %s with title %s, videoId %s", updatedVideo.Repo, updatedVideo.Title, updatedVideo.VideoId)))
 					// If this had a real implementation that could fail:
 					// if repoUpdateErr != nil { updatedVideo.Repo = originalRepo; log.Printf(...); /* return if critical */ }
-				} else if originalRepo != "" && (updatedVideo.Repo == "" || updatedVideo.Repo == "N/A") { // User cleared repo
+				} else if originalRepo != "" && updatedVideo.Repo == "" { // User cleared repo by making it empty (but not "N/A")
 					updatedVideo.Repo = ""
 				}
 
