@@ -44,7 +44,11 @@ func (sc *simpleConfirmer) Confirm(prompt string) bool {
 		// For a simple CLI, returning false on error is safer.
 		return false
 	}
-	return strings.ToLower(strings.TrimSpace(response)) == "y"
+	response = strings.TrimSpace(response)
+	if response == "" {
+		return false // Default to 'N' when user just presses Enter
+	}
+	return strings.ToLower(response) == "y"
 }
 
 // New creates a new application instance

@@ -1142,23 +1142,28 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 
 				// Action: BlueSky Post
 				if !originalBlueSkyPosted && updatedVideo.BlueSkyPosted && updatedVideo.Tweet != "" && updatedVideo.VideoId != "" {
-					bsConfig := bluesky.Config{
-						Identifier: configuration.GlobalSettings.Bluesky.Identifier,
-						Password:   configuration.GlobalSettings.Bluesky.Password,
-						URL:        configuration.GlobalSettings.Bluesky.URL,
-					}
-					bsPost := bluesky.Post{
-						Text:          updatedVideo.Tweet,
-						YouTubeURL:    publishing.GetYouTubeURL(updatedVideo.VideoId),
-						VideoID:       updatedVideo.VideoId,
-						ThumbnailPath: updatedVideo.Thumbnail,
-					}
-					if _, bsErr := bluesky.CreatePost(bsConfig, bsPost); bsErr != nil {
-						log.Printf(m.errorStyle.Render(fmt.Sprintf("Failed to post to BlueSky: %v", bsErr)))
-						updatedVideo.BlueSkyPosted = false                        // Revert intent
-						return fmt.Errorf("failed to post to BlueSky: %w", bsErr) // Critical, return error
+					if configuration.GlobalSettings.Bluesky.Identifier == "" || configuration.GlobalSettings.Bluesky.Password == "" {
+						log.Printf(m.errorStyle.Render("BlueSky credentials not configured. Cannot post to BlueSky."))
+						updatedVideo.BlueSkyPosted = false // Revert intent as action cannot be performed
 					} else {
-						fmt.Println(m.confirmationStyle.Render("Posted to BlueSky."))
+						bsConfig := bluesky.Config{
+							Identifier: configuration.GlobalSettings.Bluesky.Identifier,
+							Password:   configuration.GlobalSettings.Bluesky.Password,
+							URL:        configuration.GlobalSettings.Bluesky.URL,
+						}
+						bsPost := bluesky.Post{
+							Text:          updatedVideo.Tweet,
+							YouTubeURL:    publishing.GetYouTubeURL(updatedVideo.VideoId),
+							VideoID:       updatedVideo.VideoId,
+							ThumbnailPath: updatedVideo.Thumbnail,
+						}
+						if _, bsErr := bluesky.CreatePost(bsConfig, bsPost); bsErr != nil {
+							log.Printf(m.errorStyle.Render(fmt.Sprintf("Failed to post to BlueSky: %v", bsErr)))
+							updatedVideo.BlueSkyPosted = false                        // Revert intent
+							return fmt.Errorf("failed to post to BlueSky: %w", bsErr) // Critical, return error
+						} else {
+							fmt.Println(m.confirmationStyle.Render("Posted to BlueSky."))
+						}
 					}
 				} else if originalBlueSkyPosted && !updatedVideo.BlueSkyPosted { // User deselected
 					updatedVideo.BlueSkyPosted = false
