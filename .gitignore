@@ -53,3 +53,5 @@ coverage_baseline_summary.txt
 .roo/
 
 .mcp.json
+
+cover.out

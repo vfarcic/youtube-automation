@@ -1,28 +1,94 @@
 package utils_test
 
 import (
+	"devopstoolkit/youtube-automation/pkg/utils"
+	"io"
+	"os"
+	"sync"
 	"testing"
-	// "github.com/stretchr/testify/assert" // Commented out as not used
+	"time"
+
+	// "github.com/charmbracelet/huh" // Not directly used in test logic after refactor
+	"github.com/stretchr/testify/assert"
 )
 
-func TestConfirmActionRunsWithoutError(t *testing.T) {
-	// This test verifies that utils.ConfirmAction can be called without panicking.
-	// It does not simulate user interaction with the huh.Confirm prompt.
-	// Testing the interactive aspect of huh.Confirm is complex in a unit test
-	// and would typically be covered by integration or end-to-end tests
-	// that simulate CLI interactions.
-	// The primary goal here is to ensure the function initializes and runs.
-	// The function itself will block waiting for user input if run directly.
-	// In a test environment without a TTY, huh.Confirm might behave differently
-	// or error out, which this test would catch if it causes a panic.
-	// We expect this to hang indefinitely or fail if TTY is unavailable when tests are run directly
-	// _ = utils.ConfirmAction("Test prompt: Run without error?")
+func TestConfirmAction(t *testing.T) {
+	testCases := []struct {
+		name     string
+		input    string
+		expected bool
+	}{
+		{
+			name:     "Confirm with y",
+			input:    "y\n",
+			expected: true,
+		},
+		{
+			name:     "Confirm with Y",
+			input:    "Y\n",
+			expected: true,
+		},
+		{
+			name:     "Decline with n",
+			input:    "n\n",
+			expected: false,
+		},
+		{
+			name:     "Decline with N",
+			input:    "N\n",
+			expected: false,
+		},
+		{
+			name:     "Decline with explicit enter (simulating default no)",
+			input:    "n\n",
+			expected: false,
+		},
+		// Note: huh.Confirm re-prompts internally. Testing multi-line complex interactions
+		// like "invalid\ny\n" is more involved as it depends on huh's internal loop.
+		// These simpler cases cover the direct input to boolean conversion.
+	}
 
-	// To make this test runnable in automated environments where no TTY is available,
-	// we will not call utils.ConfirmAction directly as it would block or error.
-	// Instead, we acknowledge that meaningful unit testing of this interactive function
-	// is out of scope for this specific unit test file.
-	// A placeholder assertion or check can be added if needed, or the test can simply pass
-	// to indicate the test file itself is correctly structured.
-	t.Log("TestConfirmActionRunsWithoutError executed. Note: Interactive prompt not tested.")
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			r, w, pipeErr := os.Pipe()
+			if pipeErr != nil {
+				t.Fatalf("Failed to create pipe: %v", pipeErr)
+			}
+
+			var wg sync.WaitGroup
+			wg.Add(1)
+
+			go func() {
+				defer wg.Done()
+				defer w.Close()
+				_, err := io.WriteString(w, tc.input)
+				if err != nil {
+					t.Errorf("Failed to write to pipe: %v", err) // Use t.Errorf to log error but not stop test immediately
+				}
+			}()
+
+			// Timeout to prevent tests from hanging indefinitely
+			done := make(chan bool)
+			go func() {
+				result := utils.ConfirmAction("Test prompt: "+tc.name, r)
+				assert.Equal(t, tc.expected, result, "Confirmation result mismatch")
+				close(done)
+			}()
+
+			select {
+			case <-done:
+				// Test completed successfully
+			case <-time.After(2 * time.Second): // Increased timeout slightly
+				t.Fatal("Test timed out, ConfirmAction likely hanging")
+			}
+
+			wg.Wait() // Wait for the writer goroutine to finish
+			r.Close() // Close the read end of the pipe
+		})
+	}
 }
+
+// Remove the old placeholder test
+// func TestConfirmActionRunsWithoutError(t *testing.T) {
+// 	t.Log("TestConfirmActionRunsWithoutError executed. Note: Interactive prompt not tested.")
+// }

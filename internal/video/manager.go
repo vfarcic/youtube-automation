@@ -22,10 +22,10 @@ func (m *Manager) GetVideoPhase(vi storage.VideoIndex) int {
 	yaml := storage.YAML{}
 	video := yaml.GetVideo(m.filePathFunc(vi.Category, vi.Name, "yaml"))
 
-	if video.Delayed {
-		return workflow.PhaseDelayed
-	} else if len(video.Sponsorship.Blocked) > 0 {
+	if len(video.Sponsorship.Blocked) > 0 { // Check for sponsorship block first
 		return workflow.PhaseSponsoredBlocked
+	} else if video.Delayed { // Then check for delayed
+		return workflow.PhaseDelayed
 	} else if len(video.Repo) > 0 { // Assuming video.Repo is populated when published
 		return workflow.PhasePublished
 	} else if len(video.UploadVideo) > 0 && len(video.Tweet) > 0 { // Assuming these indicate pending publish
