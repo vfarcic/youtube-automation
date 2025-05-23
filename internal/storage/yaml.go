@@ -144,15 +144,16 @@ func (y *YAML) GetVideo(path string) Video {
 	return video
 }
 
-func (y *YAML) WriteVideo(video Video, path string) {
+func (y *YAML) WriteVideo(video Video, path string) error {
 	data, err := yaml.Marshal(&video)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to marshal video data for %s: %w", path, err)
 	}
 	err = os.WriteFile(path, data, 0644)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to write video data to file %s: %w", path, err)
 	}
+	return nil
 }
 
 func (y *YAML) GetIndex() []VideoIndex {

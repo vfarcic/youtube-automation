@@ -37,10 +37,6 @@ func TestNew(t *testing.T) {
 		t.Error("videoManager is nil")
 	}
 
-	if app.menuHandler.getDirsFunc == nil {
-		t.Error("getDirsFunc is nil")
-	}
-
 	if app.menuHandler.dirSelector == nil {
 		t.Error("dirSelector is nil")
 	}

@@ -81,7 +81,9 @@ func TestGetVideo(t *testing.T) {
 
 	// Write the YAML file
 	y := YAML{}
-	y.WriteVideo(testVideo, testPath)
+	if err := y.WriteVideo(testVideo, testPath); err != nil {
+		t.Fatalf("Failed to write test video YAML in TestGetVideo: %v", err)
+	}
 
 	// Read the YAML file
 	video := y.GetVideo(testPath)
@@ -117,7 +119,9 @@ func TestWriteVideo(t *testing.T) {
 
 	// Write the video to YAML
 	y := YAML{}
-	y.WriteVideo(testVideo, testPath)
+	if err := y.WriteVideo(testVideo, testPath); err != nil {
+		t.Fatalf("Failed to write test video YAML for TestWriteVideo: %v", err)
+	}
 
 	// Verify the file was created
 	if _, err := os.Stat(testPath); os.IsNotExist(err) {

@@ -37,7 +37,6 @@ var ErrExitApplication = errors.New("user requested application exit")
 // MenuHandler handles the main menu and navigation logic
 type MenuHandler struct {
 	confirmer         Confirmer
-	getDirsFunc       func() ([]Directory, error)
 	dirSelector       DirectorySelector
 	uiRenderer        *ui.Renderer
 	videoManager      *video.Manager
@@ -612,7 +611,7 @@ func (m *MenuHandler) doGetAvailableDirectories() ([]Directory, error) {
 
 // SelectDirectory implements DirectorySelector interface
 func (m *MenuHandler) SelectDirectory(input *bytes.Buffer) (Directory, error) {
-	availableDirs, err := m.getDirsFunc()
+	availableDirs, err := m.doGetAvailableDirectories()
 	if err != nil {
 		return Directory{}, fmt.Errorf("failed to get available directories: %w", err)
 	}
@@ -831,7 +830,9 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 				updatedVideo.Init.Completed = completedCount
 				updatedVideo.Init.Total = totalCount
 
-				yaml.WriteVideo(updatedVideo, updatedVideo.Path)
+				if err := yaml.WriteVideo(updatedVideo, updatedVideo.Path); err != nil {
+					return fmt.Errorf("failed to save initial details: %w", err)
+				}
 				fmt.Println(m.confirmationStyle.Render(fmt.Sprintf("Video '%s' initial details updated.", updatedVideo.Name)))
 				videoToEdit = updatedVideo // Persist changes for the next loop iteration
 			} else {
@@ -881,7 +882,9 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 					updatedVideo.TaglineIdeas,
 					updatedVideo.OtherLogos,
 				})
-				yaml.WriteVideo(updatedVideo, updatedVideo.Path)
+				if err := yaml.WriteVideo(updatedVideo, updatedVideo.Path); err != nil {
+					return fmt.Errorf("failed to save work progress: %w", err)
+				}
 				fmt.Println(m.confirmationStyle.Render(fmt.Sprintf("Video '%s' work progress updated.", updatedVideo.Name)))
 				videoToEdit = updatedVideo // Persist changes for the next loop iteration
 			} else {
@@ -933,7 +936,9 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 				// Note: Old logic for Define.Total was more complex due to fabric interactions.
 				// Here, it's based on the direct fields in this simplified form.
 
-				yaml.WriteVideo(updatedVideo, updatedVideo.Path)
+				if err := yaml.WriteVideo(updatedVideo, updatedVideo.Path); err != nil {
+					return fmt.Errorf("failed to save definition details: %w", err)
+				}
 
 				if !originalRequestThumbnailStatus && updatedVideo.RequestThumbnail {
 					if configuration.GlobalSettings.Email.Password == "" {
@@ -987,8 +992,6 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 
 			if save {
 				yaml := storage.YAML{}
-				yaml.WriteVideo(updatedVideo, updatedVideo.Path)
-
 				updatedVideo.Edit.Completed, updatedVideo.Edit.Total = m.countCompletedTasks([]interface{}{
 					updatedVideo.Thumbnail,
 					updatedVideo.Members,
@@ -1000,7 +1003,9 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 				if !strings.Contains(updatedVideo.Timecodes, "FIXME:") {
 					updatedVideo.Edit.Completed++
 				}
-				yaml.WriteVideo(updatedVideo, updatedVideo.Path) // Persist count changes
+				if err := yaml.WriteVideo(updatedVideo, updatedVideo.Path); err != nil {
+					return fmt.Errorf("failed to save post-production details: %w", err)
+				}
 
 				if !originalRequestEditStatus && updatedVideo.RequestEdit {
 					if configuration.GlobalSettings.Email.Password == "" {
@@ -1019,6 +1024,7 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 			} else {
 				fmt.Println(m.orangeStyle.Render("Changes not saved for post-production."))
 			}
+
 		case editPhasePublishing:
 			save := true
 			// Store original values to detect changes for actions
@@ -1067,105 +1073,145 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 			if save {
 				yaml := storage.YAML{}
 
-				// Handle Hugo post creation/path update before saving video for count
-				if createHugo && updatedVideo.HugoPath == "" && originalHugoPath == "" { // Create new
+				// --- Actions Section ---
+				// We will perform actions first, and only if they succeed, we keep the user's intent.
+				// If an action fails, we revert the corresponding boolean in updatedVideo.
+
+				// Action: Hugo Post
+				if createHugo && updatedVideo.HugoPath == "" && originalHugoPath == "" { // Create new Hugo post
 					hugoPublisher := publishing.Hugo{}
-					var hugoErr error
-					updatedVideo.HugoPath, hugoErr = hugoPublisher.Post(updatedVideo.Gist, updatedVideo.Title, updatedVideo.Date)
+					createdPath, hugoErr := hugoPublisher.Post(updatedVideo.Gist, updatedVideo.Title, updatedVideo.Date)
 					if hugoErr != nil {
 						log.Printf(m.errorStyle.Render(fmt.Sprintf("Failed to create Hugo post: %v", hugoErr)))
-						// Don't stop, just log error
+						updatedVideo.HugoPath = originalHugoPath // Revert intent
+						// No return here yet, we'll save the reverted state and then let the outer error handling catch it if needed
+						// or decide later if this specific error should halt everything before save.
+						// For now, let's allow other actions to proceed and save the partially successful state.
+						// Qodo comment suggests this could be problematic. Let's stick to returning critical errors.
+						return fmt.Errorf("failed to create Hugo post: %w", hugoErr)
+					} else {
+						updatedVideo.HugoPath = createdPath // Action succeeded, keep intent
 					}
-				} else if !createHugo {
+				} else if !createHugo { // User deselected Hugo creation
 					updatedVideo.HugoPath = ""
 				}
 
-				updatedVideo.Publish.Completed, updatedVideo.Publish.Total = m.countCompletedTasks([]interface{}{
-					updatedVideo.UploadVideo,
-					updatedVideo.HugoPath, // Considered done if path exists
-					updatedVideo.BlueSkyPosted,
-					updatedVideo.LinkedInPosted,
-					updatedVideo.SlackPosted,
-					updatedVideo.YouTubeHighlight,
-					updatedVideo.YouTubeComment,
-					updatedVideo.YouTubeCommentReply,
-					updatedVideo.GDE,
-					updatedVideo.Repo,
-				})
-				// Special logic for NotifiedSponsors completion
-				updatedVideo.Publish.Total++
-				if updatedVideo.NotifiedSponsors || len(updatedVideo.Sponsorship.Amount) == 0 || updatedVideo.Sponsorship.Amount == "N/A" || updatedVideo.Sponsorship.Amount == "-" {
-					updatedVideo.Publish.Completed++
-				}
-
-				yaml.WriteVideo(updatedVideo, updatedVideo.Path) // Save before performing actions that might fail
-
-				// Perform actions based on changes
-				if originalUploadVideo == "" && updatedVideo.UploadVideo != "" {
-					// Simplified video ID extraction
+				// Action: Set VideoID from UploadVideo and Upload Thumbnail
+				actualVideoID := updatedVideo.VideoId                            // Assume it might have been pre-filled
+				if originalUploadVideo == "" && updatedVideo.UploadVideo != "" { // New video upload URL provided
 					vidID := strings.ReplaceAll(updatedVideo.UploadVideo, "https://youtu.be/", "")
 					vidID = strings.ReplaceAll(vidID, "https://www.youtube.com/watch?v=", "")
-					// Further remove any trailing parameters like &list=...
 					if strings.Contains(vidID, "&") {
 						vidID = vidID[:strings.Index(vidID, "&")]
 					}
-					updatedVideo.VideoId = vidID
-					yaml.WriteVideo(updatedVideo, updatedVideo.Path)                                                    // Save VideoId
-					fmt.Println(m.orangeStyle.Render(fmt.Sprintf("Video ID set/updated to: %s", updatedVideo.VideoId))) // Use OrangeStyle for Info
-					if updatedVideo.Thumbnail != "" {
-						// Use publishing.UploadThumbnail
-						if err := publishing.UploadThumbnail(updatedVideo); err != nil {
-							log.Printf(m.errorStyle.Render(fmt.Sprintf("Failed to upload thumbnail: %v", err)))
+					actualVideoID = vidID // This is the derived VideoId
+					// No direct failure possible here, but thumbnail upload depends on it
+					fmt.Println(m.orangeStyle.Render(fmt.Sprintf("Video ID derived as: %s", actualVideoID)))
+
+					if updatedVideo.Thumbnail != "" { // User provided/confirmed a thumbnail path
+						tempVideoForThumbnail := updatedVideo         // Create a temporary copy
+						tempVideoForThumbnail.VideoId = actualVideoID // Ensure it has the ID for UploadThumbnail
+						if tnErr := publishing.UploadThumbnail(tempVideoForThumbnail); tnErr != nil {
+							log.Printf(m.errorStyle.Render(fmt.Sprintf("Failed to upload thumbnail: %v", tnErr)))
+							// If thumbnail upload fails, what does it mean for `updatedVideo.UploadVideo` intent?
+							// The VideoId might still be valid. For now, we only log and return, as per previous change.
+							return fmt.Errorf("failed to upload thumbnail: %w", tnErr)
 						} else {
-							fmt.Println(m.confirmationStyle.Render("Thumbnail uploaded.")) // Removed (simulated)
+							fmt.Println(m.confirmationStyle.Render("Thumbnail uploaded."))
 						}
 					}
-					fmt.Println(m.orangeStyle.Render("Manual YouTube Studio Actions Needed: End screen, Playlists, Language, Monetization")) // Use OrangeStyle for Warning
-				}
+					fmt.Println(m.orangeStyle.Render("Manual YouTube Studio Actions Needed: End screen, Playlists, Language, Monetization"))
+				} // End of new video upload URL block
+				updatedVideo.VideoId = actualVideoID // Ensure updatedVideo has the final video ID
 
+				// Action: LinkedIn Post
 				if !originalLinkedInPosted && updatedVideo.LinkedInPosted && updatedVideo.Tweet != "" && updatedVideo.VideoId != "" {
 					platform.PostLinkedIn(updatedVideo.Tweet, updatedVideo.VideoId, publishing.GetYouTubeURL, m.confirmationStyle)
-					// Message is handled by PostLinkedIn itself
+					// No programmatic error to catch here, it's a manual step. updatedVideo.LinkedInPosted reflects intent.
+				} else if originalLinkedInPosted && !updatedVideo.LinkedInPosted { // User deselected
+					updatedVideo.LinkedInPosted = false
 				}
+
+				// Action: Slack Post
 				if !originalSlackPosted && updatedVideo.SlackPosted && updatedVideo.VideoId != "" {
 					platform.PostSlack(updatedVideo.VideoId, publishing.GetYouTubeURL, m.confirmationStyle)
-					// Message is handled by PostSlack itself
+					// No programmatic error to catch here. updatedVideo.SlackPosted reflects intent.
+				} else if originalSlackPosted && !updatedVideo.SlackPosted { // User deselected
+					updatedVideo.SlackPosted = false
 				}
-				// TODO: Add Hacker News and DOT post logic if originalHNPosted/originalDOTPosted were used and functions exist in platform package
+
+				// Action: BlueSky Post
 				if !originalBlueSkyPosted && updatedVideo.BlueSkyPosted && updatedVideo.Tweet != "" && updatedVideo.VideoId != "" {
-					// Use bluesky sub-package
 					bsConfig := bluesky.Config{
 						Identifier: configuration.GlobalSettings.Bluesky.Identifier,
 						Password:   configuration.GlobalSettings.Bluesky.Password,
 						URL:        configuration.GlobalSettings.Bluesky.URL,
 					}
 					bsPost := bluesky.Post{
-						Text:          updatedVideo.Tweet, // Assuming Tweet is the text for BlueSky
+						Text:          updatedVideo.Tweet,
 						YouTubeURL:    publishing.GetYouTubeURL(updatedVideo.VideoId),
 						VideoID:       updatedVideo.VideoId,
-						ThumbnailPath: updatedVideo.Thumbnail, // Assuming updatedVideo.Thumbnail is a local path
+						ThumbnailPath: updatedVideo.Thumbnail,
 					}
-					if _, err := bluesky.CreatePost(bsConfig, bsPost); err != nil {
-						log.Printf(m.errorStyle.Render(fmt.Sprintf("Failed to post to BlueSky: %v", err)))
+					if _, bsErr := bluesky.CreatePost(bsConfig, bsPost); bsErr != nil {
+						log.Printf(m.errorStyle.Render(fmt.Sprintf("Failed to post to BlueSky: %v", bsErr)))
+						updatedVideo.BlueSkyPosted = false                        // Revert intent
+						return fmt.Errorf("failed to post to BlueSky: %w", bsErr) // Critical, return error
 					} else {
 						fmt.Println(m.confirmationStyle.Render("Posted to BlueSky."))
 					}
+				} else if originalBlueSkyPosted && !updatedVideo.BlueSkyPosted { // User deselected
+					updatedVideo.BlueSkyPosted = false
 				}
 
+				// Action: Repo Update (Conceptual)
 				if originalRepo == "" && updatedVideo.Repo != "" && updatedVideo.Repo != "N/A" {
-					// Assuming Repo struct and Update method exist in publishing or a sub-package
-					// For now, let's assume it was meant to be a general concept not tied to a specific cli.Repo
-					log.Println(m.orangeStyle.Render(fmt.Sprintf("TODO: Implement repository update for %s with title %s, videoId %s", updatedVideo.Repo, updatedVideo.Title, updatedVideo.VideoId))) // Use OrangeStyle for Info
+					log.Println(m.orangeStyle.Render(fmt.Sprintf("TODO: Implement repository update for %s with title %s, videoId %s", updatedVideo.Repo, updatedVideo.Title, updatedVideo.VideoId)))
+					// If this had a real implementation that could fail:
+					// if repoUpdateErr != nil { updatedVideo.Repo = originalRepo; log.Printf(...); /* return if critical */ }
+				} else if originalRepo != "" && (updatedVideo.Repo == "" || updatedVideo.Repo == "N/A") { // User cleared repo
+					updatedVideo.Repo = ""
 				}
 
+				// Action: Notify Sponsors
 				if !originalNotifiedSponsors && updatedVideo.NotifiedSponsors && len(updatedVideo.Sponsorship.Emails) > 0 {
 					if configuration.GlobalSettings.Email.Password == "" {
 						log.Println(m.errorStyle.Render("Email password not configured. Cannot send sponsor notification."))
+						updatedVideo.NotifiedSponsors = false // Revert intent
 					} else {
 						emailService := notification.NewEmail(configuration.GlobalSettings.Email.Password)
+						// Assuming SendSponsors doesn't return an error that needs handling here, or we log it inside.
 						emailService.SendSponsors(configuration.GlobalSettings.Email.From, updatedVideo.Sponsorship.Emails, updatedVideo.VideoId, updatedVideo.Sponsorship.Amount)
 						fmt.Println(m.confirmationStyle.Render("Sponsor notification email sent."))
 					}
+				} else if originalNotifiedSponsors && !updatedVideo.NotifiedSponsors { // User deselected
+					updatedVideo.NotifiedSponsors = false
+				}
+
+				// --- End of Actions Section ---
+
+				// Now, calculate completion based on the *actual* state of updatedVideo after actions.
+				updatedVideo.Publish.Completed, updatedVideo.Publish.Total = m.countCompletedTasks([]interface{}{
+					updatedVideo.UploadVideo,    // This is the URL string, considered done if present
+					updatedVideo.HugoPath,       // Considered done if path exists
+					updatedVideo.BlueSkyPosted,  // Boolean, true if action succeeded
+					updatedVideo.LinkedInPosted, // Boolean, true if action succeeded
+					updatedVideo.SlackPosted,    // Boolean, true if action succeeded
+					updatedVideo.YouTubeHighlight,
+					updatedVideo.YouTubeComment,
+					updatedVideo.YouTubeCommentReply,
+					updatedVideo.GDE,
+					updatedVideo.Repo, // URL string, considered done if present (and not N/A)
+				})
+				// Special logic for NotifiedSponsors completion (based on actual state)
+				updatedVideo.Publish.Total++
+				if updatedVideo.NotifiedSponsors || len(updatedVideo.Sponsorship.Amount) == 0 || updatedVideo.Sponsorship.Amount == "N/A" || updatedVideo.Sponsorship.Amount == "-" {
+					updatedVideo.Publish.Completed++
+				}
+
+				// Finally, save the video with its actual state after all actions.
+				if err := yaml.WriteVideo(updatedVideo, updatedVideo.Path); err != nil {
+					return fmt.Errorf("failed to save publishing details: %w", err)
 				}
 
 				fmt.Println(m.confirmationStyle.Render(fmt.Sprintf("Video '%s' publishing details updated and actions processed.", updatedVideo.Name)))

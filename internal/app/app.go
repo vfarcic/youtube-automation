@@ -57,34 +57,11 @@ func New() *App {
 	fsOps := filesystem.NewOperations()
 	videoManager := video.NewManager(fsOps.GetFilePath)
 
-	// Define getDirsFunc and dirSelector (simplified, assuming default behavior for now)
-	// In a real scenario, these might come from config or be more complex.
-	getDirsFunc := func() ([]Directory, error) {
-		// Placeholder: This would typically scan configured directories
-		// For now, return an empty list or a predefined one if necessary for basic operation.
-		// The actual implementation is in MenuHandler.doGetAvailableDirectories
-		// This func is a dependency passed to MenuHandler, so MenuHandler should have its own way to get dirs.
-		// Let's assume MenuHandler's internal doGetAvailableDirectories is sufficient and we pass nil or a dummy here
-		// if NewMenuHandler doesn't strictly need it for *initialization* itself.
-		// However, the MenuHandler constructor in app.go *does* take it.
-		// For now, we'll pass a simple implementation that relies on the MenuHandler's internal method later.
-		// This is a bit circular if MenuHandler.doGetAvailableDirectories isn't static.
-		// Let's assume for the constructor it's okay to be nil if the MenuHandler populates it or uses an internal one.
-		// Revisiting doGetAvailableDirectories logic: it's a method on MenuHandler, not a static func.
-		// So, MenuHandler needs to be instantiated first, then its method can be used if needed for this func.
-		// This suggests that getDirsFunc might not be needed by NewMenuHandler directly if it's for runtime use.
-
-		// Let's create a dummy function for now, as MenuHandler.doGetAvailableDirectories handles the real logic.
-		// The MenuHandler's SelectDirectory method will use its internal doGetAvailableDirectories.
-		return []Directory{}, nil
-	}
-
 	confirmerInstance := &simpleConfirmer{}
 
 	// Instantiate MenuHandler directly here, as NewMenuHandler doesn't exist
 	mh := &MenuHandler{
 		confirmer:         confirmerInstance,
-		getDirsFunc:       getDirsFunc,
 		uiRenderer:        uiRenderer,
 		videoManager:      videoManager,
 		filesystem:        fsOps,
