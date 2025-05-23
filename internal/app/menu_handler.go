@@ -26,7 +26,7 @@ import (
 
 // MenuHandler handles the main menu and navigation logic
 type MenuHandler struct {
-	confirmer    confirmer
+	confirmer    Confirmer
 	getDirsFunc  func() ([]Directory, error)
 	dirSelector  DirectorySelector
 	uiRenderer   *ui.Renderer
@@ -46,7 +46,7 @@ const (
 const actionReturn = 99
 
 // ChooseIndex displays the main menu and handles user selection
-func (m *MenuHandler) ChooseIndex() {
+func (m *MenuHandler) ChooseIndex() error {
 	var selectedIndex int
 	yaml := storage.YAML{IndexPath: "index.yaml"}
 	form := huh.NewForm(
@@ -59,12 +59,15 @@ func (m *MenuHandler) ChooseIndex() {
 	)
 	err := form.Run()
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to run main menu form: %w", err)
 	}
 	switch selectedIndex {
 	case indexCreateVideo:
 		index := yaml.GetIndex()
-		item := m.ChooseCreateVideo()
+		item, err := m.ChooseCreateVideoAndHandleError()
+		if err != nil {
+			return fmt.Errorf("error in create video choice: %w", err)
+		}
 		if len(item.Category) > 0 && len(item.Name) > 0 {
 			index = append(index, item)
 			yaml.WriteIndex(index)
@@ -72,14 +75,18 @@ func (m *MenuHandler) ChooseIndex() {
 	case indexListVideos:
 		for {
 			index := yaml.GetIndex()
-			returnVal := m.ChooseVideosPhase(index)
+			returnVal, err := m.ChooseVideosPhaseAndHandleError(index)
+			if err != nil {
+				return fmt.Errorf("error in list videos phase: %w", err)
+			}
 			if returnVal {
 				break
 			}
 		}
 	case actionReturn:
-		os.Exit(0)
+		return nil
 	}
+	return nil
 }
 
 // GetPhaseText returns formatted text for a phase with completion status
@@ -92,28 +99,30 @@ func (m *MenuHandler) GetPhaseText(text string, task storage.Tasks) string {
 }
 
 // ChooseCreateVideo handles video creation workflow
-func (m *MenuHandler) ChooseCreateVideo() storage.VideoIndex {
+func (m *MenuHandler) ChooseCreateVideoAndHandleError() (storage.VideoIndex, error) {
 	var name, category string
 	save := true
 	fields, err := cli.GetCreateVideoFields(&name, &category, &save)
 	if err != nil {
-		panic(err)
+		return storage.VideoIndex{}, fmt.Errorf("error getting video fields: %w", err)
 	}
 	form := huh.NewForm(huh.NewGroup(fields...))
 	err = form.Run()
 	if err != nil {
-		log.Fatal(err)
+		return storage.VideoIndex{}, fmt.Errorf("form run failed: %w", err)
 	}
 	vi := storage.VideoIndex{
 		Name:     name,
 		Category: category,
 	}
 	if !save {
-		return vi
+		return vi, nil
 	}
 	dirPath := m.filesystem.GetDirPath(vi.Category)
 	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
-		os.Mkdir(dirPath, 0755)
+		if mkDirErr := os.Mkdir(dirPath, 0755); mkDirErr != nil {
+			return storage.VideoIndex{}, fmt.Errorf("failed to create directory %s: %w", dirPath, mkDirErr)
+		}
 	}
 	scriptContent := `## Intro
 
@@ -145,20 +154,22 @@ FIXME:
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
 		f, errCreate := os.Create(filePath)
 		if errCreate != nil {
-			panic(errCreate)
+			return storage.VideoIndex{}, fmt.Errorf("failed to create script file %s: %w", filePath, errCreate)
 		}
 		defer f.Close()
-		f.Write([]byte(scriptContent))
-		return vi
+		if _, writeErr := f.Write([]byte(scriptContent)); writeErr != nil {
+			return storage.VideoIndex{}, fmt.Errorf("failed to write to script file %s: %w", filePath, writeErr)
+		}
+		return vi, nil
 	}
-	return storage.VideoIndex{}
+	return storage.VideoIndex{}, nil
 }
 
 // ChooseVideosPhase handles the video phase selection workflow
-func (m *MenuHandler) ChooseVideosPhase(vi []storage.VideoIndex) bool {
+func (m *MenuHandler) ChooseVideosPhaseAndHandleError(vi []storage.VideoIndex) (bool, error) {
 	if len(vi) == 0 {
 		fmt.Println(ui.ErrorStyle.Render("No videos found. Create a video first."))
-		return true
+		return true, nil
 	}
 
 	phases := map[int]int{
@@ -219,19 +230,21 @@ func (m *MenuHandler) ChooseVideosPhase(vi []storage.VideoIndex) bool {
 	)
 	err := form.Run()
 	if err != nil {
-		log.Fatal(err)
+		return false, fmt.Errorf("failed to run video phase form: %w", err)
 	}
 
 	if selectedPhase == actionReturn {
-		return true
+		return true, nil
 	}
 
-	m.ChooseVideos(vi, selectedPhase, nil)
-	return false
+	if err := m.ChooseVideosAndHandleError(vi, selectedPhase, nil); err != nil {
+		return false, fmt.Errorf("error in choose videos: %w", err)
+	}
+	return false, nil
 }
 
 // ChooseVideos handles video selection and actions for a specific phase
-func (m *MenuHandler) ChooseVideos(vi []storage.VideoIndex, phase int, input *bytes.Buffer) {
+func (m *MenuHandler) ChooseVideosAndHandleError(vi []storage.VideoIndex, phase int, input *bytes.Buffer) error {
 	yaml := storage.YAML{}
 	var videosInPhase []storage.Video
 
@@ -251,7 +264,7 @@ func (m *MenuHandler) ChooseVideos(vi []storage.VideoIndex, phase int, input *by
 
 	if len(videosInPhase) == 0 {
 		fmt.Println(ui.ErrorStyle.Render("No videos found in this phase."))
-		return
+		return nil
 	}
 
 	// Sort videos by date
@@ -285,11 +298,11 @@ func (m *MenuHandler) ChooseVideos(vi []storage.VideoIndex, phase int, input *by
 
 	err := form.Run()
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to run video selection form: %w", err)
 	}
 
 	if selectedVideo.Name == "return" {
-		return
+		return nil
 	}
 
 	// Now show action options for the selected video
@@ -307,7 +320,7 @@ func (m *MenuHandler) ChooseVideos(vi []storage.VideoIndex, phase int, input *by
 
 	err = actionForm.Run()
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to run action form: %w", err)
 	}
 
 	switch selectedAction {
@@ -315,48 +328,60 @@ func (m *MenuHandler) ChooseVideos(vi []storage.VideoIndex, phase int, input *by
 		// TODO: Implement edit functionality - would need to migrate phase-specific logic
 		fmt.Println(ui.OrangeStyle.Render("Edit functionality not yet implemented in reorganized structure"))
 	case actionDelete:
-		// Handle video deletion
-		if m.handleDeleteVideoAction(selectedVideo, vi) {
+		deleted, errDel := m.handleDeleteVideoActionAndHandleError(selectedVideo, vi)
+		if errDel != nil {
+			return fmt.Errorf("error deleting video: %w", errDel)
+		}
+		if deleted {
 			fmt.Println(ui.ConfirmationStyle.Render(fmt.Sprintf("Video '%s' deleted successfully.", selectedVideo.Name)))
 		}
 	case actionMoveFiles:
 		// TODO: Implement move functionality
 		fmt.Println(ui.OrangeStyle.Render("Move functionality not yet implemented in reorganized structure"))
 	case actionReturn:
-		return
+		return nil
 	}
+	return nil
 }
 
 // handleDeleteVideoAction handles video deletion workflow
-func (m *MenuHandler) handleDeleteVideoAction(selectedVideo storage.Video, allVideoIndices []storage.VideoIndex) bool {
+func (m *MenuHandler) handleDeleteVideoActionAndHandleError(selectedVideo storage.Video, allVideoIndices []storage.VideoIndex) (bool, error) {
 	confirmMsg := fmt.Sprintf("Are you sure you want to delete video '%s' and its associated files (.md, .yaml)?", selectedVideo.Name)
 
-	if m.confirmer.Confirm(confirmMsg) {
+	confirmed := utils.ConfirmAction(confirmMsg)
+	if confirmed {
 		mdPath := strings.ReplaceAll(selectedVideo.Path, ".yaml", ".md")
 
 		// Delete both files
 		yamlErr := os.Remove(selectedVideo.Path)
 		mdErr := os.Remove(mdPath)
 
+		var deletionErrors []string
 		if yamlErr != nil {
-			log.Printf("Error deleting YAML file: %v", yamlErr)
+			deletionErrors = append(deletionErrors, fmt.Sprintf("YAML file (%s): %v", selectedVideo.Path, yamlErr))
 		}
 		if mdErr != nil {
-			log.Printf("Error deleting MD file: %v", mdErr)
+			deletionErrors = append(deletionErrors, fmt.Sprintf("MD file (%s): %v", mdPath, mdErr))
+		}
+
+		if len(deletionErrors) > 0 {
+			return false, fmt.Errorf("errors during file deletion: %s", strings.Join(deletionErrors, "; "))
 		}
 
 		// Remove from index
 		if selectedVideo.Index >= 0 && selectedVideo.Index < len(allVideoIndices) {
 			updatedIndices := append(allVideoIndices[:selectedVideo.Index], allVideoIndices[selectedVideo.Index+1:]...)
 			yaml := storage.YAML{IndexPath: "index.yaml"}
-			yaml.WriteIndex(updatedIndices)
+			if errWrite := yaml.WriteIndex(updatedIndices); errWrite != nil {
+				return false, fmt.Errorf("failed to write updated index: %w", errWrite)
+			}
 		}
 
-		return true
+		return true, nil
 	}
 
 	fmt.Println(ui.OrangeStyle.Render("Deletion cancelled."))
-	return false
+	return false, nil
 }
 
 // getPhaseColoredText returns colored text based on phase status

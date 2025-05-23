@@ -340,6 +340,11 @@ func CreatePost(config Config, post Post) (string, error) {
 
 // SendPost posts content to Bluesky
 func SendPost(config Config, text string, videoID string, thumbnailPath string) error {
+	// Validate configuration
+	if err := ValidateConfig(config); err != nil {
+		return fmt.Errorf("invalid Bluesky configuration: %w", err)
+	}
+
 	// Validate input
 	if !strings.Contains(text, "[YOUTUBE]") {
 		return fmt.Errorf("text does not contain [YOUTUBE] placeholder")

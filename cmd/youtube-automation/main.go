@@ -37,5 +37,8 @@ func main() {
 
 	// Start the application
 	application := app.New()
-	application.Run()
+	if err := application.Run(); err != nil {
+		fmt.Fprintf(os.Stderr, "Application error: %v\n", err)
+		os.Exit(1)
+	}
 }

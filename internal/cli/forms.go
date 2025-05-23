@@ -10,7 +10,7 @@ import (
 )
 
 // GetCreateVideoFields returns the form fields for creating a new video
-func GetCreateVideoFields(name, category *string, save *bool) ([]huh.Field, error) {
+var GetCreateVideoFields = func(name, category *string, save *bool) ([]huh.Field, error) {
 	categories, err := GetCategories()
 	if err != nil {
 		return nil, err

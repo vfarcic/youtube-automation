@@ -86,4 +86,4 @@ bump-major:
 	$(eval NEXT_VERSION := $(shell echo $(CURRENT_VERSION) | awk -F'[v.]' '{printf "v%d.0.0", $$2+1}'))
 	$(call BUMP_AND_TAG,$(CURRENT_VERSION),major,$(NEXT_VERSION))
 
-.PHONY: clean build build-local bump-version bump-patch bump-major get-next-minor-version get-next-patch-version get-next-major-version
+.PHONY: build build-local clean test

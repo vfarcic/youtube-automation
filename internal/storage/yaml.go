@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"fmt"
 	"log"
 	"os"
 
@@ -167,13 +168,14 @@ func (y *YAML) GetIndex() []VideoIndex {
 	return index
 }
 
-func (y *YAML) WriteIndex(vi []VideoIndex) {
+func (y *YAML) WriteIndex(vi []VideoIndex) error {
 	data, err := yaml.Marshal(&vi)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to marshal video index: %w", err)
 	}
 	err = os.WriteFile(y.IndexPath, data, 0644)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to write video index to file %s: %w", y.IndexPath, err)
 	}
+	return nil
 }

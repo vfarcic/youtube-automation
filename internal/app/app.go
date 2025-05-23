@@ -34,16 +34,26 @@ func New() *App {
 }
 
 // Run starts the main application loop
-func (a *App) Run() {
+func (a *App) Run() error {
 	for {
-		a.menuHandler.ChooseIndex()
+		if err := a.menuHandler.ChooseIndex(); err != nil {
+			// If ChooseIndex returns an error, it means either a real error occurred
+			// or the user chose to exit (which we've mapped to return nil from ChooseIndex).
+			// If it's a non-nil error, we propagate it up.
+			// If it's nil, it means a graceful exit from the menu, so we break the loop.
+			if err.Error() == "user chose to exit" { // A bit fragile, could use a custom error type
+				return nil // Graceful exit
+			}
+			return err // Propagate actual errors
+		}
 	}
+	// return nil // Unreachable due to infinite loop unless break/return inside
 }
 
 // Import types from workflow package for compatibility
 type Directory = workflow.Directory
 type DirectorySelector = workflow.DirectorySelector
-type confirmer = workflow.Confirmer
+type Confirmer = workflow.Confirmer
 
 // defaultConfirmer is the default implementation of confirmer using utils.ConfirmAction
 type defaultConfirmer struct{}

@@ -73,10 +73,11 @@ func getClient(ctx context.Context, config *oauth2.Config) *http.Client {
 
 	// If modifying the scope, delete your previously saved credentials
 	// at ~/.credentials/youtube-go.json
-	config, err = google.ConfigFromJSON(b, config.Scopes...)
+	configFromJSON, err := google.ConfigFromJSON(b, config.Scopes...)
 	if err != nil {
 		log.Fatalf("Unable to parse client secret file to config: %v", err)
 	}
+	config = configFromJSON
 
 	// Use a redirect URI like this for a web app. The redirect URI must be a
 	// valid one for your OAuth2 credentials.
