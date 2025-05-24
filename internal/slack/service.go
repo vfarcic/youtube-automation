@@ -72,7 +72,7 @@ func (s *SlackService) PostVideo(video *storage.Video, videoPath string) error {
 	}
 	// thumbnailURL := video.Thumbnail // Commented out as ImageURL is removed
 
-	messageText := fmt.Sprintf("📺 New Video\\n%s", videoURL) // URL now part of main message text, using actual TV emoji
+	messageText := fmt.Sprintf("📺 New Video\n%s", videoURL) // URL now part of main message text, using actual TV emoji
 	attachment := slack.Attachment{
 		Fallback:  fmt.Sprintf("%s - %s", videoTitle, videoURL),
 		Title:     videoTitle,

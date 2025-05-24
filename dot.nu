@@ -20,7 +20,12 @@ def --env "main setup" [] {
         input $"(ansi yellow_bold)GitHub Token: (ansi reset)"
     }
 
-    main apply mcp --anthropic-api-key $anthropic_key --github-token $github_token
+    (
+        main apply mcp
+            --anthropic-api-key $anthropic_key
+            --github-token $github_token
+            --location [ .mcp.json  .cursor/mcp.json ]
+    )
 
     print $"
 We're (ansi yellow_bold)not yet done(ansi reset).

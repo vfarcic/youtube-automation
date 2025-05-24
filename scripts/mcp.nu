@@ -5,16 +5,15 @@
 # Usage:
 # > main apply mcp
 # > main apply mcp --location my-custom-path.json
+# > main apply mcp --location [ my-custom-path.json, another-path.json ]
 # > main apply mcp --memory-file-path /custom/memory.json --anthropic-api-key XYZ --github-token ABC
 #
 def --env "main apply mcp" [
-    --location: string = ".cursor/mcp.json", # Path where the MCP servers configuration file will be created.
+    --location: list<string> = [".cursor/mcp.json"], # Path(s) where the MCP servers configuration file will be created.
     --memory-file-path: string = "",         # Path to the memory file for the memory MCP server. If empty, defaults to an absolute path for 'memory.json' in CWD.
     --anthropic-api-key: string = "",        # Anthropic API key for the taskmaster-ai MCP server. If empty, $env.ANTHROPIC_API_KEY is used if set.
     --github-token: string = ""              # GitHub Personal Access Token for the github MCP server. If empty, $env.GITHUB_TOKEN is used if set.
 ] {
-    let output_location = $location
-
     let resolved_memory_file_path = if $memory_file_path == "" {
         (pwd) | path join "memory.json" | path expand
     } else {
@@ -35,12 +34,6 @@ def --env "main apply mcp" [
         $env.GITHUB_TOKEN
     } else {
         ""
-    }
-
-    let parent_dir = $output_location | path dirname
-    if not ($parent_dir | path exists) {
-        mkdir $parent_dir
-        print $"Created directory: ($parent_dir)"
     }
 
     mut mcp_servers_map = {}
@@ -87,6 +80,13 @@ def --env "main apply mcp" [
 
     let config_record = { mcpServers: $mcp_servers_map }
 
-    $config_record | to json --indent 2 | save -f $output_location
-    print $"MCP servers configuration file created at: ($output_location)"
+    for $output_location in $location {
+        let parent_dir = $output_location | path dirname
+        if not ($parent_dir | path exists) {
+            mkdir $parent_dir
+            print $"Created directory: ($parent_dir)"
+        }
+        $config_record | to json --indent 2 | save -f $output_location
+        print $"MCP servers configuration file created at: ($output_location)"
+    }
 } 
