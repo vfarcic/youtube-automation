@@ -333,14 +333,6 @@ If you are interested in sponsoring this channel, please visit https://devopstoo
 	video.AppliedAudioLanguage = finalDefaultAudioLanguage
 	log.Printf("DEBUG: Language %s and Audio Language %s stored in video struct for video ID %s", video.AppliedLanguage, video.AppliedAudioLanguage, response.Id)
 
-	adapter := &youtubeServiceAdapter{service: service} // Create adapter
-	err = updateVideoLanguage(adapter, response.Id, finalDefaultLanguage, finalDefaultAudioLanguage)
-	if err != nil {
-		log.Printf("Error updating video languages for video ID %s: %v", response.Id, err)
-	} else {
-		fmt.Printf("Successfully set language to %s and audio language to %s for video ID %s\n", finalDefaultLanguage, finalDefaultAudioLanguage, response.Id)
-	}
-
 	return response.Id
 }
 
