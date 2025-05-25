@@ -94,7 +94,8 @@ func TestUpdateSlackPostStatus(t *testing.T) {
 
 				// Read the file back and check the SlackPosted status
 				yamlReader := storage.YAML{IndexPath: ""} // IndexPath might not be needed for GetVideo if path is absolute
-				updatedVideo := yamlReader.GetVideo(videoFilePath)
+				updatedVideo, err := yamlReader.GetVideo(videoFilePath)
+				require.NoError(t, err, "GetVideo should not fail when reading back the updated video file")
 				assert.Equal(t, tt.newPosted, updatedVideo.SlackPosted, "SlackPosted status should be updated in the file")
 				assert.Equal(t, video.Name, updatedVideo.Name) // Sanity check other field
 			}

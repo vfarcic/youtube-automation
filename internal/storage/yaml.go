@@ -2,7 +2,6 @@ package storage
 
 import (
 	"fmt"
-	"log"
 	"os"
 
 	"gopkg.in/yaml.v3"
@@ -46,6 +45,7 @@ type Video struct {
 	Define               Tasks
 	Edit                 Tasks
 	Publish              Tasks
+	PostPublish          Tasks
 	ProjectName          string
 	ProjectURL           string
 	Sponsorship          Sponsorship
@@ -131,17 +131,17 @@ func NewYAML(indexPath string) *YAML {
 	}
 }
 
-func (y *YAML) GetVideo(path string) Video {
+func (y *YAML) GetVideo(path string) (Video, error) {
 	var video Video
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return video
+		return video, fmt.Errorf("failed to read video file %s: %w", path, err)
 	}
 	err = yaml.Unmarshal(data, &video)
 	if err != nil {
-		log.Fatal(err)
+		return video, fmt.Errorf("failed to unmarshal video data from %s: %w", path, err)
 	}
-	return video
+	return video, nil
 }
 
 func (y *YAML) WriteVideo(video Video, path string) error {
@@ -156,17 +156,17 @@ func (y *YAML) WriteVideo(video Video, path string) error {
 	return nil
 }
 
-func (y *YAML) GetIndex() []VideoIndex {
+func (y *YAML) GetIndex() ([]VideoIndex, error) {
 	var index []VideoIndex
 	data, err := os.ReadFile(y.IndexPath)
 	if err != nil {
-		return index
+		return index, fmt.Errorf("failed to read index file %s: %w", y.IndexPath, err)
 	}
 	err = yaml.Unmarshal(data, &index)
 	if err != nil {
-		log.Fatal(err)
+		return index, fmt.Errorf("failed to unmarshal video index from %s: %w", y.IndexPath, err)
 	}
-	return index
+	return index, nil
 }
 
 func (y *YAML) WriteIndex(vi []VideoIndex) error {

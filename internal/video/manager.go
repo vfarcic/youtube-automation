@@ -20,7 +20,14 @@ func NewManager(filePathFunc func(string, string, string) string) *Manager {
 // GetVideoPhase determines the current phase of a video based on its state
 func (m *Manager) GetVideoPhase(vi storage.VideoIndex) int {
 	yaml := storage.YAML{}
-	video := yaml.GetVideo(m.filePathFunc(vi.Category, vi.Name, "yaml"))
+	video, err := yaml.GetVideo(m.filePathFunc(vi.Category, vi.Name, "yaml"))
+	if err != nil {
+		// Log the error and return a default phase or handle appropriately
+		// For now, returning PhaseIdeas
+		// Consider a more robust error handling or logging strategy here
+		println("Error getting video for phase determination:", err.Error()) // Basic logging
+		return workflow.PhaseIdeas
+	}
 
 	if len(video.Sponsorship.Blocked) > 0 { // Check for sponsorship block first
 		return workflow.PhaseSponsoredBlocked
