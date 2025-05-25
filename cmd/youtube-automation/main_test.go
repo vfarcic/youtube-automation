@@ -59,7 +59,10 @@ func TestCreateVideo(t *testing.T) {
 	}
 
 	// Read back the video to verify its contents
-	readVideo := y.GetVideo(yamlFilePath)
+	readVideo, err := y.GetVideo(yamlFilePath)
+	if err != nil {
+		t.Fatalf("Failed to read back video YAML: %v", err)
+	}
 	if readVideo.Name != "Test Video" {
 		t.Errorf("Expected video name to be 'Test Video', got '%s'", readVideo.Name)
 	}
@@ -107,7 +110,10 @@ func TestVideoPhaseTransitions(t *testing.T) {
 		}
 
 		// Read the video directly without mocking
-		video = y.GetVideo(testVideoPath)
+		video, err = y.GetVideo(testVideoPath)
+		if err != nil {
+			t.Fatalf("Failed to read back video YAML in testPhase for '%s': %v", message, err)
+		}
 
 		// Use the common helper function to determine the phase
 		phase := testutil.DetermineVideoPhase(video, phaseConstants)

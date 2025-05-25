@@ -11,11 +11,11 @@ import (
 
 type Hugo struct{}
 
-func (r *Hugo) Post(gist, title, date string) (string, error) {
+func (r *Hugo) Post(gist, title, date, videoId string) (string, error) {
 	if gist == "N/A" {
 		return "", nil
 	}
-	post, err := r.getPost(gist, title, date)
+	post, err := r.getPost(gist, title, date, videoId)
 	if err != nil {
 		return "", err
 	}
@@ -60,10 +60,16 @@ func (r *Hugo) hugoFromMarkdown(filePath, title, post string) (string, error) {
 	return hugoPath, nil
 }
 
-func (r *Hugo) getPost(filePath, title, date string) (string, error) {
+func (r *Hugo) getPost(filePath, title, date, videoId string) (string, error) {
 	contentBytes, err := os.ReadFile(filePath)
 	if err != nil {
 		return "", err // Return error instead of log.Fatal for better testability
+	}
+	youtubeShortcode := ""
+	if videoId != "" {
+		youtubeShortcode = fmt.Sprintf("{{< youtube %s >}}", videoId)
+	} else {
+		youtubeShortcode = "{{< youtube FIXME: >}}" // Keep FIXME if no videoId
 	}
 	content := fmt.Sprintf(`
 +++
@@ -76,9 +82,9 @@ FIXME:
 
 <!--more-->
 
-{{< youtube FIXME: >}}
+%s
 
 %s
-`, title, date, string(contentBytes))
+`, title, date, youtubeShortcode, string(contentBytes)) // Use youtubeShortcode variable
 	return content, nil
 }

@@ -195,8 +195,9 @@ func main() {
 	t.Run("Post with regular title", func(t *testing.T) {
 		title := "Test Hugo Post"
 		date := "2023-05-15T12:00"
+		videoId := "testVideoId123"
 
-		hugoPath, err := hugo.Post(testFilePath, title, date)
+		hugoPath, err := hugo.Post(testFilePath, title, date, videoId)
 		if err != nil {
 			t.Fatalf("Hugo.Post failed: %v", err)
 		}
@@ -223,6 +224,7 @@ func main() {
 			"title = 'Test Hugo Post'",
 			"date = 2023-05-15T12:00:00+00:00",
 			"draft = false",
+			"{{< youtube testVideoId123 >}}",
 			"# Complex Test Post",
 			"## Introduction",
 			"## Code Block",
@@ -240,8 +242,9 @@ func main() {
 	t.Run("Post with special characters in title", func(t *testing.T) {
 		title := "Test: Hugo & Post (Special) Characters!'"
 		date := "2023-05-15T12:00"
+		videoId := "anotherIdAbc"
 
-		hugoPath, err := hugo.Post(testFilePath, title, date)
+		hugoPath, err := hugo.Post(testFilePath, title, date, videoId)
 		if err != nil {
 			t.Fatalf("Hugo.Post failed with special chars: %v", err)
 		}
@@ -270,13 +273,17 @@ func main() {
 		if !strings.Contains(string(content), fmt.Sprintf("title = '%s'", title)) {
 			t.Errorf("Generated file doesn't contain the original title in front matter")
 		}
+		if !strings.Contains(string(content), fmt.Sprintf("{{< youtube %s >}}", videoId)) {
+			t.Errorf("Generated file doesn't contain the YouTube shortcode with videoId")
+		}
 	})
 
 	t.Run("Post with filepath.Rel error path", func(t *testing.T) {
 		title := "Unrelated Post"
 		date := "2023-05-15T12:00"
+		videoId := "unrelatedVideo456"
 
-		hugoPath, err := hugo.Post(unrelatedFilePath, title, date)
+		hugoPath, err := hugo.Post(unrelatedFilePath, title, date, videoId)
 		if err != nil {
 			t.Fatalf("Hugo.Post failed with unrelated path: %v", err)
 		}
@@ -303,10 +310,13 @@ func main() {
 		if !strings.Contains(string(content), fmt.Sprintf("title = '%s'", title)) {
 			t.Errorf("Generated file doesn't contain the title in front matter")
 		}
+		if !strings.Contains(string(content), fmt.Sprintf("{{< youtube %s >}}", videoId)) {
+			t.Errorf("Generated file doesn't contain the YouTube shortcode with videoId")
+		}
 	})
 
 	t.Run("Post with N/A gist", func(t *testing.T) {
-		hugoPath, err := hugo.Post("N/A", "Test Title", "2023-05-15T12:00")
+		hugoPath, err := hugo.Post("N/A", "Test Title", "2023-05-15T12:00", "")
 		if err != nil {
 			t.Errorf("Expected no error for N/A gist, got: %v", err)
 		}
@@ -316,7 +326,7 @@ func main() {
 	})
 
 	t.Run("Post with non-existent file", func(t *testing.T) {
-		_, err := hugo.Post(filepath.Join(manuscriptDir, "non-existent.md"), "Test Title", "2023-05-15T12:00")
+		_, err := hugo.Post(filepath.Join(manuscriptDir, "non-existent.md"), "Test Title", "2023-05-15T12:00", "")
 		if err == nil {
 			t.Error("Expected error for non-existent file, got nil")
 		}
@@ -332,7 +342,7 @@ func main() {
 			t.Fatalf("Failed to create blocker file: %v", err)
 		}
 
-		_, err := hugo.Post(testFilePath, "Test Blocked Dir", "2023-05-15T12:00")
+		_, err := hugo.Post(testFilePath, "Test Blocked Dir", "2023-05-15T12:00", "blockedVideoId")
 		if err == nil {
 			t.Error("Expected error for directory creation issue, got nil")
 		}
@@ -368,8 +378,9 @@ func main() {
 	t.Run("Post with question mark in title", func(t *testing.T) {
 		title := "What is Go? A Test Post"
 		date := "2023-05-16T10:00" // Using a slightly different date
+		videoId := "whatIsGoVideo789"
 
-		hugoPath, err := hugo.Post(testFilePath, title, date)
+		hugoPath, err := hugo.Post(testFilePath, title, date, videoId)
 		if err != nil {
 			t.Fatalf("Hugo.Post failed with question mark in title: %v", err)
 		}
@@ -377,6 +388,15 @@ func main() {
 		// Assert that the path does not contain '?'
 		if strings.Contains(hugoPath, "?") {
 			t.Errorf("Generated path still contains '?': %s", hugoPath)
+		}
+
+		// Add check for youtube shortcode with videoId
+		content, errReadFile := os.ReadFile(hugoPath)
+		if errReadFile != nil {
+			t.Fatalf("Failed to read generated file for shortcode check: %v", errReadFile)
+		}
+		if !strings.Contains(string(content), fmt.Sprintf("{{< youtube %s >}}", videoId)) {
+			t.Errorf("Generated file doesn't contain the YouTube shortcode with videoId: %s", videoId)
 		}
 
 		// Construct expected sanitized path
@@ -396,12 +416,55 @@ func main() {
 	})
 
 	t.Run("Post with gist N/A", func(t *testing.T) {
-		hugoPath, err := hugo.Post("N/A", "Test Title", "2023-05-15T12:00")
+		hugoPath, err := hugo.Post("N/A", "Test Title", "2023-05-15T12:00", "testVideoId")
 		if err != nil {
 			t.Errorf("Expected no error for N/A gist, got: %v", err)
 		}
 		if hugoPath != "" {
 			t.Errorf("Expected empty path for N/A gist, got: %s", hugoPath)
+		}
+	})
+
+	// New Test Case: Post without VideoID (expecting FIXME)
+	t.Run("Post without VideoID", func(t *testing.T) {
+		title := "Test Post No Video ID"
+		date := "2023-05-17T10:00"
+		videoId := "" // Empty videoId
+
+		hugoPath, err := hugo.Post(testFilePath, title, date, videoId)
+		if err != nil {
+			t.Fatalf("Hugo.Post failed for no VideoID case: %v", err)
+		}
+
+		content, err := os.ReadFile(hugoPath)
+		if err != nil {
+			t.Fatalf("Failed to read generated file for no VideoID case: %v", err)
+		}
+
+		if !strings.Contains(string(content), "{{< youtube FIXME: >}}") {
+			t.Errorf("Generated file does not contain '{{< youtube FIXME: >}}' when VideoID is empty. Got: %s", string(content))
+		}
+	})
+
+	// New Test Case: Post with VideoID (expecting the ID)
+	t.Run("Post with VideoID", func(t *testing.T) {
+		title := "Test Post With Video ID"
+		date := "2023-05-18T10:00"
+		videoId := "actualVideoId12345"
+
+		hugoPath, err := hugo.Post(testFilePath, title, date, videoId)
+		if err != nil {
+			t.Fatalf("Hugo.Post failed for with VideoID case: %v", err)
+		}
+
+		content, err := os.ReadFile(hugoPath)
+		if err != nil {
+			t.Fatalf("Failed to read generated file for with VideoID case: %v", err)
+		}
+
+		expectedShortcode := fmt.Sprintf("{{< youtube %s >}}", videoId)
+		if !strings.Contains(string(content), expectedShortcode) {
+			t.Errorf("Generated file does not contain '%s'. Got: %s", expectedShortcode, string(content))
 		}
 	})
 }

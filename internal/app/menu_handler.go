@@ -68,6 +68,7 @@ const (
 	editPhaseDefinition
 	editPhasePostProduction
 	editPhasePublishing
+	editPhasePostPublish
 	// actionReturn can be reused for returning from this sub-menu
 )
 
@@ -165,7 +166,10 @@ func (m *MenuHandler) ChooseIndex() error {
 	}
 	switch selectedIndex {
 	case indexCreateVideo:
-		index := yaml.GetIndex()
+		index, err := yaml.GetIndex()
+		if err != nil {
+			return fmt.Errorf("failed to get video index for create: %w", err)
+		}
 		item, err := m.ChooseCreateVideoAndHandleError()
 		if err != nil {
 			return fmt.Errorf("error in create video choice: %w", err)
@@ -176,7 +180,10 @@ func (m *MenuHandler) ChooseIndex() error {
 		}
 	case indexListVideos:
 		for {
-			index := yaml.GetIndex()
+			index, err := yaml.GetIndex()
+			if err != nil {
+				return fmt.Errorf("failed to get video index for list: %w", err)
+			}
 			returnVal, err := m.ChooseVideosPhaseAndHandleError(index)
 			if err != nil {
 				return fmt.Errorf("error in list videos phase: %w", err)
@@ -355,7 +362,10 @@ func (m *MenuHandler) ChooseVideosAndHandleError(vi []storage.VideoIndex, phase 
 		currentPhase := m.videoManager.GetVideoPhase(video)
 		if currentPhase == phase {
 			videoPath := m.filesystem.GetFilePath(video.Category, video.Name, "yaml")
-			fullVideo := yaml.GetVideo(videoPath)
+			fullVideo, err := yaml.GetVideo(videoPath)
+			if err != nil {
+				return fmt.Errorf("failed to get video details for %s: %w", video.Name, err)
+			}
 			fullVideo.Index = i // Store the index for potential deletion
 			fullVideo.Name = video.Name
 			fullVideo.Category = video.Category
@@ -665,8 +675,10 @@ func (m *MenuHandler) getIndexOptions() []huh.Option[int] {
 // getVideoTitleForDisplay returns a formatted video title for display
 func (m *MenuHandler) getVideoTitleForDisplay(video storage.Video, currentPhase int, referenceTime time.Time) string {
 	title := video.Name
+	// Corrected definition: isSponsored is true if Amount is a positive indicator (not empty, "-", or "N/A")
 	isSponsored := len(video.Sponsorship.Amount) > 0 && video.Sponsorship.Amount != "-" && video.Sponsorship.Amount != "N/A"
-	isBlocked := len(video.Sponsorship.Blocked) > 0 && video.Sponsorship.Blocked != "-" && video.Sponsorship.Blocked != "N/A"
+	// Corrected definition: isBlocked is true if Blocked field has any content at all.
+	isBlocked := len(video.Sponsorship.Blocked) > 0
 
 	// Default style (no special styling)
 	styledTitle := title
@@ -693,17 +705,19 @@ func (m *MenuHandler) getVideoTitleForDisplay(video storage.Video, currentPhase 
 	}
 
 	// Add bracket information based on status
-	if isBlocked {
+	if isBlocked { // True if Blocked field is non-empty (e.g., "Reason", "-", "N/A")
 		blockDisplay := video.Sponsorship.Blocked
-		if blockDisplay == "" || blockDisplay == "-" || blockDisplay == "N/A" {
+		if blockDisplay == "-" || blockDisplay == "N/A" { // Standardize specific placeholders to (B)
 			blockDisplay = "B"
 		}
+		// If video.Sponsorship.Blocked was an actual reason like "Legal", blockDisplay remains "Legal".
+		// If it was "-" or "N/A", blockDisplay is now "B".
 		styledTitle = fmt.Sprintf("%s (%s)", styledTitle, blockDisplay)
-	} else {
+	} else { // Blocked field is empty, so it's not blocked
 		if len(video.Date) > 0 {
 			styledTitle = fmt.Sprintf("%s (%s)", styledTitle, video.Date)
 		}
-		if isSponsored {
+		if isSponsored { // isSponsored is false if Amount is empty, "-", or "N/A"
 			styledTitle = fmt.Sprintf("%s (S)", styledTitle)
 		}
 	}
@@ -731,11 +745,12 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 		var selectedEditPhase int
 		editPhaseOptions := []huh.Option[int]{
 			huh.NewOption(m.getEditPhaseOptionText("Initial Details", videoToEdit.Init.Completed, videoToEdit.Init.Total), editPhaseInitial),
-			huh.NewOption(m.getEditPhaseOptionText("Work Progress", videoToEdit.Work.Completed, videoToEdit.Work.Total), editPhaseWork),
+			huh.NewOption(m.getEditPhaseOptionText("Work In Progress", videoToEdit.Work.Completed, videoToEdit.Work.Total), editPhaseWork),
 			huh.NewOption(m.getEditPhaseOptionText("Definition", videoToEdit.Define.Completed, videoToEdit.Define.Total), editPhaseDefinition),
 			huh.NewOption(m.getEditPhaseOptionText("Post-Production", videoToEdit.Edit.Completed, videoToEdit.Edit.Total), editPhasePostProduction),
 			huh.NewOption(m.getEditPhaseOptionText("Publishing Details", videoToEdit.Publish.Completed, videoToEdit.Publish.Total), editPhasePublishing),
-			huh.NewOption("Return", actionReturn),
+			huh.NewOption(m.getEditPhaseOptionText("Post-Publish Details", videoToEdit.PostPublish.Completed, videoToEdit.PostPublish.Total), editPhasePostPublish),
+			huh.NewOption("Return to Video List", actionReturn),
 		}
 
 		form := huh.NewForm(
@@ -1028,15 +1043,17 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 
 		case editPhasePublishing:
 			save := true
+			var uploadTrigger bool // Declare uploadTrigger here
 			// Store original values to detect changes for actions
-			originalUploadVideo := updatedVideo.UploadVideo
+			// originalUploadVideo := updatedVideo.UploadVideo // Removed as it's no longer used for URL parsing
 			originalBlueSkyPosted := updatedVideo.BlueSkyPosted
 			originalLinkedInPosted := updatedVideo.LinkedInPosted
 			originalSlackPosted := updatedVideo.SlackPosted
 			originalRepo := updatedVideo.Repo
 			originalNotifiedSponsors := updatedVideo.NotifiedSponsors
 			originalHugoPath := updatedVideo.HugoPath
-			createHugo := updatedVideo.HugoPath != ""
+			// If VideoId is empty, createHugo will be false, also influencing the title color.
+			createHugo := updatedVideo.HugoPath != "" && updatedVideo.VideoId != ""
 
 			sponsorsNotifyText := "Notify Sponsors"
 			if updatedVideo.NotifiedSponsors || len(updatedVideo.Sponsorship.Amount) == 0 || updatedVideo.Sponsorship.Amount == "N/A" || updatedVideo.Sponsorship.Amount == "-" {
@@ -1046,21 +1063,18 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 			}
 
 			publishingFormFields := []huh.Field{
+				huh.NewInput().Title(m.colorTitleString("Video File Path", updatedVideo.UploadVideo)).Value(&updatedVideo.UploadVideo),
+				huh.NewConfirm().Title(m.colorTitleString("Upload Video to YouTube?", updatedVideo.VideoId)).Value(&uploadTrigger),
+				huh.NewNote().Title(m.colorTitleString("Current YouTube Video ID", updatedVideo.VideoId)).Description(updatedVideo.VideoId),
+				// The m.colorTitleBool will show orange if createHugo is false (e.g. no VideoId)
+				// The action logic below also prevents Hugo creation if VideoId is missing.
 				huh.NewConfirm().Title(m.colorTitleBool("Create/Update Hugo Post", createHugo)).Value(&createHugo),
-				huh.NewInput().Title(m.colorTitleString("YouTube Video ID (after upload)", updatedVideo.UploadVideo)).Value(&updatedVideo.UploadVideo),
-				huh.NewConfirm().Title(m.colorTitleBool("BlueSky Post Sent", updatedVideo.BlueSkyPosted)).Value(&updatedVideo.BlueSkyPosted),
-				huh.NewConfirm().Title(m.colorTitleBool("LinkedIn Post Sent", updatedVideo.LinkedInPosted)).Value(&updatedVideo.LinkedInPosted),
-				huh.NewConfirm().Title(m.colorTitleBool("Slack Post Sent", updatedVideo.SlackPosted)).Value(&updatedVideo.SlackPosted),
-				huh.NewConfirm().Title(m.colorTitleBool("YouTube Highlight Created", updatedVideo.YouTubeHighlight)).Value(&updatedVideo.YouTubeHighlight),
-				huh.NewConfirm().Title(m.colorTitleBool("YouTube Pinned Comment Added", updatedVideo.YouTubeComment)).Value(&updatedVideo.YouTubeComment),
-				huh.NewConfirm().Title(m.colorTitleBool("Replied to YouTube Comments", updatedVideo.YouTubeCommentReply)).Value(&updatedVideo.YouTubeCommentReply),
-				huh.NewConfirm().Title(m.colorTitleBool("GDE Advocu Post Sent", updatedVideo.GDE)).Value(&updatedVideo.GDE),
-				huh.NewInput().Title(m.colorTitleString("Code Repository URL", updatedVideo.Repo)).Value(&updatedVideo.Repo),
-				huh.NewConfirm().Title(sponsorsNotifyText).Value(&updatedVideo.NotifiedSponsors),
 				huh.NewConfirm().Affirmative("Save & Process Actions").Negative("Cancel").Value(&save),
 			}
 
-			phasePublishingForm := huh.NewForm(huh.NewGroup(publishingFormFields...))
+			phasePublishingForm := huh.NewForm(
+				huh.NewGroup(publishingFormFields...),
+			)
 			err = phasePublishingForm.Run()
 
 			if err != nil {
@@ -1077,11 +1091,14 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 				// --- Actions Section ---
 				// We will perform actions first, and only if they succeed, we keep the user's intent.
 				// If an action fails, we revert the corresponding boolean in updatedVideo.
+				// var uploadTrigger bool // Moved declaration to the top of the case block
 
 				// Action: Hugo Post
-				if createHugo && updatedVideo.HugoPath == "" && originalHugoPath == "" { // Create new Hugo post
+				// createHugo will be false if VideoId is empty due to its initialization.
+				// The additional updatedVideo.VideoId != "" check here is for extra safety but might be redundant.
+				if createHugo && updatedVideo.VideoId != "" && updatedVideo.HugoPath == "" && originalHugoPath == "" { // Create new Hugo post only if VideoId is present
 					hugoPublisher := publishing.Hugo{}
-					createdPath, hugoErr := hugoPublisher.Post(updatedVideo.Gist, updatedVideo.Title, updatedVideo.Date)
+					createdPath, hugoErr := hugoPublisher.Post(updatedVideo.Gist, updatedVideo.Title, updatedVideo.Date, updatedVideo.VideoId)
 					if hugoErr != nil {
 						log.Printf(m.errorStyle.Render(fmt.Sprintf("Failed to create Hugo post: %v", hugoErr)))
 						updatedVideo.HugoPath = originalHugoPath // Revert intent
@@ -1097,33 +1114,35 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 					updatedVideo.HugoPath = ""
 				}
 
-				// Action: Set VideoID from UploadVideo and Upload Thumbnail
-				actualVideoID := updatedVideo.VideoId                            // Assume it might have been pre-filled
-				if originalUploadVideo == "" && updatedVideo.UploadVideo != "" { // New video upload URL provided
-					vidID := strings.ReplaceAll(updatedVideo.UploadVideo, "https://youtu.be/", "")
-					vidID = strings.ReplaceAll(vidID, "https://www.youtube.com/watch?v=", "")
-					if strings.Contains(vidID, "&") {
-						vidID = vidID[:strings.Index(vidID, "&")]
-					}
-					actualVideoID = vidID // This is the derived VideoId
-					// No direct failure possible here, but thumbnail upload depends on it
-					fmt.Println(m.orangeStyle.Render(fmt.Sprintf("Video ID derived as: %s", actualVideoID)))
-
-					if updatedVideo.Thumbnail != "" { // User provided/confirmed a thumbnail path
-						tempVideoForThumbnail := updatedVideo         // Create a temporary copy
-						tempVideoForThumbnail.VideoId = actualVideoID // Ensure it has the ID for UploadThumbnail
-						if tnErr := publishing.UploadThumbnail(tempVideoForThumbnail); tnErr != nil {
-							log.Printf(m.errorStyle.Render(fmt.Sprintf("Failed to upload thumbnail: %v", tnErr)))
-							// If thumbnail upload fails, what does it mean for `updatedVideo.UploadVideo` intent?
-							// The VideoId might still be valid. For now, we only log and return, as per previous change.
-							return fmt.Errorf("failed to upload thumbnail: %w", tnErr)
-						} else {
-							fmt.Println(m.confirmationStyle.Render("Thumbnail uploaded."))
+				// Action: Upload Video to YouTube if requested
+				if uploadTrigger && updatedVideo.UploadVideo != "" {
+					fmt.Println(m.orangeStyle.Render(fmt.Sprintf("Attempting to upload video: %s", updatedVideo.UploadVideo)))
+					newVideoID := publishing.UploadVideo(&updatedVideo) // Pass the whole struct
+					if newVideoID == "" {
+						log.Printf(m.errorStyle.Render(fmt.Sprintf("Failed to upload video from path: %s. YouTube API might have returned an empty ID or an error occurred.", updatedVideo.UploadVideo)))
+						// Potentially revert uploadTrigger or handle error more explicitly.
+						// For now, if upload fails, newVideoID will be empty, and updatedVideo.VideoId won't be set with a new ID.
+						// We might want to return an error here to prevent saving if upload was critical.
+						return fmt.Errorf("failed to upload video from path: %s", updatedVideo.UploadVideo)
+					} else {
+						updatedVideo.VideoId = newVideoID // Store the new video ID
+						fmt.Println(m.confirmationStyle.Render(fmt.Sprintf("Video uploaded successfully. New Video ID: %s", updatedVideo.VideoId)))
+						// Thumbnail upload should happen AFTER successful video upload and ID retrieval
+						if updatedVideo.Thumbnail != "" { // User provided/confirmed a thumbnail path
+							// No need for tempVideoForThumbnail, updatedVideo now has the correct VideoId
+							if tnErr := publishing.UploadThumbnail(updatedVideo); tnErr != nil { // Use updatedVideo directly
+								log.Printf(m.errorStyle.Render(fmt.Sprintf("Failed to upload thumbnail: %v", tnErr)))
+								// This error is non-critical to the video upload itself, so we log and continue.
+								// Consider if this should be a return fmt.Errorf(...)
+							} else {
+								fmt.Println(m.confirmationStyle.Render("Thumbnail uploaded."))
+							}
 						}
+						fmt.Println(m.orangeStyle.Render("Manual YouTube Studio Actions Needed: End screen, Playlists, Language, Monetization"))
 					}
-					fmt.Println(m.orangeStyle.Render("Manual YouTube Studio Actions Needed: End screen, Playlists, Language, Monetization"))
-				} // End of new video upload URL block
-				updatedVideo.VideoId = actualVideoID // Ensure updatedVideo has the final video ID
+				}
+				// Ensure updatedVideo.VideoId is current, even if no new upload happened but it was pre-filled or changed manually.
+				// The following block that derived VideoId from a URL is now removed as UploadVideo is a path.
 
 				// Action: LinkedIn Post
 				if !originalLinkedInPosted && updatedVideo.LinkedInPosted && updatedVideo.Tweet != "" && updatedVideo.VideoId != "" {
@@ -1223,24 +1242,10 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 
 				// Now, calculate completion based on the *actual* state of updatedVideo after actions.
 				updatedVideo.Publish.Completed, updatedVideo.Publish.Total = m.countCompletedTasks([]interface{}{
-					updatedVideo.UploadVideo,    // This is the URL string, considered done if present
-					updatedVideo.HugoPath,       // Considered done if path exists
-					updatedVideo.BlueSkyPosted,  // Boolean, true if action succeeded
-					updatedVideo.LinkedInPosted, // Boolean, true if action succeeded
-					updatedVideo.SlackPosted,    // Boolean, true if action succeeded
-					updatedVideo.YouTubeHighlight,
-					updatedVideo.YouTubeComment,
-					updatedVideo.YouTubeCommentReply,
-					updatedVideo.GDE,
-					updatedVideo.Repo, // URL string, considered done if present (and not N/A)
+					updatedVideo.UploadVideo, // Done if path exists
+					updatedVideo.HugoPath,    // Done if path exists (and VideoId was present for creation)
 				})
-				// Special logic for NotifiedSponsors completion (based on actual state)
-				updatedVideo.Publish.Total++
-				if updatedVideo.NotifiedSponsors || len(updatedVideo.Sponsorship.Amount) == 0 || updatedVideo.Sponsorship.Amount == "N/A" || updatedVideo.Sponsorship.Amount == "-" {
-					updatedVideo.Publish.Completed++
-				}
 
-				// Finally, save the video with its actual state after all actions.
 				if err := yaml.WriteVideo(updatedVideo, updatedVideo.Path); err != nil {
 					return fmt.Errorf("failed to save publishing details: %w", err)
 				}
@@ -1251,8 +1256,79 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 				fmt.Println(m.orangeStyle.Render("Changes not saved for publishing."))
 			}
 
+		case editPhasePostPublish: // New case for Post-Publish Details
+			save := true
+			updatedVideo := videoToEdit // Work with a copy
+
+			// Define sponsorsNotifyText for this scope
+			sponsorsNotifyText := "Notify Sponsors"
+			if updatedVideo.NotifiedSponsors || len(updatedVideo.Sponsorship.Amount) == 0 || updatedVideo.Sponsorship.Amount == "N/A" || updatedVideo.Sponsorship.Amount == "-" {
+				sponsorsNotifyText = m.greenStyle.Render(sponsorsNotifyText)
+			} else {
+				sponsorsNotifyText = m.orangeStyle.Render(sponsorsNotifyText)
+			}
+
+			// Define fields for the Post-Publish Details form
+			postPublishingFormFields := []huh.Field{
+				huh.NewNote().Title("Post-Publish Details"),
+				// Moved fields:
+				huh.NewConfirm().Title(m.colorTitleBool("BlueSky Post Sent", updatedVideo.BlueSkyPosted)).Value(&updatedVideo.BlueSkyPosted),
+				huh.NewConfirm().Title(m.colorTitleBool("LinkedIn Post Sent", updatedVideo.LinkedInPosted)).Value(&updatedVideo.LinkedInPosted),
+				huh.NewConfirm().Title(m.colorTitleBool("Slack Post Sent", updatedVideo.SlackPosted)).Value(&updatedVideo.SlackPosted),
+				huh.NewConfirm().Title(m.colorTitleBool("YouTube Highlight Created", updatedVideo.YouTubeHighlight)).Value(&updatedVideo.YouTubeHighlight),
+				huh.NewConfirm().Title(m.colorTitleBool("YouTube Pinned Comment Added", updatedVideo.YouTubeComment)).Value(&updatedVideo.YouTubeComment),
+				huh.NewConfirm().Title(m.colorTitleBool("Replied to YouTube Comments", updatedVideo.YouTubeCommentReply)).Value(&updatedVideo.YouTubeCommentReply),
+				huh.NewConfirm().Title(m.colorTitleBool("GDE Advocu Post Sent", updatedVideo.GDE)).Value(&updatedVideo.GDE),
+				huh.NewInput().Title(m.colorTitleString("Code Repository URL", updatedVideo.Repo)).Value(&updatedVideo.Repo),
+				huh.NewConfirm().Title(sponsorsNotifyText).Value(&updatedVideo.NotifiedSponsors),
+				huh.NewConfirm().Affirmative("Save").Negative("Cancel").Value(&save),
+			}
+
+			postPublishingForm := huh.NewForm(
+				huh.NewGroup(postPublishingFormFields...),
+			)
+			err := postPublishingForm.Run()
+
+			if err != nil {
+				if errors.Is(err, huh.ErrUserAborted) {
+					fmt.Println(m.orangeStyle.Render("Post-Publish details editing cancelled."))
+					continue // Go back to phase selection
+				}
+				log.Printf(m.errorStyle.Render(fmt.Sprintf("Error running post-publish details form: %v", err)))
+				return err // Return on other errors
+			}
+
+			if save {
+				yaml := storage.YAML{}
+				// Update task counts for PostPublish phase
+				updatedVideo.PostPublish.Completed, updatedVideo.PostPublish.Total = m.countCompletedTasks([]interface{}{
+					updatedVideo.BlueSkyPosted,
+					updatedVideo.LinkedInPosted,
+					updatedVideo.SlackPosted,
+					updatedVideo.YouTubeHighlight,
+					updatedVideo.YouTubeComment,
+					updatedVideo.YouTubeCommentReply,
+					updatedVideo.GDE,
+					updatedVideo.Repo,
+					// NotifiedSponsors has special logic
+				})
+				// Special logic for NotifiedSponsors completion
+				updatedVideo.PostPublish.Total++
+				if updatedVideo.NotifiedSponsors || len(updatedVideo.Sponsorship.Amount) == 0 || updatedVideo.Sponsorship.Amount == "N/A" || updatedVideo.Sponsorship.Amount == "-" {
+					updatedVideo.PostPublish.Completed++
+				}
+
+				if err := yaml.WriteVideo(updatedVideo, updatedVideo.Path); err != nil {
+					return fmt.Errorf("failed to save post-publish details: %w", err)
+				}
+				fmt.Println(m.confirmationStyle.Render(fmt.Sprintf("Video '%s' post-publish details updated.", updatedVideo.Name)))
+				videoToEdit = updatedVideo // Persist changes for the next loop iteration
+			} else {
+				fmt.Println(m.orangeStyle.Render("Changes not saved for post-publish details."))
+			}
+
 		case actionReturn:
-			return nil // Return to video list
+			return nil // Return from editing this video
 		}
 
 		if err != nil {

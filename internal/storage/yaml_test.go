@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"gopkg.in/yaml.v3"
@@ -86,7 +87,10 @@ func TestGetVideo(t *testing.T) {
 	}
 
 	// Read the YAML file
-	video := y.GetVideo(testPath)
+	video, err := y.GetVideo(testPath)
+	if err != nil {
+		t.Fatalf("GetVideo returned an error: %v", err)
+	}
 
 	// Verify the video was read correctly
 	if video.Name != "Test Video" {
@@ -129,7 +133,10 @@ func TestWriteVideo(t *testing.T) {
 	}
 
 	// Read the file back
-	readVideo := y.GetVideo(testPath)
+	readVideo, err := y.GetVideo(testPath)
+	if err != nil {
+		t.Fatalf("GetVideo returned an error during read back: %v", err)
+	}
 
 	// Verify the contents
 	if readVideo.Name != "Test Write Video" {
@@ -169,7 +176,10 @@ func TestGetIndex(t *testing.T) {
 	y := YAML{
 		IndexPath: testPath,
 	}
-	index := y.GetIndex()
+	index, err := y.GetIndex()
+	if err != nil {
+		t.Fatalf("GetIndex returned an error: %v", err)
+	}
 
 	// Verify the index was read correctly
 	if len(index) != 2 {
@@ -211,7 +221,10 @@ func TestWriteIndex(t *testing.T) {
 	}
 
 	// Read the file back
-	readIndex := y.GetIndex()
+	readIndex, err := y.GetIndex()
+	if err != nil {
+		t.Fatalf("GetIndex returned an error during read back: %v", err)
+	}
 
 	// Verify the contents
 	if len(readIndex) != 2 {
@@ -239,5 +252,103 @@ func TestNewYAML(t *testing.T) {
 	// Verify the index path is set correctly
 	if y.IndexPath != indexPath {
 		t.Errorf("Expected IndexPath to be '%s', got '%s'", indexPath, y.IndexPath)
+	}
+
+	// Test that NewYAML creates a YAML struct with the correct IndexPath
+	testIndexPath := "/test/path/index.json"
+	newY := NewYAML(testIndexPath)
+	if newY.IndexPath != testIndexPath {
+		t.Errorf("Expected IndexPath to be '%s', got '%s'", testIndexPath, newY.IndexPath)
+	}
+}
+
+func TestGetVideo_FileNotFound(t *testing.T) {
+	y := YAML{}
+	_, err := y.GetVideo("non_existent_path.yaml")
+	if err == nil {
+		t.Fatalf("Expected GetVideo to return an error for non-existent file, but got nil")
+	}
+	// Check if the error is an os.PathError, which is what os.ReadFile returns for non-existent files
+	if !os.IsNotExist(err) {
+		// It might be wrapped, so check unwrap
+		type unwrap interface {
+			Unwrap() error
+		}
+		if unwrapErr, ok := err.(unwrap); ok {
+			if !os.IsNotExist(unwrapErr.Unwrap()) {
+				t.Errorf("Expected GetVideo to return an os.IsNotExist error, got %T: %v", err, err)
+			}
+		} else {
+			t.Errorf("Expected GetVideo to return an os.IsNotExist error, got %T: %v", err, err)
+		}
+	}
+}
+
+func TestGetVideo_InvalidYAML(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "invalid-yaml-test")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	invalidYAMLPath := filepath.Join(tempDir, "invalid.yaml")
+	if err := os.WriteFile(invalidYAMLPath, []byte("name: Test Video\ncategory: testing\n  badlyIndentedKey: true"), 0644); err != nil {
+		t.Fatalf("Failed to write invalid YAML file: %v", err)
+	}
+
+	y := YAML{}
+	_, err = y.GetVideo(invalidYAMLPath)
+	if err == nil {
+		t.Fatalf("Expected GetVideo to return an error for invalid YAML, but got nil")
+	}
+	// We expect an error from yaml.Unmarshal, check for it.
+	// The error message from our function is "failed to unmarshal video data from %s: %w"
+	expectedErrorMsgPart := "failed to unmarshal video data"
+	if !strings.Contains(err.Error(), expectedErrorMsgPart) {
+		t.Errorf("Expected GetVideo error to contain '%s', got '%s'", expectedErrorMsgPart, err.Error())
+	}
+}
+
+func TestGetIndex_FileNotFound(t *testing.T) {
+	y := YAML{IndexPath: "non_existent_index.json"}
+	_, err := y.GetIndex()
+	if err == nil {
+		t.Fatalf("Expected GetIndex to return an error for non-existent file, but got nil")
+	}
+	if !os.IsNotExist(err) {
+		// It might be wrapped, so check unwrap
+		type unwrap interface {
+			Unwrap() error
+		}
+		if unwrapErr, ok := err.(unwrap); ok {
+			if !os.IsNotExist(unwrapErr.Unwrap()) {
+				t.Errorf("Expected GetIndex to return an os.IsNotExist error, got %T: %v", err, err)
+			}
+		} else {
+			t.Errorf("Expected GetIndex to return an os.IsNotExist error, got %T: %v", err, err)
+		}
+	}
+}
+
+func TestGetIndex_InvalidYAML(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "invalid-index-yaml-test")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	invalidIndexYAMLPath := filepath.Join(tempDir, "invalid_index.yaml")
+	if err := os.WriteFile(invalidIndexYAMLPath, []byte("[{\"name\": \"Test Video 1\", \"category\": \"testing\"}, {invalid_json]"), 0644); err != nil {
+		t.Fatalf("Failed to write invalid index YAML file: %v", err)
+	}
+
+	y := YAML{IndexPath: invalidIndexYAMLPath}
+	_, err = y.GetIndex()
+	if err == nil {
+		t.Fatalf("Expected GetIndex to return an error for invalid YAML, but got nil")
+	}
+	expectedErrorMsgPart := "failed to unmarshal video index"
+	if !strings.Contains(err.Error(), expectedErrorMsgPart) {
+		t.Errorf("Expected GetIndex error to contain '%s', got '%s'", expectedErrorMsgPart, err.Error())
 	}
 }
