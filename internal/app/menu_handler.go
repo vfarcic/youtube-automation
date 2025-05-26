@@ -1045,22 +1045,9 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 			save := true
 			var uploadTrigger bool // Declare uploadTrigger here
 			// Store original values to detect changes for actions
-			// originalUploadVideo := updatedVideo.UploadVideo // Removed as it's no longer used for URL parsing
-			originalBlueSkyPosted := updatedVideo.BlueSkyPosted
-			originalLinkedInPosted := updatedVideo.LinkedInPosted
-			originalSlackPosted := updatedVideo.SlackPosted
-			originalRepo := updatedVideo.Repo
-			originalNotifiedSponsors := updatedVideo.NotifiedSponsors
 			originalHugoPath := updatedVideo.HugoPath
 			// If VideoId is empty, createHugo will be false, also influencing the title color.
 			createHugo := updatedVideo.HugoPath != "" && updatedVideo.VideoId != ""
-
-			sponsorsNotifyText := "Notify Sponsors"
-			if updatedVideo.NotifiedSponsors || len(updatedVideo.Sponsorship.Amount) == 0 || updatedVideo.Sponsorship.Amount == "N/A" || updatedVideo.Sponsorship.Amount == "-" {
-				sponsorsNotifyText = m.greenStyle.Render(sponsorsNotifyText)
-			} else {
-				sponsorsNotifyText = m.orangeStyle.Render(sponsorsNotifyText) // Was RedStyle
-			}
 
 			publishingFormFields := []huh.Field{
 				huh.NewInput().Title(m.colorTitleString("Video File Path", updatedVideo.UploadVideo)).Value(&updatedVideo.UploadVideo),
@@ -1144,101 +1131,7 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 				// Ensure updatedVideo.VideoId is current, even if no new upload happened but it was pre-filled or changed manually.
 				// The following block that derived VideoId from a URL is now removed as UploadVideo is a path.
 
-				// Action: LinkedIn Post
-				if !originalLinkedInPosted && updatedVideo.LinkedInPosted && updatedVideo.Tweet != "" && updatedVideo.VideoId != "" {
-					platform.PostLinkedIn(updatedVideo.Tweet, updatedVideo.VideoId, publishing.GetYouTubeURL, m.confirmationStyle)
-					// No programmatic error to catch here, it's a manual step. updatedVideo.LinkedInPosted reflects intent.
-				} else if originalLinkedInPosted && !updatedVideo.LinkedInPosted { // User deselected
-					updatedVideo.LinkedInPosted = false
-				}
-
-				// Action: Slack Post
-				if !originalSlackPosted && updatedVideo.SlackPosted && updatedVideo.VideoId != "" {
-					// Load and validate Slack configuration
-					if err := slack.LoadAndValidateSlackConfig(""); err != nil { // Use default settings.yaml
-						log.Printf(m.errorStyle.Render(fmt.Sprintf("Failed to load Slack configuration: %v", err)))
-						updatedVideo.SlackPosted = false // Revert intent
-						// For now, treat as critical similar to BlueSky post error
-						return fmt.Errorf("failed to load Slack configuration: %w", err)
-					}
-
-					// Create Slack service using the globally loaded config
-					slackService, err := slack.NewSlackService(slack.GlobalSlackConfig)
-					if err != nil {
-						log.Printf(m.errorStyle.Render(fmt.Sprintf("Failed to create Slack service: %v", err)))
-						updatedVideo.SlackPosted = false // Revert intent
-						return fmt.Errorf("failed to create Slack service: %w", err)
-					}
-
-					// Post video to Slack
-					err = slackService.PostVideo(&updatedVideo, updatedVideo.Path)
-					if err != nil {
-						log.Printf(m.errorStyle.Render(fmt.Sprintf("Failed to post video to Slack: %v", err)))
-						updatedVideo.SlackPosted = false // Revert intent
-						// Decide if this should be a critical error that stops saving. For now, yes.
-						return fmt.Errorf("failed to post video to Slack: %w", err)
-					} else {
-						fmt.Println(m.confirmationStyle.Render("Successfully posted to Slack."))
-						// updatedVideo.SlackPosted remains true as set by the user and confirmed by successful action
-					}
-				} else if originalSlackPosted && !updatedVideo.SlackPosted { // User deselected
-					updatedVideo.SlackPosted = false
-				}
-
-				// Action: BlueSky Post
-				if !originalBlueSkyPosted && updatedVideo.BlueSkyPosted && updatedVideo.Tweet != "" && updatedVideo.VideoId != "" {
-					if configuration.GlobalSettings.Bluesky.Identifier == "" || configuration.GlobalSettings.Bluesky.Password == "" {
-						log.Printf(m.errorStyle.Render("BlueSky credentials not configured. Cannot post to BlueSky."))
-						updatedVideo.BlueSkyPosted = false // Revert intent as action cannot be performed
-					} else {
-						bsConfig := bluesky.Config{
-							Identifier: configuration.GlobalSettings.Bluesky.Identifier,
-							Password:   configuration.GlobalSettings.Bluesky.Password,
-							URL:        configuration.GlobalSettings.Bluesky.URL,
-						}
-						bsPost := bluesky.Post{
-							Text:          updatedVideo.Tweet,
-							YouTubeURL:    publishing.GetYouTubeURL(updatedVideo.VideoId),
-							VideoID:       updatedVideo.VideoId,
-							ThumbnailPath: updatedVideo.Thumbnail,
-						}
-						if _, bsErr := bluesky.CreatePost(bsConfig, bsPost); bsErr != nil {
-							log.Printf(m.errorStyle.Render(fmt.Sprintf("Failed to post to BlueSky: %v", bsErr)))
-							updatedVideo.BlueSkyPosted = false                        // Revert intent
-							return fmt.Errorf("failed to post to BlueSky: %w", bsErr) // Critical, return error
-						} else {
-							fmt.Println(m.confirmationStyle.Render("Posted to BlueSky."))
-						}
-					}
-				} else if originalBlueSkyPosted && !updatedVideo.BlueSkyPosted { // User deselected
-					updatedVideo.BlueSkyPosted = false
-				}
-
-				// Action: Repo Update (Conceptual)
-				if originalRepo == "" && updatedVideo.Repo != "" && updatedVideo.Repo != "N/A" {
-					log.Println(m.orangeStyle.Render(fmt.Sprintf("TODO: Implement repository update for %s with title %s, videoId %s", updatedVideo.Repo, updatedVideo.Title, updatedVideo.VideoId)))
-					// If this had a real implementation that could fail:
-					// if repoUpdateErr != nil { updatedVideo.Repo = originalRepo; log.Printf(...); /* return if critical */ }
-				} else if originalRepo != "" && updatedVideo.Repo == "" { // User cleared repo by making it empty (but not "N/A")
-					updatedVideo.Repo = ""
-				}
-
-				// Action: Notify Sponsors
-				if !originalNotifiedSponsors && updatedVideo.NotifiedSponsors && len(updatedVideo.Sponsorship.Emails) > 0 {
-					if configuration.GlobalSettings.Email.Password == "" {
-						log.Println(m.errorStyle.Render("Email password not configured. Cannot send sponsor notification."))
-						updatedVideo.NotifiedSponsors = false // Revert intent
-					} else {
-						emailService := notification.NewEmail(configuration.GlobalSettings.Email.Password)
-						// Assuming SendSponsors doesn't return an error that needs handling here, or we log it inside.
-						emailService.SendSponsors(configuration.GlobalSettings.Email.From, updatedVideo.Sponsorship.Emails, updatedVideo.VideoId, updatedVideo.Sponsorship.Amount)
-						fmt.Println(m.confirmationStyle.Render("Sponsor notification email sent."))
-					}
-				} else if originalNotifiedSponsors && !updatedVideo.NotifiedSponsors { // User deselected
-					updatedVideo.NotifiedSponsors = false
-				}
-
-				// --- End of Actions Section ---
+				// --- End of Actions Section (for Publishing Phase) ---
 
 				// Now, calculate completion based on the *actual* state of updatedVideo after actions.
 				updatedVideo.Publish.Completed, updatedVideo.Publish.Total = m.countCompletedTasks([]interface{}{
@@ -1258,9 +1151,14 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 
 		case editPhasePostPublish: // New case for Post-Publish Details
 			save := true
-			updatedVideo := videoToEdit // Work with a copy
+			updatedVideo := videoToEdit                               // Work with a copy
+			originalNotifiedSponsors := updatedVideo.NotifiedSponsors // Capture original state
+			originalBlueSkyPosted := updatedVideo.BlueSkyPosted       // Capture original state
+			originalLinkedInPosted := updatedVideo.LinkedInPosted     // Capture original state
+			originalSlackPosted := updatedVideo.SlackPosted           // Capture original state
+			originalRepo := updatedVideo.Repo                         // Capture original state for Repo
 
-			// Define sponsorsNotifyText for this scope
+			// Define sponsorsNotifyText for this scope (editPhasePostPublish)
 			sponsorsNotifyText := "Notify Sponsors"
 			if updatedVideo.NotifiedSponsors || len(updatedVideo.Sponsorship.Amount) == 0 || updatedVideo.Sponsorship.Amount == "N/A" || updatedVideo.Sponsorship.Amount == "-" {
 				sponsorsNotifyText = m.greenStyle.Render(sponsorsNotifyText)
@@ -1271,7 +1169,6 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 			// Define fields for the Post-Publish Details form
 			postPublishingFormFields := []huh.Field{
 				huh.NewNote().Title("Post-Publish Details"),
-				// Moved fields:
 				huh.NewConfirm().Title(m.colorTitleBool("BlueSky Post Sent", updatedVideo.BlueSkyPosted)).Value(&updatedVideo.BlueSkyPosted),
 				huh.NewConfirm().Title(m.colorTitleBool("LinkedIn Post Sent", updatedVideo.LinkedInPosted)).Value(&updatedVideo.LinkedInPosted),
 				huh.NewConfirm().Title(m.colorTitleBool("Slack Post Sent", updatedVideo.SlackPosted)).Value(&updatedVideo.SlackPosted),
@@ -1280,26 +1177,117 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 				huh.NewConfirm().Title(m.colorTitleBool("Replied to YouTube Comments", updatedVideo.YouTubeCommentReply)).Value(&updatedVideo.YouTubeCommentReply),
 				huh.NewConfirm().Title(m.colorTitleBool("GDE Advocu Post Sent", updatedVideo.GDE)).Value(&updatedVideo.GDE),
 				huh.NewInput().Title(m.colorTitleString("Code Repository URL", updatedVideo.Repo)).Value(&updatedVideo.Repo),
-				huh.NewConfirm().Title(sponsorsNotifyText).Value(&updatedVideo.NotifiedSponsors),
+				huh.NewConfirm().Title(sponsorsNotifyText).Value(&updatedVideo.NotifiedSponsors), // Use sponsorsNotifyText here
 				huh.NewConfirm().Affirmative("Save").Negative("Cancel").Value(&save),
 			}
 
 			postPublishingForm := huh.NewForm(
 				huh.NewGroup(postPublishingFormFields...),
 			)
-			err := postPublishingForm.Run()
+			err = postPublishingForm.Run() // Corrected: was phasePublishingForm.Run()
 
 			if err != nil {
 				if errors.Is(err, huh.ErrUserAborted) {
-					fmt.Println(m.orangeStyle.Render("Post-Publish details editing cancelled."))
-					continue // Go back to phase selection
+					fmt.Println(m.orangeStyle.Render("Post-Publish details editing cancelled.")) // Corrected message
+					continue                                                                     // Go back to phase selection
 				}
-				log.Printf(m.errorStyle.Render(fmt.Sprintf("Error running post-publish details form: %v", err)))
-				return err // Return on other errors
+				log.Printf(m.errorStyle.Render(fmt.Sprintf("Error running post-publish details form: %v", err))) // Corrected message
+				return err                                                                                       // Return on other errors
 			}
 
 			if save {
 				yaml := storage.YAML{}
+
+				// --- Actions Section for Post-Publish Phase ---
+
+				// Action: Notify Sponsors (if changed from false to true in this phase)
+				if !originalNotifiedSponsors && updatedVideo.NotifiedSponsors && len(updatedVideo.Sponsorship.Emails) > 0 {
+					if configuration.GlobalSettings.Email.Password == "" {
+						log.Println(m.errorStyle.Render("Email password not configured. Cannot send sponsor notification."))
+						updatedVideo.NotifiedSponsors = false // Revert intent
+					} else {
+						emailService := notification.NewEmail(configuration.GlobalSettings.Email.Password)
+						emailService.SendSponsors(configuration.GlobalSettings.Email.From, updatedVideo.Sponsorship.Emails, updatedVideo.VideoId, updatedVideo.Sponsorship.Amount)
+						fmt.Println(m.confirmationStyle.Render("Sponsor notification email sent."))
+					}
+				} else if originalNotifiedSponsors && !updatedVideo.NotifiedSponsors { // User deselected in this phase
+					// No action needed other than saving the state
+				}
+
+				// Action: LinkedIn Post (if changed from false to true in this phase)
+				if !originalLinkedInPosted && updatedVideo.LinkedInPosted && updatedVideo.Tweet != "" && updatedVideo.VideoId != "" {
+					platform.PostLinkedIn(updatedVideo.Tweet, updatedVideo.VideoId, publishing.GetYouTubeURL, m.confirmationStyle)
+					fmt.Println(m.confirmationStyle.Render("LinkedIn post triggered."))
+				} else if originalLinkedInPosted && !updatedVideo.LinkedInPosted { // User deselected
+					// No action needed
+				}
+
+				// Action: Slack Post (if changed from false to true in this phase)
+				if !originalSlackPosted && updatedVideo.SlackPosted && updatedVideo.VideoId != "" {
+					if errSl := slack.LoadAndValidateSlackConfig(""); errSl != nil { // Renamed err to errSl
+						log.Printf(m.errorStyle.Render(fmt.Sprintf("Failed to load Slack configuration: %v", errSl)))
+						updatedVideo.SlackPosted = false                                   // Revert intent
+						return fmt.Errorf("failed to load Slack configuration: %w", errSl) // Return error
+					} else {
+						slackService, errSlSvc := slack.NewSlackService(slack.GlobalSlackConfig) // Renamed err to errSlSvc
+						if errSlSvc != nil {
+							log.Printf(m.errorStyle.Render(fmt.Sprintf("Failed to create Slack service: %v", errSlSvc)))
+							updatedVideo.SlackPosted = false                                  // Revert intent
+							return fmt.Errorf("failed to create Slack service: %w", errSlSvc) // Return error
+						} else {
+							errSlPost := slackService.PostVideo(&updatedVideo, updatedVideo.Path) // Renamed err to errSlPost
+							if errSlPost != nil {
+								log.Printf(m.errorStyle.Render(fmt.Sprintf("Failed to post video to Slack: %v", errSlPost)))
+								updatedVideo.SlackPosted = false                                  // Revert intent
+								return fmt.Errorf("failed to post video to Slack: %w", errSlPost) // Return error
+							} else {
+								fmt.Println(m.confirmationStyle.Render("Successfully posted to Slack."))
+							}
+						}
+					}
+				} else if originalSlackPosted && !updatedVideo.SlackPosted { // User deselected
+					// No action needed
+				}
+
+				// Action: BlueSky Post (if changed from false to true in this phase)
+				if !originalBlueSkyPosted && updatedVideo.BlueSkyPosted && updatedVideo.Tweet != "" && updatedVideo.VideoId != "" {
+					if configuration.GlobalSettings.Bluesky.Identifier == "" || configuration.GlobalSettings.Bluesky.Password == "" {
+						log.Printf(m.errorStyle.Render("BlueSky credentials not configured. Cannot post to BlueSky."))
+						updatedVideo.BlueSkyPosted = false // Revert intent
+					} else {
+						bsConfig := bluesky.Config{
+							Identifier: configuration.GlobalSettings.Bluesky.Identifier,
+							Password:   configuration.GlobalSettings.Bluesky.Password,
+							URL:        configuration.GlobalSettings.Bluesky.URL,
+						}
+						bsPost := bluesky.Post{
+							Text:          updatedVideo.Tweet,
+							YouTubeURL:    publishing.GetYouTubeURL(updatedVideo.VideoId),
+							VideoID:       updatedVideo.VideoId,
+							ThumbnailPath: updatedVideo.Thumbnail,
+						}
+						if _, bsErr := bluesky.CreatePost(bsConfig, bsPost); bsErr != nil {
+							log.Printf(m.errorStyle.Render(fmt.Sprintf("Failed to post to BlueSky: %v", bsErr)))
+							updatedVideo.BlueSkyPosted = false // Revert intent
+						} else {
+							fmt.Println(m.confirmationStyle.Render("Posted to BlueSky."))
+						}
+					}
+				} else if originalBlueSkyPosted && !updatedVideo.BlueSkyPosted { // User deselected
+					// No action needed
+				}
+
+				// Action: Repo Update (if changed meaningfully in this phase)
+				if updatedVideo.Repo != originalRepo && updatedVideo.Repo != "" && updatedVideo.Repo != "N/A" {
+					log.Println(m.orangeStyle.Render(fmt.Sprintf("TODO: Implement repository update for %s with title %s, videoId %s", updatedVideo.Repo, updatedVideo.Title, updatedVideo.VideoId)))
+					// If this had a real implementation that could fail:
+					// if repoUpdateErr != nil { updatedVideo.Repo = originalRepo; log.Printf(...); /* return if critical */ }
+				} else if updatedVideo.Repo != originalRepo && (updatedVideo.Repo == "" || updatedVideo.Repo == "N/A") { // User cleared repo or set to N/A
+					// Just save the cleared/N/A state, no specific action beyond that.
+				}
+
+				// --- End of Actions Section for Post-Publish ---
+
 				// Update task counts for PostPublish phase
 				updatedVideo.PostPublish.Completed, updatedVideo.PostPublish.Total = m.countCompletedTasks([]interface{}{
 					updatedVideo.BlueSkyPosted,
@@ -1309,7 +1297,7 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 					updatedVideo.YouTubeComment,
 					updatedVideo.YouTubeCommentReply,
 					updatedVideo.GDE,
-					updatedVideo.Repo,
+					updatedVideo.Repo, // Ensure Repo is counted for completion
 					// NotifiedSponsors has special logic
 				})
 				// Special logic for NotifiedSponsors completion
