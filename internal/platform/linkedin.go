@@ -35,8 +35,23 @@ func PostLinkedIn(message, videoId string, getYouTubeURL func(string) string, co
 		VideoId:     videoId,
 	}
 
-	// Attempt automated posting
-	err := linkedin.PostToLinkedIn(video, accessToken)
+	// Get profile ID from environment if available
+	profileID := os.Getenv("LINKEDIN_PROFILE_ID")
+	
+	// If we have a profile ID, use the updated function with config
+	var err error
+	if profileID != "" {
+		config := linkedin.NewConfig(accessToken)
+		config.ProfileID = profileID
+		config.UsePersonal = true
+		
+		// Attempt automated posting with profile config
+		err = linkedin.PostToLinkedInWithConfig(video, config)
+	} else {
+		// Use the original function
+		err = linkedin.PostToLinkedIn(video, accessToken)
+	}
+	
 	if err != nil {
 		// Log the error
 		fmt.Printf("LinkedIn API posting error: %v\n", err)

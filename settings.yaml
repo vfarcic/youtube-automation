@@ -28,5 +28,8 @@ slack:
 
 # LinkedIn API configuration
 # Note: The access token should be provided via the LINKEDIN_ACCESS_TOKEN environment variable
+# To post to your personal profile, set LINKEDIN_PROFILE_ID environment variable with your profile ID
 linkedin:
   apiUrl: "https://api.linkedin.com/v2"  # LinkedIn API base URL
+  # profileId: "viktorfarcic"  # Optional: Your LinkedIn profile ID (from linkedin.com/in/viktorfarcic)
+  # usePersonal: true  # Optional: Set to true to post to personal profile instead of feed

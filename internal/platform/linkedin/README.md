@@ -5,6 +5,7 @@ This package handles the integration with LinkedIn for posting new YouTube video
 ## Features
 
 * Automated posting of videos to LinkedIn
+* Support for posting to personal profile pages or general feed
 * Update video metadata with LinkedIn posting status and URL
 * Fallback to manual clipboard method when API access is not available
 
@@ -20,6 +21,27 @@ export LINKEDIN_ACCESS_TOKEN="your-linkedin-access-token"
 
 For security reasons, the token is not stored in the settings.yaml file.
 
+### Personal Profile Posting
+
+To post to your personal LinkedIn profile (e.g., `https://www.linkedin.com/in/viktorfarcic/`), 
+set the profile ID via environment variable or settings.yaml:
+
+```bash
+# Using environment variable
+export LINKEDIN_PROFILE_ID="viktorfarcic"
+```
+
+Or in settings.yaml:
+
+```yaml
+linkedin:
+  apiUrl: "https://api.linkedin.com/v2"
+  profileId: "viktorfarcic"  # Your LinkedIn profile ID
+  usePersonal: true  # Set to true to post to personal profile
+```
+
+The profile ID is the username found in your LinkedIn profile URL (e.g., "viktorfarcic" from "linkedin.com/in/viktorfarcic").
+
 ### Settings.yaml Configuration
 
 The following settings can be configured in the `settings.yaml` file:
@@ -27,6 +49,8 @@ The following settings can be configured in the `settings.yaml` file:
 ```yaml
 linkedin:
   apiUrl: "https://api.linkedin.com/v2"  # LinkedIn API base URL
+  profileId: "viktorfarcic"  # Optional: Your LinkedIn profile ID
+  usePersonal: true  # Optional: Set to true to post to personal profile
 ```
 
 ## Usage

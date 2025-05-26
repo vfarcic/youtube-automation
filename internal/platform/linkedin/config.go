@@ -9,8 +9,10 @@ import (
 
 // Config holds the configuration for LinkedIn API
 type Config struct {
-	AccessToken string
-	APIUrl      string
+	AccessToken  string
+	APIUrl       string
+	ProfileID    string // User's LinkedIn profile ID (e.g., "viktorfarcic" from linkedin.com/in/viktorfarcic)
+	UsePersonal  bool   // Whether to use personal profile URL format
 }
 
 // DefaultAPIURL is the default LinkedIn API endpoint
@@ -21,6 +23,7 @@ func NewConfig(accessToken string) *Config {
 	return &Config{
 		AccessToken: accessToken,
 		APIUrl:      DefaultAPIURL,
+		UsePersonal: false,
 	}
 }
 
@@ -36,6 +39,12 @@ func LoadConfigFromEnv() (*Config, error) {
 	// Optional: Override API URL if specified
 	if apiURL := os.Getenv("LINKEDIN_API_URL"); apiURL != "" {
 		config.APIUrl = apiURL
+	}
+	
+	// Optional: Set profile ID if specified
+	if profileID := os.Getenv("LINKEDIN_PROFILE_ID"); profileID != "" {
+		config.ProfileID = profileID
+		config.UsePersonal = true
 	}
 
 	return config, nil
@@ -58,6 +67,17 @@ func LoadConfigFromYAML(settings map[string]interface{}) (*Config, error) {
 	// Optional: Override API URL if specified
 	if apiURL, ok := linkedinSettings["apiUrl"].(string); ok && apiURL != "" {
 		config.APIUrl = apiURL
+	}
+	
+	// Optional: Set profile ID if specified
+	if profileID, ok := linkedinSettings["profileId"].(string); ok && profileID != "" {
+		config.ProfileID = profileID
+		config.UsePersonal = true
+	}
+	
+	// Explicitly set usePersonal if provided
+	if usePersonal, ok := linkedinSettings["usePersonal"].(bool); ok {
+		config.UsePersonal = usePersonal
 	}
 
 	return config, nil
