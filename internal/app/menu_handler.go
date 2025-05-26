@@ -172,7 +172,8 @@ func (m *MenuHandler) ChooseIndex() error {
 		if err != nil {
 			return fmt.Errorf("failed to get video index for create: %w", err)
 		}
-		item, err := m.ChooseCreateVideoAndHandleError()
+		var item storage.VideoIndex
+		item, err = m.ChooseCreateVideoAndHandleError()
 		if err != nil {
 			return fmt.Errorf("error in create video choice: %w", err)
 		}
@@ -182,11 +183,13 @@ func (m *MenuHandler) ChooseIndex() error {
 		}
 	case indexListVideos:
 		for {
-			index, err := yaml.GetIndex()
+			var index []storage.VideoIndex
+			index, err = yaml.GetIndex()
 			if err != nil {
 				return fmt.Errorf("failed to get video index for list: %w", err)
 			}
-			returnVal, err := m.ChooseVideosPhaseAndHandleError(index)
+			var returnVal bool
+			returnVal, err = m.ChooseVideosPhaseAndHandleError(index)
 			if err != nil {
 				return fmt.Errorf("error in list videos phase: %w", err)
 			}
