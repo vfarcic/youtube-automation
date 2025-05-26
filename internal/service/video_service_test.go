@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"devopstoolkit/youtube-automation/internal/filesystem"
-	"devopstoolkit/youtube-automation/internal/storage"
 	"devopstoolkit/youtube-automation/internal/video"
 
 	"github.com/stretchr/testify/assert"

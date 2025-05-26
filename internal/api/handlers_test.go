@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -10,7 +11,6 @@ import (
 
 	"devopstoolkit/youtube-automation/internal/service"
 	"devopstoolkit/youtube-automation/internal/filesystem"
-	"devopstoolkit/youtube-automation/internal/storage"
 	"devopstoolkit/youtube-automation/internal/video"
 
 	"github.com/go-chi/chi/v5"
@@ -224,7 +224,7 @@ func TestServer_GetVideo(t *testing.T) {
 			// Add chi context for URL parameters
 			rctx := chi.NewRouteContext()
 			rctx.URLParams.Add("videoName", tt.videoName)
-			req = req.WithContext(chi.URLCtxKey.WithValue(req.Context(), rctx))
+			req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
 			server.router.ServeHTTP(w, req)
 
@@ -266,7 +266,7 @@ func TestServer_UpdateVideo(t *testing.T) {
 	// Add chi context for URL parameters
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("videoName", "test-video")
-	req = req.WithContext(chi.URLCtxKey.WithValue(req.Context(), rctx))
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
 	server.router.ServeHTTP(w, req)
 
@@ -292,7 +292,7 @@ func TestServer_DeleteVideo(t *testing.T) {
 	// Add chi context for URL parameters
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("videoName", "test-video")
-	req = req.WithContext(chi.URLCtxKey.WithValue(req.Context(), rctx))
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
 	server.router.ServeHTTP(w, req)
 
@@ -345,7 +345,7 @@ func TestServer_MoveVideo(t *testing.T) {
 	// Add chi context for URL parameters
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("videoName", "test-video")
-	req = req.WithContext(chi.URLCtxKey.WithValue(req.Context(), rctx))
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
 	server.router.ServeHTTP(w, req)
 
@@ -423,7 +423,7 @@ func TestServer_UpdateVideoPhase(t *testing.T) {
 			// Add chi context for URL parameters
 			rctx := chi.NewRouteContext()
 			rctx.URLParams.Add("videoName", "test-video")
-			req = req.WithContext(chi.URLCtxKey.WithValue(req.Context(), rctx))
+			req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
 			server.router.ServeHTTP(w, req)
 
