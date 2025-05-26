@@ -275,7 +275,7 @@ func (s *VideoService) MoveVideo(name, category, targetDir string) error {
 	currentMDPath := s.filesystem.GetFilePath(category, name, "md")
 
 	// Move files using utility function
-	newYAMLPath, _, err := s.moveVideoFiles(currentYAMLPath, currentMDPath, targetDir, name)
+	_, _, err := s.moveVideoFiles(currentYAMLPath, currentMDPath, targetDir, name)
 	if err != nil {
 		return fmt.Errorf("failed to move video files: %w", err)
 	}
