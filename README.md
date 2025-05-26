@@ -7,6 +7,7 @@ This project automates various aspects of managing a YouTube channel.
 *   Video Uploads
 *   Thumbnail Management
 *   Metadata Handling
+*   REST API for programmatic interaction
 *   Playlist Management (TODO)
 *   Comments Interaction (TODO)
 
@@ -23,6 +24,22 @@ This project automates various aspects of managing a YouTube channel.
 1.  Clone the repository.
 2.  Place your `client_secret.json` in the root directory.
 3.  Build the executable: `go build`
+
+### Usage
+
+#### CLI Mode
+Run the application with required configuration flags:
+```bash
+./youtube-automation --email-from="..." --email-thumbnail-to="..." [other flags]
+```
+
+#### API Mode
+Run the application in API mode:
+```bash
+./youtube-automation --api --api-port=8080 [other required flags]
+```
+
+For detailed API documentation, see [docs/api_reference.md](docs/api_reference.md).
 
 ### Configuration
 

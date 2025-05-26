@@ -6,11 +6,12 @@ import (
 	"net/http"
 
 	"devopstoolkit/youtube-automation/internal/api/handlers"
+	"devopstoolkit/youtube-automation/internal/api/middleware"
 	"devopstoolkit/youtube-automation/internal/service"
 	"devopstoolkit/youtube-automation/internal/storage"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
+	chimiddleware "github.com/go-chi/chi/v5/middleware"
 )
 
 // Server represents the API server
@@ -41,10 +42,24 @@ func NewServer(indexPath string, port int) *Server {
 // Start starts the API server
 func (s *Server) Start() error {
 	// Add middleware
-	s.router.Use(middleware.Logger)
-	s.router.Use(middleware.Recoverer)
-	s.router.Use(middleware.SetHeader("Content-Type", "application/json"))
+	s.router.Use(chimiddleware.RequestID)
+	s.router.Use(chimiddleware.RealIP)
+	s.router.Use(middleware.RequestLogger)
+	s.router.Use(middleware.ErrorHandler)
+	s.router.Use(chimiddleware.Recoverer)
+	s.router.Use(chimiddleware.SetHeader("Content-Type", "application/json"))
 
+	// Setup routes
+	s.setupRoutes()
+
+	// Start server
+	addr := fmt.Sprintf(":%d", s.port)
+	log.Printf("Starting API server on %s", addr)
+	return http.ListenAndServe(addr, s.router)
+}
+
+// setupRoutes configures all the API routes
+func (s *Server) setupRoutes() {
 	// Create handlers
 	videoHandlers := handlers.NewVideoHandlers(s.videoService)
 	phaseHandlers := handlers.NewPhaseHandlers(s.videoService)
@@ -81,9 +96,4 @@ func (s *Server) Start() error {
 	s.router.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"status":"ok"}`))
 	})
-
-	// Start server
-	addr := fmt.Sprintf(":%d", s.port)
-	log.Printf("Starting API server on %s", addr)
-	return http.ListenAndServe(addr, s.router)
 }

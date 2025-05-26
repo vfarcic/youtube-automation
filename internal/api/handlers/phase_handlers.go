@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"devopstoolkit/youtube-automation/internal/service"
-	"devopstoolkit/youtube-automation/internal/storage"
 
 	"github.com/go-chi/chi/v5"
 )

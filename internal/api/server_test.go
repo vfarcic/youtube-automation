@@ -22,18 +22,9 @@ func TestHealthEndpoint(t *testing.T) {
 
 	// Create a server with the test index path
 	server := NewServer(tmpFile.Name(), 8080)
-
-	// Add middleware and routes
-	server.router.Use(func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			next.ServeHTTP(w, r)
-		})
-	})
-
-	// Add health check endpoint
-	server.router.Get("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`{"status":"ok"}`))
-	})
+	
+	// Setup routes for testing
+	server.setupRoutes()
 
 	// Create a test request
 	req := httptest.NewRequest("GET", "/health", nil)
@@ -69,6 +60,9 @@ func TestCreateVideoEndpoint(t *testing.T) {
 
 	// Create a server with the test index path
 	server := NewServer(tmpFile.Name(), 8080)
+	
+	// Setup routes for testing
+	server.setupRoutes()
 
 	// Create a test request
 	reqBody := `{"name":"Test Video","category":"test-category"}`
@@ -108,6 +102,9 @@ func TestGetVideoPhases(t *testing.T) {
 
 	// Create a server with the test index path
 	server := NewServer(tmpFile.Name(), 8080)
+	
+	// Setup routes for testing
+	server.setupRoutes()
 
 	// Create a test request
 	req := httptest.NewRequest("GET", "/api/videos/phases", nil)

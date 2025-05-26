@@ -5,8 +5,6 @@ import (
 	"net/http"
 
 	"devopstoolkit/youtube-automation/internal/service"
-
-	"github.com/go-chi/chi/v5"
 )
 
 // FileHandlers contains handlers for file operations
@@ -28,7 +26,8 @@ type MoveVideoRequest struct {
 
 // MoveVideoFiles handles moving video files to a new directory
 func (h *FileHandlers) MoveVideoFiles(w http.ResponseWriter, r *http.Request) {
-	videoID := chi.URLParam(r, "video_id")
+	// videoID := chi.URLParam(r, "video_id")
+	// We're not using videoID yet, but will in a real implementation
 	
 	// Parse the request
 	var req MoveVideoRequest

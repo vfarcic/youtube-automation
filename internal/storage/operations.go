@@ -3,7 +3,6 @@ package storage
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 )
 
@@ -43,12 +42,12 @@ func (o *YAMLOperations) WriteVideo(video Video, path string) error {
 
 // GetIndex retrieves the video index
 func (o *YAMLOperations) GetIndex() ([]VideoIndex, error) {
-	return o.yaml.GetIndex(o.indexPath)
+	return o.yaml.GetIndex()
 }
 
 // WriteIndex writes the video index
 func (o *YAMLOperations) WriteIndex(videos []VideoIndex) error {
-	return o.yaml.WriteIndex(videos, o.indexPath)
+	return o.yaml.WriteIndex(videos)
 }
 
 // GetVideoPath generates a path for a video file based on name and category
