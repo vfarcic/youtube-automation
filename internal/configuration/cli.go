@@ -24,6 +24,7 @@ type Settings struct {
 	Hugo          SettingsHugo          `yaml:"hugo"`
 	Bluesky       SettingsBluesky       `yaml:"bluesky"`
 	VideoDefaults SettingsVideoDefaults `yaml:"videoDefaults"`
+	API           SettingsAPI           `yaml:"api"`
 	Slack         SettingsSlack         `yaml:"slack"`
 }
 
@@ -60,6 +61,11 @@ type SettingsVideoDefaults struct {
 	AudioLanguage string `yaml:"audioLanguage"`
 }
 
+type SettingsAPI struct {
+	Port    int  `yaml:"port"`
+	Enabled bool `yaml:"enabled"`
+}
+
 type SettingsSlack struct {
 	TargetChannelIDs []string `yaml:"targetChannelIDs"`
 }
@@ -91,6 +97,8 @@ func init() {
 	RootCmd.Flags().StringVar(&GlobalSettings.Bluesky.URL, "bluesky-url", GlobalSettings.Bluesky.URL, "Bluesky API URL")
 	RootCmd.Flags().StringVar(&GlobalSettings.VideoDefaults.Language, "video-defaults-language", "", "Default language for videos (e.g., 'en', 'es')")
 	RootCmd.Flags().StringVar(&GlobalSettings.VideoDefaults.AudioLanguage, "video-defaults-audio-language", "", "Default audio language for videos (e.g., 'en', 'es')")
+	RootCmd.Flags().IntVar(&GlobalSettings.API.Port, "api-port", GlobalSettings.API.Port, "Port for REST API server")
+	RootCmd.Flags().BoolVar(&GlobalSettings.API.Enabled, "api-enabled", GlobalSettings.API.Enabled, "Enable REST API server")
 
 	// Default Bluesky URL if not set by file or flag
 	if GlobalSettings.Bluesky.URL == "" {
@@ -104,6 +112,11 @@ func init() {
 	}
 	if GlobalSettings.VideoDefaults.AudioLanguage == "" {
 		GlobalSettings.VideoDefaults.AudioLanguage = "en"
+	}
+
+	// Default API settings
+	if GlobalSettings.API.Port == 0 {
+		GlobalSettings.API.Port = 8080
 	}
 
 	// Check required fields and environment variables

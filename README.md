@@ -1,14 +1,18 @@
 # YouTube Automation
 
-This project automates various aspects of managing a YouTube channel.
+This project automates various aspects of managing a YouTube channel with both CLI and REST API interfaces.
 
 ## Features
 
-*   Video Uploads
-*   Thumbnail Management
-*   Metadata Handling
-*   Playlist Management (TODO)
-*   Comments Interaction (TODO)
+*   **Video Lifecycle Management**: Complete workflow from ideas to publishing and post-publish activities
+*   **CLI Interface**: Interactive command-line interface for video management
+*   **REST API**: Comprehensive REST API for programmatic access
+*   **Video Uploads**: Automated YouTube video uploads
+*   **Thumbnail Management**: Thumbnail creation and upload workflow  
+*   **Metadata Handling**: Video titles, descriptions, tags, and metadata
+*   **Social Media Integration**: BlueSky, LinkedIn, and Slack posting
+*   **Hugo Integration**: Blog post generation and management
+*   **Sponsorship Management**: Sponsor tracking and notification system
 
 ## Getting Started
 
@@ -32,11 +36,38 @@ Global settings can be managed via `settings.yaml` in the root directory and com
 
 ## Usage
 
+### CLI Mode (Default)
 ```bash
 ./youtube-automation --help
 ```
 
-(More specific usage examples to be added)
+Interactive video management through terminal interface.
+
+### API Server Mode
+```bash
+./youtube-automation --api-enabled --api-port 8080
+```
+
+Starts the REST API server. See [docs/api-manual-testing.md](docs/api-manual-testing.md) for API usage examples.
+
+### API Endpoints
+- `GET /health` - Health check
+- `GET /api/categories` - List video categories
+- `POST /api/videos` - Create new video
+- `GET /api/videos/phases` - Get video phase summary
+- `GET /api/videos?phase={id}` - List videos in phase
+- `GET /api/videos/{name}?category={cat}` - Get video details
+- `PUT /api/videos/{name}` - Update video
+- `DELETE /api/videos/{name}?category={cat}` - Delete video
+- `PUT /api/videos/{name}/{phase}` - Update specific phase
+
+**Phase-specific endpoints:**
+- `/initial-details` - Project information and sponsorship
+- `/work-progress` - Content creation tasks
+- `/definition` - Title, description, metadata
+- `/post-production` - Editing and thumbnails
+- `/publishing` - Video upload and Hugo posts
+- `/post-publish` - Social media and follow-up tasks
 
 ## Development
 
