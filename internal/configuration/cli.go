@@ -47,7 +47,8 @@ type SettingsAI struct {
 }
 
 type SettingsYouTube struct {
-	APIKey string `yaml:"apiKey"`
+	APIKey    string `yaml:"apiKey"`
+	ChannelId string `yaml:"channelId"`
 }
 
 type SettingsBluesky struct {
