@@ -95,6 +95,55 @@ FIXME:
 		}
 	}
 
+	// Create the default video YAML file
+	videoPath := s.filesystem.GetFilePath(vi.Category, vi.Name, "yaml")
+	defaultVideo := storage.Video{
+		Name:     name,
+		Category: category,
+		Path:     videoPath,
+		// Initialize all task counters to zero
+		Init:        storage.Tasks{Completed: 0, Total: 0},
+		Work:        storage.Tasks{Completed: 0, Total: 0},
+		Define:      storage.Tasks{Completed: 0, Total: 0},
+		Edit:        storage.Tasks{Completed: 0, Total: 0},
+		Publish:     storage.Tasks{Completed: 0, Total: 0},
+		PostPublish: storage.Tasks{Completed: 0, Total: 0},
+		// Initialize sponsorship
+		Sponsorship: storage.Sponsorship{
+			Amount:  "",
+			Emails:  "",
+			Blocked: "",
+		},
+		// Initialize other fields with default values
+		Date:                 "",
+		Delayed:              false,
+		Screen:               false,
+		Head:                 false,
+		Thumbnails:           false,
+		Diagrams:             false,
+		Screenshots:          false,
+		RequestThumbnail:     false,
+		Movie:                false,
+		Slides:               false,
+		RequestEdit:          false,
+		LinkedInPosted:       false,
+		SlackPosted:          false,
+		HNPosted:             false,
+		DOTPosted:            false,
+		BlueSkyPosted:        false,
+		YouTubeHighlight:     false,
+		YouTubeComment:       false,
+		YouTubeCommentReply:  false,
+		GDE:                  false,
+		NotifiedSponsors:     false,
+		Code:                 false,
+	}
+
+	// Write the video YAML file
+	if err := s.yamlStorage.WriteVideo(defaultVideo, videoPath); err != nil {
+		return storage.VideoIndex{}, fmt.Errorf("failed to create video file %s: %w", videoPath, err)
+	}
+
 	// Add to index
 	index, err := s.yamlStorage.GetIndex()
 	if err != nil {
