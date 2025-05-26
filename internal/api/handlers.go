@@ -2,7 +2,6 @@ package api
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
 
@@ -279,40 +278,16 @@ func (s *Server) updateVideoPhase(w http.ResponseWriter, r *http.Request, phase 
 		return
 	}
 
-	// Apply the updates based on the phase
-	if err := s.applyPhaseUpdates(&video, phase, updateData); err != nil {
+	// Use the service to apply updates and save the video
+	updatedVideo, err := s.videoService.UpdateVideoPhase(videoName, category, phase, updateData)
+	if err != nil {
 		writeError(w, http.StatusBadRequest, "Failed to apply updates", err.Error())
 		return
 	}
 
-	// Save the updated video
-	if err := s.videoService.UpdateVideo(video); err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to save video", err.Error())
-		return
-	}
-
-	writeJSON(w, http.StatusOK, GetVideoResponse{Video: video})
+	writeJSON(w, http.StatusOK, GetVideoResponse{Video: updatedVideo})
 }
 
-// applyPhaseUpdates applies updates to specific video phase fields
-func (s *Server) applyPhaseUpdates(video *storage.Video, phase string, updateData map[string]interface{}) error {
-	switch phase {
-	case "initial-details":
-		return s.applyInitialDetailsUpdates(video, updateData)
-	case "work-progress":
-		return s.applyWorkProgressUpdates(video, updateData)
-	case "definition":
-		return s.applyDefinitionUpdates(video, updateData)
-	case "post-production":
-		return s.applyPostProductionUpdates(video, updateData)
-	case "publishing":
-		return s.applyPublishingUpdates(video, updateData)
-	case "post-publish":
-		return s.applyPostPublishUpdates(video, updateData)
-	default:
-		return fmt.Errorf("unknown phase: %s", phase)
-	}
-}
 
 // Utility functions
 func writeJSON(w http.ResponseWriter, status int, data interface{}) {

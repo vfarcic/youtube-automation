@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"devopstoolkit/youtube-automation/internal/configuration"
-	"devopstoolkit/youtube-automation/internal/data"
+	"devopstoolkit/youtube-automation/internal/service"
 	"devopstoolkit/youtube-automation/internal/filesystem"
 	"devopstoolkit/youtube-automation/internal/video"
 
@@ -19,7 +19,7 @@ import (
 // Server represents the REST API server
 type Server struct {
 	router       chi.Router
-	videoService *data.VideoService
+	videoService *service.VideoService
 	port         int
 	httpServer   *http.Server
 }
@@ -29,7 +29,7 @@ func NewServer() *Server {
 	// Initialize dependencies
 	filesystem := &filesystem.Operations{}
 	videoManager := video.NewManager(filesystem.GetFilePath)
-	videoService := data.NewVideoService("index.yaml", filesystem, videoManager)
+	videoService := service.NewVideoService("index.yaml", filesystem, videoManager)
 
 	server := &Server{
 		videoService: videoService,

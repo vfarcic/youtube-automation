@@ -8,7 +8,7 @@ import (
 	"os"
 	"testing"
 
-	"devopstoolkit/youtube-automation/internal/data"
+	"devopstoolkit/youtube-automation/internal/service"
 	"devopstoolkit/youtube-automation/internal/filesystem"
 	"devopstoolkit/youtube-automation/internal/storage"
 	"devopstoolkit/youtube-automation/internal/video"
@@ -36,7 +36,7 @@ func setupTestServer(t *testing.T) *Server {
 	// Initialize dependencies
 	filesystem := &filesystem.Operations{}
 	videoManager := video.NewManager(filesystem.GetFilePath)
-	videoService := data.NewVideoService("index.yaml", filesystem, videoManager)
+	videoService := service.NewVideoService("index.yaml", filesystem, videoManager)
 
 	server := &Server{
 		videoService: videoService,
