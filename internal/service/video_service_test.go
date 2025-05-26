@@ -279,7 +279,7 @@ func TestVideoService_GetVideosByPhase(t *testing.T) {
 	_, err = service.CreateVideo("normal-video", "test-category")
 	require.NoError(t, err)
 
-	// Update one video to be delayed (phase 7)
+	// Update one video to be delayed (phase 5)
 	delayedVideo, err := service.GetVideo("delayed-video", "test-category")
 	require.NoError(t, err)
 	delayedVideo.Delayed = true
@@ -293,14 +293,14 @@ func TestVideoService_GetVideosByPhase(t *testing.T) {
 		expectError  bool
 	}{
 		{
-			name:        "Phase 7 (delayed videos)",
-			phase:       7,
+			name:        "Phase 5 (delayed videos)",
+			phase:       5,
 			expectedLen: 1,
 			expectError: false,
 		},
 		{
-			name:        "Phase 1 (normal new videos)",
-			phase:       1,
+			name:        "Phase 7 (ideas - normal new videos)",
+			phase:       7,
 			expectedLen: 1,
 			expectError: false,
 		},
@@ -343,7 +343,7 @@ func TestVideoService_GetVideoPhases(t *testing.T) {
 	_, err = service.CreateVideo("normal-video", "test-category")
 	require.NoError(t, err)
 
-	// Update one video to be delayed
+	// Update one video to be delayed (phase 5)
 	delayedVideo, err := service.GetVideo("delayed-video", "test-category")
 	require.NoError(t, err)
 	delayedVideo.Delayed = true
@@ -354,17 +354,17 @@ func TestVideoService_GetVideoPhases(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, phases)
 
-	// Verify we have the expected phases structure
-	expectedPhases := []int{1, 2, 3, 4, 5, 6, 7, 8}
+	// Verify we have the expected phases structure (0-7 only)
+	expectedPhases := []int{0, 1, 2, 3, 4, 5, 6, 7}
 	for _, phase := range expectedPhases {
 		count, exists := phases[phase]
 		assert.True(t, exists, "Phase %d should exist", phase)
 		assert.GreaterOrEqual(t, count, 0, "Phase %d count should be >= 0", phase)
 	}
 
-	// Verify we have videos in phases 1 and 7
-	assert.Equal(t, 1, phases[1], "Should have 1 video in phase 1")
-	assert.Equal(t, 1, phases[7], "Should have 1 video in phase 7")
+	// Verify we have videos in phases 5 (delayed) and 7 (ideas)
+	assert.Equal(t, 1, phases[5], "Should have 1 video in phase 5 (delayed)")
+	assert.Equal(t, 1, phases[7], "Should have 1 video in phase 7 (ideas)")
 }
 
 func TestVideoService_GetCategories(t *testing.T) {
