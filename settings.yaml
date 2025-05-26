@@ -25,3 +25,8 @@ slack:
   targetChannelIDs:
     - "C0123EXAMPLE1" # Placeholder: e.g., #announcements
     - "C0456EXAMPLE2" # Placeholder: e.g., #new-videos
+
+# LinkedIn API configuration
+# Note: The access token should be provided via the LINKEDIN_ACCESS_TOKEN environment variable
+linkedin:
+  apiUrl: "https://api.linkedin.com/v2"  # LinkedIn API base URL
