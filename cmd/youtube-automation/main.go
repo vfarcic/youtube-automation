@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"devopstoolkit/youtube-automation/internal/api"
 	"devopstoolkit/youtube-automation/internal/app"
 	"devopstoolkit/youtube-automation/internal/configuration"
 	"devopstoolkit/youtube-automation/internal/platform/bluesky"
@@ -35,10 +36,20 @@ func main() {
 		}
 	}
 
-	// Start the application
-	application := app.New()
-	if err := application.Run(); err != nil {
-		fmt.Fprintf(os.Stderr, "Application error: %v\n", err)
-		os.Exit(1)
+	// Check if API mode is enabled
+	if configuration.GlobalSettings.API.Enabled {
+		// Start the API server
+		server := api.NewServer("index.yaml", configuration.GlobalSettings.API.Port)
+		if err := server.Start(); err != nil {
+			fmt.Fprintf(os.Stderr, "API server error: %v\n", err)
+			os.Exit(1)
+		}
+	} else {
+		// Start the CLI application
+		application := app.New()
+		if err := application.Run(); err != nil {
+			fmt.Fprintf(os.Stderr, "Application error: %v\n", err)
+			os.Exit(1)
+		}
 	}
 }

@@ -108,6 +108,7 @@ type Video struct {
 type Tasks struct {
 	Completed int
 	Total     int
+	Done      bool `yaml:"done,omitempty"`
 }
 
 // Sponsorship holds details about video sponsorship.
@@ -119,9 +120,10 @@ type Tasks struct {
 // Sponsorship holds details about video sponsorship.
 // Fields Amount, Emails, and Blocked are already exported.
 type Sponsorship struct {
-	Amount  string
-	Emails  string
-	Blocked string
+	Amount        string
+	Emails        string
+	Blocked       string
+	BlockedReason string `yaml:"blockedReason,omitempty"`
 }
 
 // NewYAML creates a new YAML instance with default values
