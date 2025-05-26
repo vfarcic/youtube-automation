@@ -286,7 +286,7 @@ func (m *MenuHandler) ChooseVideosPhaseAndHandleError(vi []storage.VideoIndex) (
 				Value(&selectedPhase),
 		),
 	)
-	err := form.Run()
+	err = form.Run()
 	if err != nil {
 		return false, fmt.Errorf("failed to run video phase form: %w", err)
 	}
@@ -343,7 +343,7 @@ func (m *MenuHandler) ChooseVideosAndHandleError(vi []storage.VideoIndex, phase 
 		form = form.WithInput(input)
 	}
 
-	err := form.Run()
+	err = form.Run()
 	if err != nil {
 		return fmt.Errorf("failed to run video selection form: %w", err)
 	}

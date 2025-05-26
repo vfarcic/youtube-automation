@@ -264,13 +264,6 @@ func (s *Server) updateVideoPhase(w http.ResponseWriter, r *http.Request, phase 
 		return
 	}
 
-	// Get the current video
-	video, err := s.videoService.GetVideo(videoName, category)
-	if err != nil {
-		writeError(w, http.StatusNotFound, "Video not found", err.Error())
-		return
-	}
-
 	// Decode the update request
 	var updateData map[string]interface{}
 	if err := json.NewDecoder(r.Body).Decode(&updateData); err != nil {
