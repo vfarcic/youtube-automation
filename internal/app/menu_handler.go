@@ -16,8 +16,8 @@ import (
 	"devopstoolkit/youtube-automation/internal/configuration"
 	"devopstoolkit/youtube-automation/internal/filesystem"
 	"devopstoolkit/youtube-automation/internal/notification"
-	"devopstoolkit/youtube-automation/internal/platform"
 	"devopstoolkit/youtube-automation/internal/platform/bluesky"
+	"devopstoolkit/youtube-automation/internal/platform/linkedin"
 	"devopstoolkit/youtube-automation/internal/publishing"
 	"devopstoolkit/youtube-automation/internal/slack"
 	"devopstoolkit/youtube-automation/internal/storage"
@@ -1216,8 +1216,21 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 
 				// Action: LinkedIn Post (if changed from false to true in this phase)
 				if !originalLinkedInPosted && updatedVideo.LinkedInPosted && updatedVideo.Tweet != "" && updatedVideo.VideoId != "" {
-					platform.PostLinkedIn(updatedVideo.Tweet, updatedVideo.VideoId, publishing.GetYouTubeURL, m.confirmationStyle)
-					fmt.Println(m.confirmationStyle.Render("LinkedIn post triggered."))
+					linkedInToken := os.Getenv("LINKEDIN_ACCESS_TOKEN")
+					if linkedInToken == "" {
+						log.Printf(m.errorStyle.Render("LINKEDIN_ACCESS_TOKEN not set. Cannot post to LinkedIn."))
+						updatedVideo.LinkedInPosted = false // Revert intent due to missing token
+					} else {
+						errLinkedIn := linkedin.PostToLinkedIn(&updatedVideo, linkedInToken) // Call the updated function
+						if errLinkedIn != nil {
+							log.Printf(m.errorStyle.Render(fmt.Sprintf("Failed to post to LinkedIn: %v", errLinkedIn)))
+							updatedVideo.LinkedInPosted = false // Revert intent on error
+						} else {
+							// The success message is now handled by the PostToLinkedIn function if successful (or error specific logs)
+							// We can keep a generic trigger message here if desired, or rely on the debug prints from PostToLinkedIn
+							fmt.Println(m.confirmationStyle.Render("LinkedIn post processing attempted."))
+						}
+					}
 				} else if originalLinkedInPosted && !updatedVideo.LinkedInPosted { // User deselected
 					// No action needed
 				}
