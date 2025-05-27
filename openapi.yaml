@@ -1,0 +1,966 @@
+openapi: 3.0.3
+info:
+  title: YouTube Automation API
+  description: |
+    REST API for YouTube video automation system that manages video lifecycle from ideation to post-publication.
+    
+    This API provides comprehensive CRUD operations for video management across 8 distinct phases:
+    - Phase 0: Published
+    - Phase 1: Publish Pending
+    - Phase 2: Edit Requested
+    - Phase 3: Material Done
+    - Phase 4: Started
+    - Phase 5: Delayed
+    - Phase 6: Sponsored Blocked
+    - Phase 7: Ideas
+    
+    Each video progresses through phases with specific tasks and completion tracking.
+  version: 1.0.0
+  contact:
+    name: Viktor Farcic
+    url: https://github.com/vfarcic/youtube-automation
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+  - url: http://localhost:8080/api
+    description: API base path
+
+paths:
+  /health:
+    get:
+      summary: Health check endpoint
+      description: Returns the health status of the API server
+      operationId: healthCheck
+      tags:
+        - Health
+      responses:
+        '200':
+          description: Server is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "ok"
+                  time:
+                    type: string
+                    format: date-time
+                    example: "2025-05-27T00:00:00Z"
+
+  /api/videos:
+    post:
+      summary: Create a new video
+      description: Creates a new video with the specified name and category
+      operationId: createVideo
+      tags:
+        - Videos
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateVideoRequest'
+      responses:
+        '201':
+          description: Video created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateVideoResponse'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    get:
+      summary: Get videos by phase
+      description: Retrieves all videos in a specific phase
+      operationId: getVideos
+      tags:
+        - Videos
+      parameters:
+        - name: phase
+          in: query
+          required: true
+          description: The phase ID to filter videos by
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 7
+            example: 7
+      responses:
+        '200':
+          description: Videos retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetVideosResponse'
+        '400':
+          description: Invalid phase parameter
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/videos/phases:
+    get:
+      summary: Get video phase statistics
+      description: Returns count of videos in each phase
+      operationId: getVideoPhases
+      tags:
+        - Videos
+      responses:
+        '200':
+          description: Phase statistics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VideoPhasesResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/videos/{videoName}:
+    get:
+      summary: Get a specific video
+      description: Retrieves detailed information about a specific video
+      operationId: getVideo
+      tags:
+        - Videos
+      parameters:
+        - name: videoName
+          in: path
+          required: true
+          description: The name of the video
+          schema:
+            type: string
+            example: "my-video"
+        - name: category
+          in: query
+          required: true
+          description: The category of the video
+          schema:
+            type: string
+            example: "category-01"
+      responses:
+        '200':
+          description: Video retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetVideoResponse'
+        '400':
+          description: Missing required parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Video not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      summary: Update a video
+      description: Updates an existing video with new data
+      operationId: updateVideo
+      tags:
+        - Videos
+      parameters:
+        - name: videoName
+          in: path
+          required: true
+          description: The name of the video to update
+          schema:
+            type: string
+            example: "my-video"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateVideoRequest'
+      responses:
+        '200':
+          description: Video updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetVideoResponse'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      summary: Delete a video
+      description: Deletes a video and all associated files
+      operationId: deleteVideo
+      tags:
+        - Videos
+      parameters:
+        - name: videoName
+          in: path
+          required: true
+          description: The name of the video to delete
+          schema:
+            type: string
+            example: "my-video"
+        - name: category
+          in: query
+          required: true
+          description: The category of the video
+          schema:
+            type: string
+            example: "category-01"
+      responses:
+        '204':
+          description: Video deleted successfully
+        '400':
+          description: Missing required parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/videos/{videoName}/move:
+    post:
+      summary: Move a video to a different category
+      description: Moves a video and its files to a different directory/category
+      operationId: moveVideo
+      tags:
+        - Videos
+      parameters:
+        - name: videoName
+          in: path
+          required: true
+          description: The name of the video to move
+          schema:
+            type: string
+            example: "my-video"
+        - name: category
+          in: query
+          required: true
+          description: The current category of the video
+          schema:
+            type: string
+            example: "category-01"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MoveVideoRequest'
+      responses:
+        '200':
+          description: Video moved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Video moved successfully"
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/videos/{videoName}/initial-details:
+    put:
+      summary: Update video initial details phase
+      description: Updates video fields specific to the initial details phase
+      operationId: updateVideoInitialDetails
+      tags:
+        - Video Phases
+      parameters:
+        - name: videoName
+          in: path
+          required: true
+          description: The name of the video
+          schema:
+            type: string
+            example: "my-video"
+        - name: category
+          in: query
+          required: true
+          description: The category of the video
+          schema:
+            type: string
+            example: "category-01"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PhaseUpdateRequest'
+      responses:
+        '200':
+          description: Video initial details updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetVideoResponse'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/videos/{videoName}/work-progress:
+    put:
+      summary: Update video work progress phase
+      description: Updates video fields specific to the work progress phase
+      operationId: updateVideoWorkProgress
+      tags:
+        - Video Phases
+      parameters:
+        - name: videoName
+          in: path
+          required: true
+          description: The name of the video
+          schema:
+            type: string
+            example: "my-video"
+        - name: category
+          in: query
+          required: true
+          description: The category of the video
+          schema:
+            type: string
+            example: "category-01"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PhaseUpdateRequest'
+      responses:
+        '200':
+          description: Video work progress updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetVideoResponse'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/videos/{videoName}/definition:
+    put:
+      summary: Update video definition phase
+      description: Updates video fields specific to the definition phase
+      operationId: updateVideoDefinition
+      tags:
+        - Video Phases
+      parameters:
+        - name: videoName
+          in: path
+          required: true
+          description: The name of the video
+          schema:
+            type: string
+            example: "my-video"
+        - name: category
+          in: query
+          required: true
+          description: The category of the video
+          schema:
+            type: string
+            example: "category-01"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PhaseUpdateRequest'
+      responses:
+        '200':
+          description: Video definition updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetVideoResponse'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/videos/{videoName}/post-production:
+    put:
+      summary: Update video post-production phase
+      description: Updates video fields specific to the post-production phase
+      operationId: updateVideoPostProduction
+      tags:
+        - Video Phases
+      parameters:
+        - name: videoName
+          in: path
+          required: true
+          description: The name of the video
+          schema:
+            type: string
+            example: "my-video"
+        - name: category
+          in: query
+          required: true
+          description: The category of the video
+          schema:
+            type: string
+            example: "category-01"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PhaseUpdateRequest'
+      responses:
+        '200':
+          description: Video post-production updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetVideoResponse'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/videos/{videoName}/publishing:
+    put:
+      summary: Update video publishing phase
+      description: Updates video fields specific to the publishing phase
+      operationId: updateVideoPublishing
+      tags:
+        - Video Phases
+      parameters:
+        - name: videoName
+          in: path
+          required: true
+          description: The name of the video
+          schema:
+            type: string
+            example: "my-video"
+        - name: category
+          in: query
+          required: true
+          description: The category of the video
+          schema:
+            type: string
+            example: "category-01"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PhaseUpdateRequest'
+      responses:
+        '200':
+          description: Video publishing updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetVideoResponse'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/videos/{videoName}/post-publish:
+    put:
+      summary: Update video post-publish phase
+      description: Updates video fields specific to the post-publish phase
+      operationId: updateVideoPostPublish
+      tags:
+        - Video Phases
+      parameters:
+        - name: videoName
+          in: path
+          required: true
+          description: The name of the video
+          schema:
+            type: string
+            example: "my-video"
+        - name: category
+          in: query
+          required: true
+          description: The category of the video
+          schema:
+            type: string
+            example: "category-01"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PhaseUpdateRequest'
+      responses:
+        '200':
+          description: Video post-publish updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetVideoResponse'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/categories:
+    get:
+      summary: Get all categories
+      description: Retrieves list of all available video categories
+      operationId: getCategories
+      tags:
+        - Categories
+      responses:
+        '200':
+          description: Categories retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoriesResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    CreateVideoRequest:
+      type: object
+      required:
+        - name
+        - category
+      properties:
+        name:
+          type: string
+          description: The name of the video
+          example: "my-awesome-video"
+        category:
+          type: string
+          description: The category/directory for the video
+          example: "category-01"
+
+    CreateVideoResponse:
+      type: object
+      properties:
+        video:
+          $ref: '#/components/schemas/VideoIndex'
+
+    VideoIndex:
+      type: object
+      properties:
+        name:
+          type: string
+          description: The name of the video
+          example: "my-awesome-video"
+        category:
+          type: string
+          description: The category of the video
+          example: "category-01"
+
+    VideoPhasesResponse:
+      type: object
+      properties:
+        phases:
+          type: array
+          items:
+            $ref: '#/components/schemas/PhaseInfo'
+
+    PhaseInfo:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Phase ID (0-7)
+          example: 7
+        name:
+          type: string
+          description: Human-readable phase name
+          example: "Ideas"
+        count:
+          type: integer
+          description: Number of videos in this phase
+          example: 5
+
+    GetVideosResponse:
+      type: object
+      properties:
+        videos:
+          type: array
+          items:
+            $ref: '#/components/schemas/Video'
+
+    GetVideoResponse:
+      type: object
+      properties:
+        video:
+          $ref: '#/components/schemas/Video'
+
+    UpdateVideoRequest:
+      type: object
+      required:
+        - video
+      properties:
+        video:
+          $ref: '#/components/schemas/Video'
+
+    MoveVideoRequest:
+      type: object
+      required:
+        - target_directory_path
+      properties:
+        target_directory_path:
+          type: string
+          description: The target directory path to move the video to
+          example: "manuscript/category-02"
+
+    PhaseUpdateRequest:
+      type: object
+      description: Dynamic object containing phase-specific field updates
+      additionalProperties: true
+      example:
+        title: "Updated Video Title"
+        description: "Updated video description"
+        date: "2025-05-27T10:00"
+
+    CategoriesResponse:
+      type: object
+      properties:
+        categories:
+          type: array
+          items:
+            $ref: '#/components/schemas/CategoryInfo'
+
+    CategoryInfo:
+      type: object
+      properties:
+        name:
+          type: string
+          description: The name of the category
+          example: "category-01"
+        path:
+          type: string
+          description: The file system path of the category
+          example: "manuscript/category-01"
+
+    Video:
+      type: object
+      properties:
+        name:
+          type: string
+          description: The name of the video
+          example: "my-awesome-video"
+        index:
+          type: integer
+          description: The index number of the video
+          example: 1
+        path:
+          type: string
+          description: The file system path to the video
+          example: "manuscript/category-01/my-awesome-video.yaml"
+        category:
+          type: string
+          description: The category of the video
+          example: "category-01"
+        init:
+          $ref: '#/components/schemas/Tasks'
+        work:
+          $ref: '#/components/schemas/Tasks'
+        define:
+          $ref: '#/components/schemas/Tasks'
+        edit:
+          $ref: '#/components/schemas/Tasks'
+        publish:
+          $ref: '#/components/schemas/Tasks'
+        postPublish:
+          $ref: '#/components/schemas/Tasks'
+        projectName:
+          type: string
+          description: The name of the project
+          example: "My Project"
+        projectURL:
+          type: string
+          description: The URL of the project
+          example: "https://github.com/user/project"
+        sponsorship:
+          $ref: '#/components/schemas/Sponsorship'
+        date:
+          type: string
+          description: The scheduled date for the video
+          example: "2025-05-27T10:00"
+        delayed:
+          type: boolean
+          description: Whether the video is delayed
+          example: false
+        screen:
+          type: boolean
+          description: Whether screen recording is needed
+          example: true
+        head:
+          type: boolean
+          description: Whether head recording is needed
+          example: false
+        thumbnails:
+          type: boolean
+          description: Whether thumbnails are needed
+          example: true
+        diagrams:
+          type: boolean
+          description: Whether diagrams are needed
+          example: false
+        title:
+          type: string
+          description: The title of the video
+          example: "How to Build Awesome Software"
+        description:
+          type: string
+          description: The description of the video
+          example: "In this video, we'll explore..."
+        highlight:
+          type: string
+          description: The highlight text for the video
+        tags:
+          type: string
+          description: Tags for the video
+          example: "programming,tutorial,beginner"
+        descriptionTags:
+          type: string
+          description: Tags used in the description
+        location:
+          type: string
+          description: The recording location
+        tagline:
+          type: string
+          description: The tagline for the video
+        taglineIdeas:
+          type: string
+          description: Ideas for taglines
+        otherLogos:
+          type: string
+          description: Other logos to include
+        screenshots:
+          type: boolean
+          description: Whether screenshots are needed
+          example: false
+        requestThumbnail:
+          type: boolean
+          description: Whether a thumbnail is requested
+          example: false
+        thumbnail:
+          type: string
+          description: The thumbnail image
+        language:
+          type: string
+          description: The language of the video
+          example: "en"
+        members:
+          type: string
+          description: Team members involved
+        animations:
+          type: string
+          description: Animations needed
+        requestEdit:
+          type: boolean
+          description: Whether editing is requested
+          example: false
+        movie:
+          type: boolean
+          description: Whether this is a movie format
+          example: false
+        timecodes:
+          type: string
+          description: Video timecodes
+        hugoPath:
+          type: string
+          description: Hugo site path
+        relatedVideos:
+          type: string
+          description: Related videos
+        uploadVideo:
+          type: string
+          description: Upload video path
+        videoId:
+          type: string
+          description: YouTube video ID
+        tweet:
+          type: string
+          description: Tweet content
+        linkedInPosted:
+          type: boolean
+          description: Whether posted to LinkedIn
+          example: false
+        slackPosted:
+          type: boolean
+          description: Whether posted to Slack
+          example: false
+        hnPosted:
+          type: boolean
+          description: Whether posted to Hacker News
+          example: false
+        dotPosted:
+          type: boolean
+          description: Whether posted to DevOpsToolkit
+          example: false
+        blueSkyPosted:
+          type: boolean
+          description: Whether posted to BlueSky
+          example: false
+        youTubeHighlight:
+          type: boolean
+          description: Whether highlighted on YouTube
+          example: false
+        youTubeComment:
+          type: boolean
+          description: Whether commented on YouTube
+          example: false
+        youTubeCommentReply:
+          type: boolean
+          description: Whether replied to YouTube comments
+          example: false
+        slides:
+          type: boolean
+          description: Whether slides are needed
+          example: false
+        gde:
+          type: boolean
+          description: Whether this is a GDE video
+          example: false
+        repo:
+          type: string
+          description: Repository URL
+        notifiedSponsors:
+          type: boolean
+          description: Whether sponsors have been notified
+          example: false
+        appliedLanguage:
+          type: string
+          description: Applied language setting
+        appliedAudioLanguage:
+          type: string
+          description: Applied audio language setting
+        audioLanguage:
+          type: string
+          description: Audio language
+        gist:
+          type: string
+          description: Gist URL or content
+        code:
+          type: boolean
+          description: Whether code is included
+          example: false
+
+    Tasks:
+      type: object
+      description: Task completion tracking for a video phase
+      properties:
+        completed:
+          type: integer
+          description: Number of completed tasks
+          example: 3
+        total:
+          type: integer
+          description: Total number of tasks
+          example: 5
+
+    Sponsorship:
+      type: object
+      description: Sponsorship information for the video
+      properties:
+        amount:
+          type: string
+          description: Sponsorship amount
+          example: "$1000"
+        emails:
+          type: string
+          description: Sponsor contact emails
+          example: "sponsor@company.com"
+        blocked:
+          type: string
+          description: Blocked sponsors
+          example: "competitor-company"
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+          example: "Invalid request"
+        message:
+          type: string
+          description: Detailed error message
+          example: "The name parameter is required but was not provided"
+
+tags:
+  - name: Health
+    description: Health check operations
+  - name: Videos
+    description: Video CRUD operations
+  - name: Video Phases
+    description: Phase-specific video updates
+  - name: Categories
+    description: Category management operations
