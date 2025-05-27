@@ -2,6 +2,7 @@ package app
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -12,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"devopstoolkit/youtube-automation/internal/ai"
 	"devopstoolkit/youtube-automation/internal/cli"
 	"devopstoolkit/youtube-automation/internal/configuration"
 	"devopstoolkit/youtube-automation/internal/filesystem"
@@ -50,6 +52,8 @@ type MenuHandler struct {
 	farFutureStyle    lipgloss.Style
 	confirmationStyle lipgloss.Style
 	errorStyle        lipgloss.Style
+	normalStyle       lipgloss.Style
+	settings          configuration.Settings
 }
 
 // Constants for menu indices
@@ -232,7 +236,7 @@ func (m *MenuHandler) ChooseCreateVideoAndHandleError() (storage.VideoIndex, err
 	if !save {
 		return vi, nil
 	}
-	
+
 	// Use the service to create the video with all the proper logic
 	return m.videoService.CreateVideo(name, category)
 }
@@ -532,7 +536,6 @@ func (m *MenuHandler) SelectDirectory(input *bytes.Buffer) (Directory, error) {
 				Value(&selectedDir),
 		),
 	)
-	form = form.WithTheme(cli.GetCustomHuhTheme())
 	if input != nil {
 		form = form.WithInput(input)
 	}
@@ -798,73 +801,13 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 			}
 
 		case editPhaseDefinition:
-			save := true
-			originalRequestThumbnailStatus := updatedVideo.RequestThumbnail
-
-			definitionFormFields := []huh.Field{
-				huh.NewText().Lines(1).CharLimit(200).Title(m.colorTitleString("Title", updatedVideo.Title)).Value(&updatedVideo.Title),
-				huh.NewText().Lines(5).CharLimit(5000).Title(m.colorTitleString("Description", updatedVideo.Description)).Value(&updatedVideo.Description),
-				huh.NewText().Lines(1).CharLimit(200).Title(m.colorTitleString("Highlight (Short Teaser)", updatedVideo.Highlight)).Value(&updatedVideo.Highlight),
-				huh.NewText().Lines(2).CharLimit(500).Title(m.colorTitleString("Tags (comma separated)", updatedVideo.Tags)).Value(&updatedVideo.Tags),
-				huh.NewText().Lines(2).CharLimit(500).Title(m.colorTitleString("Description Tags (comma separated)", updatedVideo.DescriptionTags)).Value(&updatedVideo.DescriptionTags),
-				huh.NewText().Lines(3).CharLimit(280).Title(m.colorTitleString("Tweet Text", updatedVideo.Tweet)).Value(&updatedVideo.Tweet),
-				// TODO: Add back interactive animation generation if needed. For now, direct text edit.
-				huh.NewText().Lines(10).CharLimit(10000).Title(m.colorTitleString("Animations Script", updatedVideo.Animations)).Value(&updatedVideo.Animations),
-				huh.NewConfirm().Title(m.colorTitleBool("Request Thumbnail Generation", updatedVideo.RequestThumbnail)).Value(&updatedVideo.RequestThumbnail),
-				huh.NewConfirm().Affirmative("Save").Negative("Cancel").Value(&save),
-			}
-
-			phaseDefinitionForm := huh.NewForm(huh.NewGroup(definitionFormFields...))
-			err = phaseDefinitionForm.Run()
-
+			err = m.editPhaseDefinition(updatedVideo, m.settings)
 			if err != nil {
-				if errors.Is(err, huh.ErrUserAborted) {
-					fmt.Println(m.orangeStyle.Render("Definition edit cancelled."))
-					continue // Continue the loop to re-select edit phase
-				}
-				return fmt.Errorf("failed to run definition edit form: %w", err)
+				return fmt.Errorf("error during definition phase: %w", err)
 			}
+			videoToEdit = updatedVideo // Persist changes for the next loop iteration
 
-			if save {
-				yaml := storage.YAML{}
-				updatedVideo.Define.Completed, updatedVideo.Define.Total = m.countCompletedTasks([]interface{}{
-					updatedVideo.Title,
-					updatedVideo.Description,
-					updatedVideo.Highlight,
-					updatedVideo.Tags,
-					updatedVideo.DescriptionTags,
-					updatedVideo.Tweet,
-					updatedVideo.Animations,
-					updatedVideo.RequestThumbnail,
-					// Gist is part of definition completeness according to old logic
-					updatedVideo.Gist,
-				})
-				// Note: Old logic for Define.Total was more complex due to fabric interactions.
-				// Here, it's based on the direct fields in this simplified form.
-
-				if err := yaml.WriteVideo(updatedVideo, updatedVideo.Path); err != nil {
-					return fmt.Errorf("failed to save definition details: %w", err)
-				}
-
-				if !originalRequestThumbnailStatus && updatedVideo.RequestThumbnail {
-					if configuration.GlobalSettings.Email.Password == "" {
-						log.Println(m.errorStyle.Render("Email password not configured. Cannot send thumbnail request email."))
-					} else {
-						emailService := notification.NewEmail(configuration.GlobalSettings.Email.Password)
-						if emailErr := emailService.SendThumbnail(configuration.GlobalSettings.Email.From, configuration.GlobalSettings.Email.ThumbnailTo, updatedVideo); emailErr != nil {
-							log.Printf(m.errorStyle.Render(fmt.Sprintf("Failed to send thumbnail request email: %v", emailErr)))
-						} else {
-							fmt.Println(m.confirmationStyle.Render("Thumbnail request email sent."))
-						}
-					}
-				}
-				fmt.Println(m.confirmationStyle.Render(fmt.Sprintf("Video '%s' definition details updated.", updatedVideo.Name)))
-				videoToEdit = updatedVideo // Persist changes for the next loop iteration
-			} else {
-				fmt.Println(m.orangeStyle.Render("Changes not saved for definition."))
-			}
-
-		case editPhasePostProduction: // This is where the existing ChooseEdit logic goes
+		case editPhasePostProduction:
 			save := true
 			originalRequestEditStatus := updatedVideo.RequestEdit
 
@@ -1216,4 +1159,271 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 		}
 		// Loop continues to allow editing other phases or returning
 	}
+
+	fmt.Println(m.normalStyle.Render("\n--- Definition Phase Complete ---"))
+	return nil
+}
+
+func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings configuration.Settings) error {
+	fmt.Println(m.normalStyle.Render("\n--- Defining Video Details ---"))
+	yamlHelper := storage.YAML{}
+
+	definitionFields := []struct {
+		name             string
+		description      string
+		isTitleField     bool
+		isThumbnailField bool
+		getValue         func() interface{}
+		updateAction     func(newValue interface{})
+		revertField      func(originalValue interface{})
+	}{
+		{
+			name: "Title", description: "Video title (max 100 chars). SEO is important.", isTitleField: true,
+			getValue:     func() interface{} { return videoToEdit.Title },
+			updateAction: func(newValue interface{}) { videoToEdit.Title = newValue.(string) },
+			revertField:  func(originalValue interface{}) { videoToEdit.Title = originalValue.(string) },
+		},
+		{
+			name: "Description", description: "Video description (max 5000 chars). Include keywords.",
+			getValue:     func() interface{} { return videoToEdit.Description },
+			updateAction: func(newValue interface{}) { videoToEdit.Description = newValue.(string) },
+			revertField:  func(originalValue interface{}) { videoToEdit.Description = originalValue.(string) },
+		},
+		{
+			name: "Highlight", description: "Highlight timestamp (e.g., 01:23) or main point.",
+			getValue:     func() interface{} { return videoToEdit.Highlight },
+			updateAction: func(newValue interface{}) { videoToEdit.Highlight = newValue.(string) },
+			revertField:  func(originalValue interface{}) { videoToEdit.Highlight = originalValue.(string) },
+		},
+		{
+			name: "Tags", description: "Comma-separated tags (e.g., golang,devops,tutorial).",
+			getValue:     func() interface{} { return videoToEdit.Tags },
+			updateAction: func(newValue interface{}) { videoToEdit.Tags = newValue.(string) },
+			revertField:  func(originalValue interface{}) { videoToEdit.Tags = originalValue.(string) },
+		},
+		{
+			name: "DescriptionTags", description: "Comma-separated tags for description (e.g., #golang #devops).",
+			getValue:     func() interface{} { return videoToEdit.DescriptionTags },
+			updateAction: func(newValue interface{}) { videoToEdit.DescriptionTags = newValue.(string) },
+			revertField: func(originalValue interface{}) {
+				videoToEdit.DescriptionTags = originalValue.(string)
+			},
+		},
+		{
+			name: "Tweet", description: "Promotional tweet text (max 280 chars).",
+			getValue:     func() interface{} { return videoToEdit.Tweet },
+			updateAction: func(newValue interface{}) { videoToEdit.Tweet = newValue.(string) },
+			revertField:  func(originalValue interface{}) { videoToEdit.Tweet = originalValue.(string) },
+		},
+		{
+			name: "Animations", description: "List any animations or special graphics needed.",
+			getValue:     func() interface{} { return videoToEdit.Animations },
+			updateAction: func(newValue interface{}) { videoToEdit.Animations = newValue.(string) },
+			revertField:  func(originalValue interface{}) { videoToEdit.Animations = originalValue.(string) },
+		},
+		{
+			name: "RequestThumbnail", description: "Request a custom thumbnail from the designer?", isThumbnailField: true,
+			getValue:     func() interface{} { return videoToEdit.RequestThumbnail },
+			updateAction: func(newValue interface{}) { videoToEdit.RequestThumbnail = newValue.(bool) },
+			revertField:  func(originalValue interface{}) { videoToEdit.RequestThumbnail = originalValue.(bool) },
+		},
+		{
+			name: "Gist", description: "Path to Gist/Markdown file for manuscript (relative to execution path).",
+			getValue:     func() interface{} { return videoToEdit.Gist },
+			updateAction: func(newValue interface{}) { videoToEdit.Gist = newValue.(string) },
+			revertField:  func(originalValue interface{}) { videoToEdit.Gist = originalValue.(string) },
+		},
+	}
+
+	const (
+		titleActionSave    = 0
+		titleActionAskAI   = 1
+		titleActionSkip    = 2
+		titleActionUnknown = -1 // Should not happen
+	)
+
+	for fieldIdx, df := range definitionFields {
+		originalFieldValue := df.getValue()
+		initialRequestThumbnailForThisField := videoToEdit.RequestThumbnail // For email logic
+		var formError error
+
+		if df.isTitleField {
+			tempTitleValue := originalFieldValue.(string)
+			fieldSavedOrSkipped := false
+
+			for !fieldSavedOrSkipped { // Inner loop for Title field to handle 'Ask AI'
+				var selectedTitleAction int = titleActionUnknown
+
+				titleFieldItself := huh.NewInput().
+					Title("Title").
+					Description(df.description).
+					Value(&tempTitleValue)
+
+				titleActionSelect := huh.NewSelect[int]().
+					Title("Action for Title").
+					Options(
+						huh.NewOption("Save Title & Continue", titleActionSave),
+						huh.NewOption("Ask AI for Suggestions", titleActionAskAI),
+						huh.NewOption("Continue Without Saving Title", titleActionSkip),
+					).
+					Value(&selectedTitleAction)
+
+				titleGroup := huh.NewGroup(titleFieldItself, titleActionSelect)
+				titleForm := huh.NewForm(titleGroup)
+				formError = titleForm.Run()
+
+				if formError != nil {
+					if formError == huh.ErrUserAborted {
+						fmt.Println(m.orangeStyle.Render(fmt.Sprintf("Action for '%s' aborted by user.", df.name)))
+						df.revertField(originalFieldValue) // Revert to original if user aborts this specific field form
+						if fieldIdx == 0 {
+							fmt.Println(m.normalStyle.Render("Definition phase aborted."))
+							return nil // Abort entire phase if first field is aborted
+						}
+						fieldSavedOrSkipped = true // Break inner loop, effectively skipping
+						continue                   // Proceed to next field in outer loop
+					}
+					fmt.Println(m.errorStyle.Render(fmt.Sprintf("Error in title form: %v", formError)))
+					return formError // Critical error, exit phase
+				}
+
+				switch selectedTitleAction {
+				case titleActionSave:
+					df.updateAction(tempTitleValue) // Update videoToEdit.Title
+					err := yamlHelper.WriteVideo(videoToEdit, videoToEdit.Path)
+					if err != nil {
+						fmt.Println(m.errorStyle.Render(fmt.Sprintf("Error saving changes to %s after field '%s': %v", videoToEdit.Path, df.name, err)))
+						df.revertField(originalFieldValue) // Revert if save fails
+						return err
+					}
+					fieldSavedOrSkipped = true
+				case titleActionAskAI:
+					fmt.Println(m.normalStyle.Render("Attempting to get AI title suggestions..."))
+					if videoToEdit.Gist == "" {
+						fmt.Fprintf(os.Stderr, "Manuscript/Gist path is not defined. Cannot fetch content for AI.\n")
+					} else {
+						aiConfig, cfgErr := ai.GetAIConfig()
+						if cfgErr != nil {
+							fmt.Fprintf(os.Stderr, "Error getting AI config: %v\n", cfgErr)
+						} else {
+							manuscriptPath := videoToEdit.Gist
+							manuscriptContent, readErr := os.ReadFile(manuscriptPath)
+							if readErr != nil {
+								fmt.Fprintf(os.Stderr, "Error reading manuscript file %s: %v\n", manuscriptPath, readErr)
+							} else {
+								suggestedTitles, suggErr := ai.SuggestTitles(context.Background(), string(manuscriptContent), aiConfig)
+								if suggErr != nil {
+									fmt.Fprintf(os.Stderr, "Error suggesting titles: %v\n", suggErr)
+								} else if len(suggestedTitles) > 0 {
+									var selectedAITitle string
+									options := []huh.Option[string]{}
+									for _, sTitle := range suggestedTitles {
+										options = append(options, huh.NewOption(sTitle, sTitle))
+									}
+									aiSelectForm := huh.NewForm(huh.NewGroup(huh.NewSelect[string]().
+										Title("Select an AI Suggested Title (or Esc to use current)").
+										Options(options...).
+										Value(&selectedAITitle)))
+									aiSelectErr := aiSelectForm.Run()
+									if aiSelectErr == nil && selectedAITitle != "" {
+										fmt.Println(m.normalStyle.Render(fmt.Sprintf("AI Suggested title selected: %s", selectedAITitle)))
+										tempTitleValue = selectedAITitle // Update temp value for the next iteration of the inner loop
+									} else if aiSelectErr != nil && aiSelectErr != huh.ErrUserAborted {
+										fmt.Fprintf(os.Stderr, "Error during AI title selection: %v\n", aiSelectErr)
+									} // If aborted or no selection, tempTitleValue remains unchanged for next loop
+								} else {
+									fmt.Println(m.normalStyle.Render("AI did not return any title suggestions."))
+								}
+							}
+						}
+					}
+					// After AI, continue the inner loop to re-present title field and actions
+				case titleActionSkip:
+					df.revertField(originalFieldValue) // Revert to original before skipping
+					fmt.Println(m.normalStyle.Render(fmt.Sprintf("Skipped changes for '%s'.", df.name)))
+					fieldSavedOrSkipped = true
+				default: // Should not happen
+					fmt.Println(m.errorStyle.Render(fmt.Sprintf("Unknown action for title field: %d", selectedTitleAction)))
+					fieldSavedOrSkipped = true // Break loop to avoid infinite state
+				}
+			} // End of inner loop for title field
+
+		} else { // For non-Title fields, simpler Save & Next / Skip & Next logic
+			var tempFieldValue interface{} = originalFieldValue
+			var fieldInput huh.Field
+			var saveThisField bool = true // Default to save for non-title fields too
+
+			switch v := tempFieldValue.(type) {
+			case string:
+				currentStrVal := v
+				fieldInput = huh.NewInput().Title(df.name).Description(df.description).Value(&currentStrVal)
+				tempFieldValue = &currentStrVal
+			case bool:
+				currentBoolVal := v
+				fieldInput = huh.NewConfirm().Title(df.name).Description(df.description).Value(&currentBoolVal)
+				tempFieldValue = &currentBoolVal
+			default:
+				return fmt.Errorf("unsupported type for field '%s'", df.name)
+			}
+
+			fieldGroup := huh.NewGroup(
+				fieldInput,
+				huh.NewConfirm().
+					Key("saveAction"). // Reusing key, might need differentiation if forms persist state across fields
+					Title(fmt.Sprintf("Finished with '%s'?", df.name)).
+					Affirmative("Save & Next").
+					Negative("Skip & Next").
+					Value(&saveThisField),
+			)
+			fieldForm := huh.NewForm(fieldGroup)
+			formError = fieldForm.Run()
+
+			if formError != nil {
+				if formError == huh.ErrUserAborted {
+					fmt.Println(m.orangeStyle.Render(fmt.Sprintf("Action for '%s' aborted by user.", df.name)))
+					df.revertField(originalFieldValue)
+					if fieldIdx == 0 {
+						fmt.Println(m.normalStyle.Render("Definition phase aborted."))
+						return nil
+					}
+					continue // Skip to next field in outer loop
+				}
+				fmt.Println(m.errorStyle.Render(fmt.Sprintf("Error in form for '%s': %v", df.name, formError)))
+				return formError
+			}
+
+			if saveThisField {
+				finalValue := reflect.ValueOf(tempFieldValue).Elem().Interface()
+				df.updateAction(finalValue)
+				err := yamlHelper.WriteVideo(videoToEdit, videoToEdit.Path)
+				if err != nil {
+					fmt.Println(m.errorStyle.Render(fmt.Sprintf("Error saving changes to %s after field '%s': %v", videoToEdit.Path, df.name, err)))
+					df.revertField(originalFieldValue)
+					return err
+				}
+				// Thumbnail email logic for non-title fields (specifically for RequestThumbnail field)
+				if df.isThumbnailField && videoToEdit.RequestThumbnail && !initialRequestThumbnailForThisField {
+					if settings.Email.Password != "" {
+						fmt.Println(m.normalStyle.Render("RequestThumbnail is true, and was false. Sending email..."))
+						// emailService := notification.NewEmail(settings.Email.Password)
+						// if emailErr := emailService.SendThumbnailRequestEmail(settings.Email.From, settings.Email.EditTo, &videoToEdit); emailErr != nil {
+						// 	fmt.Fprintf(os.Stderr, "Failed to send thumbnail request email: %v\\n", emailErr)
+						// } else {
+						// 	fmt.Println(m.greenStyle.Render("Thumbnail request email sent."))
+						// }
+						fmt.Println(m.orangeStyle.Render("TODO: Implement SendThumbnailRequestEmail or similar in notification.Email service"))
+					} else {
+						fmt.Println(m.orangeStyle.Render("RequestThumbnail is true, but email app password is not configured. Skipping email."))
+					}
+				}
+			} else { // Skipped non-title field
+				fmt.Println(m.normalStyle.Render(fmt.Sprintf("Skipped changes for '%s'.", df.name)))
+				df.revertField(originalFieldValue)
+			}
+		} // End of if/else for title field vs other fields
+
+	} // End of outer loop (for fieldIdx, df := range definitionFields)
+
+	fmt.Println(m.normalStyle.Render("\n--- Definition Phase Complete ---"))
+	return nil
 }

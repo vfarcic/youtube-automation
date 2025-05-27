@@ -49,6 +49,7 @@
 {"type":"entity","observations":["During Pull Request (PR) review phase, comments from1 both GitHub Copilot and Qodo (`qodo-merge-pro[bot]`) must be checked and addressed.","If Qodo comments are not found via standard PR review/comment tools, use `mcp_github_get_issue_comments` (with PR number as issue number) to locate them."],"name":"PR Review Protocol","entityType":"Guideline"}
 {"type":"entity","entityType":"AgentBehaviorGuideline","name":"PostTaskCompletionStatisticsDisplay","observations":["The agent must display overall task statistics (total, completed, pending, deferred) immediately after confirming a parent task has been marked as 'done'.","This instruction was explicitly given by the user."]}
 {"type":"entity","entityType":"UserPreference","observations":["Always show which files will be added (e.g., using `git status --short`) before staging them with `git add`."],"name":"User Preferences for Git Operations"}
+{"type":"entity","name":"youtube-automation Go project build process","entityType":"build_process","observations":["This Go project utilizes a `vendor` directory for its dependencies.","After modifying Go dependencies (e.g., with `go get` or `go mod tidy`), `go mod vendor` must be run to synchronize the `vendor` directory."]}
 {"type":"relation","from":"YouTube Automation Tool","to":"Project Config","relationType":"uses"}
 {"type":"relation","from":"YouTube Automation Tool","to":"Project Requirements","relationType":"requires"}
 {"type":"relation","from":"Project","to":"YouTube Automation Tool","relationType":"is"}
