@@ -1170,16 +1170,17 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 	yamlHelper := storage.YAML{}
 
 	definitionFields := []struct {
-		name               string
-		description        string
-		isTitleField       bool
-		isDescriptionField bool
-		isHighlightField   bool
-		isThumbnailField   bool
-		isTagsField        bool // New field
-		getValue           func() interface{}
-		updateAction       func(newValue interface{})
-		revertField        func(originalValue interface{})
+		name                   string
+		description            string
+		isTitleField           bool
+		isDescriptionField     bool
+		isHighlightField       bool
+		isThumbnailField       bool
+		isTagsField            bool
+		isDescriptionTagsField bool // New field
+		getValue               func() interface{}
+		updateAction           func(newValue interface{})
+		revertField            func(originalValue interface{})
 	}{
 		{
 			name: "Title", description: "Video title (max 100 chars). SEO is important.", isTitleField: true,
@@ -1200,13 +1201,13 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 			revertField:  func(originalValue interface{}) { videoToEdit.Highlight = originalValue.(string) },
 		},
 		{
-			name: "Tags", description: "Comma-separated tags (e.g., golang,devops,tutorial).", isTagsField: true, // Ensure this is set
+			name: "Tags", description: "Comma-separated tags (e.g., golang,devops,tutorial).", isTagsField: true,
 			getValue:     func() interface{} { return videoToEdit.Tags },
 			updateAction: func(newValue interface{}) { videoToEdit.Tags = newValue.(string) },
 			revertField:  func(originalValue interface{}) { videoToEdit.Tags = originalValue.(string) },
 		},
 		{
-			name: "DescriptionTags", description: "Comma-separated tags for description (e.g., #golang #devops).",
+			name: "Description Tags", description: "Exactly three space-separated tags, each starting with # (e.g., #golang #devops #tutorial).", isDescriptionTagsField: true, // Updated name and set new flag
 			getValue:     func() interface{} { return videoToEdit.DescriptionTags },
 			updateAction: func(newValue interface{}) { videoToEdit.DescriptionTags = newValue.(string) },
 			revertField: func(originalValue interface{}) {
@@ -1519,7 +1520,7 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 					fieldSavedOrSkipped = true
 				}
 			}
-		} else if df.isTagsField { // New block for Tags field
+		} else if df.isTagsField { // Existing block for Tags field
 			tempTagsValue := originalFieldValue.(string)
 			fieldSavedOrSkipped := false
 
@@ -1604,6 +1605,94 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 					fieldSavedOrSkipped = true
 				default:
 					fmt.Println(m.errorStyle.Render(fmt.Sprintf("Unknown action for tags field: %d", selectedAction)))
+					fieldSavedOrSkipped = true // Treat as skip
+				}
+			}
+		} else if df.isDescriptionTagsField { // New block for Description Tags field
+			tempDescTagsValue := originalFieldValue.(string)
+			fieldSavedOrSkipped := false
+
+			for !fieldSavedOrSkipped {
+				var selectedAction int = generalActionUnknown
+
+				descTagsFieldItself := huh.NewText().
+					Title(df.name). // Uses "Description Tags"
+					Description(df.description).
+					Lines(1).       // Typically short enough for one line
+					CharLimit(150). // Generous limit for 3 tags
+					Value(&tempDescTagsValue)
+
+				actionSelect := huh.NewSelect[int]().
+					Title("Action for Description Tags").
+					Options(
+						huh.NewOption("Save Description Tags & Continue", generalActionSave),
+						huh.NewOption("Ask AI for Suggestion", generalActionAskAI),
+						huh.NewOption("Continue Without Saving Description Tags", generalActionSkip),
+					).
+					Value(&selectedAction)
+
+				descTagsGroup := huh.NewGroup(descTagsFieldItself, actionSelect)
+				descTagsForm := huh.NewForm(descTagsGroup)
+				formError = descTagsForm.Run()
+
+				if formError != nil {
+					if formError == huh.ErrUserAborted {
+						fmt.Println(m.orangeStyle.Render(fmt.Sprintf("Action for '%s' aborted by user.", df.name)))
+						df.revertField(originalFieldValue)
+						if fieldIdx == 0 { // If first field, aborting means exiting this phase
+							fmt.Println(m.normalStyle.Render("Definition phase aborted."))
+							return nil
+						}
+						fieldSavedOrSkipped = true // Mark as skipped to exit inner loop and go to next field
+						continue                   // Continue the outer loop (next field)
+					}
+					fmt.Println(m.errorStyle.Render(fmt.Sprintf("Error in description tags form: %v", formError)))
+					return formError // Critical error, exit function
+				}
+
+				switch selectedAction {
+				case generalActionSave:
+					df.updateAction(tempDescTagsValue)
+					err := yamlHelper.WriteVideo(videoToEdit, videoToEdit.Path)
+					if err != nil {
+						fmt.Println(m.errorStyle.Render(fmt.Sprintf("Error saving changes for '%s': %v", df.name, err)))
+						df.revertField(originalFieldValue) // Revert on save error
+						return err                         // Critical error
+					}
+					fieldSavedOrSkipped = true
+				case generalActionAskAI:
+					fmt.Println(m.normalStyle.Render("Attempting to get AI description tags suggestion..."))
+					if videoToEdit.Gist == "" {
+						fmt.Fprintf(os.Stderr, "Manuscript/Gist path is not defined. Cannot fetch content for AI description tags.\n")
+					} else {
+						aiConfig, cfgErr := ai.GetAIConfig() // Reuse existing GetAIConfig
+						if cfgErr != nil {
+							fmt.Fprintf(os.Stderr, "Error getting AI config: %v\n", cfgErr)
+						} else {
+							manuscriptPath := videoToEdit.Gist
+							manuscriptContent, readErr := os.ReadFile(manuscriptPath)
+							if readErr != nil {
+								fmt.Fprintf(os.Stderr, "Error reading manuscript file %s: %v\n", manuscriptPath, readErr)
+							} else {
+								suggestedDescTags, suggErr := ai.SuggestDescriptionTags(context.Background(), string(manuscriptContent), aiConfig)
+								if suggErr != nil {
+									fmt.Fprintf(os.Stderr, "Error suggesting description tags: %v\n", suggErr)
+								} else if suggestedDescTags != "" {
+									fmt.Println(m.normalStyle.Render("AI suggested description tags received."))
+									tempDescTagsValue = suggestedDescTags // Update the temp value to show in the input field
+								} else {
+									fmt.Println(m.normalStyle.Render("AI did not return any description tags suggestion."))
+								}
+							}
+						}
+					}
+					// Loop continues to show the form again with the new tempDescTagsValue
+				case generalActionSkip:
+					df.revertField(originalFieldValue)
+					fmt.Println(m.normalStyle.Render(fmt.Sprintf("Skipped changes for '%s'.", df.name)))
+					fieldSavedOrSkipped = true
+				default:
+					fmt.Println(m.errorStyle.Render(fmt.Sprintf("Unknown action for description tags field: %d", selectedAction)))
 					fieldSavedOrSkipped = true // Treat as skip
 				}
 			}
