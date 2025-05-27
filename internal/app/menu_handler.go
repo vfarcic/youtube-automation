@@ -1177,7 +1177,8 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 		isHighlightField       bool
 		isThumbnailField       bool
 		isTagsField            bool
-		isDescriptionTagsField bool // New field
+		isDescriptionTagsField bool
+		isTweetField           bool // New field
 		getValue               func() interface{}
 		updateAction           func(newValue interface{})
 		revertField            func(originalValue interface{})
@@ -1215,7 +1216,7 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 			},
 		},
 		{
-			name: "Tweet", description: "Promotional tweet text (max 280 chars).",
+			name: "Tweet", description: "Promotional tweet text (max 280 chars). Include [YOUTUBE] placeholder.", isTweetField: true, // Updated for AI
 			getValue:     func() interface{} { return videoToEdit.Tweet },
 			updateAction: func(newValue interface{}) { videoToEdit.Tweet = newValue.(string) },
 			revertField:  func(originalValue interface{}) { videoToEdit.Tweet = originalValue.(string) },
@@ -1694,6 +1695,104 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 				default:
 					fmt.Println(m.errorStyle.Render(fmt.Sprintf("Unknown action for description tags field: %d", selectedAction)))
 					fieldSavedOrSkipped = true // Treat as skip
+				}
+			}
+		} else if df.isTweetField { // New block for Tweet field
+			tempTweetValue := originalFieldValue.(string)
+			fieldSavedOrSkipped := false
+
+			for !fieldSavedOrSkipped {
+				var selectedAction int = generalActionUnknown
+
+				tweetFieldItself := huh.NewText(). // Changed from NewInput to NewText for multi-line
+									Title(df.name). // Uses "Tweet"
+									Description(df.description).
+									Lines(5). // Allow a few lines for tweet drafts
+									CharLimit(280).
+									Value(&tempTweetValue)
+
+				actionSelect := huh.NewSelect[int]().
+					Title("Action for Tweet").
+					Options(
+						huh.NewOption("Save Tweet & Continue", generalActionSave),
+						huh.NewOption("Ask AI for Suggestions", generalActionAskAI),
+						huh.NewOption("Continue Without Saving Tweet", generalActionSkip),
+					).
+					Value(&selectedAction)
+
+				tweetGroup := huh.NewGroup(tweetFieldItself, actionSelect)
+				tweetForm := huh.NewForm(tweetGroup)
+				formError = tweetForm.Run()
+
+				if formError != nil {
+					if formError == huh.ErrUserAborted {
+						fmt.Println(m.orangeStyle.Render(fmt.Sprintf("Action for '%s' aborted by user.", df.name)))
+						df.revertField(originalFieldValue)
+						if fieldIdx == 0 {
+							fmt.Println(m.normalStyle.Render("Definition phase aborted."))
+							return nil
+						}
+						fieldSavedOrSkipped = true
+						continue
+					}
+					fmt.Println(m.errorStyle.Render(fmt.Sprintf("Error in tweet form: %v", formError)))
+					return formError
+				}
+
+				switch selectedAction {
+				case generalActionSave:
+					df.updateAction(tempTweetValue)
+					err := yamlHelper.WriteVideo(videoToEdit, videoToEdit.Path)
+					if err != nil {
+						fmt.Println(m.errorStyle.Render(fmt.Sprintf("Error saving changes for '%s': %v", df.name, err)))
+						df.revertField(originalFieldValue)
+						return err
+					}
+					fieldSavedOrSkipped = true
+				case generalActionAskAI:
+					fmt.Println(m.normalStyle.Render("Attempting to get AI tweet suggestions..."))
+					if videoToEdit.Gist == "" {
+						fmt.Fprintf(os.Stderr, "Manuscript/Gist path is not defined. Cannot fetch content for AI tweets.\n")
+					} else {
+						aiConfig, cfgErr := ai.GetAIConfig()
+						if cfgErr != nil {
+							fmt.Fprintf(os.Stderr, "Error getting AI config: %v\n", cfgErr)
+						} else {
+							manuscriptPath := videoToEdit.Gist
+							manuscriptContent, readErr := os.ReadFile(manuscriptPath)
+							if readErr != nil {
+								fmt.Fprintf(os.Stderr, "Error reading manuscript file %s: %v\n", manuscriptPath, readErr)
+							} else {
+								suggestedTweets, suggErr := ai.SuggestTweets(context.Background(), string(manuscriptContent), aiConfig)
+								if suggErr != nil {
+									fmt.Fprintf(os.Stderr, "Error suggesting tweets: %v\n", suggErr)
+								} else if len(suggestedTweets) > 0 {
+									var selectedAITweet string
+									options := []huh.Option[string]{}
+									for _, sTweet := range suggestedTweets {
+										options = append(options, huh.NewOption(sTweet, sTweet))
+									}
+									aiSelectForm := huh.NewForm(huh.NewGroup(huh.NewSelect[string]().Title("Select an AI Suggested Tweet (or Esc to use current)").Options(options...).Value(&selectedAITweet)))
+									aiSelectErr := aiSelectForm.Run()
+									if aiSelectErr == nil && selectedAITweet != "" {
+										fmt.Println(m.normalStyle.Render(fmt.Sprintf("AI Suggested tweet selected: %s", selectedAITweet)))
+										tempTweetValue = selectedAITweet
+									} else if aiSelectErr != nil && aiSelectErr != huh.ErrUserAborted {
+										fmt.Fprintf(os.Stderr, "Error during AI tweet selection: %v\n", aiSelectErr)
+									}
+								} else {
+									fmt.Println(m.normalStyle.Render("AI did not return any tweet suggestions."))
+								}
+							}
+						}
+					}
+				case generalActionSkip:
+					df.revertField(originalFieldValue)
+					fmt.Println(m.normalStyle.Render(fmt.Sprintf("Skipped changes for '%s'.", df.name)))
+					fieldSavedOrSkipped = true
+				default:
+					fmt.Println(m.errorStyle.Render(fmt.Sprintf("Unknown action for tweet field: %d", selectedAction)))
+					fieldSavedOrSkipped = true
 				}
 			}
 		} else {
