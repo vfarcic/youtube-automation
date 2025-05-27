@@ -17,6 +17,7 @@ import (
 	"devopstoolkit/youtube-automation/internal/cli"
 	"devopstoolkit/youtube-automation/internal/configuration"
 	"devopstoolkit/youtube-automation/internal/filesystem"
+	"devopstoolkit/youtube-automation/internal/markdown" // Added import
 	"devopstoolkit/youtube-automation/internal/notification"
 	"devopstoolkit/youtube-automation/internal/platform"
 	"devopstoolkit/youtube-automation/internal/platform/bluesky"
@@ -1173,6 +1174,7 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 		description        string
 		isTitleField       bool
 		isDescriptionField bool
+		isHighlightField   bool
 		isThumbnailField   bool
 		getValue           func() interface{}
 		updateAction       func(newValue interface{})
@@ -1191,7 +1193,7 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 			revertField:  func(originalValue interface{}) { videoToEdit.Description = originalValue.(string) },
 		},
 		{
-			name: "Highlight", description: "Highlight timestamp (e.g., 01:23) or main point.",
+			name: "Highlight", description: "Video highlight summary/timestamp (e.g., 01:23). Gist highlighting is a separate AI action.", isHighlightField: true,
 			getValue:     func() interface{} { return videoToEdit.Highlight },
 			updateAction: func(newValue interface{}) { videoToEdit.Highlight = newValue.(string) },
 			revertField:  func(originalValue interface{}) { videoToEdit.Highlight = originalValue.(string) },
@@ -1245,34 +1247,24 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 
 	for fieldIdx, df := range definitionFields {
 		originalFieldValue := df.getValue()
-		initialRequestThumbnailForThisField := videoToEdit.RequestThumbnail // For email logic
+		initialRequestThumbnailForThisField := videoToEdit.RequestThumbnail
 		var formError error
 
 		if df.isTitleField {
 			tempTitleValue := originalFieldValue.(string)
 			fieldSavedOrSkipped := false
 
-			for !fieldSavedOrSkipped { // Inner loop for Title field
+			for !fieldSavedOrSkipped {
 				var selectedAction int = generalActionUnknown
-
-				titleFieldItself := huh.NewInput().
-					Title("Title").
-					Description(df.description).
-					Value(&tempTitleValue)
-
-				actionSelect := huh.NewSelect[int]().
-					Title("Action for Title").
-					Options(
-						huh.NewOption("Save Title & Continue", generalActionSave),
-						huh.NewOption("Ask AI for Suggestions", generalActionAskAI),
-						huh.NewOption("Continue Without Saving Title", generalActionSkip),
-					).
-					Value(&selectedAction)
-
+				titleFieldItself := huh.NewInput().Title("Title").Description(df.description).Value(&tempTitleValue)
+				actionSelect := huh.NewSelect[int]().Title("Action for Title").Options(
+					huh.NewOption("Save Title & Continue", generalActionSave),
+					huh.NewOption("Ask AI for Suggestions", generalActionAskAI),
+					huh.NewOption("Continue Without Saving Title", generalActionSkip),
+				).Value(&selectedAction)
 				titleGroup := huh.NewGroup(titleFieldItself, actionSelect)
 				titleForm := huh.NewForm(titleGroup)
 				formError = titleForm.Run()
-
 				if formError != nil {
 					if formError == huh.ErrUserAborted {
 						fmt.Println(m.orangeStyle.Render(fmt.Sprintf("Action for '%s' aborted by user.", df.name)))
@@ -1287,7 +1279,6 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 					fmt.Println(m.errorStyle.Render(fmt.Sprintf("Error in title form: %v", formError)))
 					return formError
 				}
-
 				switch selectedAction {
 				case generalActionSave:
 					df.updateAction(tempTitleValue)
@@ -1321,10 +1312,7 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 									for _, sTitle := range suggestedTitles {
 										options = append(options, huh.NewOption(sTitle, sTitle))
 									}
-									aiSelectForm := huh.NewForm(huh.NewGroup(huh.NewSelect[string]().
-										Title("Select an AI Suggested Title (or Esc to use current)").
-										Options(options...).
-										Value(&selectedAITitle)))
+									aiSelectForm := huh.NewForm(huh.NewGroup(huh.NewSelect[string]().Title("Select an AI Suggested Title (or Esc to use current)").Options(options...).Value(&selectedAITitle)))
 									aiSelectErr := aiSelectForm.Run()
 									if aiSelectErr == nil && selectedAITitle != "" {
 										fmt.Println(m.normalStyle.Render(fmt.Sprintf("AI Suggested title selected: %s", selectedAITitle)))
@@ -1346,38 +1334,26 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 					fmt.Println(m.errorStyle.Render(fmt.Sprintf("Unknown action for title field: %d", selectedAction)))
 					fieldSavedOrSkipped = true
 				}
-			} // End of inner loop for title field
-		} else if df.isDescriptionField { // New block for Description field
+			}
+		} else if df.isDescriptionField {
 			tempDescriptionValue := originalFieldValue.(string)
 			fieldSavedOrSkipped := false
-
-			for !fieldSavedOrSkipped { // Inner loop for Description field
+			for !fieldSavedOrSkipped {
 				var selectedAction int = generalActionUnknown
-
-				descriptionFieldItself := huh.NewText().
-					Title("Description").
-					Description(df.description).
-					Lines(7).
-					CharLimit(5000).
-					Value(&tempDescriptionValue)
-
-				actionSelect := huh.NewSelect[int]().
-					Title("Action for Description").
-					Options(
-						huh.NewOption("Save Description & Continue", generalActionSave),
-						huh.NewOption("Ask AI for Suggestion", generalActionAskAI),
-						huh.NewOption("Continue Without Saving Description", generalActionSkip),
-					).
-					Value(&selectedAction)
+				descriptionFieldItself := huh.NewText().Title("Description").Description(df.description).Lines(7).CharLimit(5000).Value(&tempDescriptionValue)
+				actionSelect := huh.NewSelect[int]().Title("Action for Description").Options(
+					huh.NewOption("Save Description & Continue", generalActionSave),
+					huh.NewOption("Ask AI for Suggestion", generalActionAskAI),
+					huh.NewOption("Continue Without Saving Description", generalActionSkip),
+				).Value(&selectedAction)
 				descriptionGroup := huh.NewGroup(descriptionFieldItself, actionSelect)
 				descriptionForm := huh.NewForm(descriptionGroup)
 				formError = descriptionForm.Run()
-
 				if formError != nil {
 					if formError == huh.ErrUserAborted {
 						fmt.Println(m.orangeStyle.Render(fmt.Sprintf("Action for '%s' aborted by user.", df.name)))
 						df.revertField(originalFieldValue)
-						if fieldIdx == 0 { // Or handle if it's the first interactive field after title, etc.
+						if fieldIdx == 0 {
 							fmt.Println(m.normalStyle.Render("Definition phase aborted."))
 							return nil
 						}
@@ -1387,7 +1363,6 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 					fmt.Println(m.errorStyle.Render(fmt.Sprintf("Error in description form: %v", formError)))
 					return formError
 				}
-
 				switch selectedAction {
 				case generalActionSave:
 					df.updateAction(tempDescriptionValue)
@@ -1417,7 +1392,7 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 									fmt.Fprintf(os.Stderr, "Error suggesting description: %v\n", suggErr)
 								} else if suggestedDescription != "" {
 									fmt.Println(m.normalStyle.Render("AI suggested description received."))
-									tempDescriptionValue = suggestedDescription // Update temp value for the next iteration
+									tempDescriptionValue = suggestedDescription
 								} else {
 									fmt.Println(m.normalStyle.Render("AI did not return any description suggestion."))
 								}
@@ -1432,8 +1407,118 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 					fmt.Println(m.errorStyle.Render(fmt.Sprintf("Unknown action for description field: %d", selectedAction)))
 					fieldSavedOrSkipped = true
 				}
-			} // End of inner loop for description field
-		} else { // For other non-Title, non-Description fields
+			}
+		} else if df.isHighlightField {
+			tempHighlightValue := originalFieldValue.(string)
+			fieldSavedOrSkipped := false
+
+			for !fieldSavedOrSkipped {
+				var selectedAction int = generalActionUnknown
+
+				highlightFieldItself := huh.NewInput().
+					Title("Highlight Summary/Timestamp").
+					Description(df.description).
+					Value(&tempHighlightValue)
+
+				actionSelect := huh.NewSelect[int]().
+					Title("Action for Highlight").
+					Options(
+						huh.NewOption("Save Manual Highlight & Continue", generalActionSave),
+						huh.NewOption("Suggest & Apply Gist Highlights (AI)", generalActionAskAI),
+						huh.NewOption("Skip Manual Highlight & Continue", generalActionSkip),
+					).
+					Value(&selectedAction)
+
+				highlightGroup := huh.NewGroup(highlightFieldItself, actionSelect)
+				highlightForm := huh.NewForm(highlightGroup)
+				formError = highlightForm.Run()
+
+				if formError != nil {
+					if formError == huh.ErrUserAborted {
+						fmt.Println(m.orangeStyle.Render(fmt.Sprintf("Action for '%s' aborted by user.", df.name)))
+						df.revertField(originalFieldValue)
+						if fieldIdx == 0 {
+							fmt.Println(m.normalStyle.Render("Definition phase aborted."))
+							return nil
+						}
+						fieldSavedOrSkipped = true
+						continue
+					}
+					fmt.Println(m.errorStyle.Render(fmt.Sprintf("Error in highlight form: %v", formError)))
+					return formError
+				}
+
+				switch selectedAction {
+				case generalActionSave:
+					df.updateAction(tempHighlightValue)
+					err := yamlHelper.WriteVideo(videoToEdit, videoToEdit.Path)
+					if err != nil {
+						fmt.Println(m.errorStyle.Render(fmt.Sprintf("Error saving manual highlight for '%s': %v", df.name, err)))
+						df.revertField(originalFieldValue)
+						return err
+					}
+					fieldSavedOrSkipped = true
+				case generalActionAskAI: // AI for Gist highlights
+					fmt.Println(m.normalStyle.Render("Attempting to get AI Gist highlight suggestions..."))
+					if videoToEdit.Gist == "" {
+						fmt.Fprintf(os.Stderr, "Manuscript/Gist path is not defined. Cannot fetch content for AI Gist highlights.\\n")
+					} else {
+						aiConfig, cfgErr := ai.GetAIConfig()
+						if cfgErr != nil {
+							fmt.Fprintf(os.Stderr, "Error getting AI config: %v\\n", cfgErr)
+						} else {
+							manuscriptPath := videoToEdit.Gist
+							manuscriptContent, readErr := os.ReadFile(manuscriptPath)
+							if readErr != nil {
+								fmt.Fprintf(os.Stderr, "Error reading manuscript file %s: %v\\n", manuscriptPath, readErr)
+							} else {
+								suggestedGistHighlights, suggErr := ai.SuggestHighlights(context.Background(), string(manuscriptContent), aiConfig)
+								if suggErr != nil {
+									fmt.Fprintf(os.Stderr, "Error suggesting Gist highlights: %v\\n", suggErr)
+								} else if len(suggestedGistHighlights) > 0 {
+									var confirmedGistHighlights []string
+									options := []huh.Option[string]{}
+									for _, phrase := range suggestedGistHighlights {
+										options = append(options, huh.NewOption(phrase, phrase))
+									}
+									multiSelectForm := huh.NewForm(huh.NewGroup(
+										huh.NewMultiSelect[string]().
+											Title("Select Gist phrases to highlight (bold)").
+											Options(options...).
+											Value(&confirmedGistHighlights),
+									))
+									multiSelectErr := multiSelectForm.Run()
+									if multiSelectErr != nil && multiSelectErr != huh.ErrUserAborted {
+										fmt.Fprintf(os.Stderr, "Error during Gist highlight selection: %v\\n", multiSelectErr)
+									} else if multiSelectErr == nil && len(confirmedGistHighlights) > 0 {
+										// Apply the selected highlights to the Gist file
+										applyErr := markdown.ApplyHighlightsInGist(manuscriptPath, confirmedGistHighlights)
+										if applyErr != nil {
+											fmt.Fprintf(os.Stderr, "Error applying Gist highlights: %v\\n", applyErr)
+										} else {
+											fmt.Println(m.normalStyle.Render(fmt.Sprintf("%d Gist highlights applied to %s.", len(confirmedGistHighlights), manuscriptPath)))
+										}
+									} else if multiSelectErr == huh.ErrUserAborted {
+										fmt.Println(m.orangeStyle.Render("Gist highlight selection aborted."))
+									} else {
+										fmt.Println(m.normalStyle.Render("No Gist highlights selected to apply."))
+									}
+								} else {
+									fmt.Println(m.normalStyle.Render("AI did not return any Gist highlight suggestions."))
+								}
+							}
+						}
+					}
+				case generalActionSkip:
+					df.revertField(originalFieldValue)
+					fmt.Println(m.normalStyle.Render(fmt.Sprintf("Skipped changes for manual '%s'.", df.name)))
+					fieldSavedOrSkipped = true
+				default:
+					fmt.Println(m.errorStyle.Render(fmt.Sprintf("Unknown action for highlight field: %d", selectedAction)))
+					fieldSavedOrSkipped = true
+				}
+			}
+		} else {
 			var tempFieldValue interface{} = originalFieldValue
 			var fieldInput huh.Field
 			var saveThisField bool = true
@@ -1486,7 +1571,6 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 					df.revertField(originalFieldValue)
 					return err
 				}
-				// Thumbnail email logic for non-title fields (specifically for RequestThumbnail field)
 				if df.isThumbnailField && videoToEdit.RequestThumbnail && !initialRequestThumbnailForThisField {
 					if settings.Email.Password != "" {
 						fmt.Println(m.normalStyle.Render("RequestThumbnail is true, and was false. Sending email..."))
@@ -1495,7 +1579,7 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 						fmt.Println(m.orangeStyle.Render("RequestThumbnail is true, but email app password is not configured. Skipping email."))
 					}
 				}
-			} else { // Skipped non-title field
+			} else {
 				fmt.Println(m.normalStyle.Render(fmt.Sprintf("Skipped changes for '%s'.", df.name)))
 				df.revertField(originalFieldValue)
 			}
