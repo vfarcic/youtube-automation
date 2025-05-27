@@ -1,7 +1,9 @@
 package filesystem
 
 import (
+	"bufio"
 	"fmt"
+	"os"
 	"regexp"
 	"strings"
 )
@@ -59,4 +61,58 @@ func (o *Operations) GetFilePath(category, name, extension string) string {
 	// but one final pass on the name part after construction can be an option.
 	// However, the current sanitizeFileName acts on the name component before path assembly.
 	return filePath
+}
+
+// GetAnimations extracts animation cues and section titles from the specified markdown file.
+// It processes the file line by line:
+//   - Lines starting with "TODO:" are considered animation cues; the text after "TODO:" (trimmed) is added to the animations list.
+//   - Lines starting with "## " are considered section headers, unless they are "## Intro", "## Setup", or "## Destroy".
+//     The text after "## " (trimmed), prefixed with "Section: ", is added to both the animations and sections lists.
+//
+// It returns a slice of animation strings, a slice of section title strings, and any error encountered.
+// Note: This function is moved from the old repository.Repo struct.
+func (o *Operations) GetAnimations(filePath string) (animations, sections []string, err error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to open file %s: %w", filePath, err)
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+		line = strings.TrimSpace(line)
+		line = strings.ReplaceAll(line, "\u00a0", " ") // Non-breaking space (U+00A0)
+		if strings.HasPrefix(line, "TODO:") {
+			line = strings.ReplaceAll(line, "TODO:", "")
+			line = strings.TrimSpace(line)
+			animations = append(animations, line)
+		} else if strings.HasPrefix(line, "## ") {
+			containsAny := false
+			for _, value := range []string{"## Intro", "## Setup", "## Destroy"} {
+				if line == value {
+					containsAny = true
+					break
+				}
+			}
+			if !containsAny {
+				line = strings.Replace(line, "## ", "", 1)
+				line = strings.TrimSpace(line)
+				line = fmt.Sprintf("Section: %s", line)
+				animations = append(animations, line)
+				sections = append(sections, line)
+			}
+		}
+	}
+	if errScan := scanner.Err(); errScan != nil {
+		return nil, nil, fmt.Errorf("error scanning file %s: %w", filePath, errScan)
+	}
+
+	if animations == nil {
+		animations = []string{}
+	}
+	if sections == nil {
+		sections = []string{}
+	}
+	return animations, sections, nil
 }

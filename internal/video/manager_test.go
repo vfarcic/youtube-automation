@@ -130,3 +130,98 @@ func TestGetVideoPhase(t *testing.T) {
 		})
 	}
 }
+
+func TestCalculateDefinePhaseCompletion(t *testing.T) {
+	manager := video.NewManager(nil) // filePathFunc is not needed for this method
+
+	testCases := []struct {
+		name              string
+		video             storage.Video
+		expectedCompleted int
+		expectedTotal     int
+	}{
+		{
+			name:              "All tasks incomplete",
+			video:             storage.Video{},
+			expectedCompleted: 0,
+			expectedTotal:     9, // Title, Description, Highlight, Tags, DescriptionTags, Tweet, Animations, RequestThumbnail, Gist
+		},
+		{
+			name: "Some tasks complete",
+			video: storage.Video{
+				Title:            "Test Title",
+				Description:      "Test Description",
+				Tweet:            "A tweet",
+				RequestThumbnail: true,
+			},
+			expectedCompleted: 4,
+			expectedTotal:     9,
+		},
+		{
+			name: "All tasks (excluding Gist for this case) complete", // Updated name for clarity
+			video: storage.Video{
+				Title:            "Complete Title",
+				Description:      "Complete Description",
+				Highlight:        "Complete Highlight",
+				Tags:             "tag1,tag2",
+				DescriptionTags:  "desc_tag1",
+				Tweet:            "Final Tweet",
+				Animations:       "Script for animations",
+				RequestThumbnail: true,
+			},
+			expectedCompleted: 8, // Gist is not set here
+			expectedTotal:     9,
+		},
+		{
+			name: "All 9 tasks complete (including Gist)",
+			video: storage.Video{
+				Title:            "Complete Title",
+				Description:      "Complete Description",
+				Highlight:        "Complete Highlight",
+				Tags:             "tag1,tag2",
+				DescriptionTags:  "desc_tag1",
+				Tweet:            "Final Tweet",
+				Animations:       "Script for animations",
+				RequestThumbnail: true,
+				Gist:             "path/to/my/gist.md",
+			},
+			expectedCompleted: 9,
+			expectedTotal:     9,
+		},
+		{
+			name: "Edge case - empty strings not counted",
+			video: storage.Video{
+				Title:            "",  // Empty
+				Description:      "-", // Dash, not counted
+				Highlight:        "Real Highlight",
+				Tags:             "",
+				DescriptionTags:  "",
+				Tweet:            "",
+				Animations:       "",
+				RequestThumbnail: false, // Boolean false
+				Gist:             "",    // Empty Gist
+			},
+			expectedCompleted: 1, // Only Highlight
+			expectedTotal:     9,
+		},
+		{
+			name: "Edge case - string with only spaces not counted, Gist complete",
+			video: storage.Video{
+				Title:            "   ", // Spaces only
+				Description:      "Valid Description",
+				RequestThumbnail: true,
+				Gist:             "  valid/gist/path.md  ", // Will be trimmed and counted
+			},
+			expectedCompleted: 3, // Description, RequestThumbnail, Gist
+			expectedTotal:     9,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			completed, total := manager.CalculateDefinePhaseCompletion(tc.video)
+			assert.Equal(t, tc.expectedCompleted, completed, "Completed count mismatch")
+			assert.Equal(t, tc.expectedTotal, total, "Total count mismatch")
+		})
+	}
+}

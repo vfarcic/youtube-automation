@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"devopstoolkit/youtube-automation/internal/filesystem"
+	"devopstoolkit/youtube-automation/internal/storage"
 	"devopstoolkit/youtube-automation/internal/video"
 
 	"github.com/stretchr/testify/assert"
@@ -28,9 +29,9 @@ func setupTestVideoService(t *testing.T) (*VideoService, string, func()) {
 	os.WriteFile("index.yaml", []byte(indexContent), 0644)
 
 	// Initialize service dependencies
-	filesystem := &filesystem.Operations{}
-	videoManager := video.NewManager(filesystem.GetFilePath)
-	service := NewVideoService("index.yaml", filesystem, videoManager)
+	fsOps := &filesystem.Operations{}
+	videoManager := video.NewManager(fsOps.GetFilePath)
+	service := NewVideoService("index.yaml", fsOps, videoManager)
 
 	cleanup := func() {
 		os.Chdir(originalDir)
@@ -95,7 +96,7 @@ func TestVideoService_CreateVideo(t *testing.T) {
 				// Verify files were created
 				yamlPath := filepath.Join("manuscript", tt.category, tt.videoName+".yaml")
 				mdPath := filepath.Join("manuscript", tt.category, tt.videoName+".md")
-				
+
 				assert.FileExists(t, yamlPath)
 				assert.FileExists(t, mdPath)
 
@@ -256,7 +257,7 @@ func TestVideoService_DeleteVideo(t *testing.T) {
 				// Verify files were deleted
 				yamlPath := filepath.Join("manuscript", tt.category, tt.videoName+".yaml")
 				mdPath := filepath.Join("manuscript", tt.category, tt.videoName+".md")
-				
+
 				assert.NoFileExists(t, yamlPath)
 				assert.NoFileExists(t, mdPath)
 
@@ -275,7 +276,7 @@ func TestVideoService_GetVideosByPhase(t *testing.T) {
 	// Create test videos with different characteristics
 	_, err := service.CreateVideo("delayed-video", "test-category")
 	require.NoError(t, err)
-	
+
 	_, err = service.CreateVideo("normal-video", "test-category")
 	require.NoError(t, err)
 
@@ -287,10 +288,10 @@ func TestVideoService_GetVideosByPhase(t *testing.T) {
 	require.NoError(t, err)
 
 	tests := []struct {
-		name         string
-		phase        int
-		expectedLen  int
-		expectError  bool
+		name        string
+		phase       int
+		expectedLen int
+		expectError bool
 	}{
 		{
 			name:        "Phase 5 (delayed videos)",
@@ -321,7 +322,7 @@ func TestVideoService_GetVideosByPhase(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 				assert.Len(t, videos, tt.expectedLen)
-				
+
 				for _, video := range videos {
 					assert.NotEmpty(t, video.Name)
 					assert.NotEmpty(t, video.Category)
@@ -339,7 +340,7 @@ func TestVideoService_GetVideoPhases(t *testing.T) {
 	// Create videos in different phases
 	_, err := service.CreateVideo("delayed-video", "test-category")
 	require.NoError(t, err)
-	
+
 	_, err = service.CreateVideo("normal-video", "test-category")
 	require.NoError(t, err)
 
@@ -395,113 +396,129 @@ func TestVideoService_UpdateVideoPhase_InitialDetails(t *testing.T) {
 	service, _, cleanup := setupTestVideoService(t)
 	defer cleanup()
 
-	// Create a test video
-	_, err := service.CreateVideo("test-video", "test-category")
+	_, err := service.CreateVideo("test-initial", "test-category")
+	require.NoError(t, err)
+
+	videoToUpdate, err := service.GetVideo("test-initial", "test-category")
 	require.NoError(t, err)
 
 	updateData := map[string]interface{}{
-		"projectName":    "Test Project",
-		"projectURL":     "https://example.com",
-		"publishDate":    "2023-12-01T10:00",
-		"gistPath":       "https://gist.github.com/example",
-		"delayed":        false,
+		"projectName":              "Test Project",
+		"projectURL":               "http://example.com",
+		"publishDate":              "2024-01-01T10:00",
+		"gistPath":                 "path/to/gist.md",
+		"delayed":                  false,
+		"sponsorshipAmount":        "100",
+		"sponsorshipEmails":        "sponsor@example.com",
+		"sponsorshipBlockedReason": "",
 	}
 
-	updatedVideo, err := service.UpdateVideoPhase("test-video", "test-category", "initial-details", updateData)
-	assert.NoError(t, err)
-	assert.Equal(t, "Test Project", updatedVideo.ProjectName)
-	assert.Equal(t, "https://example.com", updatedVideo.ProjectURL)
-	assert.Equal(t, "2023-12-01T10:00", updatedVideo.Date)
-	assert.Equal(t, "https://gist.github.com/example", updatedVideo.Gist)
-	assert.False(t, updatedVideo.Delayed)
+	videoAfterUpdate, err := service.UpdateVideoPhase(&videoToUpdate, "initial-details", updateData)
+	require.NoError(t, err)
+	require.NotNil(t, videoAfterUpdate)
 
-	// Verify completion calculation
-	assert.Greater(t, updatedVideo.Init.Total, 0)
-	assert.GreaterOrEqual(t, updatedVideo.Init.Completed, 0)
+	assert.Equal(t, "Test Project", videoAfterUpdate.ProjectName)
+	assert.Equal(t, "http://example.com", videoAfterUpdate.ProjectURL)
+	assert.Equal(t, "2024-01-01T10:00", videoAfterUpdate.Date)
+	assert.Equal(t, "path/to/gist.md", videoAfterUpdate.Gist)
+	assert.False(t, videoAfterUpdate.Delayed)
+	assert.Equal(t, "100", videoAfterUpdate.Sponsorship.Amount)
+	assert.Equal(t, "sponsor@example.com", videoAfterUpdate.Sponsorship.Emails)
+	assert.Equal(t, "", videoAfterUpdate.Sponsorship.Blocked)
 }
 
 func TestVideoService_UpdateVideoPhase_WorkProgress(t *testing.T) {
 	service, _, cleanup := setupTestVideoService(t)
 	defer cleanup()
 
-	// Create a test video
-	_, err := service.CreateVideo("test-video", "test-category")
+	_, err := service.CreateVideo("test-work", "test-category")
+	require.NoError(t, err)
+
+	videoToUpdate, err := service.GetVideo("test-work", "test-category")
 	require.NoError(t, err)
 
 	updateData := map[string]interface{}{
-		"codeDone":             true,
-		"talkingHeadDone":      true,
-		"screenRecordingDone":  true,
-		"relatedVideos":        "video1,video2",
-		"thumbnailsDone":       true,
-		"diagramsDone":         false,
-		"screenshotsDone":      true,
-		"filesLocation":        "/path/to/files",
-		"tagline":              "Amazing video tagline",
-		"taglineIdeas":         "idea1,idea2,idea3",
-		"otherLogosAssets":     "logo1.png,logo2.png",
+		"codeDone":            true,
+		"talkingHeadDone":     true,
+		"screenRecordingDone": true,
+		"relatedVideos":       "video1,video2",
+		"thumbnailsDone":      true,
+		"diagramsDone":        false,
+		"screenshotsDone":     true,
+		"filesLocation":       "/path/to/files",
+		"tagline":             "Amazing video tagline",
+		"taglineIdeas":        "idea1,idea2,idea3",
+		"otherLogosAssets":    "logo1.png,logo2.png",
 	}
 
-	updatedVideo, err := service.UpdateVideoPhase("test-video", "test-category", "work-progress", updateData)
-	assert.NoError(t, err)
-	assert.True(t, updatedVideo.Code)
-	assert.True(t, updatedVideo.Head)
-	assert.True(t, updatedVideo.Screen)
-	assert.Equal(t, "video1,video2", updatedVideo.RelatedVideos)
-	assert.True(t, updatedVideo.Thumbnails)
-	assert.False(t, updatedVideo.Diagrams)
-	assert.True(t, updatedVideo.Screenshots)
-	assert.Equal(t, "/path/to/files", updatedVideo.Location)
-	assert.Equal(t, "Amazing video tagline", updatedVideo.Tagline)
-	assert.Equal(t, "idea1,idea2,idea3", updatedVideo.TaglineIdeas)
-	assert.Equal(t, "logo1.png,logo2.png", updatedVideo.OtherLogos)
+	videoAfterUpdate, err := service.UpdateVideoPhase(&videoToUpdate, "work-progress", updateData)
+	require.NoError(t, err)
+	require.NotNil(t, videoAfterUpdate)
 
-	// Verify completion calculation
-	assert.Greater(t, updatedVideo.Work.Total, 0)
-	assert.Greater(t, updatedVideo.Work.Completed, 0)
+	assert.True(t, videoAfterUpdate.Code)
+	assert.True(t, videoAfterUpdate.Head)
+	assert.True(t, videoAfterUpdate.Screen)
+	assert.Equal(t, "video1,video2", videoAfterUpdate.RelatedVideos)
+	assert.True(t, videoAfterUpdate.Thumbnails)
+	assert.False(t, videoAfterUpdate.Diagrams)
+	assert.True(t, videoAfterUpdate.Screenshots)
+	assert.Equal(t, "/path/to/files", videoAfterUpdate.Location)
+	assert.Equal(t, "Amazing video tagline", videoAfterUpdate.Tagline)
+	assert.Equal(t, "idea1,idea2,idea3", videoAfterUpdate.TaglineIdeas)
+	assert.Equal(t, "logo1.png,logo2.png", videoAfterUpdate.OtherLogos)
 }
 
 func TestVideoService_UpdateVideoPhase_Definition(t *testing.T) {
 	service, _, cleanup := setupTestVideoService(t)
 	defer cleanup()
 
-	// Create a test video
-	_, err := service.CreateVideo("test-video", "test-category")
+	_, err := service.CreateVideo("test-define", "test-category")
+	require.NoError(t, err)
+
+	videoToUpdate, err := service.GetVideo("test-define", "test-category")
 	require.NoError(t, err)
 
 	updateData := map[string]interface{}{
-		"title":                        "Amazing Video Title",
-		"description":                  "This is an amazing video description",
-		"highlight":                    "Key highlight of the video",
-		"tags":                         "tag1,tag2,tag3",
-		"descriptionTags":              "desc1,desc2",
-		"tweetText":                    "Check out this amazing video!",
-		"animationsScript":             "Animation script content",
-		"requestThumbnailGeneration":   true,
+		"title":                      "New Title",
+		"description":                "New Description",
+		"highlight":                  "New Highlight",
+		"tags":                       "new,tags",
+		"descriptionTags":            "#new #description #tags",
+		"tweetText":                  "New Tweet Text",
+		"animationsScript":           "New Animations Script",
+		"requestThumbnailGeneration": true,
+		"gistPath":                   "new/gist/path.md",
 	}
 
-	updatedVideo, err := service.UpdateVideoPhase("test-video", "test-category", "definition", updateData)
-	assert.NoError(t, err)
-	assert.Equal(t, "Amazing Video Title", updatedVideo.Title)
-	assert.Equal(t, "This is an amazing video description", updatedVideo.Description)
-	assert.Equal(t, "Key highlight of the video", updatedVideo.Highlight)
-	assert.Equal(t, "tag1,tag2,tag3", updatedVideo.Tags)
-	assert.Equal(t, "desc1,desc2", updatedVideo.DescriptionTags)
-	assert.Equal(t, "Check out this amazing video!", updatedVideo.Tweet)
-	assert.Equal(t, "Animation script content", updatedVideo.Animations)
-	assert.True(t, updatedVideo.RequestThumbnail)
+	videoAfterUpdate, err := service.UpdateVideoPhase(&videoToUpdate, "definition", updateData)
+	require.NoError(t, err)
+	require.NotNil(t, videoAfterUpdate)
 
-	// Verify completion calculation
-	assert.Greater(t, updatedVideo.Define.Total, 0)
-	assert.Greater(t, updatedVideo.Define.Completed, 0)
+	assert.Equal(t, "New Title", videoAfterUpdate.Title)
+	assert.Equal(t, "New Description", videoAfterUpdate.Description)
+	assert.Equal(t, "New Highlight", videoAfterUpdate.Highlight)
+	assert.Equal(t, "new,tags", videoAfterUpdate.Tags)
+	assert.Equal(t, "#new #description #tags", videoAfterUpdate.DescriptionTags)
+	assert.Equal(t, "New Tweet Text", videoAfterUpdate.Tweet)
+	assert.Equal(t, "New Animations Script", videoAfterUpdate.Animations)
+	assert.True(t, videoAfterUpdate.RequestThumbnail)
+	assert.Equal(t, "new/gist/path.md", videoAfterUpdate.Gist)
+
+	fsOps := &filesystem.Operations{}
+	localVideoManager := video.NewManager(fsOps.GetFilePath)
+	defineCompleted, defineTotal := localVideoManager.CalculateDefinePhaseCompletion(*videoAfterUpdate)
+	assert.Greater(t, defineTotal, 0)
+	assert.Equal(t, 9, defineCompleted)
 }
 
 func TestVideoService_UpdateVideoPhase_PostProduction(t *testing.T) {
 	service, _, cleanup := setupTestVideoService(t)
 	defer cleanup()
 
-	// Create a test video
-	_, err := service.CreateVideo("test-video", "test-category")
+	_, err := service.CreateVideo("test-postprod", "test-category")
+	require.NoError(t, err)
+
+	videoToUpdate, err := service.GetVideo("test-postprod", "test-category")
 	require.NoError(t, err)
 
 	updateData := map[string]interface{}{
@@ -513,26 +530,26 @@ func TestVideoService_UpdateVideoPhase_PostProduction(t *testing.T) {
 		"slidesDone":    false,
 	}
 
-	updatedVideo, err := service.UpdateVideoPhase("test-video", "test-category", "post-production", updateData)
-	assert.NoError(t, err)
-	assert.Equal(t, "/path/to/thumbnail.jpg", updatedVideo.Thumbnail)
-	assert.Equal(t, "member1,member2", updatedVideo.Members)
-	assert.True(t, updatedVideo.RequestEdit)
-	assert.Equal(t, "00:00 - Intro, 01:30 - Main content", updatedVideo.Timecodes)
-	assert.True(t, updatedVideo.Movie)
-	assert.False(t, updatedVideo.Slides)
+	videoAfterUpdate, err := service.UpdateVideoPhase(&videoToUpdate, "post-production", updateData)
+	require.NoError(t, err)
+	require.NotNil(t, videoAfterUpdate)
 
-	// Verify completion calculation
-	assert.Greater(t, updatedVideo.Edit.Total, 0)
-	assert.GreaterOrEqual(t, updatedVideo.Edit.Completed, 0)
+	assert.Equal(t, "/path/to/thumbnail.jpg", videoAfterUpdate.Thumbnail)
+	assert.Equal(t, "member1,member2", videoAfterUpdate.Members)
+	assert.True(t, videoAfterUpdate.RequestEdit)
+	assert.Equal(t, "00:00 - Intro, 01:30 - Main content", videoAfterUpdate.Timecodes)
+	assert.True(t, videoAfterUpdate.Movie)
+	assert.False(t, videoAfterUpdate.Slides)
 }
 
 func TestVideoService_UpdateVideoPhase_Publishing(t *testing.T) {
 	service, _, cleanup := setupTestVideoService(t)
 	defer cleanup()
 
-	// Create a test video
-	_, err := service.CreateVideo("test-video", "test-category")
+	_, err := service.CreateVideo("test-publishing", "test-category")
+	require.NoError(t, err)
+
+	videoToUpdate, err := service.GetVideo("test-publishing", "test-category")
 	require.NoError(t, err)
 
 	updateData := map[string]interface{}{
@@ -541,67 +558,67 @@ func TestVideoService_UpdateVideoPhase_Publishing(t *testing.T) {
 		"createHugoPost":  true,
 	}
 
-	updatedVideo, err := service.UpdateVideoPhase("test-video", "test-category", "publishing", updateData)
-	assert.NoError(t, err)
-	assert.Equal(t, "/path/to/video.mp4", updatedVideo.UploadVideo)
-	assert.Equal(t, "placeholder-youtube-id", updatedVideo.VideoId)
-	assert.Equal(t, "placeholder-hugo-path", updatedVideo.HugoPath)
+	videoAfterUpdate, err := service.UpdateVideoPhase(&videoToUpdate, "publishing", updateData)
+	require.NoError(t, err)
+	require.NotNil(t, videoAfterUpdate)
 
-	// Verify completion calculation
-	assert.Greater(t, updatedVideo.Publish.Total, 0)
-	assert.Greater(t, updatedVideo.Publish.Completed, 0)
+	assert.Equal(t, "/path/to/video.mp4", videoAfterUpdate.UploadVideo)
+	assert.Equal(t, "placeholder-youtube-id", videoAfterUpdate.VideoId)
+	assert.Equal(t, "placeholder-hugo-path", videoAfterUpdate.HugoPath)
 }
 
 func TestVideoService_UpdateVideoPhase_PostPublish(t *testing.T) {
 	service, _, cleanup := setupTestVideoService(t)
 	defer cleanup()
 
-	// Create a test video
-	_, err := service.CreateVideo("test-video", "test-category")
+	_, err := service.CreateVideo("test-postpublish", "test-category")
+	require.NoError(t, err)
+
+	videoToUpdate, err := service.GetVideo("test-postpublish", "test-category")
 	require.NoError(t, err)
 
 	updateData := map[string]interface{}{
-		"blueSkyPostSent":              true,
-		"linkedInPostSent":             true,
-		"slackPostSent":                false,
-		"youTubeHighlightCreated":      true,
-		"youTubePinnedCommentAdded":    true,
-		"repliedToYouTubeComments":     false,
-		"gdeAdvocuPostSent":            true,
-		"codeRepositoryURL":            "https://github.com/example/repo",
-		"notifiedSponsors":             false,
+		"blueSkyPostSent":           true,
+		"linkedInPostSent":          true,
+		"slackPostSent":             false,
+		"youTubeHighlightCreated":   true,
+		"youTubePinnedCommentAdded": true,
+		"repliedToYouTubeComments":  false,
+		"gdeAdvocuPostSent":         true,
+		"codeRepositoryURL":         "https://github.com/example/repo",
+		"notifiedSponsors":          false,
 	}
 
-	updatedVideo, err := service.UpdateVideoPhase("test-video", "test-category", "post-publish", updateData)
-	assert.NoError(t, err)
-	assert.True(t, updatedVideo.BlueSkyPosted)
-	assert.True(t, updatedVideo.LinkedInPosted)
-	assert.False(t, updatedVideo.SlackPosted)
-	assert.True(t, updatedVideo.YouTubeHighlight)
-	assert.True(t, updatedVideo.YouTubeComment)
-	assert.False(t, updatedVideo.YouTubeCommentReply)
-	assert.True(t, updatedVideo.GDE)
-	assert.Equal(t, "https://github.com/example/repo", updatedVideo.Repo)
-	assert.False(t, updatedVideo.NotifiedSponsors)
+	videoAfterUpdate, err := service.UpdateVideoPhase(&videoToUpdate, "post-publish", updateData)
+	require.NoError(t, err)
+	require.NotNil(t, videoAfterUpdate)
 
-	// Verify completion calculation
-	assert.Greater(t, updatedVideo.PostPublish.Total, 0)
-	assert.GreaterOrEqual(t, updatedVideo.PostPublish.Completed, 0)
+	assert.True(t, videoAfterUpdate.BlueSkyPosted)
+	assert.True(t, videoAfterUpdate.LinkedInPosted)
+	assert.False(t, videoAfterUpdate.SlackPosted)
+	assert.True(t, videoAfterUpdate.YouTubeHighlight)
+	assert.True(t, videoAfterUpdate.YouTubeComment)
+	assert.False(t, videoAfterUpdate.YouTubeCommentReply)
+	assert.True(t, videoAfterUpdate.GDE)
+	assert.Equal(t, "https://github.com/example/repo", videoAfterUpdate.Repo)
+	assert.False(t, videoAfterUpdate.NotifiedSponsors)
 }
 
 func TestVideoService_UpdateVideoPhase_InvalidPhase(t *testing.T) {
 	service, _, cleanup := setupTestVideoService(t)
 	defer cleanup()
 
-	// Create a test video
-	_, err := service.CreateVideo("test-video", "test-category")
+	_, err := service.CreateVideo("test-invalid-phase", "test-category")
+	require.NoError(t, err)
+
+	videoToUpdate, err := service.GetVideo("test-invalid-phase", "test-category")
 	require.NoError(t, err)
 
 	updateData := map[string]interface{}{
 		"someField": "someValue",
 	}
 
-	_, err = service.UpdateVideoPhase("test-video", "test-category", "invalid-phase", updateData)
+	_, err = service.UpdateVideoPhase(&videoToUpdate, "invalid-phase", updateData)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "unknown phase: invalid-phase")
 }
@@ -614,9 +631,11 @@ func TestVideoService_UpdateVideoPhase_NonExistentVideo(t *testing.T) {
 		"projectName": "Test Project",
 	}
 
-	_, err := service.UpdateVideoPhase("non-existent", "test-category", "initial-details", updateData)
+	// Test calling with a nil video pointer
+	var nilVideo *storage.Video
+	_, err := service.UpdateVideoPhase(nilVideo, "initial-details", updateData)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to get video")
+	assert.Contains(t, err.Error(), "video to update cannot be nil")
 }
 
 func TestVideoService_MoveVideo(t *testing.T) {

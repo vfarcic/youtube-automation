@@ -78,6 +78,7 @@ func New() *App {
 		farFutureStyle:    ui.FarFutureStyle,
 		confirmationStyle: ui.ConfirmationStyle,
 		errorStyle:        ui.ErrorStyle,
+		settings:          cfg, // Initialize the settings field
 	}
 	mh.dirSelector = mh // MenuHandler implements DirectorySelector
 

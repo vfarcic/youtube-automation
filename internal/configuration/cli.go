@@ -44,6 +44,7 @@ type SettingsAI struct {
 	Key        string `yaml:"key"`
 	Endpoint   string `yaml:"endpoint"`
 	Deployment string `yaml:"deployment"`
+	APIVersion string `yaml:"apiVersion,omitempty"`
 }
 
 type SettingsYouTube struct {
@@ -91,6 +92,7 @@ func init() {
 	RootCmd.Flags().StringVar(&GlobalSettings.AI.Endpoint, "ai-endpoint", GlobalSettings.AI.Endpoint, "AI endpoint. Only Azure OpenAI is currently supported. (required)")
 	RootCmd.Flags().StringVar(&GlobalSettings.AI.Key, "ai-key", GlobalSettings.AI.Key, "AI key. Only Azure OpenAI is currently supported. Environment variable `AI_KEY` is supported as well. (required)")
 	RootCmd.Flags().StringVar(&GlobalSettings.AI.Deployment, "ai-deployment", GlobalSettings.AI.Deployment, "AI Deployment. Only Azure OpenAI is currently supported. (required)")
+	RootCmd.Flags().StringVar(&GlobalSettings.AI.APIVersion, "ai-api-version", GlobalSettings.AI.APIVersion, "Azure OpenAI API Version (e.g., 2023-05-15). Defaults to a common version if not set.")
 	RootCmd.Flags().StringVar(&GlobalSettings.YouTube.APIKey, "youtube-api-key", GlobalSettings.YouTube.APIKey, "YouTube API key. Environment variable `YOUTUBE_API_KEY` is supported as well. (required)")
 	RootCmd.Flags().StringVar(&GlobalSettings.Hugo.Path, "hugo-path", GlobalSettings.Hugo.Path, "Path to the repo with Hugo posts. (required)")
 	RootCmd.Flags().StringVar(&GlobalSettings.Bluesky.Identifier, "bluesky-identifier", GlobalSettings.Bluesky.Identifier, "Bluesky username/identifier (e.g., username.bsky.social)")
@@ -153,6 +155,11 @@ func init() {
 
 	if GlobalSettings.AI.Deployment == "" {
 		RootCmd.MarkFlagRequired("ai-deployment")
+	}
+
+	// Default API version if not set
+	if GlobalSettings.AI.APIVersion == "" {
+		GlobalSettings.AI.APIVersion = "2023-05-15" // Defaulting to a common version
 	}
 
 	if envYouTubeKey := os.Getenv("YOUTUBE_API_KEY"); envYouTubeKey != "" {
