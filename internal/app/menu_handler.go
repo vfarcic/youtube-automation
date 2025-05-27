@@ -1497,11 +1497,26 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 										fmt.Fprintf(os.Stderr, "Error during Gist highlight selection: %v\\n", multiSelectErr)
 									} else if multiSelectErr == nil && len(confirmedGistHighlights) > 0 {
 										// Apply the selected highlights to the Gist file
-										applyErr := markdown.ApplyHighlightsInGist(manuscriptPath, confirmedGistHighlights)
+										applyErr := markdown.ApplyHighlightsInGist(manuscriptPath, confirmedGistHighlights) // Correct direct package call
 										if applyErr != nil {
-											fmt.Fprintf(os.Stderr, "Error applying Gist highlights: %v\\n", applyErr)
+											fmt.Fprintf(os.Stderr, "Error applying Gist highlights: %v\n", applyErr)
 										} else {
 											fmt.Println(m.normalStyle.Render(fmt.Sprintf("%d Gist highlights applied to %s.", len(confirmedGistHighlights), manuscriptPath)))
+
+											// Create the summary string
+											currentHighlightSummary := strings.Join(confirmedGistHighlights, "; ")
+											// Update videoToEdit.Highlight in memory
+											df.updateAction(currentHighlightSummary)
+
+											// Save the updated videoToEdit to YAML
+											if errSave := yamlHelper.WriteVideo(videoToEdit, videoToEdit.Path); errSave != nil {
+												fmt.Println(m.errorStyle.Render(fmt.Sprintf("Error saving video after AI Gist highlight update: %v", errSave)))
+												// Optionally revert videoToEdit.Highlight if save fails, though df.updateAction was already called
+											} else {
+												fmt.Println(m.confirmationStyle.Render("Video YAML updated with Gist highlight summary."))
+												// CRUCIAL FIX: Update tempHighlightValue so the input field reflects the AI change
+												tempHighlightValue = currentHighlightSummary
+											}
 										}
 									} else if multiSelectErr == huh.ErrUserAborted {
 										fmt.Println(m.orangeStyle.Render("Gist highlight selection aborted."))
