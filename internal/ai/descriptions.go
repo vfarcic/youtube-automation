@@ -10,6 +10,11 @@ import (
 	"github.com/tmc/langchaingo/llms/openai"
 )
 
+//nolint:lll
+var newLLMClientFuncForDescriptions = func(options ...openai.Option) (llms.Model, error) {
+	return openai.New(options...)
+}
+
 // SuggestDescription contacts Azure OpenAI via LangChainGo to get a description suggestion.
 // It expects the AI to return a single plain text string.
 func SuggestDescription(ctx context.Context, manuscriptContent string, aiConfig AITitleGeneratorConfig) (string, error) {
@@ -21,7 +26,7 @@ func SuggestDescription(ctx context.Context, manuscriptContent string, aiConfig 
 	// Example: "https://your-resource.openai.azure.com/"
 	baseURL := strings.TrimSuffix(aiConfig.Endpoint, "/")
 
-	llm, err := openai.New(
+	llm, err := newLLMClientFuncForDescriptions(
 		openai.WithToken(aiConfig.APIKey),
 		openai.WithBaseURL(baseURL),
 		openai.WithModel(aiConfig.DeploymentName), // For Azure, model is the deployment name

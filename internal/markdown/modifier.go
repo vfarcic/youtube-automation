@@ -8,11 +8,15 @@ import (
 	"strings"
 )
 
+// File system operation variables for mocking in tests
+var osReadFile = os.ReadFile
+var osWriteFile = os.WriteFile
+
 // ApplyHighlightsInGist reads a Gist (Markdown) file, applies bolding to the specified highlight phrases,
 // and writes the modified content back to the file.
 // It uses a simple string replacement strategy.
 func ApplyHighlightsInGist(gistPath string, highlightsToApply []string) error {
-	contentBytes, err := os.ReadFile(gistPath)
+	contentBytes, err := osReadFile(gistPath)
 	if err != nil {
 		return fmt.Errorf("failed to read gist file %s: %w", gistPath, err)
 	}
@@ -36,8 +40,7 @@ func ApplyHighlightsInGist(gistPath string, highlightsToApply []string) error {
 		content = strings.ReplaceAll(content, "****", "**")
 	}
 
-	err = os.WriteFile(gistPath, []byte(content), 0644)
-	if err != nil {
+	if err := osWriteFile(gistPath, []byte(content), 0644); err != nil {
 		return fmt.Errorf("failed to write modified content to gist file %s: %w", gistPath, err)
 	}
 

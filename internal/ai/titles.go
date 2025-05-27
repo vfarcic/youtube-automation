@@ -28,6 +28,11 @@ type AITitleGeneratorConfig struct {
 	APIVersion     string
 }
 
+//nolint:lll
+var newLLMClientFuncForTitles = func(options ...openai.Option) (llms.Model, error) {
+	return openai.New(options...)
+}
+
 // SuggestTitles contacts Azure OpenAI via LangChainGo to get title suggestions.
 // It now expects the AI to return a simple JSON array of strings.
 func SuggestTitles(ctx context.Context, manuscriptContent string, aiConfig AITitleGeneratorConfig) ([]string, error) { // Return type changed to []string
@@ -46,16 +51,14 @@ func SuggestTitles(ctx context.Context, manuscriptContent string, aiConfig AITit
 		fmt.Fprintf(os.Stderr, "Warning: Azure OpenAI APIVersion not set in config, defaulting to %s\n", aiConfig.APIVersion)
 	}
 
-	// Use the root Azure OpenAI endpoint as the BaseURL.
-	// LangChainGo's Azure APIType setting should handle the rest of the path construction.
-	azureBaseURL := aiConfig.Endpoint
+	baseURL := strings.TrimSuffix(aiConfig.Endpoint, "/")
 
-	llm, err := openai.New(
-		openai.WithModel(aiConfig.DeploymentName), // Still pass the model; Azure might need it in the body too
-		openai.WithAPIType(openai.APITypeAzure),
+	llm, err := newLLMClientFuncForTitles(
 		openai.WithToken(aiConfig.APIKey),
-		openai.WithBaseURL(azureBaseURL), // Use the constructed Azure-specific base URL
+		openai.WithBaseURL(baseURL),
+		openai.WithModel(aiConfig.DeploymentName),
 		openai.WithAPIVersion(aiConfig.APIVersion),
+		openai.WithAPIType(openai.APITypeAzure),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create LangChainGo client: %w", err)
@@ -82,6 +85,11 @@ Video Manuscript:
 
 	if err != nil {
 		return nil, fmt.Errorf("LangChainGo title generation failed: %w", err)
+	}
+
+	// NEW: Check for empty response before attempting to parse or clean
+	if strings.TrimSpace(responseContent) == "" {
+		return nil, fmt.Errorf("AI returned an empty response for titles")
 	}
 
 	// Strip Markdown code fences if present

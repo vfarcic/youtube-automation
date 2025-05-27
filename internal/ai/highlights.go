@@ -11,6 +11,11 @@ import (
 	"github.com/tmc/langchaingo/llms/openai"
 )
 
+//nolint:lll
+var newLLMClientFuncForHighlights = func(options ...openai.Option) (llms.Model, error) {
+	return openai.New(options...)
+}
+
 // AIHighlightResponse matches the expected JSON structure from the AI for highlights.
 // It might be { "suggested_highlights": ["phrase1", "phrase2"] }
 // or directly ["phrase1", "phrase2"]. The code will try to handle both.
@@ -27,7 +32,7 @@ func SuggestHighlights(ctx context.Context, manuscriptContent string, aiConfig A
 
 	baseURL := strings.TrimSuffix(aiConfig.Endpoint, "/")
 
-	llm, err := openai.New(
+	llm, err := newLLMClientFuncForHighlights(
 		openai.WithToken(aiConfig.APIKey),
 		openai.WithBaseURL(baseURL),
 		openai.WithModel(aiConfig.DeploymentName),
