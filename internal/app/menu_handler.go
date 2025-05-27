@@ -1176,6 +1176,7 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 		isDescriptionField bool
 		isHighlightField   bool
 		isThumbnailField   bool
+		isTagsField        bool // New field
 		getValue           func() interface{}
 		updateAction       func(newValue interface{})
 		revertField        func(originalValue interface{})
@@ -1199,7 +1200,7 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 			revertField:  func(originalValue interface{}) { videoToEdit.Highlight = originalValue.(string) },
 		},
 		{
-			name: "Tags", description: "Comma-separated tags (e.g., golang,devops,tutorial).",
+			name: "Tags", description: "Comma-separated tags (e.g., golang,devops,tutorial).", isTagsField: true, // Ensure this is set
 			getValue:     func() interface{} { return videoToEdit.Tags },
 			updateAction: func(newValue interface{}) { videoToEdit.Tags = newValue.(string) },
 			revertField:  func(originalValue interface{}) { videoToEdit.Tags = originalValue.(string) },
@@ -1516,6 +1517,94 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 				default:
 					fmt.Println(m.errorStyle.Render(fmt.Sprintf("Unknown action for highlight field: %d", selectedAction)))
 					fieldSavedOrSkipped = true
+				}
+			}
+		} else if df.isTagsField { // New block for Tags field
+			tempTagsValue := originalFieldValue.(string)
+			fieldSavedOrSkipped := false
+
+			for !fieldSavedOrSkipped {
+				var selectedAction int = generalActionUnknown
+
+				tagsFieldItself := huh.NewText().
+					Title("Tags").
+					Description(df.description). // Use description from struct
+					Lines(3).                    // Allow a few lines for better editing/viewing
+					CharLimit(450).
+					Value(&tempTagsValue)
+
+				actionSelect := huh.NewSelect[int]().
+					Title("Action for Tags").
+					Options(
+						huh.NewOption("Save Tags & Continue", generalActionSave),
+						huh.NewOption("Ask AI for Suggestion", generalActionAskAI),
+						huh.NewOption("Continue Without Saving Tags", generalActionSkip),
+					).
+					Value(&selectedAction)
+
+				tagsGroup := huh.NewGroup(tagsFieldItself, actionSelect)
+				tagsForm := huh.NewForm(tagsGroup)
+				formError = tagsForm.Run()
+
+				if formError != nil {
+					if formError == huh.ErrUserAborted {
+						fmt.Println(m.orangeStyle.Render(fmt.Sprintf("Action for '%s' aborted by user.", df.name)))
+						df.revertField(originalFieldValue)
+						if fieldIdx == 0 { // If first field, aborting means exiting this phase
+							fmt.Println(m.normalStyle.Render("Definition phase aborted."))
+							return nil
+						}
+						fieldSavedOrSkipped = true // Mark as skipped to exit inner loop and go to next field
+						continue                   // Continue the outer loop (next field)
+					}
+					fmt.Println(m.errorStyle.Render(fmt.Sprintf("Error in tags form: %v", formError)))
+					return formError // Critical error, exit function
+				}
+
+				switch selectedAction {
+				case generalActionSave:
+					df.updateAction(tempTagsValue)
+					err := yamlHelper.WriteVideo(videoToEdit, videoToEdit.Path)
+					if err != nil {
+						fmt.Println(m.errorStyle.Render(fmt.Sprintf("Error saving changes for '%s': %v", df.name, err)))
+						df.revertField(originalFieldValue) // Revert on save error
+						return err                         // Critical error
+					}
+					fieldSavedOrSkipped = true
+				case generalActionAskAI:
+					fmt.Println(m.normalStyle.Render("Attempting to get AI tags suggestion..."))
+					if videoToEdit.Gist == "" {
+						fmt.Fprintf(os.Stderr, "Manuscript/Gist path is not defined. Cannot fetch content for AI tags.\n")
+					} else {
+						aiConfig, cfgErr := ai.GetAIConfig()
+						if cfgErr != nil {
+							fmt.Fprintf(os.Stderr, "Error getting AI config: %v\n", cfgErr)
+						} else {
+							manuscriptPath := videoToEdit.Gist
+							manuscriptContent, readErr := os.ReadFile(manuscriptPath)
+							if readErr != nil {
+								fmt.Fprintf(os.Stderr, "Error reading manuscript file %s: %v\n", manuscriptPath, readErr)
+							} else {
+								suggestedTagsString, suggErr := ai.SuggestTags(context.Background(), string(manuscriptContent), aiConfig)
+								if suggErr != nil {
+									fmt.Fprintf(os.Stderr, "Error suggesting tags: %v\n", suggErr)
+								} else if suggestedTagsString != "" {
+									fmt.Println(m.normalStyle.Render("AI suggested tags received."))
+									tempTagsValue = suggestedTagsString // Update the temp value to show in the input field
+								} else {
+									fmt.Println(m.normalStyle.Render("AI did not return any tags suggestion."))
+								}
+							}
+						}
+					}
+					// Loop continues to show the form again with the new tempTagsValue
+				case generalActionSkip:
+					df.revertField(originalFieldValue)
+					fmt.Println(m.normalStyle.Render(fmt.Sprintf("Skipped changes for '%s'.", df.name)))
+					fieldSavedOrSkipped = true
+				default:
+					fmt.Println(m.errorStyle.Render(fmt.Sprintf("Unknown action for tags field: %d", selectedAction)))
+					fieldSavedOrSkipped = true // Treat as skip
 				}
 			}
 		} else {
