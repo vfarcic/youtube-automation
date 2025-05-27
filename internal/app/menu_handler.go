@@ -17,7 +17,7 @@ import (
 	"devopstoolkit/youtube-automation/internal/cli"
 	"devopstoolkit/youtube-automation/internal/configuration"
 	"devopstoolkit/youtube-automation/internal/filesystem"
-	"devopstoolkit/youtube-automation/internal/markdown" // Added import
+	"devopstoolkit/youtube-automation/internal/markdown"
 	"devopstoolkit/youtube-automation/internal/notification"
 	"devopstoolkit/youtube-automation/internal/platform"
 	"devopstoolkit/youtube-automation/internal/platform/bluesky"
@@ -802,7 +802,7 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 			}
 
 		case editPhaseDefinition:
-			err = m.editPhaseDefinition(updatedVideo, m.settings)
+			updatedVideo, err = m.editPhaseDefinition(updatedVideo, m.settings) // updatedVideo was videoToEdit
 			if err != nil {
 				return fmt.Errorf("error during definition phase: %w", err)
 			}
@@ -1165,8 +1165,9 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 	return nil
 }
 
-func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings configuration.Settings) error {
+func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings configuration.Settings) (storage.Video, error) {
 	fmt.Println(m.normalStyle.Render("\n--- Defining Video Details ---"))
+	originalVideoForThisCall := videoToEdit // Snapshot for early abort
 	yamlHelper := storage.YAML{}
 
 	definitionFields := []struct {
@@ -1178,7 +1179,8 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 		isThumbnailField       bool
 		isTagsField            bool
 		isDescriptionTagsField bool
-		isTweetField           bool // New field
+		isTweetField           bool
+		isAnimationsField      bool // New field for Animations specific logic
 		getValue               func() interface{}
 		updateAction           func(newValue interface{})
 		revertField            func(originalValue interface{})
@@ -1222,7 +1224,7 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 			revertField:  func(originalValue interface{}) { videoToEdit.Tweet = originalValue.(string) },
 		},
 		{
-			name: "Animations", description: "List any animations or special graphics needed.",
+			name: "Animations", description: "Script for animations, one per line, starting with '-'.", isAnimationsField: true, // Mark as Animations field
 			getValue:     func() interface{} { return videoToEdit.Animations },
 			updateAction: func(newValue interface{}) { videoToEdit.Animations = newValue.(string) },
 			revertField:  func(originalValue interface{}) { videoToEdit.Animations = originalValue.(string) },
@@ -1274,22 +1276,22 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 						df.revertField(originalFieldValue)
 						if fieldIdx == 0 {
 							fmt.Println(m.normalStyle.Render("Definition phase aborted."))
-							return nil
+							return originalVideoForThisCall, nil
 						}
 						fieldSavedOrSkipped = true
 						continue
 					}
 					fmt.Println(m.errorStyle.Render(fmt.Sprintf("Error in title form: %v", formError)))
-					return formError
+					return videoToEdit, formError
 				}
 				switch selectedAction {
 				case generalActionSave:
 					df.updateAction(tempTitleValue)
-					err := yamlHelper.WriteVideo(videoToEdit, videoToEdit.Path)
-					if err != nil {
-						fmt.Println(m.errorStyle.Render(fmt.Sprintf("Error saving changes for '%s': %v", df.name, err)))
+					saveErr := yamlHelper.WriteVideo(videoToEdit, videoToEdit.Path) // Renamed err to saveErr
+					if saveErr != nil {
+						fmt.Println(m.errorStyle.Render(fmt.Sprintf("Error saving changes for '%s': %v", df.name, saveErr)))
 						df.revertField(originalFieldValue)
-						return err
+						return videoToEdit, saveErr
 					}
 					fieldSavedOrSkipped = true
 				case generalActionAskAI:
@@ -1358,22 +1360,22 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 						df.revertField(originalFieldValue)
 						if fieldIdx == 0 {
 							fmt.Println(m.normalStyle.Render("Definition phase aborted."))
-							return nil
+							return originalVideoForThisCall, nil
 						}
 						fieldSavedOrSkipped = true
 						continue
 					}
 					fmt.Println(m.errorStyle.Render(fmt.Sprintf("Error in description form: %v", formError)))
-					return formError
+					return videoToEdit, formError
 				}
 				switch selectedAction {
 				case generalActionSave:
 					df.updateAction(tempDescriptionValue)
-					err := yamlHelper.WriteVideo(videoToEdit, videoToEdit.Path)
-					if err != nil {
-						fmt.Println(m.errorStyle.Render(fmt.Sprintf("Error saving changes for '%s': %v", df.name, err)))
+					saveErr := yamlHelper.WriteVideo(videoToEdit, videoToEdit.Path) // Renamed err to saveErr
+					if saveErr != nil {
+						fmt.Println(m.errorStyle.Render(fmt.Sprintf("Error saving changes for '%s': %v", df.name, saveErr)))
 						df.revertField(originalFieldValue)
-						return err
+						return videoToEdit, saveErr
 					}
 					fieldSavedOrSkipped = true
 				case generalActionAskAI:
@@ -1442,23 +1444,23 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 						df.revertField(originalFieldValue)
 						if fieldIdx == 0 {
 							fmt.Println(m.normalStyle.Render("Definition phase aborted."))
-							return nil
+							return originalVideoForThisCall, nil
 						}
 						fieldSavedOrSkipped = true
 						continue
 					}
 					fmt.Println(m.errorStyle.Render(fmt.Sprintf("Error in highlight form: %v", formError)))
-					return formError
+					return videoToEdit, formError
 				}
 
 				switch selectedAction {
 				case generalActionSave:
 					df.updateAction(tempHighlightValue)
-					err := yamlHelper.WriteVideo(videoToEdit, videoToEdit.Path)
-					if err != nil {
-						fmt.Println(m.errorStyle.Render(fmt.Sprintf("Error saving manual highlight for '%s': %v", df.name, err)))
+					saveErr := yamlHelper.WriteVideo(videoToEdit, videoToEdit.Path) // Renamed err to saveErr
+					if saveErr != nil {
+						fmt.Println(m.errorStyle.Render(fmt.Sprintf("Error saving manual highlight for '%s': %v", df.name, saveErr)))
 						df.revertField(originalFieldValue)
-						return err
+						return videoToEdit, saveErr
 					}
 					fieldSavedOrSkipped = true
 				case generalActionAskAI: // AI for Gist highlights
@@ -1554,23 +1556,23 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 						df.revertField(originalFieldValue)
 						if fieldIdx == 0 { // If first field, aborting means exiting this phase
 							fmt.Println(m.normalStyle.Render("Definition phase aborted."))
-							return nil
+							return originalVideoForThisCall, nil
 						}
 						fieldSavedOrSkipped = true // Mark as skipped to exit inner loop and go to next field
 						continue                   // Continue the outer loop (next field)
 					}
 					fmt.Println(m.errorStyle.Render(fmt.Sprintf("Error in tags form: %v", formError)))
-					return formError // Critical error, exit function
+					return videoToEdit, formError // Critical error, exit function
 				}
 
 				switch selectedAction {
 				case generalActionSave:
 					df.updateAction(tempTagsValue)
-					err := yamlHelper.WriteVideo(videoToEdit, videoToEdit.Path)
-					if err != nil {
-						fmt.Println(m.errorStyle.Render(fmt.Sprintf("Error saving changes for '%s': %v", df.name, err)))
+					saveErr := yamlHelper.WriteVideo(videoToEdit, videoToEdit.Path) // Renamed err to saveErr
+					if saveErr != nil {
+						fmt.Println(m.errorStyle.Render(fmt.Sprintf("Error saving changes for '%s': %v", df.name, saveErr)))
 						df.revertField(originalFieldValue) // Revert on save error
-						return err                         // Critical error
+						return videoToEdit, saveErr        // Critical error
 					}
 					fieldSavedOrSkipped = true
 				case generalActionAskAI:
@@ -1642,23 +1644,23 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 						df.revertField(originalFieldValue)
 						if fieldIdx == 0 { // If first field, aborting means exiting this phase
 							fmt.Println(m.normalStyle.Render("Definition phase aborted."))
-							return nil
+							return originalVideoForThisCall, nil
 						}
 						fieldSavedOrSkipped = true // Mark as skipped to exit inner loop and go to next field
 						continue                   // Continue the outer loop (next field)
 					}
 					fmt.Println(m.errorStyle.Render(fmt.Sprintf("Error in description tags form: %v", formError)))
-					return formError // Critical error, exit function
+					return videoToEdit, formError // Critical error, exit function
 				}
 
 				switch selectedAction {
 				case generalActionSave:
 					df.updateAction(tempDescTagsValue)
-					err := yamlHelper.WriteVideo(videoToEdit, videoToEdit.Path)
-					if err != nil {
-						fmt.Println(m.errorStyle.Render(fmt.Sprintf("Error saving changes for '%s': %v", df.name, err)))
+					saveErr := yamlHelper.WriteVideo(videoToEdit, videoToEdit.Path) // Renamed err to saveErr
+					if saveErr != nil {
+						fmt.Println(m.errorStyle.Render(fmt.Sprintf("Error saving changes for '%s': %v", df.name, saveErr)))
 						df.revertField(originalFieldValue) // Revert on save error
-						return err                         // Critical error
+						return videoToEdit, saveErr        // Critical error
 					}
 					fieldSavedOrSkipped = true
 				case generalActionAskAI:
@@ -1730,23 +1732,23 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 						df.revertField(originalFieldValue)
 						if fieldIdx == 0 {
 							fmt.Println(m.normalStyle.Render("Definition phase aborted."))
-							return nil
+							return originalVideoForThisCall, nil
 						}
 						fieldSavedOrSkipped = true
 						continue
 					}
 					fmt.Println(m.errorStyle.Render(fmt.Sprintf("Error in tweet form: %v", formError)))
-					return formError
+					return videoToEdit, formError
 				}
 
 				switch selectedAction {
 				case generalActionSave:
 					df.updateAction(tempTweetValue)
-					err := yamlHelper.WriteVideo(videoToEdit, videoToEdit.Path)
-					if err != nil {
-						fmt.Println(m.errorStyle.Render(fmt.Sprintf("Error saving changes for '%s': %v", df.name, err)))
+					saveErr := yamlHelper.WriteVideo(videoToEdit, videoToEdit.Path) // Renamed err to saveErr
+					if saveErr != nil {
+						fmt.Println(m.errorStyle.Render(fmt.Sprintf("Error saving changes for '%s': %v", df.name, saveErr)))
 						df.revertField(originalFieldValue)
-						return err
+						return videoToEdit, saveErr
 					}
 					fieldSavedOrSkipped = true
 				case generalActionAskAI:
@@ -1795,6 +1797,108 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 					fieldSavedOrSkipped = true
 				}
 			}
+		} else if df.isAnimationsField { // New block for Animations field
+			tempAnimationsValue := originalFieldValue.(string)
+			fieldSavedOrSkipped := false
+
+			const (
+				animationActionSave           = 0
+				animationActionGenerate       = 1
+				animationActionSkip           = 2
+				animationActionGenerateSimple = 3 // Option if timecodes are too complex
+			)
+
+			for !fieldSavedOrSkipped {
+				var selectedAction int = generalActionUnknown
+
+				animationsFieldItself := huh.NewText().
+					Title(m.colorTitleString("Animations Script", tempAnimationsValue)).
+					Description(df.description).
+					Lines(10). // More lines for animations
+					CharLimit(10000).
+					Value(&tempAnimationsValue)
+
+				actionSelect := huh.NewSelect[int]().
+					Title("Action for Animations").
+					Options(
+						huh.NewOption("Save Animations & Continue", animationActionSave).Selected(true),
+						huh.NewOption("Generate from Gist (Animations & Timecodes)", animationActionGenerate),
+						huh.NewOption("Continue Without Saving Animations", animationActionSkip),
+					).
+					Value(&selectedAction)
+
+				group := huh.NewGroup(animationsFieldItself, actionSelect)
+				form := huh.NewForm(group).WithTheme(cli.GetCustomHuhTheme()) // Calling the function
+
+				if err := form.Run(); err != nil {
+					if errors.Is(err, huh.ErrUserAborted) {
+						fmt.Println(m.normalStyle.Render("Animations editing aborted.")) // Use m.normalStyle
+						df.revertField(originalFieldValue)                               // Revert on abort
+						fieldSavedOrSkipped = true
+						// If aborting on the first field, return originalVideoForThisCall
+						if fieldIdx == 0 {
+							return originalVideoForThisCall, nil
+						}
+						continue
+					}
+					log.Printf("Error running animations form: %v", err)
+					return videoToEdit, err // Or handle more gracefully
+				}
+
+				switch selectedAction {
+				case animationActionSave:
+					df.updateAction(tempAnimationsValue)
+					if err := yamlHelper.WriteVideo(videoToEdit, videoToEdit.Path); err != nil {
+						log.Printf("Error saving video data after Animations update: %v", err)
+						// Potentially revert or offer retry
+					}
+					fieldSavedOrSkipped = true
+				case animationActionGenerate:
+					fsOps := filesystem.NewOperations()
+					animLines, animSections, errGen := fsOps.GetAnimations(videoToEdit.Gist)
+					if errGen != nil {
+						fmt.Println(m.errorStyle.Render(fmt.Sprintf("Error generating animations from Gist: %v", errGen)))
+						// Stay in the loop, don't skip field
+						continue
+					}
+					if len(animLines) == 0 {
+						fmt.Println(m.normalStyle.Render("No animation cues (TODO: or ## Sections) found in Gist.")) // Use m.normalStyle
+						tempAnimationsValue = ""                                                                     // Clear if nothing found
+					} else {
+						var sb strings.Builder
+						for _, line := range animLines {
+							sb.WriteString(fmt.Sprintf("- %s\n", line))
+						}
+						tempAnimationsValue = strings.TrimSpace(sb.String())
+					}
+
+					// Update timecodes as well, based on original logic
+					if len(animSections) > 0 {
+						var tcSb strings.Builder
+						tcSb.WriteString("00:00 FIXME:") // Initial FIXME
+						for _, section := range animSections {
+							tcSb.WriteString(fmt.Sprintf("\nFIXME:FIXME %s", strings.TrimPrefix(section, "Section: ")))
+						}
+						videoToEdit.Timecodes = tcSb.String()
+						// Notify user that timecodes were also updated implicitly
+						fmt.Println(m.normalStyle.Render(fmt.Sprintf("Timecodes updated based on Gist sections. Original Timecodes were: [%s]", videoToEdit.Timecodes))) // Use m.normalStyle
+					} else {
+						// If no sections found, perhaps clear timecodes or leave them as is?
+						// For now, let's clear it to indicate it's based on the new Gist parse.
+						videoToEdit.Timecodes = ""                                                            // Or some default like "00:00 FIXME: No sections found in Gist"
+						fmt.Println(m.normalStyle.Render("No sections found in Gist to generate timecodes.")) // Use m.normalStyle
+					}
+					// Loop back to show the generated animations to the user
+				case animationActionSkip:
+					if tempAnimationsValue != originalFieldValue.(string) {
+						df.revertField(originalFieldValue)
+						fmt.Println(m.normalStyle.Render("Animations reverted to original value.")) // Use m.normalStyle
+					} else {
+						fmt.Println(m.normalStyle.Render("Animations skipped, no changes made.")) // Use m.normalStyle
+					}
+					fieldSavedOrSkipped = true
+				}
+			}
 		} else {
 			var tempFieldValue interface{} = originalFieldValue
 			var fieldInput huh.Field
@@ -1810,7 +1914,7 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 				fieldInput = huh.NewConfirm().Title(df.name).Description(df.description).Value(&currentBoolVal)
 				tempFieldValue = &currentBoolVal
 			default:
-				return fmt.Errorf("unsupported type for field '%s'", df.name)
+				return videoToEdit, fmt.Errorf("unsupported type for field '%s'", df.name)
 			}
 
 			fieldGroup := huh.NewGroup(
@@ -1831,22 +1935,22 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 					df.revertField(originalFieldValue)
 					if fieldIdx == 0 {
 						fmt.Println(m.normalStyle.Render("Definition phase aborted."))
-						return nil
+						return originalVideoForThisCall, nil
 					}
 					continue
 				}
 				fmt.Println(m.errorStyle.Render(fmt.Sprintf("Error in form for '%s': %v", df.name, formError)))
-				return formError
+				return videoToEdit, formError
 			}
 
 			if saveThisField {
 				finalValue := reflect.ValueOf(tempFieldValue).Elem().Interface()
 				df.updateAction(finalValue)
-				err := yamlHelper.WriteVideo(videoToEdit, videoToEdit.Path)
-				if err != nil {
-					fmt.Println(m.errorStyle.Render(fmt.Sprintf("Error saving changes for '%s': %v", df.name, err)))
+				saveErr := yamlHelper.WriteVideo(videoToEdit, videoToEdit.Path) // Renamed err to saveErr
+				if saveErr != nil {
+					fmt.Println(m.errorStyle.Render(fmt.Sprintf("Error saving changes for '%s': %v", df.name, saveErr)))
 					df.revertField(originalFieldValue)
-					return err
+					return videoToEdit, saveErr
 				}
 				if df.isThumbnailField && videoToEdit.RequestThumbnail && !initialRequestThumbnailForThisField {
 					if settings.Email.Password != "" {
@@ -1864,5 +1968,5 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 	}
 
 	fmt.Println(m.normalStyle.Render("\n--- Definition Phase Complete ---"))
-	return nil
+	return videoToEdit, nil
 }
