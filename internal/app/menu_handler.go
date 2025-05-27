@@ -19,6 +19,7 @@ import (
 	"devopstoolkit/youtube-automation/internal/platform"
 	"devopstoolkit/youtube-automation/internal/platform/bluesky"
 	"devopstoolkit/youtube-automation/internal/publishing"
+	"devopstoolkit/youtube-automation/internal/service"
 	"devopstoolkit/youtube-automation/internal/slack"
 	"devopstoolkit/youtube-automation/internal/storage"
 	"devopstoolkit/youtube-automation/internal/ui"
@@ -42,6 +43,7 @@ type MenuHandler struct {
 	uiRenderer        *ui.Renderer
 	videoManager      *video.Manager
 	filesystem        *filesystem.Operations
+	videoService      *service.VideoService
 	greenStyle        lipgloss.Style
 	orangeStyle       lipgloss.Style
 	redStyle          lipgloss.Style
@@ -170,7 +172,8 @@ func (m *MenuHandler) ChooseIndex() error {
 		if err != nil {
 			return fmt.Errorf("failed to get video index for create: %w", err)
 		}
-		item, err := m.ChooseCreateVideoAndHandleError()
+		var item storage.VideoIndex
+		item, err = m.ChooseCreateVideoAndHandleError()
 		if err != nil {
 			return fmt.Errorf("error in create video choice: %w", err)
 		}
@@ -180,11 +183,13 @@ func (m *MenuHandler) ChooseIndex() error {
 		}
 	case indexListVideos:
 		for {
-			index, err := yaml.GetIndex()
+			var index []storage.VideoIndex
+			index, err = yaml.GetIndex()
 			if err != nil {
 				return fmt.Errorf("failed to get video index for list: %w", err)
 			}
-			returnVal, err := m.ChooseVideosPhaseAndHandleError(index)
+			var returnVal bool
+			returnVal, err = m.ChooseVideosPhaseAndHandleError(index)
 			if err != nil {
 				return fmt.Errorf("error in list videos phase: %w", err)
 			}
@@ -227,51 +232,9 @@ func (m *MenuHandler) ChooseCreateVideoAndHandleError() (storage.VideoIndex, err
 	if !save {
 		return vi, nil
 	}
-	dirPath := m.filesystem.GetDirPath(vi.Category)
-	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
-		if mkDirErr := os.Mkdir(dirPath, 0755); mkDirErr != nil {
-			return storage.VideoIndex{}, fmt.Errorf("failed to create directory %s: %w", dirPath, mkDirErr)
-		}
-	}
-	scriptContent := `## Intro
-
-FIXME: Shock
-
-FIXME: Establish expectations
-
-FIXME: What's the ending?
-
-## Setup
-
-FIXME:
-
-## FIXME:
-
-FIXME:
-
-## FIXME: Pros and Cons
-
-FIXME: Header: Cons; Items: FIXME:
-
-FIXME: Header: Pros; Items: FIXME:
-
-## Destroy
-
-FIXME:
-`
-	filePath := m.filesystem.GetFilePath(vi.Category, vi.Name, "md")
-	if _, err := os.Stat(filePath); os.IsNotExist(err) {
-		f, errCreate := os.Create(filePath)
-		if errCreate != nil {
-			return storage.VideoIndex{}, fmt.Errorf("failed to create script file %s: %w", filePath, errCreate)
-		}
-		defer f.Close()
-		if _, writeErr := f.Write([]byte(scriptContent)); writeErr != nil {
-			return storage.VideoIndex{}, fmt.Errorf("failed to write to script file %s: %w", filePath, writeErr)
-		}
-		return vi, nil
-	}
-	return storage.VideoIndex{}, nil
+	
+	// Use the service to create the video with all the proper logic
+	return m.videoService.CreateVideo(name, category)
 }
 
 // ChooseVideosPhase handles the video phase selection workflow
@@ -281,21 +244,10 @@ func (m *MenuHandler) ChooseVideosPhaseAndHandleError(vi []storage.VideoIndex) (
 		return true, nil
 	}
 
-	phases := map[int]int{
-		workflow.PhaseIdeas:            0,
-		workflow.PhaseStarted:          0,
-		workflow.PhaseMaterialDone:     0,
-		workflow.PhaseEditRequested:    0,
-		workflow.PhasePublishPending:   0,
-		workflow.PhasePublished:        0,
-		workflow.PhaseDelayed:          0,
-		workflow.PhaseSponsoredBlocked: 0,
-	}
-
-	// Count videos in each phase using video manager
-	for _, video := range vi {
-		currentPhase := m.videoManager.GetVideoPhase(video)
-		phases[currentPhase]++
+	// Get phase counts from the service
+	phases, err := m.videoService.GetVideoPhases()
+	if err != nil {
+		return false, fmt.Errorf("failed to get video phases: %w", err)
 	}
 
 	var selectedPhase int
@@ -337,7 +289,7 @@ func (m *MenuHandler) ChooseVideosPhaseAndHandleError(vi []storage.VideoIndex) (
 				Value(&selectedPhase),
 		),
 	)
-	err := form.Run()
+	err = form.Run()
 	if err != nil {
 		return false, fmt.Errorf("failed to run video phase form: %w", err)
 	}
@@ -354,24 +306,10 @@ func (m *MenuHandler) ChooseVideosPhaseAndHandleError(vi []storage.VideoIndex) (
 
 // ChooseVideos handles video selection and actions for a specific phase
 func (m *MenuHandler) ChooseVideosAndHandleError(vi []storage.VideoIndex, phase int, input *bytes.Buffer) error {
-	yaml := storage.YAML{}
-	var videosInPhase []storage.Video
-
-	// Filter videos by phase using video manager
-	for i, video := range vi {
-		currentPhase := m.videoManager.GetVideoPhase(video)
-		if currentPhase == phase {
-			videoPath := m.filesystem.GetFilePath(video.Category, video.Name, "yaml")
-			fullVideo, err := yaml.GetVideo(videoPath)
-			if err != nil {
-				return fmt.Errorf("failed to get video details for %s: %w", video.Name, err)
-			}
-			fullVideo.Index = i // Store the index for potential deletion
-			fullVideo.Name = video.Name
-			fullVideo.Category = video.Category
-			fullVideo.Path = videoPath
-			videosInPhase = append(videosInPhase, fullVideo)
-		}
+	// Use the service to get videos by phase
+	videosInPhase, err := m.videoService.GetVideosByPhase(phase)
+	if err != nil {
+		return fmt.Errorf("failed to get videos for phase: %w", err)
 	}
 
 	if len(videosInPhase) == 0 {
@@ -408,7 +346,7 @@ func (m *MenuHandler) ChooseVideosAndHandleError(vi []storage.VideoIndex, phase 
 		form = form.WithInput(input)
 	}
 
-	err := form.Run()
+	err = form.Run()
 	if err != nil {
 		return fmt.Errorf("failed to run video selection form: %w", err)
 	}
@@ -465,38 +403,12 @@ func (m *MenuHandler) ChooseVideosAndHandleError(vi []storage.VideoIndex, phase 
 			return nil
 		}
 
-		currentYAMLPath := selectedVideo.Path
-		ext := filepath.Ext(currentYAMLPath)
-		videoBaseFileName := strings.TrimSuffix(filepath.Base(currentYAMLPath), ext)
-		currentMDPath := strings.TrimSuffix(currentYAMLPath, ext) + ".md"
-
-		newYAMLPath, _, moveErr := utils.MoveVideoFiles(currentYAMLPath, currentMDPath, targetDir.Path, videoBaseFileName)
+		// Use the service to move the video
+		moveErr := m.videoService.MoveVideo(selectedVideo.Name, selectedVideo.Category, targetDir.Path)
 		if moveErr != nil {
 			log.Printf(m.errorStyle.Render(fmt.Sprintf("Error moving video files for '%s': %v", selectedVideo.Name, moveErr)))
 		} else {
 			fmt.Println(m.confirmationStyle.Render(fmt.Sprintf("Video '%s' files moved to %s", selectedVideo.Name, targetDir.Path)))
-
-			currentVideoIndex := -1
-			for i, vid := range vi {
-				if vid.Name == selectedVideo.Name && vid.Category == selectedVideo.Category {
-					currentVideoIndex = i
-					break
-				}
-			}
-
-			if currentVideoIndex != -1 {
-				vi[currentVideoIndex].Category = filepath.Base(targetDir.Path)
-				yamlStorage := storage.YAML{IndexPath: "index.yaml"}
-				if errWrite := yamlStorage.WriteIndex(vi); errWrite != nil {
-					log.Printf(m.errorStyle.Render(fmt.Sprintf("Failed to update index.yaml after moving video: %v", errWrite)))
-				} else {
-					fmt.Println(m.confirmationStyle.Render(fmt.Sprintf("Video '%s' category updated in index.yaml to '%s'.", selectedVideo.Name, vi[currentVideoIndex].Category)))
-					selectedVideo.Category = vi[currentVideoIndex].Category
-					selectedVideo.Path = newYAMLPath
-				}
-			} else {
-				log.Printf(m.orangeStyle.Render(fmt.Sprintf("Could not find video '%s' in the current list to update its category after moving.", selectedVideo.Name)))
-			}
 		}
 	case actionReturn:
 		return nil
@@ -510,31 +422,9 @@ func (m *MenuHandler) handleDeleteVideoActionAndHandleError(selectedVideo storag
 
 	confirmed := utils.ConfirmAction(confirmMsg, nil)
 	if confirmed {
-		mdPath := strings.ReplaceAll(selectedVideo.Path, ".yaml", ".md")
-
-		// Delete both files
-		yamlErr := os.Remove(selectedVideo.Path)
-		mdErr := os.Remove(mdPath)
-
-		var deletionErrors []string
-		if yamlErr != nil {
-			deletionErrors = append(deletionErrors, fmt.Sprintf("YAML file (%s): %v", selectedVideo.Path, yamlErr))
-		}
-		if mdErr != nil {
-			deletionErrors = append(deletionErrors, fmt.Sprintf("MD file (%s): %v", mdPath, mdErr))
-		}
-
-		if len(deletionErrors) > 0 {
-			return false, fmt.Errorf("errors during file deletion: %s", strings.Join(deletionErrors, "; "))
-		}
-
-		// Remove from index
-		if selectedVideo.Index >= 0 && selectedVideo.Index < len(allVideoIndices) {
-			updatedIndices := append(allVideoIndices[:selectedVideo.Index], allVideoIndices[selectedVideo.Index+1:]...)
-			yaml := storage.YAML{IndexPath: "index.yaml"}
-			if errWrite := yaml.WriteIndex(updatedIndices); errWrite != nil {
-				return false, fmt.Errorf("failed to write updated index: %w", errWrite)
-			}
+		// Use the service to delete the video
+		if err := m.videoService.DeleteVideo(selectedVideo.Name, selectedVideo.Category); err != nil {
+			return false, fmt.Errorf("failed to delete video: %w", err)
 		}
 
 		return true, nil

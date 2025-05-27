@@ -8,6 +8,7 @@ import (
 
 	"devopstoolkit/youtube-automation/internal/configuration"
 	"devopstoolkit/youtube-automation/internal/filesystem"
+	"devopstoolkit/youtube-automation/internal/service"
 	"devopstoolkit/youtube-automation/internal/ui"
 	"devopstoolkit/youtube-automation/internal/video"
 	"devopstoolkit/youtube-automation/internal/workflow" // For workflow.Directory, workflow.DirectorySelector
@@ -60,6 +61,7 @@ func New() *App {
 
 	fsOps := filesystem.NewOperations()
 	videoManager := video.NewManager(fsOps.GetFilePath)
+	videoService := service.NewVideoService("index.yaml", fsOps, videoManager)
 
 	confirmerInstance := &simpleConfirmer{}
 
@@ -69,6 +71,7 @@ func New() *App {
 		uiRenderer:        uiRenderer,
 		videoManager:      videoManager,
 		filesystem:        fsOps,
+		videoService:      videoService,
 		greenStyle:        ui.GreenStyle,
 		orangeStyle:       ui.OrangeStyle,
 		redStyle:          ui.RedStyle,
