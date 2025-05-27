@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"devopstoolkit/youtube-automation/internal/storage"
+	"devopstoolkit/youtube-automation/internal/workflow"
 )
 
 var (
@@ -48,14 +49,16 @@ func (s *VideoService) GetVideoPhases() ([]VideoPhase, error) {
 		return nil, fmt.Errorf("failed to get index: %w", err)
 	}
 
-	// Define phases
+	// Define phases using the shared workflow constants
 	phases := []VideoPhase{
-		{Name: "Initial", ID: 0, Count: 0},
-		{Name: "Work", ID: 1, Count: 0},
-		{Name: "Definition", ID: 2, Count: 0},
-		{Name: "Post-Production", ID: 3, Count: 0},
-		{Name: "Publishing", ID: 4, Count: 0},
-		{Name: "Post-Publish", ID: 5, Count: 0},
+		{Name: workflow.PhaseNames[workflow.PhasePublished], ID: workflow.PhasePublished, Count: 0},
+		{Name: workflow.PhaseNames[workflow.PhasePublishPending], ID: workflow.PhasePublishPending, Count: 0},
+		{Name: workflow.PhaseNames[workflow.PhaseEditRequested], ID: workflow.PhaseEditRequested, Count: 0},
+		{Name: workflow.PhaseNames[workflow.PhaseMaterialDone], ID: workflow.PhaseMaterialDone, Count: 0},
+		{Name: workflow.PhaseNames[workflow.PhaseStarted], ID: workflow.PhaseStarted, Count: 0},
+		{Name: workflow.PhaseNames[workflow.PhaseDelayed], ID: workflow.PhaseDelayed, Count: 0},
+		{Name: workflow.PhaseNames[workflow.PhaseSponsoredBlocked], ID: workflow.PhaseSponsoredBlocked, Count: 0},
+		{Name: workflow.PhaseNames[workflow.PhaseIdeas], ID: workflow.PhaseIdeas, Count: 0},
 	}
 
 	// Count videos in each phase
@@ -249,20 +252,24 @@ func (s *VideoService) GetCategories() ([]string, error) {
 	return categories, nil
 }
 
-// Helper function to determine which phase a video is in
+// Helper function to determine which phase a video is in, matching logic in video/manager.go
 func getVideoPhaseID(video storage.Video) int {
-	if !video.Init.Done {
-		return 0 // editPhaseInitial
-	} else if !video.Work.Done {
-		return 1 // editPhaseWork
-	} else if !video.Define.Done {
-		return 2 // editPhaseDefinition
-	} else if !video.Edit.Done {
-		return 3 // editPhasePostProduction
-	} else if !video.Publish.Done {
-		return 4 // editPhasePublishing
+	if len(video.Sponsorship.Blocked) > 0 { // Check for sponsorship block first
+		return workflow.PhaseSponsoredBlocked
+	} else if video.Delayed { // Then check for delayed
+		return workflow.PhaseDelayed
+	} else if len(video.Repo) > 0 { // Assuming video.Repo is populated when published
+		return workflow.PhasePublished
+	} else if len(video.UploadVideo) > 0 && len(video.Tweet) > 0 { // Assuming these indicate pending publish
+		return workflow.PhasePublishPending
+	} else if video.RequestEdit {
+		return workflow.PhaseEditRequested
+	} else if video.Code && video.Screen && video.Head && video.Diagrams { // Assuming these are key for material done
+		return workflow.PhaseMaterialDone
+	} else if len(video.Date) > 0 { // Date implies started
+		return workflow.PhaseStarted
 	} else {
-		return 5 // editPhasePostPublish
+		return workflow.PhaseIdeas
 	}
 }
 

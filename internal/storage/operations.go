@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	
+	"devopstoolkit/youtube-automation/internal/workflow"
 )
 
 // Operations defines the interface for storage operations
@@ -91,18 +93,22 @@ func (o *YAMLOperations) GetVideosByPhase(phaseID int) ([]Video, error) {
 
 // Helper function to determine which phase a video is in
 func getVideoPhaseID(video Video) int {
-	if !video.Init.Done {
-		return 0 // editPhaseInitial
-	} else if !video.Work.Done {
-		return 1 // editPhaseWork
-	} else if !video.Define.Done {
-		return 2 // editPhaseDefinition
-	} else if !video.Edit.Done {
-		return 3 // editPhasePostProduction
-	} else if !video.Publish.Done {
-		return 4 // editPhasePublishing
+	if len(video.Sponsorship.Blocked) > 0 { // Check for sponsorship block first
+		return workflow.PhaseSponsoredBlocked
+	} else if video.Delayed { // Then check for delayed
+		return workflow.PhaseDelayed
+	} else if len(video.Repo) > 0 { // Assuming video.Repo is populated when published
+		return workflow.PhasePublished
+	} else if len(video.UploadVideo) > 0 && len(video.Tweet) > 0 { // Assuming these indicate pending publish
+		return workflow.PhasePublishPending
+	} else if video.RequestEdit {
+		return workflow.PhaseEditRequested
+	} else if video.Code && video.Screen && video.Head && video.Diagrams { // Assuming these are key for material done
+		return workflow.PhaseMaterialDone
+	} else if len(video.Date) > 0 { // Date implies started
+		return workflow.PhaseStarted
 	} else {
-		return 5 // editPhasePostPublish
+		return workflow.PhaseIdeas
 	}
 }
 

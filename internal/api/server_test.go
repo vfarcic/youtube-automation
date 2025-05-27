@@ -124,8 +124,8 @@ func TestGetVideoPhases(t *testing.T) {
 		t.Errorf("Failed to decode response: %v", err)
 	}
 
-	// Check that we have 6 phases (from Initial to Post-Publish)
-	if len(response) != 6 {
-		t.Errorf("Expected 6 phases, got %d", len(response))
+	// Check that we have 8 phases (based on workflow constants)
+	if len(response) != 8 {
+		t.Errorf("Expected 8 phases, got %d", len(response))
 	}
 }
