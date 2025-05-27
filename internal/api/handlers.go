@@ -150,7 +150,7 @@ func (s *Server) getVideo(w http.ResponseWriter, r *http.Request) {
 // updateVideo handles PUT /api/videos/{videoName}
 func (s *Server) updateVideo(w http.ResponseWriter, r *http.Request) {
 	videoName := chi.URLParam(r, "videoName")
-	
+
 	var req UpdateVideoRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "Invalid JSON", err.Error())
@@ -260,27 +260,41 @@ func (s *Server) updateVideoPhase(w http.ResponseWriter, r *http.Request, phase 
 	category := r.URL.Query().Get("category")
 
 	if videoName == "" || category == "" {
-		writeError(w, http.StatusBadRequest, "video name and category are required", "")
+		writeError(w, http.StatusBadRequest, "video name and category query parameter are required", "")
 		return
 	}
 
-	// Decode the update request
 	var updateData map[string]interface{}
 	if err := json.NewDecoder(r.Body).Decode(&updateData); err != nil {
-		writeError(w, http.StatusBadRequest, "Invalid JSON", err.Error())
+		writeError(w, http.StatusBadRequest, "Invalid JSON for update data", err.Error())
 		return
 	}
 
-	// Use the service to apply updates and save the video
-	updatedVideo, err := s.videoService.UpdateVideoPhase(videoName, category, phase, updateData)
+	// First, get the video
+	videoToUpdate, err := s.videoService.GetVideo(videoName, category)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "Failed to apply updates", err.Error())
+		// Distinguish between not found and other errors if GetVideo supports it
+		// For now, assuming a generic error or not found
+		writeError(w, http.StatusNotFound, "Video not found or error fetching video", err.Error())
 		return
 	}
 
-	writeJSON(w, http.StatusOK, GetVideoResponse{Video: updatedVideo})
-}
+	// Now, update the phase with a pointer to the fetched video
+	updatedVideoPtr, err := s.videoService.UpdateVideoPhase(&videoToUpdate, phase, updateData)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Failed to update video phase", err.Error())
+		return
+	}
 
+	// Ensure the pointer is not nil before dereferencing for the response
+	if updatedVideoPtr == nil {
+		// This case should ideally not be reached if UpdateVideoPhase returns an error on nil video
+		writeError(w, http.StatusInternalServerError, "UpdateVideoPhase returned nil video without error", "")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, GetVideoResponse{Video: *updatedVideoPtr})
+}
 
 // Utility functions
 func writeJSON(w http.ResponseWriter, status int, data interface{}) {

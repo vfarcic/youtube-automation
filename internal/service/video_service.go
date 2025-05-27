@@ -104,7 +104,6 @@ FIXME:
 		// Initialize all task counters to zero
 		Init:        storage.Tasks{Completed: 0, Total: 0},
 		Work:        storage.Tasks{Completed: 0, Total: 0},
-		Define:      storage.Tasks{Completed: 0, Total: 0},
 		Edit:        storage.Tasks{Completed: 0, Total: 0},
 		Publish:     storage.Tasks{Completed: 0, Total: 0},
 		PostPublish: storage.Tasks{Completed: 0, Total: 0},
@@ -115,28 +114,28 @@ FIXME:
 			Blocked: "",
 		},
 		// Initialize other fields with default values
-		Date:                 "",
-		Delayed:              false,
-		Screen:               false,
-		Head:                 false,
-		Thumbnails:           false,
-		Diagrams:             false,
-		Screenshots:          false,
-		RequestThumbnail:     false,
-		Movie:                false,
-		Slides:               false,
-		RequestEdit:          false,
-		LinkedInPosted:       false,
-		SlackPosted:          false,
-		HNPosted:             false,
-		DOTPosted:            false,
-		BlueSkyPosted:        false,
-		YouTubeHighlight:     false,
-		YouTubeComment:       false,
-		YouTubeCommentReply:  false,
-		GDE:                  false,
-		NotifiedSponsors:     false,
-		Code:                 false,
+		Date:                "",
+		Delayed:             false,
+		Screen:              false,
+		Head:                false,
+		Thumbnails:          false,
+		Diagrams:            false,
+		Screenshots:         false,
+		RequestThumbnail:    false,
+		Movie:               false,
+		Slides:              false,
+		RequestEdit:         false,
+		LinkedInPosted:      false,
+		SlackPosted:         false,
+		HNPosted:            false,
+		DOTPosted:           false,
+		BlueSkyPosted:       false,
+		YouTubeHighlight:    false,
+		YouTubeComment:      false,
+		YouTubeCommentReply: false,
+		GDE:                 false,
+		NotifiedSponsors:    false,
+		Code:                false,
 	}
 
 	// Write the video YAML file
@@ -351,22 +350,21 @@ func (s *VideoService) MoveVideo(name, category, targetDir string) error {
 	return nil
 }
 
-// UpdateVideoPhase updates a video with phase-specific changes and recalculates completion
-func (s *VideoService) UpdateVideoPhase(name, category, phase string, updateData map[string]interface{}) (storage.Video, error) {
-	// Get the current video
-	video, err := s.GetVideo(name, category)
-	if err != nil {
-		return storage.Video{}, fmt.Errorf("failed to get video: %w", err)
+// UpdateVideoPhase updates a video with phase-specific changes and recalculates completion.
+// It now takes a pointer to a storage.Video object directly.
+func (s *VideoService) UpdateVideoPhase(video *storage.Video, phase string, updateData map[string]interface{}) (*storage.Video, error) {
+	if video == nil {
+		return nil, fmt.Errorf("video to update cannot be nil")
 	}
 
 	// Apply the updates based on the phase
-	if err := s.applyPhaseUpdates(&video, phase, updateData); err != nil {
-		return storage.Video{}, fmt.Errorf("failed to apply phase updates: %w", err)
+	if err := s.applyPhaseUpdates(video, phase, updateData); err != nil {
+		return nil, fmt.Errorf("failed to apply phase updates: %w", err)
 	}
 
 	// Save the updated video
-	if err := s.UpdateVideo(video); err != nil {
-		return storage.Video{}, fmt.Errorf("failed to save video: %w", err)
+	if err := s.UpdateVideo(*video); err != nil {
+		return nil, fmt.Errorf("failed to save video: %w", err)
 	}
 
 	return video, nil
@@ -551,9 +549,12 @@ func (s *VideoService) applyDefinitionUpdates(video *storage.Video, updateData m
 			video.RequestThumbnail = b
 		}
 	}
+	if val, ok := updateData["gistPath"]; ok {
+		if str, ok := val.(string); ok {
+			video.Gist = str
+		}
+	}
 
-	// Update completion counts
-	s.updateDefinitionCompletion(video)
 	return nil
 }
 
@@ -698,17 +699,17 @@ func (s *VideoService) updateInitialDetailsCompletion(video *storage.Video) {
 
 	// Special conditions
 	totalCount += 3
-	
+
 	// Condition 1: Sponsorship Emails
 	if len(video.Sponsorship.Amount) == 0 || video.Sponsorship.Amount == "N/A" || video.Sponsorship.Amount == "-" || len(video.Sponsorship.Emails) > 0 {
 		completedCount++
 	}
-	
+
 	// Condition 2: Sponsorship Blocked
 	if len(video.Sponsorship.Blocked) == 0 {
 		completedCount++
 	}
-	
+
 	// Condition 3: Delayed
 	if !video.Delayed {
 		completedCount++
@@ -735,21 +736,6 @@ func (s *VideoService) updateWorkProgressCompletion(video *storage.Video) {
 	video.Work.Completed, video.Work.Total = s.countCompletedTasks(fields)
 }
 
-func (s *VideoService) updateDefinitionCompletion(video *storage.Video) {
-	fields := []interface{}{
-		video.Title,
-		video.Description,
-		video.Highlight,
-		video.Tags,
-		video.DescriptionTags,
-		video.Tweet,
-		video.Animations,
-		video.RequestThumbnail,
-		video.Gist,
-	}
-	video.Define.Completed, video.Define.Total = s.countCompletedTasks(fields)
-}
-
 func (s *VideoService) updatePostProductionCompletion(video *storage.Video) {
 	fields := []interface{}{
 		video.Thumbnail,
@@ -759,7 +745,7 @@ func (s *VideoService) updatePostProductionCompletion(video *storage.Video) {
 		video.Slides,
 	}
 	video.Edit.Completed, video.Edit.Total = s.countCompletedTasks(fields)
-	
+
 	// Special handling for Timecodes
 	video.Edit.Total++
 	if video.Timecodes != "" && !containsString(video.Timecodes, "FIXME:") {
@@ -787,7 +773,7 @@ func (s *VideoService) updatePostPublishCompletion(video *storage.Video) {
 		video.Repo,
 	}
 	video.PostPublish.Completed, video.PostPublish.Total = s.countCompletedTasks(fields)
-	
+
 	// Special logic for NotifiedSponsors
 	video.PostPublish.Total++
 	if video.NotifiedSponsors || len(video.Sponsorship.Amount) == 0 || video.Sponsorship.Amount == "N/A" || video.Sponsorship.Amount == "-" {

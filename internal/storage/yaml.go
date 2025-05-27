@@ -42,7 +42,6 @@ type Video struct {
 	Category             string
 	Init                 Tasks
 	Work                 Tasks
-	Define               Tasks
 	Edit                 Tasks
 	Publish              Tasks
 	PostPublish          Tasks
@@ -106,8 +105,8 @@ type Video struct {
 // Tasks represents the completion status of a phase of work.
 // Fields Completed and Total are already exported.
 type Tasks struct {
-	Completed int
-	Total     int
+	Completed int `yaml:"completed,omitempty"`
+	Total     int `yaml:"total,omitempty"`
 }
 
 // Sponsorship holds details about video sponsorship.

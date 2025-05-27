@@ -627,7 +627,7 @@ func (m *MenuHandler) getVideoTitleForDisplay(video storage.Video, currentPhase 
 // getEditPhaseOptionText returns a colored string for an edit phase menu option.
 func (m *MenuHandler) getEditPhaseOptionText(phaseName string, completed, total int) string {
 	text := fmt.Sprintf("%s (%d/%d)", phaseName, completed, total)
-	if total > 0 && completed == total {
+	if total > 0 && completed == total { // Corrected logic from previous diff
 		return m.greenStyle.Render(text)
 	}
 	return m.orangeStyle.Render(text)
@@ -636,11 +636,15 @@ func (m *MenuHandler) getEditPhaseOptionText(phaseName string, completed, total 
 // handleEditVideoPhases presents a menu to choose which aspect of a video to edit.
 func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 	for {
-		var selectedEditPhase int
+		var selectedEditPhase int // Keep original variable name for minimal diff
+
+		// Calculate current Define phase completion for display using videoManager
+		defineCompleted, defineTotal := m.videoManager.CalculateDefinePhaseCompletion(videoToEdit)
+
 		editPhaseOptions := []huh.Option[int]{
 			huh.NewOption(m.getEditPhaseOptionText("Initial Details", videoToEdit.Init.Completed, videoToEdit.Init.Total), editPhaseInitial),
 			huh.NewOption(m.getEditPhaseOptionText("Work In Progress", videoToEdit.Work.Completed, videoToEdit.Work.Total), editPhaseWork),
-			huh.NewOption(m.getEditPhaseOptionText("Definition", videoToEdit.Define.Completed, videoToEdit.Define.Total), editPhaseDefinition),
+			huh.NewOption(m.getEditPhaseOptionText("Definition", defineCompleted, defineTotal), editPhaseDefinition), // Use new variables
 			huh.NewOption(m.getEditPhaseOptionText("Post-Production", videoToEdit.Edit.Completed, videoToEdit.Edit.Total), editPhasePostProduction),
 			huh.NewOption(m.getEditPhaseOptionText("Publishing Details", videoToEdit.Publish.Completed, videoToEdit.Publish.Total), editPhasePublishing),
 			huh.NewOption(m.getEditPhaseOptionText("Post-Publish Details", videoToEdit.PostPublish.Completed, videoToEdit.PostPublish.Total), editPhasePostPublish),
@@ -1161,7 +1165,6 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 		// Loop continues to allow editing other phases or returning
 	}
 
-	fmt.Println(m.normalStyle.Render("\n--- Definition Phase Complete ---"))
 	return nil
 }
 
@@ -1186,7 +1189,7 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 		revertField            func(originalValue interface{})
 	}{
 		{
-			name: "Title", description: "Video title (max 100 chars). SEO is important.", isTitleField: true,
+			name: "Title", description: "Video title (max 70 chars for best display). SEO is important.", isTitleField: true,
 			getValue:     func() interface{} { return videoToEdit.Title },
 			updateAction: func(newValue interface{}) { videoToEdit.Title = newValue.(string) },
 			revertField:  func(originalValue interface{}) { videoToEdit.Title = originalValue.(string) },
@@ -1204,7 +1207,7 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 			revertField:  func(originalValue interface{}) { videoToEdit.Highlight = originalValue.(string) },
 		},
 		{
-			name: "Tags", description: "Comma-separated tags (e.g., golang,devops,tutorial).", isTagsField: true,
+			name: "Tags", description: "Comma-separated tags (max 15 tags, 50 chars/tag, 450 total). e.g., golang,devops,tutorial.", isTagsField: true,
 			getValue:     func() interface{} { return videoToEdit.Tags },
 			updateAction: func(newValue interface{}) { videoToEdit.Tags = newValue.(string) },
 			revertField:  func(originalValue interface{}) { videoToEdit.Tags = originalValue.(string) },
@@ -1345,7 +1348,7 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 			fieldSavedOrSkipped := false
 			for !fieldSavedOrSkipped {
 				var selectedAction int = generalActionUnknown
-				descriptionFieldItself := huh.NewText().Title("Description").Description(df.description).Lines(7).CharLimit(5000).Value(&tempDescriptionValue)
+				descriptionFieldItself := huh.NewText().Title(m.colorTitleString("Description", tempDescriptionValue)).Description(df.description).Lines(7).CharLimit(5000).Value(&tempDescriptionValue) // Ensure Lines(7)
 				actionSelect := huh.NewSelect[int]().Title("Action for Description").Options(
 					huh.NewOption("Save Description & Continue", generalActionSave),
 					huh.NewOption("Ask AI for Suggestion", generalActionAskAI),
@@ -1420,19 +1423,14 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 			for !fieldSavedOrSkipped {
 				var selectedAction int = generalActionUnknown
 
-				highlightFieldItself := huh.NewInput().
-					Title("Highlight Summary/Timestamp").
-					Description(df.description).
-					Value(&tempHighlightValue)
+				highlightFieldItself := huh.NewInput().Title(m.colorTitleString("Highlight", tempHighlightValue)).Description(df.description).Value(&tempHighlightValue)
+				// No .Lines() for Input field
 
-				actionSelect := huh.NewSelect[int]().
-					Title("Action for Highlight").
-					Options(
-						huh.NewOption("Save Manual Highlight & Continue", generalActionSave),
-						huh.NewOption("Suggest & Apply Gist Highlights (AI)", generalActionAskAI),
-						huh.NewOption("Skip Manual Highlight & Continue", generalActionSkip),
-					).
-					Value(&selectedAction)
+				actionSelect := huh.NewSelect[int]().Title("Action for Highlight").Options(
+					huh.NewOption("Save Manual Highlight & Continue", generalActionSave),
+					huh.NewOption("Suggest & Apply Gist Highlights (AI)", generalActionAskAI),
+					huh.NewOption("Skip Manual Highlight & Continue", generalActionSkip),
+				).Value(&selectedAction)
 
 				highlightGroup := huh.NewGroup(highlightFieldItself, actionSelect)
 				highlightForm := huh.NewForm(highlightGroup)
@@ -1545,21 +1543,12 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 			for !fieldSavedOrSkipped {
 				var selectedAction int = generalActionUnknown
 
-				tagsFieldItself := huh.NewText().
-					Title("Tags").
-					Description(df.description). // Use description from struct
-					Lines(3).                    // Allow a few lines for better editing/viewing
-					CharLimit(450).
-					Value(&tempTagsValue)
-
-				actionSelect := huh.NewSelect[int]().
-					Title("Action for Tags").
-					Options(
-						huh.NewOption("Save Tags & Continue", generalActionSave),
-						huh.NewOption("Ask AI for Suggestion", generalActionAskAI),
-						huh.NewOption("Continue Without Saving Tags", generalActionSkip),
-					).
-					Value(&selectedAction)
+				tagsFieldItself := huh.NewText().Title(m.colorTitleString("Tags", tempTagsValue)).Description(df.description).Lines(3).CharLimit(450).Value(&tempTagsValue) // Set Lines(3)
+				actionSelect := huh.NewSelect[int]().Title("Action for Tags").Options(
+					huh.NewOption("Save Tags & Continue", generalActionSave),
+					huh.NewOption("Ask AI for Suggestion", generalActionAskAI),
+					huh.NewOption("Continue Without Saving Tags", generalActionSkip),
+				).Value(&selectedAction)
 
 				tagsGroup := huh.NewGroup(tagsFieldItself, actionSelect)
 				tagsForm := huh.NewForm(tagsGroup)
@@ -1633,21 +1622,12 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 			for !fieldSavedOrSkipped {
 				var selectedAction int = generalActionUnknown
 
-				descTagsFieldItself := huh.NewText().
-					Title(df.name). // Uses "Description Tags"
-					Description(df.description).
-					Lines(1).       // Typically short enough for one line
-					CharLimit(150). // Generous limit for 3 tags
-					Value(&tempDescTagsValue)
-
-				actionSelect := huh.NewSelect[int]().
-					Title("Action for Description Tags").
-					Options(
-						huh.NewOption("Save Description Tags & Continue", generalActionSave),
-						huh.NewOption("Ask AI for Suggestion", generalActionAskAI),
-						huh.NewOption("Continue Without Saving Description Tags", generalActionSkip),
-					).
-					Value(&selectedAction)
+				descTagsFieldItself := huh.NewText().Title(m.colorTitleString("Description Tags", tempDescTagsValue)).Description(df.description).Lines(2).CharLimit(0).Value(&tempDescTagsValue) // Set Lines(2)
+				actionSelect := huh.NewSelect[int]().Title("Action for Description Tags").Options(
+					huh.NewOption("Save Description Tags & Continue", generalActionSave),
+					huh.NewOption("Ask AI for Suggestion", generalActionAskAI),
+					huh.NewOption("Continue Without Saving Description Tags", generalActionSkip),
+				).Value(&selectedAction)
 
 				descTagsGroup := huh.NewGroup(descTagsFieldItself, actionSelect)
 				descTagsForm := huh.NewForm(descTagsGroup)
@@ -1721,21 +1701,12 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 			for !fieldSavedOrSkipped {
 				var selectedAction int = generalActionUnknown
 
-				tweetFieldItself := huh.NewText(). // Changed from NewInput to NewText for multi-line
-									Title(df.name). // Uses "Tweet"
-									Description(df.description).
-									Lines(5). // Allow a few lines for tweet drafts
-									CharLimit(280).
-									Value(&tempTweetValue)
-
-				actionSelect := huh.NewSelect[int]().
-					Title("Action for Tweet").
-					Options(
-						huh.NewOption("Save Tweet & Continue", generalActionSave),
-						huh.NewOption("Ask AI for Suggestions", generalActionAskAI),
-						huh.NewOption("Continue Without Saving Tweet", generalActionSkip),
-					).
-					Value(&selectedAction)
+				tweetFieldItself := huh.NewText().Title(m.colorTitleString("Tweet", tempTweetValue)).Description(df.description).Lines(4).CharLimit(280).Value(&tempTweetValue) // Set Lines(4)
+				actionSelect := huh.NewSelect[int]().Title("Action for Tweet").Options(
+					huh.NewOption("Save Tweet & Continue", generalActionSave),
+					huh.NewOption("Ask AI for Suggestions", generalActionAskAI),
+					huh.NewOption("Continue Without Saving Tweet", generalActionSkip),
+				).Value(&selectedAction)
 
 				tweetGroup := huh.NewGroup(tweetFieldItself, actionSelect)
 				tweetForm := huh.NewForm(tweetGroup)
@@ -1999,6 +1970,6 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 		}
 	}
 
-	fmt.Println(m.normalStyle.Render("\n--- Definition Phase Complete ---"))
+	fmt.Println(m.normalStyle.Render("--- Definition Phase Complete ---"))
 	return videoToEdit, nil
 }

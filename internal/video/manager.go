@@ -3,6 +3,7 @@ package video
 import (
 	"devopstoolkit/youtube-automation/internal/storage"
 	"devopstoolkit/youtube-automation/internal/workflow"
+	"strings"
 )
 
 // Manager handles video phase determination and lifecycle operations
@@ -46,4 +47,34 @@ func (m *Manager) GetVideoPhase(vi storage.VideoIndex) int {
 	} else {
 		return workflow.PhaseIdeas
 	}
+}
+
+// CalculateDefinePhaseCompletion calculates the completed and total tasks for the Definition phase.
+func (m *Manager) CalculateDefinePhaseCompletion(video storage.Video) (completed int, total int) {
+	fieldsToCount := []interface{}{
+		video.Title,
+		video.Description,
+		video.Highlight,
+		video.Tags,
+		video.DescriptionTags,
+		video.Tweet,
+		video.Animations,
+		video.RequestThumbnail, // This is a bool
+		video.Gist,             // Added Gist back
+	}
+	total = len(fieldsToCount)
+
+	for _, field := range fieldsToCount {
+		switch v := field.(type) {
+		case string:
+			if len(strings.TrimSpace(v)) > 0 && strings.TrimSpace(v) != "-" {
+				completed++
+			}
+		case bool:
+			if v { // For RequestThumbnail, true means complete
+				completed++
+			}
+		}
+	}
+	return completed, total
 }

@@ -40,7 +40,6 @@ func TestCreateVideo(t *testing.T) {
 		Path:     yamlFilePath,
 		Init:     storage.Tasks{Completed: 0, Total: 5},
 		Work:     storage.Tasks{Completed: 0, Total: 11},
-		Define:   storage.Tasks{Completed: 0, Total: 8},
 		Edit:     storage.Tasks{Completed: 0, Total: 6},
 		Publish:  storage.Tasks{Completed: 0, Total: 5},
 	}
