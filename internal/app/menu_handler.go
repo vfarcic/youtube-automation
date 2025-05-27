@@ -1911,6 +1911,9 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 				tempFieldValue = &currentStrVal
 			case bool:
 				currentBoolVal := v
+				// if df.isThumbnailField {  // Keep this outer if, but remove prints
+				// 	fmt.Printf("[DEBUG THUMBNAIL VAL] Start of bool case: originalFieldValue (v) = %v\n", v)
+				// }
 				fieldInput = huh.NewConfirm().Title(df.name).Description(df.description).Value(&currentBoolVal)
 				tempFieldValue = &currentBoolVal
 			default:
@@ -1929,6 +1932,10 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 			fieldForm := huh.NewForm(fieldGroup)
 			formError = fieldForm.Run()
 
+			// if df.isThumbnailField {  // Keep this outer if, but remove prints
+			// 	fmt.Printf("[DEBUG THUMBNAIL VAL] After form.Run(), currentBoolVal (pointed to by tempFieldValue) = %v\n", reflect.ValueOf(tempFieldValue).Elem().Bool())
+			// }
+
 			if formError != nil {
 				if formError == huh.ErrUserAborted {
 					fmt.Println(m.orangeStyle.Render(fmt.Sprintf("Action for '%s' aborted by user.", df.name)))
@@ -1945,6 +1952,9 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 
 			if saveThisField {
 				finalValue := reflect.ValueOf(tempFieldValue).Elem().Interface()
+				// if df.isThumbnailField { // Keep this outer if, but remove prints
+				// 	fmt.Printf("[DEBUG THUMBNAIL VAL] Inside saveThisField, finalValue = %v\n", finalValue)
+				// }
 				df.updateAction(finalValue)
 				saveErr := yamlHelper.WriteVideo(videoToEdit, videoToEdit.Path) // Renamed err to saveErr
 				if saveErr != nil {
@@ -1955,12 +1965,19 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 				if df.isThumbnailField && videoToEdit.RequestThumbnail && !initialRequestThumbnailForThisField {
 					if settings.Email.Password != "" {
 						fmt.Println(m.normalStyle.Render("RequestThumbnail is true, and was false. Sending email..."))
-						fmt.Println(m.orangeStyle.Render("TODO: Implement SendThumbnailRequestEmail or similar in notification.Email service"))
+						emailService := notification.NewEmail(settings.Email.Password)
+						if err := emailService.SendThumbnail(settings.Email.From, settings.Email.ThumbnailTo, videoToEdit); err != nil {
+							fmt.Println(m.errorStyle.Render(fmt.Sprintf("Failed to send thumbnail request email: %v", err)))
+						} else {
+							fmt.Println(m.confirmationStyle.Render("Thumbnail request email sent successfully."))
+						}
 					} else {
 						fmt.Println(m.orangeStyle.Render("RequestThumbnail is true, but email app password is not configured. Skipping email."))
 					}
 				}
-			} else {
+				// The problematic 'else' block that was here has been removed.
+				// Reverting should only happen if 'saveThisField' is false.
+			} else { // This 'else' is for when saveThisField is false (user clicked "Skip & Next")
 				fmt.Println(m.normalStyle.Render(fmt.Sprintf("Skipped changes for '%s'.", df.name)))
 				df.revertField(originalFieldValue)
 			}
