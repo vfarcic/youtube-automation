@@ -1,0 +1,69 @@
+name: Test Video
+index: 0
+path: ""
+category: test-category
+init:
+    completed: 0
+    total: 0
+work:
+    completed: 0
+    total: 0
+define:
+    completed: 0
+    total: 0
+edit:
+    completed: 0
+    total: 0
+publish:
+    completed: 0
+    total: 0
+postpublish:
+    completed: 0
+    total: 0
+projectname: ""
+projecturl: ""
+sponsorship:
+    amount: ""
+    emails: ""
+    blocked: ""
+date: "2025-05-27"
+delayed: false
+screen: false
+head: false
+thumbnails: false
+diagrams: false
+title: ""
+description: ""
+highlight: ""
+tags: ""
+descriptiontags: ""
+location: ""
+tagline: ""
+taglineideas: ""
+otherlogos: ""
+screenshots: false
+requestthumbnail: false
+thumbnail: ""
+language: ""
+members: ""
+animations: ""
+requestedit: false
+movie: false
+timecodes: ""
+hugopath: ""
+relatedvideos: ""
+uploadvideo: ""
+videoid: ""
+tweet: ""
+linkedinposted: false
+slackposted: false
+hnposted: false
+dotposted: false
+blueskyposted: false
+youtubehighlight: false
+youtubecomment: false
+youtubecommentreply: false
+slides: false
+gde: false
+repo: ""
+notifiedsponsors: false

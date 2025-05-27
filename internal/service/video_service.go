@@ -117,6 +117,15 @@ func (s *VideoService) CreateVideo(req VideoCreateRequest) (storage.Video, error
 	// Get the path where the video will be saved
 	videoPath := s.storageOps.GetVideoPath(req.Name, req.Category)
 	
+	// Ensure the directory exists
+	dir := strings.Split(videoPath, "/")
+	if len(dir) > 1 {
+		dirPath := strings.Join(dir[:len(dir)-1], "/")
+		if err := os.MkdirAll(dirPath, 0755); err != nil {
+			return storage.Video{}, fmt.Errorf("failed to create directory for video: %w", err)
+		}
+	}
+	
 	// Save the video
 	err := s.storageOps.WriteVideo(newVideo, videoPath)
 	if err != nil {
