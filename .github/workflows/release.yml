@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main # Triggers on push/merge to main
+  pull_request:
+    types: [opened, synchronize, reopened]
 
 permissions:
   contents: write # Needed to create releases, upload assets, and push tags
@@ -24,21 +26,12 @@ jobs:
           go-version: '1.24.3' # From go.mod toolchain
 
       - name: Configure Git User
-        run: |
-          git config user.name "GitHub Actions Bot"
+        run: |\n          git config user.name "GitHub Actions Bot"
           git config user.email "actions@github.com"
 
       - name: Determine Next Version
         id: next_version
         run: echo "VERSION=$(make get-next-minor-version)" >> $GITHUB_OUTPUT
-
-      - name: Create and Push New Tag
-        env:
-          NEXT_VERSION: ${{ steps.next_version.outputs.VERSION }}
-        run: |
-          echo "Creating tag: $NEXT_VERSION"
-          git tag $NEXT_VERSION ${{ github.sha }} # Tag the commit that triggered the workflow
-          git push origin $NEXT_VERSION
 
       - name: Build release binaries
         run: make build # Makefile uses 'git describe' which will use the new tag
@@ -46,16 +39,25 @@ jobs:
       - name: List built assets (for debugging)
         run: ls -lh youtube-release_*
 
+      # Release steps only run on push to main
+      - name: Create and Push New Tag
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          NEXT_VERSION: ${{ steps.next_version.outputs.VERSION }}
+        run: |\n          echo "Creating tag: $NEXT_VERSION"
+          git tag $NEXT_VERSION ${{ github.sha }} # Tag the commit that triggered the workflow
+          git push origin $NEXT_VERSION
+
       - name: Create GitHub Release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NEXT_VERSION: ${{ steps.next_version.outputs.VERSION }}
-        run: |
-          gh release create $NEXT_VERSION \
+        run: |\n          gh release create $NEXT_VERSION \
             --generate-notes \
             --target ${{ github.sha }} \
             ./youtube-release_darwin_amd64 \
             ./youtube-release_darwin_arm64 \
             ./youtube-release_linux_amd64 \
             ./youtube-release_linux_arm64 \
-            ./youtube-release_windows_amd64 
+            ./youtube-release_windows_amd64
