@@ -78,6 +78,8 @@ type Video struct {
 	VideoId              string
 	Tweet                string
 	LinkedInPosted       bool
+	LinkedInPostURL      string
+	LinkedInPostTimestamp string
 	SlackPosted          bool
 	HNPosted             bool
 	DOTPosted            bool
