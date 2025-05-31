@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"devopstoolkit/youtube-automation/internal/storage"
+	video2 "devopstoolkit/youtube-automation/internal/video"
 	"devopstoolkit/youtube-automation/internal/workflow"
 
 	"github.com/go-chi/chi/v5"
@@ -68,9 +69,14 @@ func transformToVideoListItems(videos []storage.Video) []VideoListItem {
 	result := make([]VideoListItem, 0, len(videos))
 
 	for _, video := range videos {
-		// Determine status based on publish completion
+		// Use shared video manager for consistent progress calculation
+		videoManager := video2.NewManager(nil) // We don't need filePathFunc for calculations
+		overallCompleted, overallTotal := videoManager.CalculateOverallProgress(video)
+
+		// Determine status based on publishing completion using video manager
 		status := "draft"
-		if video.Publish.Total > 0 && video.Publish.Completed == video.Publish.Total {
+		publishCompleted, publishTotal := videoManager.CalculatePublishingProgress(video)
+		if publishTotal > 0 && publishCompleted == publishTotal {
 			status = "published"
 		}
 
@@ -99,8 +105,8 @@ func transformToVideoListItems(videos []storage.Video) []VideoListItem {
 			Category:  video.Category,
 			Status:    status,
 			Progress: VideoProgress{
-				Completed: video.Publish.Completed,
-				Total:     video.Publish.Total,
+				Completed: overallCompleted,
+				Total:     overallTotal,
 			},
 		}
 
@@ -108,6 +114,12 @@ func transformToVideoListItems(videos []storage.Video) []VideoListItem {
 	}
 
 	return result
+}
+
+// VideoPhaseListHandler handles GET /api/videos/list requests for video list data
+// This endpoint provides a lightweight API for frontend video lists with calculated progress
+func (s *Server) VideoPhaseListHandler(w http.ResponseWriter, r *http.Request) {
+	// Implementation of VideoPhaseListHandler
 }
 
 type UpdateVideoRequest struct {

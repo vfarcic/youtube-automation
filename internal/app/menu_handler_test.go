@@ -275,23 +275,24 @@ func TestGetPhaseText(t *testing.T) {
 		orangeStyle: ui.OrangeStyle,
 	}
 	tests := []struct {
-		name     string
-		text     string
-		task     storage.Tasks
-		expected string
+		name      string
+		text      string
+		completed int
+		total     int
+		expected  string
 	}{
-		{"CompletedTasks", "Phase 1", storage.Tasks{Completed: 5, Total: 5}, mh.greenStyle.Render("Phase 1 (5/5)")},
-		{"IncompleteTasks", "Phase 2", storage.Tasks{Completed: 2, Total: 5}, mh.orangeStyle.Render("Phase 2 (2/5)")},
-		{"ZeroTotalTasks", "Phase 3", storage.Tasks{Completed: 0, Total: 0}, mh.orangeStyle.Render("Phase 3 (0/0)")},
-		{"CompletedZeroTotal", "Phase 4", storage.Tasks{Completed: 0, Total: 0}, mh.orangeStyle.Render("Phase 4 (0/0)")},
-		{"MoreCompletedThanTotal", "Phase 5", storage.Tasks{Completed: 6, Total: 5}, mh.orangeStyle.Render("Phase 5 (6/5)")}, // Should still be orange as it's not '== total'
+		{"CompletedTasks", "Phase 1", 5, 5, mh.greenStyle.Render("Phase 1 (5/5)")},
+		{"IncompleteTasks", "Phase 2", 2, 5, mh.orangeStyle.Render("Phase 2 (2/5)")},
+		{"ZeroTotalTasks", "Phase 3", 0, 0, mh.orangeStyle.Render("Phase 3 (0/0)")},
+		{"CompletedZeroTotal", "Phase 4", 0, 0, mh.orangeStyle.Render("Phase 4 (0/0)")},
+		{"MoreCompletedThanTotal", "Phase 5", 6, 5, mh.orangeStyle.Render("Phase 5 (6/5)")}, // Should still be orange as it's not '== total'
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := mh.GetPhaseText(tt.text, tt.task)
+			got := mh.GetPhaseText(tt.text, tt.completed, tt.total)
 			if got != tt.expected {
-				t.Errorf("GetPhaseText(%q, %+v) = %q, want %q", tt.text, tt.task, got, tt.expected)
+				t.Errorf("GetPhaseText(%q, %d, %d) = %q, want %q", tt.text, tt.completed, tt.total, got, tt.expected)
 			}
 		})
 	}

@@ -1,21 +1,6 @@
 name: ccc
 index: 1
 path: manuscript/category-03/ccc.yaml
-init:
-    completed: 4
-    total: 8
-work:
-    completed: 0
-    total: 0
-define:
-    completed: 1
-    total: 8
-edit:
-    completed: 2
-    total: 7
-publish:
-    completed: 1
-    total: 15
 projectname: ""
 projecturl: ""
 sponsored: ""

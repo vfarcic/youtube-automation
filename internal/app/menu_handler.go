@@ -209,9 +209,9 @@ func (m *MenuHandler) ChooseIndex() error {
 }
 
 // GetPhaseText returns formatted text for a phase with completion status
-func (m *MenuHandler) GetPhaseText(text string, task storage.Tasks) string {
-	text = fmt.Sprintf("%s (%d/%d)", text, task.Completed, task.Total)
-	if task.Completed == task.Total && task.Total > 0 {
+func (m *MenuHandler) GetPhaseText(text string, completed, total int) string {
+	text = fmt.Sprintf("%s (%d/%d)", text, completed, total)
+	if completed == total && total > 0 {
 		return m.greenStyle.Render(text)
 	}
 	return m.orangeStyle.Render(text)
@@ -638,16 +638,21 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 	for {
 		var selectedEditPhase int // Keep original variable name for minimal diff
 
-		// Calculate current Define phase completion for display using videoManager
+		// Use shared video manager for consistent progress calculations
+		initCompleted, initTotal := m.videoManager.CalculateInitialDetailsProgress(videoToEdit)
+		workCompleted, workTotal := m.videoManager.CalculateWorkProgressProgress(videoToEdit)
 		defineCompleted, defineTotal := m.videoManager.CalculateDefinePhaseCompletion(videoToEdit)
+		editCompleted, editTotal := m.videoManager.CalculatePostProductionProgress(videoToEdit)
+		publishCompleted, publishTotal := m.videoManager.CalculatePublishingProgress(videoToEdit)
+		postPublishCompleted, postPublishTotal := m.videoManager.CalculatePostPublishProgress(videoToEdit)
 
 		editPhaseOptions := []huh.Option[int]{
-			huh.NewOption(m.getEditPhaseOptionText("Initial Details", videoToEdit.Init.Completed, videoToEdit.Init.Total), editPhaseInitial),
-			huh.NewOption(m.getEditPhaseOptionText("Work In Progress", videoToEdit.Work.Completed, videoToEdit.Work.Total), editPhaseWork),
-			huh.NewOption(m.getEditPhaseOptionText("Definition", defineCompleted, defineTotal), editPhaseDefinition), // Use new variables
-			huh.NewOption(m.getEditPhaseOptionText("Post-Production", videoToEdit.Edit.Completed, videoToEdit.Edit.Total), editPhasePostProduction),
-			huh.NewOption(m.getEditPhaseOptionText("Publishing Details", videoToEdit.Publish.Completed, videoToEdit.Publish.Total), editPhasePublishing),
-			huh.NewOption(m.getEditPhaseOptionText("Post-Publish Details", videoToEdit.PostPublish.Completed, videoToEdit.PostPublish.Total), editPhasePostPublish),
+			huh.NewOption(m.getEditPhaseOptionText("Initial Details", initCompleted, initTotal), editPhaseInitial),
+			huh.NewOption(m.getEditPhaseOptionText("Work In Progress", workCompleted, workTotal), editPhaseWork),
+			huh.NewOption(m.getEditPhaseOptionText("Definition", defineCompleted, defineTotal), editPhaseDefinition),
+			huh.NewOption(m.getEditPhaseOptionText("Post-Production", editCompleted, editTotal), editPhasePostProduction),
+			huh.NewOption(m.getEditPhaseOptionText("Publishing Details", publishCompleted, publishTotal), editPhasePublishing),
+			huh.NewOption(m.getEditPhaseOptionText("Post-Publish Details", postPublishCompleted, postPublishTotal), editPhasePostPublish),
 			huh.NewOption("Return to Video List", actionReturn),
 		}
 
@@ -706,44 +711,6 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 			if save {
 				yaml := storage.YAML{}
 
-				// Revised completion calculation for Init phase
-				var completedCount, totalCount int
-
-				// General fields whose standard check is okay via m.countCompletedTasks:
-				generalFields := []interface{}{
-					updatedVideo.ProjectName,
-					updatedVideo.ProjectURL,
-					updatedVideo.Gist,
-					updatedVideo.Date,
-				}
-				c, t := m.countCompletedTasks(generalFields)
-				completedCount += c
-				totalCount += t
-
-				// Specifically handle Sponsorship.Amount itself (1 task)
-				totalCount++                                  // Sponsorship.Amount is its own task
-				if len(updatedVideo.Sponsorship.Amount) > 0 { // Old logic: done if not empty
-					completedCount++
-				}
-
-				// Add the 3 special condition tasks to total
-				totalCount += 3
-				// Condition 1: Sponsorship Emails related (done if no amount, or N/A, or emails exist)
-				if len(updatedVideo.Sponsorship.Amount) == 0 || updatedVideo.Sponsorship.Amount == "N/A" || updatedVideo.Sponsorship.Amount == "-" || len(updatedVideo.Sponsorship.Emails) > 0 {
-					completedCount++
-				}
-				// Condition 2: Sponsorship Blocked (done if not blocked)
-				if len(updatedVideo.Sponsorship.Blocked) == 0 {
-					completedCount++
-				}
-				// Condition 3: Delayed (done if not delayed)
-				if !updatedVideo.Delayed {
-					completedCount++
-				}
-
-				updatedVideo.Init.Completed = completedCount
-				updatedVideo.Init.Total = totalCount
-
 				if err := yaml.WriteVideo(updatedVideo, updatedVideo.Path); err != nil {
 					return fmt.Errorf("failed to save initial details: %w", err)
 				}
@@ -783,19 +750,7 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 
 			if save {
 				yaml := storage.YAML{}
-				updatedVideo.Work.Completed, updatedVideo.Work.Total = m.countCompletedTasks([]interface{}{
-					updatedVideo.Code,
-					updatedVideo.Head,
-					updatedVideo.Screen,
-					updatedVideo.RelatedVideos,
-					updatedVideo.Thumbnails,
-					updatedVideo.Diagrams,
-					updatedVideo.Screenshots,
-					updatedVideo.Location,
-					updatedVideo.Tagline,
-					updatedVideo.TaglineIdeas,
-					updatedVideo.OtherLogos,
-				})
+				// No longer store calculated values - both CLI and API use real-time calculations only
 				if err := yaml.WriteVideo(updatedVideo, updatedVideo.Path); err != nil {
 					return fmt.Errorf("failed to save work progress: %w", err)
 				}
@@ -846,17 +801,7 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 
 			if save {
 				yaml := storage.YAML{}
-				updatedVideo.Edit.Completed, updatedVideo.Edit.Total = m.countCompletedTasks([]interface{}{
-					updatedVideo.Thumbnail,
-					updatedVideo.Members,
-					updatedVideo.RequestEdit,
-					updatedVideo.Movie,
-					updatedVideo.Slides,
-				})
-				updatedVideo.Edit.Total++ // For Timecodes
-				if !strings.Contains(updatedVideo.Timecodes, "FIXME:") {
-					updatedVideo.Edit.Completed++
-				}
+				// No longer store calculated values - both CLI and API use real-time calculations only
 				if err := yaml.WriteVideo(updatedVideo, updatedVideo.Path); err != nil {
 					return fmt.Errorf("failed to save post-production details: %w", err)
 				}
@@ -971,11 +916,7 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 
 				// --- End of Actions Section (for Publishing Phase) ---
 
-				// Now, calculate completion based on the *actual* state of updatedVideo after actions.
-				updatedVideo.Publish.Completed, updatedVideo.Publish.Total = m.countCompletedTasks([]interface{}{
-					updatedVideo.UploadVideo, // Done if path exists
-					updatedVideo.HugoPath,    // Done if path exists (and VideoId was present for creation)
-				})
+				// No longer store calculated values - both CLI and API use real-time calculations only
 
 				if err := yaml.WriteVideo(updatedVideo, updatedVideo.Path); err != nil {
 					return fmt.Errorf("failed to save publishing details: %w", err)
@@ -1126,23 +1067,7 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 
 				// --- End of Actions Section for Post-Publish ---
 
-				// Update task counts for PostPublish phase
-				updatedVideo.PostPublish.Completed, updatedVideo.PostPublish.Total = m.countCompletedTasks([]interface{}{
-					updatedVideo.BlueSkyPosted,
-					updatedVideo.LinkedInPosted,
-					updatedVideo.SlackPosted,
-					updatedVideo.YouTubeHighlight,
-					updatedVideo.YouTubeComment,
-					updatedVideo.YouTubeCommentReply,
-					updatedVideo.GDE,
-					updatedVideo.Repo, // Ensure Repo is counted for completion
-					// NotifiedSponsors has special logic
-				})
-				// Special logic for NotifiedSponsors completion
-				updatedVideo.PostPublish.Total++
-				if updatedVideo.NotifiedSponsors || len(updatedVideo.Sponsorship.Amount) == 0 || updatedVideo.Sponsorship.Amount == "N/A" || updatedVideo.Sponsorship.Amount == "-" {
-					updatedVideo.PostPublish.Completed++
-				}
+				// No longer store calculated values - both CLI and API use real-time calculations only
 
 				if err := yaml.WriteVideo(updatedVideo, updatedVideo.Path); err != nil {
 					return fmt.Errorf("failed to save post-publish details: %w", err)
