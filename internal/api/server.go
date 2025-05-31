@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"devopstoolkit/youtube-automation/internal/configuration"
-	"devopstoolkit/youtube-automation/internal/service"
 	"devopstoolkit/youtube-automation/internal/filesystem"
+	"devopstoolkit/youtube-automation/internal/service"
 	"devopstoolkit/youtube-automation/internal/video"
 
 	"github.com/go-chi/chi/v5"
@@ -57,12 +57,12 @@ func (s *Server) setupRoutes() {
 			w.Header().Set("Access-Control-Allow-Origin", "*")
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-			
+
 			if r.Method == "OPTIONS" {
 				w.WriteHeader(http.StatusOK)
 				return
 			}
-			
+
 			next.ServeHTTP(w, r)
 		})
 	})
@@ -73,13 +73,14 @@ func (s *Server) setupRoutes() {
 		r.Route("/videos", func(r chi.Router) {
 			r.Post("/", s.createVideo)
 			r.Get("/phases", s.getVideoPhases)
-			r.Get("/", s.getVideos) // with ?phase= query param
+			r.Get("/", s.getVideos)         // with ?phase= query param
+			r.Get("/list", s.getVideosList) // optimized lightweight endpoint
 			r.Route("/{videoName}", func(r chi.Router) {
 				r.Get("/", s.getVideo)
 				r.Put("/", s.updateVideo)
 				r.Delete("/", s.deleteVideo)
 				r.Post("/move", s.moveVideo)
-				
+
 				// Phase-specific endpoints
 				r.Put("/initial-details", s.updateVideoInitialDetails)
 				r.Put("/work-progress", s.updateVideoWorkProgress)
@@ -103,7 +104,7 @@ func (s *Server) setupRoutes() {
 // Start starts the API server
 func (s *Server) Start() error {
 	addr := fmt.Sprintf(":%d", s.port)
-	
+
 	s.httpServer = &http.Server{
 		Addr:         addr,
 		Handler:      s.router,
@@ -121,7 +122,7 @@ func (s *Server) Stop(ctx context.Context) error {
 	if s.httpServer == nil {
 		return nil
 	}
-	
+
 	log.Println("Stopping API server...")
 	return s.httpServer.Shutdown(ctx)
 }

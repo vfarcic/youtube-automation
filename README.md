@@ -56,6 +56,7 @@ Starts the REST API server. See [docs/api-manual-testing.md](docs/api-manual-tes
 - `POST /api/videos` - Create new video
 - `GET /api/videos/phases` - Get video phase summary
 - `GET /api/videos?phase={id}` - List videos in phase
+- `GET /api/videos/list?phase={id}` - **NEW**: Optimized lightweight video list for frontend grids
 - `GET /api/videos/{name}?category={cat}` - Get video details
 - `PUT /api/videos/{name}` - Update video
 - `DELETE /api/videos/{name}?category={cat}` - Delete video

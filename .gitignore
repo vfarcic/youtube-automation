@@ -52,7 +52,7 @@ coverage_baseline_summary.txt
 
 .roo/
 
-.mcp.json
+.vscode/mcp.json
 
 cover.out
 

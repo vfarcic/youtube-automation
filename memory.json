@@ -50,6 +50,8 @@
 {"type":"entity","entityType":"AgentBehaviorGuideline","name":"PostTaskCompletionStatisticsDisplay","observations":["The agent must display overall task statistics (total, completed, pending, deferred) immediately after confirming a parent task has been marked as 'done'.","This instruction was explicitly given by the user."]}
 {"type":"entity","entityType":"UserPreference","observations":["Always show which files will be added (e.g., using `git status --short`) before staging them with `git add`."],"name":"User Preferences for Git Operations"}
 {"type":"entity","name":"youtube-automation Go project build process","entityType":"build_process","observations":["This Go project utilizes a `vendor` directory for its dependencies.","After modifying Go dependencies (e.g., with `go get` or `go mod tidy`), `go mod vendor` must be run to synchronize the `vendor` directory."]}
+{"type":"entity","name":"youtube-web","entityType":"Repository","observations":["Frontend repository that consumes the YouTube Automation API","Should receive PRDs when the youtube-automation API changes","PRDs should contain all information needed for frontend implementation of API changes"]}
+{"type":"entity","name":"API Change Frontend Sync Guideline","entityType":"DevelopmentProcessGuideline","observations":["When making changes to APIs in the youtube-automation project, a corresponding PRD must be created in the youtube-web repository","The PRD should include all information the frontend team needs to implement changes that accommodate the API modifications","This includes: endpoint changes, request/response format changes, new parameters, deprecated fields, authentication changes, error handling updates","This process should be integrated into the session completion/PR workflow - part of the 'end process'","The PRD creation ensures frontend and backend changes stay synchronized"]}
 {"type":"relation","from":"YouTube Automation Tool","to":"Project Config","relationType":"uses"}
 {"type":"relation","from":"YouTube Automation Tool","to":"Project Requirements","relationType":"requires"}
 {"type":"relation","from":"Project","to":"YouTube Automation Tool","relationType":"is"}
@@ -57,3 +59,7 @@
 {"type":"relation","to":"Taskmaster","relationType":"means user wants to work with","from":"Get PRDs"}
 {"type":"relation","from":"Get PRDs","relationType":"means user wants to work with","to":"GitHub Issues with PRD label"}
 {"type":"relation","to":"Taskmaster","from":"GitHub Issues with PRD label","relationType":"are used as PRDs for"}
+{"type":"relation","from":"YouTube Automation Tool","to":"youtube-web","relationType":"provides API for"}
+{"type":"relation","from":"API Change Frontend Sync Guideline","to":"youtube-web","relationType":"requires PRD creation in"}
+{"type":"relation","from":"API Change Frontend Sync Guideline","to":"End Of Session Protocol","relationType":"should be integrated into"}
+{"type":"relation","from":"API Change Frontend Sync Guideline","to":"PR Workflow and Completion Protocol","relationType":"should be part of"}
