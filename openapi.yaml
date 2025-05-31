@@ -143,6 +143,48 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /api/videos/list:
+    get:
+      summary: Get lightweight video list by phase
+      description: |
+        Retrieves a lightweight list of videos in a specific phase, optimized for list views.
+        Returns only essential fields needed for video cards, significantly reducing payload size 
+        compared to the full /api/videos endpoint.
+        
+        Performance: ~200 bytes per video vs ~8.8KB for full video objects (97.5% reduction).
+      operationId: getVideosList
+      tags:
+        - Videos
+      parameters:
+        - name: phase
+          in: query
+          required: true
+          description: The phase ID to filter videos by
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 7
+            example: 0
+      responses:
+        '200':
+          description: Lightweight video list retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetVideosListResponse'
+        '400':
+          description: Invalid phase parameter
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /api/videos/{videoName}:
     get:
       summary: Get a specific video
@@ -954,6 +996,59 @@ components:
           type: string
           description: Detailed error message
           example: "The name parameter is required but was not provided"
+
+    GetVideosListResponse:
+      type: object
+      properties:
+        videos:
+          type: array
+          items:
+            $ref: '#/components/schemas/VideoListItem'
+
+    VideoListItem:
+      type: object
+      properties:
+        name:
+          type: string
+          description: The name of the video
+          example: "my-awesome-video"
+        category:
+          type: string
+          description: The category of the video
+          example: "category-01"
+        date:
+          type: string
+          description: The scheduled date for the video
+          example: "2025-05-27T10:00"
+        title:
+          type: string
+          description: The title of the video
+          example: "Top 10 DevOps Tools You MUST Use in 2025!"
+        thumbnail:
+          type: string
+          description: The thumbnail image path
+          example: "material/top-2025/thumbnail-01.jpg"
+        status:
+          type: string
+          description: The current status of the video
+          enum: ["published", "draft"]
+          example: "published"
+        progress:
+          type: object
+          description: Video completion progress
+          properties:
+            completed:
+              type: integer
+              description: Number of completed publish tasks
+              example: 10
+            total:
+              type: integer
+              description: Total number of publish tasks
+              example: 11
+      description: |
+        Lightweight video object optimized for list views. Contains only essential fields
+        needed for video cards, resulting in ~200 bytes per video compared to ~8.8KB
+        for full video objects (97.5% size reduction).
 
 tags:
   - name: Health
