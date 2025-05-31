@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"reflect"
 	"sort"
 	"strings"
 	"time"
@@ -101,12 +100,6 @@ FIXME:
 		Name:     name,
 		Category: category,
 		Path:     videoPath,
-		// Initialize all task counters to zero
-		Init:        storage.Tasks{Completed: 0, Total: 0},
-		Work:        storage.Tasks{Completed: 0, Total: 0},
-		Edit:        storage.Tasks{Completed: 0, Total: 0},
-		Publish:     storage.Tasks{Completed: 0, Total: 0},
-		PostPublish: storage.Tasks{Completed: 0, Total: 0},
 		// Initialize sponsorship
 		Sponsorship: storage.Sponsorship{
 			Amount:  "",
@@ -367,6 +360,7 @@ func (s *VideoService) UpdateVideoPhase(video *storage.Video, phase string, upda
 		return nil, fmt.Errorf("failed to save video: %w", err)
 	}
 
+	// No longer update completion counts - using real-time calculations from video manager
 	return video, nil
 }
 
@@ -439,8 +433,6 @@ func (s *VideoService) applyInitialDetailsUpdates(video *storage.Video, updateDa
 		}
 	}
 
-	// Update completion counts
-	s.updateInitialDetailsCompletion(video)
 	return nil
 }
 
@@ -502,8 +494,6 @@ func (s *VideoService) applyWorkProgressUpdates(video *storage.Video, updateData
 		}
 	}
 
-	// Update completion counts
-	s.updateWorkProgressCompletion(video)
 	return nil
 }
 
@@ -591,8 +581,6 @@ func (s *VideoService) applyPostProductionUpdates(video *storage.Video, updateDa
 		}
 	}
 
-	// Update completion counts
-	s.updatePostProductionCompletion(video)
 	return nil
 }
 
@@ -618,8 +606,6 @@ func (s *VideoService) applyPublishingUpdates(video *storage.Video, updateData m
 		}
 	}
 
-	// Update completion counts
-	s.updatePublishingCompletion(video)
 	return nil
 }
 
@@ -671,151 +657,5 @@ func (s *VideoService) applyPostPublishUpdates(video *storage.Video, updateData 
 		}
 	}
 
-	// Update completion counts
-	s.updatePostPublishCompletion(video)
 	return nil
-}
-
-// Completion calculation helpers
-func (s *VideoService) updateInitialDetailsCompletion(video *storage.Video) {
-	var completedCount, totalCount int
-
-	// General fields
-	generalFields := []interface{}{
-		video.ProjectName,
-		video.ProjectURL,
-		video.Gist,
-		video.Date,
-	}
-	c, t := s.countCompletedTasks(generalFields)
-	completedCount += c
-	totalCount += t
-
-	// Sponsorship.Amount
-	totalCount++
-	if len(video.Sponsorship.Amount) > 0 {
-		completedCount++
-	}
-
-	// Special conditions
-	totalCount += 3
-
-	// Condition 1: Sponsorship Emails
-	if len(video.Sponsorship.Amount) == 0 || video.Sponsorship.Amount == "N/A" || video.Sponsorship.Amount == "-" || len(video.Sponsorship.Emails) > 0 {
-		completedCount++
-	}
-
-	// Condition 2: Sponsorship Blocked
-	if len(video.Sponsorship.Blocked) == 0 {
-		completedCount++
-	}
-
-	// Condition 3: Delayed
-	if !video.Delayed {
-		completedCount++
-	}
-
-	video.Init.Completed = completedCount
-	video.Init.Total = totalCount
-}
-
-func (s *VideoService) updateWorkProgressCompletion(video *storage.Video) {
-	fields := []interface{}{
-		video.Code,
-		video.Head,
-		video.Screen,
-		video.RelatedVideos,
-		video.Thumbnails,
-		video.Diagrams,
-		video.Screenshots,
-		video.Location,
-		video.Tagline,
-		video.TaglineIdeas,
-		video.OtherLogos,
-	}
-	video.Work.Completed, video.Work.Total = s.countCompletedTasks(fields)
-}
-
-func (s *VideoService) updatePostProductionCompletion(video *storage.Video) {
-	fields := []interface{}{
-		video.Thumbnail,
-		video.Members,
-		video.RequestEdit,
-		video.Movie,
-		video.Slides,
-	}
-	video.Edit.Completed, video.Edit.Total = s.countCompletedTasks(fields)
-
-	// Special handling for Timecodes
-	video.Edit.Total++
-	if video.Timecodes != "" && !containsString(video.Timecodes, "FIXME:") {
-		video.Edit.Completed++
-	}
-}
-
-func (s *VideoService) updatePublishingCompletion(video *storage.Video) {
-	fields := []interface{}{
-		video.UploadVideo,
-		video.HugoPath,
-	}
-	video.Publish.Completed, video.Publish.Total = s.countCompletedTasks(fields)
-}
-
-func (s *VideoService) updatePostPublishCompletion(video *storage.Video) {
-	fields := []interface{}{
-		video.BlueSkyPosted,
-		video.LinkedInPosted,
-		video.SlackPosted,
-		video.YouTubeHighlight,
-		video.YouTubeComment,
-		video.YouTubeCommentReply,
-		video.GDE,
-		video.Repo,
-	}
-	video.PostPublish.Completed, video.PostPublish.Total = s.countCompletedTasks(fields)
-
-	// Special logic for NotifiedSponsors
-	video.PostPublish.Total++
-	if video.NotifiedSponsors || len(video.Sponsorship.Amount) == 0 || video.Sponsorship.Amount == "N/A" || video.Sponsorship.Amount == "-" {
-		video.PostPublish.Completed++
-	}
-}
-
-// countCompletedTasks counts completed tasks based on field values
-func (s *VideoService) countCompletedTasks(fields []interface{}) (completed int, total int) {
-	for _, field := range fields {
-		valueType := reflect.TypeOf(field)
-		if valueType == nil {
-			total++
-			continue
-		}
-		switch valueType.Kind() {
-		case reflect.String:
-			if len(field.(string)) > 0 && field.(string) != "-" {
-				completed++
-			}
-		case reflect.Bool:
-			if field.(bool) {
-				completed++
-			}
-		case reflect.Slice:
-			if reflect.ValueOf(field).Len() > 0 {
-				completed++
-			}
-		}
-		total++
-	}
-	return completed, total
-}
-
-// containsString checks if a string contains a substring
-func containsString(s, substr string) bool {
-	return len(s) >= len(substr) && (len(substr) == 0 || func() bool {
-		for i := 0; i <= len(s)-len(substr); i++ {
-			if s[i:i+len(substr)] == substr {
-				return true
-			}
-		}
-		return false
-	}())
 }

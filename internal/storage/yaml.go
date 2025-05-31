@@ -28,23 +28,12 @@ type VideoIndex struct {
 }
 
 // Video represents all data associated with a video project.
-// All fields are already exported as needed.
-// Ensure all fields that need to be accessed from other packages are exported.
-// Already Exported: All fields
-// To be Exported: None needed beyond current
-// No changes to Video struct needed for exportability as fields are already capitalized.
-// Video represents all data associated with a video project.
 // All fields are already exported.
 type Video struct {
 	Name                 string
 	Index                int
 	Path                 string
 	Category             string
-	Init                 Tasks
-	Work                 Tasks
-	Edit                 Tasks
-	Publish              Tasks
-	PostPublish          Tasks
 	ProjectName          string
 	ProjectURL           string
 	Sponsorship          Sponsorship
@@ -94,19 +83,6 @@ type Video struct {
 	AudioLanguage        string `yaml:"audioLanguage,omitempty"`
 	Gist                 string `yaml:"gist,omitempty"`
 	Code                 bool   `yaml:"code,omitempty"`
-}
-
-// Tasks represents the completion status of a phase of work.
-// All fields are already exported.
-// Ensure all fields that need to be accessed from other packages are exported.
-// Already Exported: Completed, Total
-// To be Exported: None needed beyond current
-// No changes to Tasks struct needed for exportability as fields are already capitalized.
-// Tasks represents the completion status of a phase of work.
-// Fields Completed and Total are already exported.
-type Tasks struct {
-	Completed int `yaml:"completed,omitempty"`
-	Total     int `yaml:"total,omitempty"`
 }
 
 // Sponsorship holds details about video sponsorship.

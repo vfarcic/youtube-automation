@@ -1,9 +1,3 @@
-prepublish:
-    completed: 16
-    total: 34
-publish:
-    completed: 3
-    total: 18
 projectname: dsds
 projecturl: acme.com
 sponsored: ""

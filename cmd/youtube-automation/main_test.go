@@ -38,10 +38,6 @@ func TestCreateVideo(t *testing.T) {
 		Name:     "Test Video",
 		Category: "test-category",
 		Path:     yamlFilePath,
-		Init:     storage.Tasks{Completed: 0, Total: 5},
-		Work:     storage.Tasks{Completed: 0, Total: 11},
-		Edit:     storage.Tasks{Completed: 0, Total: 6},
-		Publish:  storage.Tasks{Completed: 0, Total: 5},
 	}
 
 	if err := y.WriteVideo(video, yamlFilePath); err != nil {
