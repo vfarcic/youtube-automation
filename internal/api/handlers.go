@@ -191,21 +191,30 @@ func (s *Server) getVideoPhases(w http.ResponseWriter, r *http.Request) {
 // getVideos handles GET /api/videos?phase={phase_id}
 func (s *Server) getVideos(w http.ResponseWriter, r *http.Request) {
 	phaseParam := r.URL.Query().Get("phase")
+
+	var videos []storage.Video
+	var err error
+
 	if phaseParam == "" {
-		writeError(w, http.StatusBadRequest, "phase parameter is required", "")
-		return
-	}
+		// No phase parameter provided - return all videos from all phases
+		videos, err = s.videoService.GetAllVideos()
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "Failed to get videos", err.Error())
+			return
+		}
+	} else {
+		// Phase parameter provided - validate and return videos for specific phase
+		phase, parseErr := strconv.Atoi(phaseParam)
+		if parseErr != nil {
+			writeError(w, http.StatusBadRequest, "Invalid phase parameter", parseErr.Error())
+			return
+		}
 
-	phase, err := strconv.Atoi(phaseParam)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "Invalid phase parameter", err.Error())
-		return
-	}
-
-	videos, err := s.videoService.GetVideosByPhase(phase)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to get videos", err.Error())
-		return
+		videos, err = s.videoService.GetVideosByPhase(phase)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "Failed to get videos", err.Error())
+			return
+		}
 	}
 
 	writeJSON(w, http.StatusOK, GetVideosResponse{Videos: videos})
@@ -216,21 +225,30 @@ func (s *Server) getVideos(w http.ResponseWriter, r *http.Request) {
 // Reduces payload from ~8.8KB per video to ~200 bytes (97% reduction)
 func (s *Server) getVideosList(w http.ResponseWriter, r *http.Request) {
 	phaseParam := r.URL.Query().Get("phase")
+
+	var videos []storage.Video
+	var err error
+
 	if phaseParam == "" {
-		writeError(w, http.StatusBadRequest, "phase parameter is required", "")
-		return
-	}
+		// No phase parameter provided - return all videos from all phases
+		videos, err = s.videoService.GetAllVideos()
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "Failed to get videos", err.Error())
+			return
+		}
+	} else {
+		// Phase parameter provided - validate and return videos for specific phase
+		phase, parseErr := strconv.Atoi(phaseParam)
+		if parseErr != nil {
+			writeError(w, http.StatusBadRequest, "Invalid phase parameter", parseErr.Error())
+			return
+		}
 
-	phase, err := strconv.Atoi(phaseParam)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "Invalid phase parameter", err.Error())
-		return
-	}
-
-	videos, err := s.videoService.GetVideosByPhase(phase)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to get videos", err.Error())
-		return
+		videos, err = s.videoService.GetVideosByPhase(phase)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "Failed to get videos", err.Error())
+			return
+		}
 	}
 
 	// Transform to lightweight format for optimal performance

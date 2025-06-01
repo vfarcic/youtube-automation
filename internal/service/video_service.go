@@ -184,6 +184,38 @@ func (s *VideoService) GetVideosByPhase(phase int) ([]storage.Video, error) {
 	return videosInPhase, nil
 }
 
+// GetAllVideos returns all videos from all phases (0-7)
+// This method is used when the phase parameter is omitted from API requests
+func (s *VideoService) GetAllVideos() ([]storage.Video, error) {
+	index, err := s.yamlStorage.GetIndex()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get video index: %w", err)
+	}
+
+	var allVideos []storage.Video
+	for i, video := range index {
+		videoPath := s.filesystem.GetFilePath(video.Category, video.Name, "yaml")
+		fullVideo, err := s.yamlStorage.GetVideo(videoPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get video details for %s: %w", video.Name, err)
+		}
+		fullVideo.Index = i
+		fullVideo.Name = video.Name
+		fullVideo.Category = video.Category
+		fullVideo.Path = videoPath
+		allVideos = append(allVideos, fullVideo)
+	}
+
+	// Sort videos by date
+	sort.Slice(allVideos, func(i, j int) bool {
+		date1, _ := time.Parse("2006-01-02T15:04", allVideos[i].Date)
+		date2, _ := time.Parse("2006-01-02T15:04", allVideos[j].Date)
+		return date1.Before(date2)
+	})
+
+	return allVideos, nil
+}
+
 // GetVideoPhases returns the count of videos in each phase
 func (s *VideoService) GetVideoPhases() (map[int]int, error) {
 	index, err := s.yamlStorage.GetIndex()

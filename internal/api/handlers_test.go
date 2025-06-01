@@ -146,9 +146,9 @@ func TestServer_GetVideos(t *testing.T) {
 			expectedStatus: http.StatusOK,
 		},
 		{
-			name:           "Missing phase parameter",
+			name:           "Missing phase parameter returns all videos",
 			phase:          "",
-			expectedStatus: http.StatusBadRequest,
+			expectedStatus: http.StatusOK,
 		},
 		{
 			name:           "Invalid phase parameter",
@@ -651,18 +651,21 @@ func TestServer_GetVideosList(t *testing.T) {
 		}
 	})
 
-	t.Run("missing phase parameter returns 400", func(t *testing.T) {
+	t.Run("missing phase parameter returns all videos", func(t *testing.T) {
 		req := httptest.NewRequest("GET", "/api/videos/list", nil)
 		w := httptest.NewRecorder()
 
 		server.router.ServeHTTP(w, req)
 
-		assert.Equal(t, http.StatusBadRequest, w.Code)
+		assert.Equal(t, http.StatusOK, w.Code)
 
-		var errorResponse ErrorResponse
-		err := json.Unmarshal(w.Body.Bytes(), &errorResponse)
+		var response VideoListResponse
+		err := json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
-		assert.Contains(t, errorResponse.Error, "phase parameter is required")
+
+		// Should return videos from all phases
+		assert.NotNil(t, response.Videos)
+		// Note: May be empty if no videos exist, but should not error
 	})
 
 	t.Run("invalid phase parameter returns 400", func(t *testing.T) {
