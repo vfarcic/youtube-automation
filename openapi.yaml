@@ -88,15 +88,15 @@ paths:
 
     get:
       summary: Get videos by phase
-      description: Retrieves all videos in a specific phase
+      description: Retrieves videos in a specific phase, or all videos from all phases if no phase is specified
       operationId: getVideos
       tags:
         - Videos
       parameters:
         - name: phase
           in: query
-          required: true
-          description: The phase ID to filter videos by
+          required: false
+          description: The phase ID to filter videos by. If not provided, returns videos from all phases (0-7).
           schema:
             type: integer
             minimum: 0
@@ -147,9 +147,8 @@ paths:
     get:
       summary: Get lightweight video list by phase
       description: |
-        Retrieves a lightweight list of videos in a specific phase, optimized for list views.
-        Returns only essential fields needed for video cards, significantly reducing payload size 
-        compared to the full /api/videos endpoint.
+        Retrieves a lightweight list of videos in a specific phase, or all videos from all phases if no phase is specified.
+        Optimized for list views, returning only essential fields needed for video cards.
         
         Performance: ~200 bytes per video vs ~8.8KB for full video objects (97.5% reduction).
       operationId: getVideosList
@@ -158,8 +157,8 @@ paths:
       parameters:
         - name: phase
           in: query
-          required: true
-          description: The phase ID to filter videos by
+          required: false
+          description: The phase ID to filter videos by. If not provided, returns videos from all phases (0-7).
           schema:
             type: integer
             minimum: 0
