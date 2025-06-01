@@ -1,4 +1,4 @@
-openapi: 3.0.3
+openapi: 3.1.0
 info:
   title: YouTube Automation API
   description: |
@@ -171,6 +171,28 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/GetVideosListResponse'
+              example:
+                videos:
+                  - name: "awesome-kubernetes-tutorial"
+                    category: "tutorials"
+                    date: "2025-05-27T10:00"
+                    title: "Kubernetes Tutorial: From Zero to Hero"
+                    thumbnail: "material/k8s-tutorial/thumbnail.jpg"
+                    status: "draft"
+                    phase: 4
+                    progress:
+                      completed: 3
+                      total: 9
+                  - name: "docker-best-practices"
+                    category: "devops"
+                    date: "2025-05-30T14:00"
+                    title: "Docker Best Practices for Production"
+                    thumbnail: "material/docker-bp/thumbnail.jpg"
+                    status: "published"
+                    phase: 0
+                    progress:
+                      completed: 11
+                      total: 11
         '400':
           description: Invalid phase parameter
           content:
@@ -1032,6 +1054,12 @@ components:
           description: The current status of the video
           enum: ["published", "draft"]
           example: "published"
+        phase:
+          type: integer
+          description: The workflow phase of the video (0-7)
+          minimum: 0
+          maximum: 7
+          example: 0
         progress:
           type: object
           description: Video completion progress
@@ -1044,10 +1072,27 @@ components:
               type: integer
               description: Total number of publish tasks
               example: 11
+      required:
+        - name
+        - category
+        - title
+        - status
+        - phase
+        - progress
       description: |
         Lightweight video object optimized for list views. Contains only essential fields
         needed for video cards, resulting in ~200 bytes per video compared to ~8.8KB
         for full video objects (97.5% size reduction).
+        
+        The phase field indicates the current workflow stage:
+        - Phase 0: Published
+        - Phase 1: Publish Pending  
+        - Phase 2: Edit Requested
+        - Phase 3: Material Done
+        - Phase 4: Started
+        - Phase 5: Delayed
+        - Phase 6: Sponsored Blocked
+        - Phase 7: Ideas
 
 tags:
   - name: Health

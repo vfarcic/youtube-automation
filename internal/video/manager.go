@@ -30,6 +30,13 @@ func (m *Manager) GetVideoPhase(vi storage.VideoIndex) int {
 		return workflow.PhaseIdeas
 	}
 
+	return CalculateVideoPhase(video)
+}
+
+// CalculateVideoPhase determines the current phase of a video based on its state
+// This is a pure function that doesn't require file I/O, making it suitable for use
+// in contexts where the video data is already loaded (like API handlers)
+func CalculateVideoPhase(video storage.Video) int {
 	if len(video.Sponsorship.Blocked) > 0 { // Check for sponsorship block first
 		return workflow.PhaseSponsoredBlocked
 	} else if video.Delayed { // Then check for delayed

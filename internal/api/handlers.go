@@ -49,6 +49,7 @@ type VideoListItem struct {
 	Thumbnail string        `json:"thumbnail"`
 	Category  string        `json:"category"`
 	Status    string        `json:"status"`
+	Phase     int           `json:"phase"`
 	Progress  VideoProgress `json:"progress"`
 }
 
@@ -80,6 +81,9 @@ func transformToVideoListItems(videos []storage.Video) []VideoListItem {
 			status = "published"
 		}
 
+		// Use the shared phase calculation logic
+		phase := video2.CalculateVideoPhase(video)
+
 		// Handle edge cases for missing fields
 		title := video.Title
 		if title == "" {
@@ -104,6 +108,7 @@ func transformToVideoListItems(videos []storage.Video) []VideoListItem {
 			Thumbnail: thumbnail,
 			Category:  video.Category,
 			Status:    status,
+			Phase:     phase,
 			Progress: VideoProgress{
 				Completed: overallCompleted,
 				Total:     overallTotal,

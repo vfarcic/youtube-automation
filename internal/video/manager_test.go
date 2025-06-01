@@ -225,3 +225,186 @@ func TestCalculateDefinePhaseCompletion(t *testing.T) {
 		})
 	}
 }
+
+func TestCalculateVideoPhase(t *testing.T) {
+	testCases := []struct {
+		name          string
+		videoData     storage.Video
+		expectedPhase int
+		description   string
+	}{
+		{
+			name:          "PhaseDelayed",
+			videoData:     storage.Video{Delayed: true},
+			expectedPhase: workflow.PhaseDelayed,
+			description:   "Video marked as delayed should return PhaseDelayed",
+		},
+		{
+			name:          "PhaseSponsoredBlocked",
+			videoData:     storage.Video{Sponsorship: storage.Sponsorship{Blocked: "Waiting for sponsor"}},
+			expectedPhase: workflow.PhaseSponsoredBlocked,
+			description:   "Video with sponsorship block should return PhaseSponsoredBlocked",
+		},
+		{
+			name:          "PhasePublished",
+			videoData:     storage.Video{Repo: "github.com/some/repo"},
+			expectedPhase: workflow.PhasePublished,
+			description:   "Video with repository should return PhasePublished",
+		},
+		{
+			name:          "PhasePublishPending_UploadAndTweet",
+			videoData:     storage.Video{UploadVideo: "youtube.com/id", Tweet: "Check out my new video!"},
+			expectedPhase: workflow.PhasePublishPending,
+			description:   "Video with upload and tweet should return PhasePublishPending",
+		},
+		{
+			name:          "PhaseEditRequested",
+			videoData:     storage.Video{RequestEdit: true},
+			expectedPhase: workflow.PhaseEditRequested,
+			description:   "Video with edit request should return PhaseEditRequested",
+		},
+		{
+			name:          "PhaseMaterialDone_AllMaterials",
+			videoData:     storage.Video{Code: true, Screen: true, Head: true, Diagrams: true},
+			expectedPhase: workflow.PhaseMaterialDone,
+			description:   "Video with all materials should return PhaseMaterialDone",
+		},
+		{
+			name:          "PhaseStarted",
+			videoData:     storage.Video{Date: "2023-01-01T10:00"},
+			expectedPhase: workflow.PhaseStarted,
+			description:   "Video with date should return PhaseStarted",
+		},
+		{
+			name:          "PhaseIdeas_Default",
+			videoData:     storage.Video{},
+			expectedPhase: workflow.PhaseIdeas,
+			description:   "Empty video should return PhaseIdeas (default)",
+		},
+		// Priority order tests - higher priority phases should override lower ones
+		{
+			name: "Priority_SponsoredBlocked_Over_Delayed",
+			videoData: storage.Video{
+				Delayed:     true,
+				Sponsorship: storage.Sponsorship{Blocked: "Sponsor issue"},
+			},
+			expectedPhase: workflow.PhaseSponsoredBlocked,
+			description:   "Sponsored blocked should override delayed",
+		},
+		{
+			name: "Priority_Published_Over_Pending",
+			videoData: storage.Video{
+				Repo:        "github.com/x/y",
+				UploadVideo: "youtube.com/id",
+				Tweet:       "Tweet!",
+			},
+			expectedPhase: workflow.PhasePublished,
+			description:   "Published should override publish pending",
+		},
+		{
+			name: "Priority_EditRequested_Over_MaterialDone",
+			videoData: storage.Video{
+				RequestEdit: true,
+				Code:        true,
+				Screen:      true,
+				Head:        true,
+				Diagrams:    true,
+			},
+			expectedPhase: workflow.PhaseEditRequested,
+			description:   "Edit requested should override material done",
+		},
+		{
+			name: "Priority_MaterialDone_Over_Started",
+			videoData: storage.Video{
+				Code:     true,
+				Screen:   true,
+				Head:     true,
+				Diagrams: true,
+				Date:     "2023-01-01T10:00",
+			},
+			expectedPhase: workflow.PhaseMaterialDone,
+			description:   "Material done should override started",
+		},
+		{
+			name: "Priority_Started_Over_Ideas",
+			videoData: storage.Video{
+				Date: "2023-01-01T12:00",
+			},
+			expectedPhase: workflow.PhaseStarted,
+			description:   "Started should override ideas",
+		},
+		// Edge cases
+		{
+			name: "PhaseMaterialDone_Partial_Materials",
+			videoData: storage.Video{
+				Code:   true,
+				Screen: true,
+				// Missing Head and Diagrams
+			},
+			expectedPhase: workflow.PhaseIdeas, // Should be PhaseIdeas (7) since materials aren't complete
+			description:   "Partial materials should not trigger PhaseMaterialDone, should return PhaseIdeas",
+		},
+		{
+			name: "PhasePublishPending_OnlyUpload",
+			videoData: storage.Video{
+				UploadVideo: "youtube.com/id",
+				// Missing Tweet
+			},
+			expectedPhase: workflow.PhaseIdeas, // Should be PhaseIdeas (7) since both conditions aren't met
+			description:   "Only upload video without tweet should not trigger PhasePublishPending, should return PhaseIdeas",
+		},
+		{
+			name: "PhasePublishPending_OnlyTweet",
+			videoData: storage.Video{
+				Tweet: "Check out my video!",
+				// Missing UploadVideo
+			},
+			expectedPhase: workflow.PhaseIdeas, // Should be PhaseIdeas (7) since both conditions aren't met
+			description:   "Only tweet without upload video should not trigger PhasePublishPending, should return PhaseIdeas",
+		},
+		{
+			name: "PhaseSponsoredBlocked_EmptyBlocked",
+			videoData: storage.Video{
+				Sponsorship: storage.Sponsorship{Blocked: ""},
+			},
+			expectedPhase: workflow.PhaseIdeas,
+			description:   "Empty blocked string should not trigger PhaseSponsoredBlocked",
+		},
+		{
+			name: "PhasePublished_EmptyRepo",
+			videoData: storage.Video{
+				Repo: "",
+			},
+			expectedPhase: workflow.PhaseIdeas,
+			description:   "Empty repo should not trigger PhasePublished",
+		},
+		// Complex scenario tests
+		{
+			name: "Complex_All_Flags_Set_Priority_Test",
+			videoData: storage.Video{
+				Delayed:     true,
+				Sponsorship: storage.Sponsorship{Blocked: "Sponsor issue"},
+				Repo:        "github.com/test/repo",
+				UploadVideo: "youtube.com/video",
+				Tweet:       "Tweet content",
+				RequestEdit: true,
+				Code:        true,
+				Screen:      true,
+				Head:        true,
+				Diagrams:    true,
+				Date:        "2023-01-01T10:00",
+			},
+			expectedPhase: workflow.PhaseSponsoredBlocked, // Highest priority
+			description:   "When all conditions are met, highest priority (SponsoredBlocked) should win",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			phase := video.CalculateVideoPhase(tc.videoData)
+			assert.Equal(t, tc.expectedPhase, phase,
+				fmt.Sprintf("Test case %s failed: %s. Expected phase %d, got %d",
+					tc.name, tc.description, tc.expectedPhase, phase))
+		})
+	}
+}
