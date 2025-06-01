@@ -115,18 +115,23 @@ func (s *VideoService) GetVideosByPhase(phase int) ([]storage.Video, error) {
 	}
 
 	var videosInPhase []storage.Video
-	for i, video := range index {
-		currentPhase := s.videoManager.GetVideoPhase(video)
+	for i, videoIndex := range index {
+		// Load video data once and use CalculateVideoPhase directly
+		// This avoids the double file I/O that GetVideoPhase does (load + reload)
+		videoPath := s.filesystem.GetFilePath(videoIndex.Category, videoIndex.Name, "yaml")
+		fullVideo, err := s.yamlStorage.GetVideo(videoPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get video details for %s: %w", videoIndex.Name, err)
+		}
+		fullVideo.Index = i
+		fullVideo.Name = videoIndex.Name
+		fullVideo.Category = videoIndex.Category
+		fullVideo.Path = videoPath
+
+		// Use CalculateVideoPhase since we already have the full video data loaded
+		// This avoids the file I/O overhead of GetVideoPhase which would reload the video
+		currentPhase := video.CalculateVideoPhase(fullVideo)
 		if currentPhase == phase {
-			videoPath := s.filesystem.GetFilePath(video.Category, video.Name, "yaml")
-			fullVideo, err := s.yamlStorage.GetVideo(videoPath)
-			if err != nil {
-				return nil, fmt.Errorf("failed to get video details for %s: %w", video.Name, err)
-			}
-			fullVideo.Index = i
-			fullVideo.Name = video.Name
-			fullVideo.Category = video.Category
-			fullVideo.Path = videoPath
 			videosInPhase = append(videosInPhase, fullVideo)
 		}
 	}
@@ -159,8 +164,17 @@ func (s *VideoService) GetVideoPhases() (map[int]int, error) {
 		workflow.PhaseSponsoredBlocked: 0,
 	}
 
-	for _, video := range index {
-		currentPhase := s.videoManager.GetVideoPhase(video)
+	for _, videoIndex := range index {
+		// Load video data once and use CalculateVideoPhase directly
+		// This avoids the double file I/O that GetVideoPhase does (load + reload)
+		videoPath := s.filesystem.GetFilePath(videoIndex.Category, videoIndex.Name, "yaml")
+		fullVideo, err := s.yamlStorage.GetVideo(videoPath)
+		if err != nil {
+			// Log error but continue counting other videos
+			continue
+		}
+
+		currentPhase := video.CalculateVideoPhase(fullVideo)
 		phases[currentPhase]++
 	}
 

@@ -84,18 +84,6 @@ func TestVideoPhaseTransitions(t *testing.T) {
 	// Create a test video file
 	testVideoPath := filepath.Join(testCategoryDir, "test-video.yaml")
 
-	// Define phase constants
-	phaseConstants := testutil.VideoPhaseConstants{
-		PhaseIdeas:            workflow.PhaseIdeas,
-		PhaseStarted:          workflow.PhaseStarted,
-		PhaseMaterialDone:     workflow.PhaseMaterialDone,
-		PhaseEditRequested:    workflow.PhaseEditRequested,
-		PhasePublishPending:   workflow.PhasePublishPending,
-		PhasePublished:        workflow.PhasePublished,
-		PhaseDelayed:          workflow.PhaseDelayed,
-		PhaseSponsoredBlocked: workflow.PhaseSponsoredBlocked,
-	}
-
 	// Define function to test a video's phase
 	testPhase := func(video storage.Video, expectedPhase int, message string) {
 		// Write the video to the file
@@ -111,7 +99,7 @@ func TestVideoPhaseTransitions(t *testing.T) {
 		}
 
 		// Use the common helper function to determine the phase
-		phase := testutil.DetermineVideoPhase(video, phaseConstants)
+		phase := testutil.DetermineVideoPhase(video)
 
 		if phase != expectedPhase {
 			t.Errorf("Expected phase %s to be %d, got %d", message, expectedPhase, phase)

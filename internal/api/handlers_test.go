@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -15,10 +16,12 @@ import (
 	"devopstoolkit/youtube-automation/internal/service"
 	"devopstoolkit/youtube-automation/internal/storage"
 	"devopstoolkit/youtube-automation/internal/video"
+	"devopstoolkit/youtube-automation/internal/workflow"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v3"
 )
 
 func setupTestServer(t *testing.T) *Server {
@@ -892,4 +895,108 @@ func averageDuration(durations []time.Duration) time.Duration {
 	}
 
 	return total / time.Duration(len(durations))
+}
+
+// TestVideoListItemPhaseField tests that the phase field is correctly calculated and included in API responses
+func TestVideoListItemPhaseField(t *testing.T) {
+	testCases := []struct {
+		name          string
+		video         storage.Video
+		expectedPhase int
+		description   string
+	}{
+		{
+			name: "PhaseDelayed",
+			video: storage.Video{
+				Name:     "delayed-video",
+				Category: "test-category",
+				Delayed:  true,
+				Title:    "Delayed Video",
+			},
+			expectedPhase: workflow.PhaseDelayed,
+			description:   "Delayed video should have phase 5",
+		},
+		{
+			name: "PhaseSponsoredBlocked",
+			video: storage.Video{
+				Name:        "blocked-video",
+				Category:    "test-category",
+				Sponsorship: storage.Sponsorship{Blocked: "Waiting for sponsor"},
+				Title:       "Blocked Video",
+			},
+			expectedPhase: workflow.PhaseSponsoredBlocked,
+			description:   "Sponsored blocked video should have phase 6",
+		},
+		{
+			name: "PhasePublished",
+			video: storage.Video{
+				Name:     "published-video",
+				Category: "test-category",
+				Repo:     "github.com/some/repo",
+				Title:    "Published Video",
+			},
+			expectedPhase: workflow.PhasePublished,
+			description:   "Published video should have phase 0",
+		},
+		{
+			name: "PhaseIdeas",
+			video: storage.Video{
+				Name:     "idea-video",
+				Category: "test-category",
+				Title:    "Idea Video",
+			},
+			expectedPhase: workflow.PhaseIdeas,
+			description:   "Video with no workflow state should have phase 7 (Ideas)",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			server := setupTestServer(t)
+
+			// Create test video with the appropriate setup
+			_, err := server.videoService.CreateVideo(tc.video.Name, tc.video.Category)
+			assert.NoError(t, err)
+
+			// Update the video file with our test data
+			videoPath := filepath.Join("manuscript", tc.video.Category, tc.video.Name+".yaml")
+			videoData, err := yaml.Marshal(tc.video)
+			assert.NoError(t, err)
+			err = os.WriteFile(videoPath, videoData, 0644)
+			assert.NoError(t, err)
+
+			// Make request to the API
+			req := httptest.NewRequest("GET", "/api/videos/list", nil)
+			recorder := httptest.NewRecorder()
+
+			server.router.ServeHTTP(recorder, req)
+
+			// Verify response
+			assert.Equal(t, http.StatusOK, recorder.Code)
+
+			var response VideoListResponse
+			err = json.Unmarshal(recorder.Body.Bytes(), &response)
+			assert.NoError(t, err)
+
+			// Find our test video in the response
+			var testVideo *VideoListItem
+			for _, video := range response.Videos {
+				if video.Title == tc.video.Title {
+					testVideo = &video
+					break
+				}
+			}
+
+			assert.NotNil(t, testVideo, "Test video not found in response")
+
+			if testVideo == nil {
+				return // Avoid panic
+			}
+
+			// Verify the phase field is correctly set
+			assert.Equal(t, tc.expectedPhase, testVideo.Phase,
+				fmt.Sprintf("Test %s failed: %s. Expected phase %d, got %d",
+					tc.name, tc.description, tc.expectedPhase, testVideo.Phase))
+		})
+	}
 }

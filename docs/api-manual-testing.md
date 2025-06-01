@@ -135,6 +135,7 @@ Expected response:
       "thumbnail": "material/api-testing/thumbnail.jpg",
       "category": "development",
       "status": "published",
+      "phase": 0,
       "progress": {
         "completed": 10,
         "total": 10
@@ -147,6 +148,7 @@ Expected response:
       "thumbnail": "material/kubernetes/deployment-thumb.jpg",
       "category": "devops",
       "status": "draft",
+      "phase": 4,
       "progress": {
         "completed": 7,
         "total": 12
@@ -165,6 +167,27 @@ Expected response:
 **Status Values:**
 - `"published"` - Video is fully completed and published
 - `"draft"` - Video is in progress or not yet published
+
+**Phase Values (0-7):**
+- `0` - Published: Video is completed and live on YouTube
+- `1` - Publish Pending: Video ready for upload and publishing
+- `2` - Edit Requested: Video needs editing or revisions
+- `3` - Material Done: All materials completed, ready for post-production
+- `4` - Started: Video creation has begun
+- `5` - Delayed: Video is postponed
+- `6` - Sponsored Blocked: Video blocked by sponsorship requirements
+- `7` - Ideas: Video is still in planning/idea phase
+
+**Phase Calculation Logic:**
+The phase value is automatically calculated based on video state:
+- Delayed videos → Phase 5
+- Videos with sponsorship blocks → Phase 6  
+- Published videos → Phase 0
+- Videos with upload + tweet → Phase 1
+- Videos requiring edits → Phase 2
+- Videos with all materials (code, screen, head, diagrams) → Phase 3
+- Videos with any materials started → Phase 4
+- All other videos → Phase 7 (Ideas)
 
 **Error Cases:**
 ```bash

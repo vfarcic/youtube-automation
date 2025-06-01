@@ -4,6 +4,8 @@ package testutil
 
 import (
 	"bytes"
+	"devopstoolkit/youtube-automation/internal/storage"
+	"devopstoolkit/youtube-automation/internal/video"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -629,64 +631,8 @@ type VideoPhaseConstants struct {
 	PhaseSponsoredBlocked int
 }
 
-// DetermineVideoPhase calculates the phase of a video based on its properties
-// This function centralizes the phase determination logic that was duplicated
-// across test files.
-func DetermineVideoPhase(video interface{}, constants VideoPhaseConstants) int {
-	// Use reflection to check for fields, since we don't know the exact struct type
-	v := reflect.ValueOf(video)
-
-	// Check if it's a pointer and dereference if needed
-	if v.Kind() == reflect.Ptr {
-		v = v.Elem()
-	}
-
-	// Check for Delayed field
-	if delayedField := v.FieldByName("Delayed"); delayedField.IsValid() && delayedField.Bool() {
-		return constants.PhaseDelayed
-	}
-
-	// Check for Sponsorship.Blocked
-	if sponsorshipField := v.FieldByName("Sponsorship"); sponsorshipField.IsValid() {
-		blockedField := sponsorshipField.FieldByName("Blocked")
-		if blockedField.IsValid() && blockedField.String() != "" {
-			return constants.PhaseSponsoredBlocked
-		}
-	}
-
-	// Check for Repo
-	if repoField := v.FieldByName("Repo"); repoField.IsValid() && repoField.String() != "" {
-		return constants.PhasePublished
-	}
-
-	// Check for Upload and Tweet
-	if uploadField := v.FieldByName("UploadVideo"); uploadField.IsValid() && uploadField.String() != "" {
-		if tweetField := v.FieldByName("Tweet"); tweetField.IsValid() && tweetField.String() != "" {
-			return constants.PhasePublishPending
-		}
-	}
-
-	// Check for RequestEdit
-	if requestEditField := v.FieldByName("RequestEdit"); requestEditField.IsValid() && requestEditField.Bool() {
-		return constants.PhaseEditRequested
-	}
-
-	// Check for Code, Screen, Head, and Diagrams
-	if codeField := v.FieldByName("Code"); codeField.IsValid() && codeField.Bool() {
-		if screenField := v.FieldByName("Screen"); screenField.IsValid() && screenField.Bool() {
-			if headField := v.FieldByName("Head"); headField.IsValid() && headField.Bool() {
-				if diagramsField := v.FieldByName("Diagrams"); diagramsField.IsValid() && diagramsField.Bool() {
-					return constants.PhaseMaterialDone
-				}
-			}
-		}
-	}
-
-	// Check for Date
-	if dateField := v.FieldByName("Date"); dateField.IsValid() && dateField.String() != "" {
-		return constants.PhaseStarted
-	}
-
-	// Default to Ideas phase
-	return constants.PhaseIdeas
+// DetermineVideoPhase calculates the phase of a video based on its workflow state
+// This is a wrapper around video.CalculateVideoPhase for testing convenience
+func DetermineVideoPhase(videoData storage.Video) int {
+	return video.CalculateVideoPhase(videoData)
 }
