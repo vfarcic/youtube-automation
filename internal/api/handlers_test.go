@@ -914,7 +914,7 @@ func TestVideoListItemPhaseField(t *testing.T) {
 				Title:    "Delayed Video",
 			},
 			expectedPhase: workflow.PhaseDelayed,
-			description:   "Delayed video should have phase 6",
+			description:   "Delayed video should have phase 5",
 		},
 		{
 			name: "PhaseSponsoredBlocked",
@@ -925,7 +925,7 @@ func TestVideoListItemPhaseField(t *testing.T) {
 				Title:       "Blocked Video",
 			},
 			expectedPhase: workflow.PhaseSponsoredBlocked,
-			description:   "Sponsored blocked video should have phase 7",
+			description:   "Sponsored blocked video should have phase 6",
 		},
 		{
 			name: "PhasePublished",
@@ -936,7 +936,7 @@ func TestVideoListItemPhaseField(t *testing.T) {
 				Title:    "Published Video",
 			},
 			expectedPhase: workflow.PhasePublished,
-			description:   "Published video should have phase 5",
+			description:   "Published video should have phase 0",
 		},
 		{
 			name: "PhaseIdeas",
@@ -946,7 +946,7 @@ func TestVideoListItemPhaseField(t *testing.T) {
 				Title:    "Idea Video",
 			},
 			expectedPhase: workflow.PhaseIdeas,
-			description:   "Video with no workflow state should have phase 0 (Ideas)",
+			description:   "Video with no workflow state should have phase 7 (Ideas)",
 		},
 	}
 
