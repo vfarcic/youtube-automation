@@ -566,7 +566,7 @@ func TestTransformToVideoListItems(t *testing.T) {
 		assert.Equal(t, "draft", video.Status)
 		// Expected: Basic video has minimal completion values
 		assert.LessOrEqual(t, video.Progress.Completed, video.Progress.Total)
-		assert.Equal(t, 45, video.Progress.Total)
+		assert.Equal(t, 46, video.Progress.Total)
 	})
 
 	t.Run("edge cases and missing fields", func(t *testing.T) {
@@ -592,7 +592,7 @@ func TestTransformToVideoListItems(t *testing.T) {
 		assert.Equal(t, "test", video.Category)
 		assert.Equal(t, "draft", video.Status) // Not published
 		assert.LessOrEqual(t, video.Progress.Completed, video.Progress.Total)
-		assert.Equal(t, 45, video.Progress.Total)
+		assert.Equal(t, 46, video.Progress.Total)
 	})
 
 	t.Run("status derivation logic", func(t *testing.T) {
