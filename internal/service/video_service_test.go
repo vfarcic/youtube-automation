@@ -578,6 +578,7 @@ func TestVideoService_UpdateVideoPhase_PostPublish(t *testing.T) {
 	require.NoError(t, err)
 
 	updateData := map[string]interface{}{
+		"dotPosted":                 true,
 		"blueSkyPostSent":           true,
 		"linkedInPostSent":          true,
 		"slackPostSent":             false,
@@ -593,6 +594,7 @@ func TestVideoService_UpdateVideoPhase_PostPublish(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, videoAfterUpdate)
 
+	assert.True(t, videoAfterUpdate.DOTPosted)
 	assert.True(t, videoAfterUpdate.BlueSkyPosted)
 	assert.True(t, videoAfterUpdate.LinkedInPosted)
 	assert.False(t, videoAfterUpdate.SlackPosted)

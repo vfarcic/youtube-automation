@@ -655,6 +655,11 @@ func (s *VideoService) applyPublishingUpdates(video *storage.Video, updateData m
 
 // applyPostPublishUpdates applies updates to the post-publish phase
 func (s *VideoService) applyPostPublishUpdates(video *storage.Video, updateData map[string]interface{}) error {
+	if val, ok := updateData["dotPosted"]; ok {
+		if b, ok := val.(bool); ok {
+			video.DOTPosted = b
+		}
+	}
 	if val, ok := updateData["blueSkyPostSent"]; ok {
 		if b, ok := val.(bool); ok {
 			video.BlueSkyPosted = b

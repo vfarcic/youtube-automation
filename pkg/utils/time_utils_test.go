@@ -6,7 +6,8 @@ import (
 )
 
 func TestIsFarFutureDate(t *testing.T) {
-	now := time.Now().Truncate(time.Second)
+	// Use a fixed time in UTC to make the test deterministic across timezones
+	now := time.Date(2023, 6, 15, 12, 0, 0, 0, time.UTC)
 	layout := "2006-01-02T15:04"
 
 	tests := []struct {
@@ -61,7 +62,7 @@ func TestIsFarFutureDate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Pass `now` to make the test deterministic.
+			// Pass the fixed UTC time to make the test deterministic.
 			got, err := IsFarFutureDate(tt.dateStr, layout, now)
 			if (err != nil) != tt.expectErr {
 				t.Errorf("IsFarFutureDate() error = %v, expectErr %v", err, tt.expectErr)
