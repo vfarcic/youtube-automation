@@ -36,4 +36,4 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          allowedTools: "Bash,Read,Write,Edit,MultiEdit,Glob,Grep,LS,Task"
+          allowed_tools: "Bash(*),Bash(go:*),Bash(go build:*),Bash(go test:*),Bash(make:*),Bash(just:*),Bash(git:*),Bash(chmod:*),Bash(teller:*),Bash(golangci-lint:*),Bash(awk:*),Bash(grep:*),Bash(bc:*),Read,Write,Edit,Glob,Grep,LS,Task"
