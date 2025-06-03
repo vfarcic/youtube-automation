@@ -948,13 +948,14 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 			// Define fields for the Post-Publish Details form
 			postPublishingFormFields := []huh.Field{
 				huh.NewNote().Title("Post-Publish Details"),
+				huh.NewConfirm().Title(m.colorTitleBool("DevOpsToolkit Post Sent (manual)", updatedVideo.DOTPosted)).Value(&updatedVideo.DOTPosted),
 				huh.NewConfirm().Title(m.colorTitleBool("BlueSky Post Sent", updatedVideo.BlueSkyPosted)).Value(&updatedVideo.BlueSkyPosted),
-				huh.NewConfirm().Title(m.colorTitleBool("LinkedIn Post Sent", updatedVideo.LinkedInPosted)).Value(&updatedVideo.LinkedInPosted),
+				huh.NewConfirm().Title(m.colorTitleBool("LinkedIn Post Sent (manual)", updatedVideo.LinkedInPosted)).Value(&updatedVideo.LinkedInPosted),
 				huh.NewConfirm().Title(m.colorTitleBool("Slack Post Sent", updatedVideo.SlackPosted)).Value(&updatedVideo.SlackPosted),
-				huh.NewConfirm().Title(m.colorTitleBool("YouTube Highlight Created", updatedVideo.YouTubeHighlight)).Value(&updatedVideo.YouTubeHighlight),
-				huh.NewConfirm().Title(m.colorTitleBool("YouTube Pinned Comment Added", updatedVideo.YouTubeComment)).Value(&updatedVideo.YouTubeComment),
-				huh.NewConfirm().Title(m.colorTitleBool("Replied to YouTube Comments", updatedVideo.YouTubeCommentReply)).Value(&updatedVideo.YouTubeCommentReply),
-				huh.NewConfirm().Title(m.colorTitleBool("GDE Advocu Post Sent", updatedVideo.GDE)).Value(&updatedVideo.GDE),
+				huh.NewConfirm().Title(m.colorTitleBool("YouTube Highlight Created (manual)", updatedVideo.YouTubeHighlight)).Value(&updatedVideo.YouTubeHighlight),
+				huh.NewConfirm().Title(m.colorTitleBool("YouTube Pinned Comment Added (manual)", updatedVideo.YouTubeComment)).Value(&updatedVideo.YouTubeComment),
+				huh.NewConfirm().Title(m.colorTitleBool("Replied to YouTube Comments (manual)", updatedVideo.YouTubeCommentReply)).Value(&updatedVideo.YouTubeCommentReply),
+				huh.NewConfirm().Title(m.colorTitleBool("GDE Advocu Post Sent (manual)", updatedVideo.GDE)).Value(&updatedVideo.GDE),
 				huh.NewInput().Title(m.colorTitleString("Code Repository URL", updatedVideo.Repo)).Value(&updatedVideo.Repo),
 				huh.NewConfirm().Title(sponsorsNotifyText).Value(&updatedVideo.NotifiedSponsors), // Use sponsorsNotifyText here
 				huh.NewConfirm().Affirmative("Save").Negative("Cancel").Value(&save),

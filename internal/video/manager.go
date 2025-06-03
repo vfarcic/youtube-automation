@@ -212,6 +212,7 @@ func (m *Manager) CalculatePublishingProgress(video storage.Video) (int, int) {
 // CalculatePostPublishProgress calculates Post-Publish phase progress on-the-fly
 func (m *Manager) CalculatePostPublishProgress(video storage.Video) (int, int) {
 	fields := []interface{}{
+		video.DOTPosted,
 		video.BlueSkyPosted,
 		video.LinkedInPosted,
 		video.SlackPosted,
