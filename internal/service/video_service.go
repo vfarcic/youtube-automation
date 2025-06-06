@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"math/rand/v2"
 	"os"
 	"path/filepath"
 	"sort"
@@ -177,12 +178,20 @@ func (s *VideoService) GetVideosByPhase(phase int) ([]storage.Video, error) {
 		}
 	}
 
-	// Sort videos by date
-	sort.Slice(videosInPhase, func(i, j int) bool {
-		date1, _ := time.Parse("2006-01-02T15:04", videosInPhase[i].Date)
-		date2, _ := time.Parse("2006-01-02T15:04", videosInPhase[j].Date)
-		return date1.Before(date2)
-	})
+	// Apply appropriate ordering based on phase
+	if phase == workflow.PhaseIdeas {
+		// Randomize videos in Ideas phase (phase 7)
+		rand.Shuffle(len(videosInPhase), func(i, j int) {
+			videosInPhase[i], videosInPhase[j] = videosInPhase[j], videosInPhase[i]
+		})
+	} else {
+		// Sort videos by date for all other phases (maintain existing behavior)
+		sort.Slice(videosInPhase, func(i, j int) bool {
+			date1, _ := time.Parse("2006-01-02T15:04", videosInPhase[i].Date)
+			date2, _ := time.Parse("2006-01-02T15:04", videosInPhase[j].Date)
+			return date1.Before(date2)
+		})
+	}
 
 	return videosInPhase, nil
 }
