@@ -712,3 +712,110 @@ func TestVideoService_MoveVideo(t *testing.T) {
 		})
 	}
 }
+
+func TestVideoService_GetVideosByPhase_IdeasRandomization(t *testing.T) {
+	service, _, cleanup := setupTestVideoService(t)
+	defer cleanup()
+
+	// Create multiple test videos in Ideas phase (phase 7)
+	videoNames := []string{"video-01", "video-02", "video-03", "video-04", "video-05"}
+	for _, name := range videoNames {
+		_, err := service.CreateVideo(name, "test-category")
+		require.NoError(t, err)
+	}
+
+	t.Run("Ideas phase should return videos in random order", func(t *testing.T) {
+		// Get videos multiple times to check for randomization
+		var orders [][]string
+		iterations := 10
+
+		for i := 0; i < iterations; i++ {
+			videos, err := service.GetVideosByPhase(7) // Phase 7 is Ideas
+			require.NoError(t, err)
+			require.Len(t, videos, len(videoNames))
+
+			// Extract video names in order
+			var order []string
+			for _, video := range videos {
+				order = append(order, video.Name)
+			}
+			orders = append(orders, order)
+		}
+
+		// Check that not all orders are identical (randomization working)
+		firstOrder := orders[0]
+		foundDifferentOrder := false
+		for i := 1; i < len(orders); i++ {
+			if !slicesEqual(firstOrder, orders[i]) {
+				foundDifferentOrder = true
+				break
+			}
+		}
+
+		assert.True(t, foundDifferentOrder, "Videos should be returned in different orders across multiple calls (randomization)")
+
+		// Verify all expected videos are always present
+		for _, order := range orders {
+			assert.ElementsMatch(t, videoNames, order, "All videos should be present in each call")
+		}
+	})
+
+	t.Run("Non-Ideas phases should maintain deterministic sorting", func(t *testing.T) {
+		// Create a delayed video (phase 5) with dates for comparison
+		_, err := service.CreateVideo("delayed-video-a", "test-category")
+		require.NoError(t, err)
+		_, err = service.CreateVideo("delayed-video-b", "test-category")
+		require.NoError(t, err)
+
+		// Update both to be delayed but with different dates
+		videoA, err := service.GetVideo("delayed-video-a", "test-category")
+		require.NoError(t, err)
+		videoA.Delayed = true
+		videoA.Date = "2024-01-01T10:00"
+		err = service.UpdateVideo(videoA)
+		require.NoError(t, err)
+
+		videoB, err := service.GetVideo("delayed-video-b", "test-category")
+		require.NoError(t, err)
+		videoB.Delayed = true
+		videoB.Date = "2024-01-02T10:00"
+		err = service.UpdateVideo(videoB)
+		require.NoError(t, err)
+
+		// Get delayed videos multiple times
+		var orders [][]string
+		for i := 0; i < 5; i++ {
+			videos, err := service.GetVideosByPhase(5) // Phase 5 is Delayed
+			require.NoError(t, err)
+
+			var order []string
+			for _, video := range videos {
+				order = append(order, video.Name)
+			}
+			orders = append(orders, order)
+		}
+
+		// All orders should be identical (deterministic sorting by date)
+		expectedOrder := orders[0]
+		for i := 1; i < len(orders); i++ {
+			assert.Equal(t, expectedOrder, orders[i], "Non-Ideas phases should maintain consistent date-based sorting")
+		}
+
+		// Should be sorted by date (earliest first)
+		assert.Equal(t, "delayed-video-a", orders[0][0], "Earlier dated video should come first")
+		assert.Equal(t, "delayed-video-b", orders[0][1], "Later dated video should come second")
+	})
+}
+
+// Helper function to compare string slices
+func slicesEqual(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
