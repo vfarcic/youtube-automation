@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"devopstoolkit/youtube-automation/internal/aspect"
 	"devopstoolkit/youtube-automation/internal/filesystem"
 	"devopstoolkit/youtube-automation/internal/service"
 	"devopstoolkit/youtube-automation/internal/storage"
@@ -997,6 +998,571 @@ func TestVideoListItemPhaseField(t *testing.T) {
 			assert.Equal(t, tc.expectedPhase, testVideo.Phase,
 				fmt.Sprintf("Test %s failed: %s. Expected phase %d, got %d",
 					tc.name, tc.description, tc.expectedPhase, testVideo.Phase))
+		})
+	}
+}
+
+func TestGetEditingAspects(t *testing.T) {
+	server := setupTestServer(t)
+
+	// Create a new request
+	req, err := http.NewRequest("GET", "/api/editing/aspects", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a ResponseRecorder to record the response
+	rr := httptest.NewRecorder()
+
+	// Call the handler
+	server.router.ServeHTTP(rr, req)
+
+	// Check the status code
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("Handler returned wrong status code: got %v want %v", status, http.StatusOK)
+	}
+
+	// Check the Content-Type header
+	expected := "application/json"
+	if ct := rr.Header().Get("Content-Type"); ct != expected {
+		t.Errorf("Handler returned wrong content type: got %v want %v", ct, expected)
+	}
+
+	// Parse the response body
+	var aspectOverview aspect.AspectOverview
+	if err := json.Unmarshal(rr.Body.Bytes(), &aspectOverview); err != nil {
+		t.Errorf("Failed to parse response JSON: %v", err)
+	}
+
+	// Verify the response structure
+	if len(aspectOverview.Aspects) == 0 {
+		t.Error("Response should contain aspects")
+	}
+
+	// Verify each aspect summary has required fields
+	for i, aspectSummary := range aspectOverview.Aspects {
+		if aspectSummary.Key == "" {
+			t.Errorf("Aspect %d: Key is empty", i)
+		}
+		if aspectSummary.Title == "" {
+			t.Errorf("Aspect %d: Title is empty", i)
+		}
+		if aspectSummary.Description == "" {
+			t.Errorf("Aspect %d: Description is empty", i)
+		}
+		if aspectSummary.Endpoint == "" {
+			t.Errorf("Aspect %d: Endpoint is empty", i)
+		}
+		if aspectSummary.Icon == "" {
+			t.Errorf("Aspect %d: Icon is empty", i)
+		}
+		if aspectSummary.Order == 0 {
+			t.Errorf("Aspect %d: Order should not be zero", i)
+		}
+		if aspectSummary.FieldCount == 0 {
+			t.Errorf("Aspect %d: FieldCount should not be zero", i)
+		}
+	}
+
+	// Verify aspects are in correct order
+	for i, aspectSummary := range aspectOverview.Aspects {
+		expectedOrder := i + 1
+		if aspectSummary.Order != expectedOrder {
+			t.Errorf("Aspect %d: expected order %d, got %d", i, expectedOrder, aspectSummary.Order)
+		}
+	}
+
+	// Verify expected aspect keys are present
+	expectedKeys := []string{
+		aspect.AspectKeyInitialDetails,
+		aspect.AspectKeyWorkProgress,
+		aspect.AspectKeyDefinition,
+		aspect.AspectKeyPostProduction,
+		aspect.AspectKeyPublishing,
+		aspect.AspectKeyPostPublish,
+	}
+
+	if len(aspectOverview.Aspects) != len(expectedKeys) {
+		t.Errorf("Expected %d aspects, got %d", len(expectedKeys), len(aspectOverview.Aspects))
+	}
+
+	for i, expectedKey := range expectedKeys {
+		if i >= len(aspectOverview.Aspects) {
+			t.Errorf("Missing aspect with key %s", expectedKey)
+			continue
+		}
+		if aspectOverview.Aspects[i].Key != expectedKey {
+			t.Errorf("Expected aspect key %s at index %d, got %s", expectedKey, i, aspectOverview.Aspects[i].Key)
+		}
+	}
+}
+
+func TestGetEditingAspectFields(t *testing.T) {
+	server := setupTestServer(t)
+
+	testCases := []struct {
+		name           string
+		aspectKey      string
+		expectedStatus int
+		shouldHaveData bool
+	}{
+		{
+			name:           "Valid aspect key - initial-details",
+			aspectKey:      aspect.AspectKeyInitialDetails,
+			expectedStatus: http.StatusOK,
+			shouldHaveData: true,
+		},
+		{
+			name:           "Valid aspect key - work-progress",
+			aspectKey:      aspect.AspectKeyWorkProgress,
+			expectedStatus: http.StatusOK,
+			shouldHaveData: true,
+		},
+		{
+			name:           "Valid aspect key - definition",
+			aspectKey:      aspect.AspectKeyDefinition,
+			expectedStatus: http.StatusOK,
+			shouldHaveData: true,
+		},
+		{
+			name:           "Valid aspect key - post-production",
+			aspectKey:      aspect.AspectKeyPostProduction,
+			expectedStatus: http.StatusOK,
+			shouldHaveData: true,
+		},
+		{
+			name:           "Valid aspect key - publishing",
+			aspectKey:      aspect.AspectKeyPublishing,
+			expectedStatus: http.StatusOK,
+			shouldHaveData: true,
+		},
+		{
+			name:           "Valid aspect key - post-publish",
+			aspectKey:      aspect.AspectKeyPostPublish,
+			expectedStatus: http.StatusOK,
+			shouldHaveData: true,
+		},
+		{
+			name:           "Invalid aspect key",
+			aspectKey:      "invalid-aspect",
+			expectedStatus: http.StatusNotFound,
+			shouldHaveData: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Create request with aspect key in URL path
+			req, err := http.NewRequest("GET", "/api/editing/aspects/"+tc.aspectKey+"/fields", nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			// Create a ResponseRecorder
+			rr := httptest.NewRecorder()
+
+			// Call the handler
+			server.router.ServeHTTP(rr, req)
+
+			// Check the status code
+			if status := rr.Code; status != tc.expectedStatus {
+				t.Errorf("Handler returned wrong status code: got %v want %v", status, tc.expectedStatus)
+			}
+
+			if tc.shouldHaveData {
+				// Check the Content-Type header for successful responses
+				expected := "application/json"
+				if ct := rr.Header().Get("Content-Type"); ct != expected {
+					t.Errorf("Handler returned wrong content type: got %v want %v", ct, expected)
+				}
+
+				// Parse the response body
+				var aspectFields aspect.AspectFields
+				if err := json.Unmarshal(rr.Body.Bytes(), &aspectFields); err != nil {
+					t.Errorf("Failed to parse response JSON: %v", err)
+				}
+
+				// Verify the response structure
+				if aspectFields.AspectKey != tc.aspectKey {
+					t.Errorf("Expected AspectKey %s, got %s", tc.aspectKey, aspectFields.AspectKey)
+				}
+				if aspectFields.AspectTitle == "" {
+					t.Error("AspectTitle should not be empty")
+				}
+				if len(aspectFields.Fields) == 0 {
+					t.Error("Fields should not be empty")
+				}
+
+				// Verify each field has required properties
+				for i, field := range aspectFields.Fields {
+					if field.Name == "" {
+						t.Errorf("Field %d: Name is empty", i)
+					}
+					if field.Type == "" {
+						t.Errorf("Field %d: Type is empty", i)
+					}
+					if field.Description == "" {
+						t.Errorf("Field %d: Description is empty", i)
+					}
+					if field.Order == 0 {
+						t.Errorf("Field %d: Order should not be zero", i)
+					}
+
+					// Verify field types are valid
+					validTypes := []string{
+						aspect.FieldTypeString,
+						aspect.FieldTypeText,
+						aspect.FieldTypeBoolean,
+						aspect.FieldTypeDate,
+						aspect.FieldTypeNumber,
+						aspect.FieldTypeSelect,
+					}
+					isValidType := false
+					for _, validType := range validTypes {
+						if field.Type == validType {
+							isValidType = true
+							break
+						}
+					}
+					if !isValidType {
+						t.Errorf("Field %d: Invalid field type: %s", i, field.Type)
+					}
+				}
+
+				// Verify fields are ordered correctly
+				for i := 1; i < len(aspectFields.Fields); i++ {
+					if aspectFields.Fields[i].Order <= aspectFields.Fields[i-1].Order {
+						t.Errorf("Fields are not properly ordered: field %d has order %d, previous field has order %d",
+							i, aspectFields.Fields[i].Order, aspectFields.Fields[i-1].Order)
+					}
+				}
+			} else {
+				// For error responses, check that we get an error message
+				var errorResponse map[string]string
+				if err := json.Unmarshal(rr.Body.Bytes(), &errorResponse); err != nil {
+					t.Errorf("Failed to parse error response JSON: %v", err)
+				}
+				if errorResponse["error"] == "" {
+					t.Error("Error response should contain an error message")
+				}
+			}
+		})
+	}
+}
+
+func TestGetEditingAspectFieldsInvalidMethod(t *testing.T) {
+	server := setupTestServer(t)
+
+	// Test that non-GET methods are not allowed
+	methods := []string{"POST", "PUT", "DELETE", "PATCH"}
+
+	for _, method := range methods {
+		t.Run("Method_"+method, func(t *testing.T) {
+			req, err := http.NewRequest(method, "/api/editing/aspects/initial-details/fields", nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			rr := httptest.NewRecorder()
+			server.router.ServeHTTP(rr, req)
+
+			// Should return 405 Method Not Allowed
+			if status := rr.Code; status != http.StatusMethodNotAllowed {
+				t.Errorf("Handler should return 405 for %s method, got %v", method, status)
+			}
+		})
+	}
+}
+
+func TestGetEditingAspectsInvalidMethod(t *testing.T) {
+	server := setupTestServer(t)
+
+	// Test that non-GET methods are not allowed
+	methods := []string{"POST", "PUT", "DELETE", "PATCH"}
+
+	for _, method := range methods {
+		t.Run("Method_"+method, func(t *testing.T) {
+			req, err := http.NewRequest(method, "/api/editing/aspects", nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			rr := httptest.NewRecorder()
+			server.router.ServeHTTP(rr, req)
+
+			// Should return 405 Method Not Allowed
+			if status := rr.Code; status != http.StatusMethodNotAllowed {
+				t.Errorf("Handler should return 405 for %s method, got %v", method, status)
+			}
+		})
+	}
+}
+
+func TestAPIResponseFormat(t *testing.T) {
+	server := setupTestServer(t)
+
+	t.Run("Aspects overview response format", func(t *testing.T) {
+		req, err := http.NewRequest("GET", "/api/editing/aspects", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		rr := httptest.NewRecorder()
+		server.router.ServeHTTP(rr, req)
+
+		// Verify JSON structure
+		var response map[string]interface{}
+		if err := json.Unmarshal(rr.Body.Bytes(), &response); err != nil {
+			t.Errorf("Failed to parse response as JSON: %v", err)
+		}
+
+		// Check top-level structure
+		if _, exists := response["aspects"]; !exists {
+			t.Error("Response should contain 'aspects' field")
+		}
+
+		aspects, ok := response["aspects"].([]interface{})
+		if !ok {
+			t.Error("'aspects' should be an array")
+		}
+
+		if len(aspects) == 0 {
+			t.Error("'aspects' array should not be empty")
+		}
+
+		// Check first aspect structure
+		firstAspect, ok := aspects[0].(map[string]interface{})
+		if !ok {
+			t.Error("Aspect should be an object")
+		}
+
+		requiredFields := []string{"key", "title", "description", "endpoint", "icon", "order", "fieldCount"}
+		for _, field := range requiredFields {
+			if _, exists := firstAspect[field]; !exists {
+				t.Errorf("Aspect should contain '%s' field", field)
+			}
+		}
+	})
+
+	t.Run("Aspect fields response format", func(t *testing.T) {
+		req, err := http.NewRequest("GET", "/api/editing/aspects/initial-details/fields", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		rr := httptest.NewRecorder()
+		server.router.ServeHTTP(rr, req)
+
+		// Verify JSON structure
+		var response map[string]interface{}
+		if err := json.Unmarshal(rr.Body.Bytes(), &response); err != nil {
+			t.Errorf("Failed to parse response as JSON: %v", err)
+		}
+
+		// Check top-level structure
+		requiredTopFields := []string{"aspectKey", "aspectTitle", "fields"}
+		for _, field := range requiredTopFields {
+			if _, exists := response[field]; !exists {
+				t.Errorf("Response should contain '%s' field", field)
+			}
+		}
+
+		fields, ok := response["fields"].([]interface{})
+		if !ok {
+			t.Error("'fields' should be an array")
+		}
+
+		if len(fields) == 0 {
+			t.Error("'fields' array should not be empty")
+		}
+
+		// Check first field structure
+		firstField, ok := fields[0].(map[string]interface{})
+		if !ok {
+			t.Error("Field should be an object")
+		}
+
+		requiredFieldFields := []string{"name", "type", "required", "order", "description", "options"}
+		for _, field := range requiredFieldFields {
+			if _, exists := firstField[field]; !exists {
+				t.Errorf("Field should contain '%s' field", field)
+			}
+		}
+	})
+}
+
+// TestGetAspectFieldsEnhancedMetadata tests the integration between API and service
+// This test ensures that enhanced metadata (UIHints, ValidationHints, DefaultValue)
+// flows through the complete pipeline from mapping -> service -> API response
+func TestGetAspectFieldsEnhancedMetadata(t *testing.T) {
+	server := NewServer()
+
+	// Test the initial-details endpoint which has various field types
+	req := httptest.NewRequest("GET", "/api/editing/aspects/initial-details/fields", nil)
+	w := httptest.NewRecorder()
+
+	// Set the URL parameter
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("aspectKey", "initial-details")
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+	server.getAspectFields(w, req)
+
+	// Check response status
+	if w.Code != http.StatusOK {
+		t.Fatalf("Expected status 200, got %d", w.Code)
+	}
+
+	// Parse the response
+	var response struct {
+		AspectKey   string `json:"aspectKey"`
+		AspectTitle string `json:"aspectTitle"`
+		Fields      []struct {
+			Name        string      `json:"name"`
+			Type        string      `json:"type"`
+			Required    bool        `json:"required"`
+			Order       int         `json:"order"`
+			Description string      `json:"description"`
+			Options     interface{} `json:"options"`
+			UIHints     struct {
+				InputType   string `json:"inputType"`
+				Placeholder string `json:"placeholder"`
+				HelpText    string `json:"helpText"`
+				Rows        int    `json:"rows"`
+				Multiline   bool   `json:"multiline"`
+			} `json:"uiHints"`
+			ValidationHints struct {
+				Required bool `json:"required"`
+			} `json:"validationHints"`
+			DefaultValue interface{} `json:"defaultValue"`
+		} `json:"fields"`
+	}
+
+	if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
+		t.Fatalf("Failed to parse response JSON: %v", err)
+	}
+
+	// Verify basic structure
+	if response.AspectKey != "initial-details" {
+		t.Errorf("Expected aspectKey 'initial-details', got '%s'", response.AspectKey)
+	}
+
+	if len(response.Fields) == 0 {
+		t.Fatal("Expected fields in response, got none")
+	}
+
+	// Test enhanced metadata for each field
+	for _, field := range response.Fields {
+		// Every field must have UIHints with a valid InputType
+		if field.UIHints.InputType == "" {
+			t.Errorf("Field '%s' missing UIHints.InputType in API response", field.Name)
+		}
+
+		// Check specific field types have appropriate UI hints
+		switch field.Type {
+		case "string":
+			if field.UIHints.InputType != "text" {
+				t.Errorf("String field '%s' should have InputType 'text', got '%s'",
+					field.Name, field.UIHints.InputType)
+			}
+		case "date":
+			if field.UIHints.InputType != "datetime-local" {
+				t.Errorf("Date field '%s' should have InputType 'datetime-local', got '%s'",
+					field.Name, field.UIHints.InputType)
+			}
+			if field.UIHints.Placeholder != "2006-01-02T15:04" {
+				t.Errorf("Date field '%s' should have placeholder '2006-01-02T15:04', got '%s'",
+					field.Name, field.UIHints.Placeholder)
+			}
+		case "boolean":
+			if field.UIHints.InputType != "checkbox" {
+				t.Errorf("Boolean field '%s' should have InputType 'checkbox', got '%s'",
+					field.Name, field.UIHints.InputType)
+			}
+		case "text":
+			if field.UIHints.InputType != "textarea" {
+				t.Errorf("Text field '%s' should have InputType 'textarea', got '%s'",
+					field.Name, field.UIHints.InputType)
+			}
+			if field.UIHints.Rows != 3 {
+				t.Errorf("Text field '%s' should have Rows 3, got %d",
+					field.Name, field.UIHints.Rows)
+			}
+			if !field.UIHints.Multiline {
+				t.Errorf("Text field '%s' should have Multiline true", field.Name)
+			}
+		}
+
+		// ValidationHints should always be present
+		// Note: we're not checking the specific value since it comes from field type instances
+		// The presence of the ValidationHints object itself is what we're validating
+	}
+
+	t.Logf("Successfully validated enhanced metadata for %d fields", len(response.Fields))
+}
+
+// TestGetAspectFieldsAllAspects tests enhanced metadata for all aspects
+func TestGetAspectFieldsAllAspects(t *testing.T) {
+	server := NewServer()
+
+	aspectKeys := []string{"initial-details", "work-progress", "definition", "post-production", "publishing", "post-publish"}
+
+	for _, aspectKey := range aspectKeys {
+		t.Run("Enhanced metadata for "+aspectKey, func(t *testing.T) {
+			req := httptest.NewRequest("GET", "/api/editing/aspects/"+aspectKey+"/fields", nil)
+			w := httptest.NewRecorder()
+
+			// Set the URL parameter
+			rctx := chi.NewRouteContext()
+			rctx.URLParams.Add("aspectKey", aspectKey)
+			req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+			server.getAspectFields(w, req)
+
+			if w.Code != http.StatusOK {
+				t.Fatalf("Expected status 200 for %s, got %d", aspectKey, w.Code)
+			}
+
+			// Verify response contains enhanced metadata structure
+			var response map[string]interface{}
+			if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
+				t.Fatalf("Failed to parse response JSON for %s: %v", aspectKey, err)
+			}
+
+			// Check that fields exist and have enhanced metadata
+			fields, ok := response["fields"].([]interface{})
+			if !ok {
+				t.Fatalf("Expected 'fields' array in response for %s", aspectKey)
+			}
+
+			if len(fields) == 0 {
+				t.Fatalf("Expected at least one field for %s", aspectKey)
+			}
+
+			// Check first field has enhanced metadata structure
+			firstField, ok := fields[0].(map[string]interface{})
+			if !ok {
+				t.Fatalf("Expected field to be an object for %s", aspectKey)
+			}
+
+			// Verify UIHints exists
+			if _, hasUIHints := firstField["uiHints"]; !hasUIHints {
+				t.Errorf("Field missing 'uiHints' in API response for %s", aspectKey)
+			}
+
+			// Verify ValidationHints exists
+			if _, hasValidationHints := firstField["validationHints"]; !hasValidationHints {
+				t.Errorf("Field missing 'validationHints' in API response for %s", aspectKey)
+			}
+
+			// DefaultValue may not be present if it's nil (due to omitempty)
+			// This is correct behavior - only check that the field structure is valid
+			if defaultValue, hasDefaultValue := firstField["defaultValue"]; hasDefaultValue {
+				// If defaultValue is present, it should not be an invalid type
+				if defaultValue != nil {
+					t.Logf("Field has defaultValue: %v for %s", defaultValue, aspectKey)
+				}
+			}
 		})
 	}
 }

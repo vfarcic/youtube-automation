@@ -153,18 +153,18 @@ type ErrorResponse struct {
 func (s *Server) createVideo(w http.ResponseWriter, r *http.Request) {
 	var req CreateVideoRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "Invalid JSON", err.Error())
+		writeError(w, http.StatusBadRequest, "Invalid JSON")
 		return
 	}
 
 	if req.Name == "" || req.Category == "" {
-		writeError(w, http.StatusBadRequest, "name and category are required", "")
+		writeError(w, http.StatusBadRequest, "name and category are required")
 		return
 	}
 
 	video, err := s.videoService.CreateVideo(req.Name, req.Category)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to create video", err.Error())
+		writeError(w, http.StatusInternalServerError, "Failed to create video")
 		return
 	}
 
@@ -430,6 +430,35 @@ func (s *Server) updateVideoPhase(w http.ResponseWriter, r *http.Request, phase 
 	writeJSON(w, http.StatusOK, GetVideoResponse{Video: *updatedVideoPtr})
 }
 
+// getEditingAspects handles GET /api/editing/aspects
+// Returns lightweight overview of all aspects without fields
+func (s *Server) getEditingAspects(w http.ResponseWriter, r *http.Request) {
+	aspectOverview := s.aspectService.GetAspectsOverview()
+	writeJSON(w, http.StatusOK, aspectOverview)
+}
+
+// getAspectFields handles GET /api/editing/aspects/{aspectKey}/fields
+// Returns detailed field information for a specific aspect
+func (s *Server) getAspectFields(w http.ResponseWriter, r *http.Request) {
+	aspectKey := chi.URLParam(r, "aspectKey")
+	if aspectKey == "" {
+		writeError(w, http.StatusBadRequest, "aspect key is required")
+		return
+	}
+
+	aspectFields, err := s.aspectService.GetAspectFields(aspectKey)
+	if err != nil {
+		if err.Error() == "aspect not found" {
+			writeError(w, http.StatusNotFound, "aspect not found")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "failed to get aspect fields")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, aspectFields)
+}
+
 // Utility functions
 func writeJSON(w http.ResponseWriter, status int, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
@@ -437,11 +466,14 @@ func writeJSON(w http.ResponseWriter, status int, data interface{}) {
 	json.NewEncoder(w).Encode(data)
 }
 
-func writeError(w http.ResponseWriter, status int, message, details string) {
+func writeError(w http.ResponseWriter, status int, message string, details ...string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(ErrorResponse{
-		Error:   message,
-		Message: details,
-	})
+
+	errorData := map[string]string{"error": message}
+	if len(details) > 0 && details[0] != "" {
+		errorData["details"] = details[0]
+	}
+
+	json.NewEncoder(w).Encode(errorData)
 }

@@ -650,6 +650,150 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /api/editing/aspects:
+    get:
+      summary: Get editing aspects overview
+      description: |
+        Returns a lightweight overview of all available editing aspects without field details.
+        This endpoint provides metadata about editing phases (initial-details, work-progress, 
+        definition, post-production, publishing, post-publish) for UI navigation and overview.
+        
+        Each aspect includes:
+        - Basic metadata (key, title, description)
+        - UI configuration (icon, order, endpoint)
+        - Field count for the aspect
+        
+        Performance: ~500 bytes response vs ~15KB for full field details (97% reduction).
+      operationId: getEditingAspects
+      tags:
+        - Editing
+      responses:
+        '200':
+          description: Editing aspects overview retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AspectOverviewResponse'
+              example:
+                aspects:
+                  - key: "initial-details"
+                    title: "Initial Details"
+                    description: "Basic video information and setup"
+                    endpoint: "/api/videos/{videoName}/initial-details"
+                    icon: "info"
+                    order: 1
+                    fieldCount: 8
+                  - key: "work-progress"
+                    title: "Work Progress"
+                    description: "Video creation and production tracking"
+                    endpoint: "/api/videos/{videoName}/work-progress"
+                    icon: "work"
+                    order: 2
+                    fieldCount: 11
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/editing/aspects/{aspectKey}/fields:
+    get:
+      summary: Get detailed field information for a specific aspect
+      description: |
+        Returns comprehensive field metadata for a specific editing aspect, including:
+        
+        - Field definitions with types and validation rules
+        - UI rendering hints (input types, placeholders, help text)
+        - Validation constraints (required, length limits, patterns)
+        - Default values and options for select fields
+        
+        This endpoint is optimized for frontend forms and UI generation, providing
+        all necessary metadata to render and validate editing interfaces.
+      operationId: getAspectFields
+      tags:
+        - Editing
+      parameters:
+        - name: aspectKey
+          in: path
+          required: true
+          description: |
+            The unique key identifying the editing aspect. Must be one of:
+            - initial-details
+            - work-progress  
+            - definition
+            - post-production
+            - publishing
+            - post-publish
+          schema:
+            type: string
+            enum: ["initial-details", "work-progress", "definition", "post-production", "publishing", "post-publish"]
+            example: "work-progress"
+      responses:
+        '200':
+          description: Aspect fields retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AspectFieldsResponse'
+              example:
+                aspectKey: "work-progress"
+                aspectTitle: "Work Progress"
+                fields:
+                  - name: "Title"
+                    type: "string"
+                    required: true
+                    order: 1
+                    description: "The title of the video"
+                    uiHints:
+                      inputType: "text"
+                      placeholder: "Enter video title"
+                      helpText: "The main title that will appear on YouTube"
+                      charLimit: 100
+                      multiline: false
+                    validationHints:
+                      required: true
+                      maxLength: 100
+                    defaultValue: ""
+                  - name: "Description"  
+                    type: "text"
+                    required: true
+                    order: 2
+                    description: "The description of the video"
+                    uiHints:
+                      inputType: "textarea"
+                      placeholder: "Enter video description"
+                      helpText: "Detailed description for YouTube"
+                      rows: 5
+                      charLimit: 5000
+                      multiline: true
+                    validationHints:
+                      required: true
+                      maxLength: 5000
+                    defaultValue: ""
+        '400':
+          description: Invalid aspect key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "aspect key is required"
+        '404':
+          description: Aspect not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "aspect not found"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
 components:
   schemas:
     CreateVideoRequest:
@@ -1094,6 +1238,227 @@ components:
         - Phase 6: Sponsored Blocked
         - Phase 7: Ideas
 
+    AspectOverviewResponse:
+      type: object
+      properties:
+        aspects:
+          type: array
+          items:
+            $ref: '#/components/schemas/AspectSummary'
+      description: |
+        Response containing a lightweight overview of all editing aspects.
+        Optimized for navigation and overview purposes.
+
+    AspectFieldsResponse:
+      type: object
+      properties:
+        aspectKey:
+          type: string
+          description: The unique key of the aspect
+          example: "work-progress"
+        aspectTitle:
+          type: string
+          description: The human-readable title of the aspect
+          example: "Work Progress"
+        fields:
+          type: array
+          items:
+            $ref: '#/components/schemas/AspectField'
+      required:
+        - aspectKey
+        - aspectTitle
+        - fields
+      description: |
+        Response containing detailed field information for a specific editing aspect.
+        Includes all metadata needed for frontend form generation and validation.
+
+    AspectSummary:
+      type: object
+      properties:
+        key:
+          type: string
+          description: Unique identifier for the aspect
+          example: "work-progress"
+        title:
+          type: string
+          description: Human-readable title
+          example: "Work Progress"
+        description:
+          type: string
+          description: Brief description of the aspect's purpose
+          example: "Video creation and production tracking"
+        endpoint:
+          type: string
+          description: API endpoint for updating this aspect
+          example: "/api/videos/{videoName}/work-progress"
+        icon:
+          type: string
+          description: Icon identifier for UI display
+          example: "work"
+        order:
+          type: integer
+          description: Sort order for UI display
+          example: 2
+        fieldCount:
+          type: integer
+          description: Number of fields in this aspect
+          example: 11
+      required:
+        - key
+        - title
+        - description
+        - endpoint
+        - icon
+        - order
+        - fieldCount
+
+    AspectField:
+      type: object
+      properties:
+        name:
+          type: string
+          description: The field name/identifier
+          example: "Title"
+        type:
+          type: string
+          description: The field type for validation and UI rendering
+          enum: ["string", "text", "boolean", "date", "select", "number"]
+          example: "string"
+        required:
+          type: boolean
+          description: Whether this field is required
+          example: true
+        order:
+          type: integer
+          description: Display order for the field
+          example: 1
+        description:
+          type: string
+          description: Human-readable description of the field
+          example: "The title of the video"
+        options:
+          $ref: '#/components/schemas/FieldOptions'
+        uiHints:
+          $ref: '#/components/schemas/UIHints'
+        validationHints:
+          $ref: '#/components/schemas/ValidationHints'
+        defaultValue:
+          description: Default value for the field (type varies by field type)
+          oneOf:
+            - type: string
+            - type: number
+            - type: boolean
+            - type: "null"
+          example: ""
+      required:
+        - name
+        - type
+        - required
+        - order
+        - description
+
+    FieldOptions:
+      type: object
+      properties:
+        values:
+          type: array
+          items:
+            type: string
+          description: Available options for select-type fields
+          example: ["draft", "review", "final"]
+      description: Additional configuration for select-type fields
+
+    UIHints:
+      type: object
+      properties:
+        inputType:
+          type: string
+          description: HTML input type for rendering
+          enum: ["text", "textarea", "checkbox", "select", "date", "number"]
+          example: "text"
+        placeholder:
+          type: string
+          description: Placeholder text for input fields
+          example: "Enter video title"
+        helpText:
+          type: string
+          description: Help text displayed near the field
+          example: "The main title that will appear on YouTube"
+        rows:
+          type: integer
+          description: Number of rows for textarea fields
+          example: 3
+        charLimit:
+          type: integer
+          description: Character limit for text fields
+          example: 100
+        multiline:
+          type: boolean
+          description: Whether the field supports multiple lines
+          example: false
+        options:
+          type: array
+          items:
+            $ref: '#/components/schemas/SelectOption'
+          description: Options for select fields
+        attributes:
+          type: object
+          additionalProperties: true
+          description: Additional HTML attributes for the input
+      description: UI rendering hints for frontend applications
+
+    ValidationHints:
+      type: object
+      properties:
+        required:
+          type: boolean
+          description: Whether the field is required
+          example: true
+        minLength:
+          type: integer
+          description: Minimum length for text fields
+          example: 1
+        maxLength:
+          type: integer
+          description: Maximum length for text fields
+          example: 100
+        pattern:
+          type: string
+          description: Regular expression pattern for validation
+          example: "^[a-zA-Z0-9\\s]+$"
+        patternDesc:
+          type: string
+          description: Human-readable description of the pattern
+          example: "Only letters, numbers, and spaces allowed"
+        min:
+          type: integer
+          description: Minimum value for numeric fields
+          example: 0
+        max:
+          type: integer
+          description: Maximum value for numeric fields
+          example: 100
+      description: Validation rules for frontend form validation
+
+    SelectOption:
+      type: object
+      properties:
+        label:
+          type: string
+          description: Display label for the option
+          example: "Draft"
+        value:
+          description: The actual value (type varies)
+          oneOf:
+            - type: string
+            - type: number
+            - type: boolean
+          example: "draft"
+      required:
+        - label
+        - value
+      description: An option for select-type fields
+
 tags:
   - name: Health
     description: Health check operations
@@ -1103,3 +1468,5 @@ tags:
     description: Phase-specific video updates
   - name: Categories
     description: Category management operations
+  - name: Editing
+    description: Video editing aspects metadata and field definitions

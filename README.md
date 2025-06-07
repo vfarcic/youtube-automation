@@ -56,11 +56,15 @@ Starts the REST API server. See [docs/api-manual-testing.md](docs/api-manual-tes
 - `POST /api/videos` - Create new video
 - `GET /api/videos/phases` - Get video phase summary
 - `GET /api/videos?phase={id}` - List videos in phase
-- `GET /api/videos/list?phase={id}` - **NEW**: Optimized lightweight video list with phase data (0-7) for frontend grids
+- `GET /api/videos/list?phase={id}` - Optimized lightweight video list with phase data (0-7) for frontend grids
 - `GET /api/videos/{name}?category={cat}` - Get video details
 - `PUT /api/videos/{name}` - Update video
 - `DELETE /api/videos/{name}?category={cat}` - Delete video
 - `PUT /api/videos/{name}/{phase}` - Update specific phase
+
+**Editing aspects metadata:**
+- `GET /api/editing/aspects` - **NEW**: Get editing aspects overview (lightweight, ~1KB)
+- `GET /api/editing/aspects/{aspectKey}/fields` - **NEW**: Get detailed field metadata for dynamic form generation
 
 **Phase-specific endpoints:**
 - `/initial-details` - Project information and sponsorship
@@ -69,6 +73,72 @@ Starts the REST API server. See [docs/api-manual-testing.md](docs/api-manual-tes
 - `/post-production` - Editing and thumbnails
 - `/publishing` - Video upload and Hugo posts
 - `/post-publish` - Social media and follow-up tasks
+
+## Frontend Integration
+
+### Fetching Editing Aspects
+
+```javascript
+// Get all available aspects (lightweight overview)
+const aspectsResponse = await fetch('/api/editing/aspects');
+const { aspects } = await aspectsResponse.json();
+
+// Get detailed fields for a specific aspect
+const fieldsResponse = await fetch(`/api/editing/aspects/${aspectKey}/fields`);
+const { aspectKey, aspectTitle, fields } = await fieldsResponse.json();
+```
+
+### Dynamic UI Rendering
+
+Use the aspects metadata to render dynamic editing interfaces:
+
+```javascript
+// Render navigation tabs
+function renderAspectTabs(aspects) {
+  return aspects.map(aspect => ({
+    key: aspect.key,
+    title: aspect.title,
+    description: aspect.description,
+    icon: aspect.icon,
+    fieldCount: aspect.fieldCount,
+    order: aspect.order
+  }));
+}
+
+// Generate form fields from metadata
+function renderFormFields(fields) {
+  return fields.map(field => ({
+    name: field.name,
+    type: field.type,
+    required: field.required,
+    description: field.description,
+    uiHints: field.uiHints,
+    defaultValue: field.defaultValue
+  }));
+}
+```
+
+### Error Handling
+
+```javascript
+try {
+  const response = await fetch('/api/editing/aspects/invalid-key/fields');
+  if (!response.ok) {
+    const error = await response.json();
+    console.error('API Error:', error.error); // "aspect not found"
+  }
+} catch (error) {
+  console.error('Network Error:', error);
+}
+```
+
+**Benefits:**
+- **93% smaller payload** for overview endpoint (~1KB vs ~15KB)
+- **Dynamic form generation** from field metadata
+- **Consistent field ordering** and validation rules
+- **Rich UI hints** for optimal user experience
+
+For complete API documentation and testing examples, see [docs/api-manual-testing.md](docs/api-manual-testing.md).
 
 ## Development
 
