@@ -350,7 +350,199 @@ curl -X DELETE "http://localhost:8080/api/videos/test-api-video?category=tutoria
 ```
 Expected response: 204 No Content (empty body)
 
-### 6. Error Testing Scenarios
+### 6. Video Editing Aspects Metadata
+
+The editing aspects endpoints provide frontend applications with metadata about video editing workflow phases and their associated form fields.
+
+#### Get Editing Aspects Overview
+```bash
+curl -X GET http://localhost:8080/api/editing/aspects
+```
+Expected response (~1KB lightweight overview):
+```json
+{
+  "aspects": [
+    {
+      "key": "initial-details",
+      "title": "Initial Details",
+      "description": "Basic project information and setup",
+      "order": 1,
+      "endpoint": "/api/videos/{videoName}/initial-details",
+      "summary": {
+        "fieldCount": 8,
+        "requiredFields": 0,
+        "hasRequiredFields": false
+      }
+    },
+    {
+      "key": "work-progress",
+      "title": "Work Progress",
+      "description": "Content creation and material preparation tracking",
+      "order": 2,
+      "endpoint": "/api/videos/{videoName}/work-progress",
+      "summary": {
+        "fieldCount": 11,
+        "requiredFields": 0,
+        "hasRequiredFields": false
+      }
+    },
+    {
+      "key": "definition",
+      "title": "Definition",
+      "description": "Video metadata and content definition",
+      "order": 3,
+      "endpoint": "/api/videos/{videoName}/definition",
+      "summary": {
+        "fieldCount": 7,
+        "requiredFields": 1,
+        "hasRequiredFields": true
+      }
+    },
+    {
+      "key": "post-production",
+      "title": "Post Production",
+      "description": "Video editing and post-production tasks",
+      "order": 4,
+      "endpoint": "/api/videos/{videoName}/post-production",
+      "summary": {
+        "fieldCount": 6,
+        "requiredFields": 0,
+        "hasRequiredFields": false
+      }
+    },
+    {
+      "key": "publishing",
+      "title": "Publishing Details",
+      "description": "Video publishing and distribution",
+      "order": 5,
+      "endpoint": "/api/videos/{videoName}/publishing",
+      "summary": {
+        "fieldCount": 3,
+        "requiredFields": 0,
+        "hasRequiredFields": false
+      }
+    },
+    {
+      "key": "post-publish",
+      "title": "Post Publish",
+      "description": "Post-publication tasks and follow-up activities",
+      "order": 6,
+      "endpoint": "/api/videos/{videoName}/post-publish",
+      "summary": {
+        "fieldCount": 10,
+        "requiredFields": 0,
+        "hasRequiredFields": false
+      }
+    }
+  ]
+}
+```
+
+**Performance Benefits:**
+- **93% smaller than full metadata** (~1KB vs ~15KB)
+- **Perfect for navigation menus** and phase selection UIs
+- **Quick summary statistics** for each editing phase
+- **Ordered by workflow sequence** (1-6)
+
+#### Get Detailed Fields for Specific Aspect
+```bash
+# Get detailed field information for work-progress phase
+curl -X GET http://localhost:8080/api/editing/aspects/work-progress/fields
+```
+Expected response:
+```json
+{
+  "aspect": {
+    "key": "work-progress",
+    "title": "Work Progress",
+    "description": "Content creation and material preparation tracking",
+    "order": 2,
+    "endpoint": "/api/videos/{videoName}/work-progress"
+  },
+  "fields": [
+    {
+      "name": "Code Done",
+      "type": "bool",
+      "required": false,
+      "order": 1,
+      "options": {
+        "helpText": "Mark as complete when all code examples and demos are ready"
+      }
+    },
+    {
+      "name": "Talking Head Done", 
+      "type": "bool",
+      "required": false,
+      "order": 2,
+      "options": {
+        "helpText": "Mark as complete when talking head segments are recorded"
+      }
+    },
+    {
+      "name": "Screen Recording Done",
+      "type": "bool", 
+      "required": false,
+      "order": 3,
+      "options": {
+        "helpText": "Mark as complete when screen recordings are finished"
+      }
+    }
+    // ... additional fields
+  ]
+}
+```
+
+#### Test Different Aspect Keys
+```bash
+# Initial details phase
+curl -X GET http://localhost:8080/api/editing/aspects/initial-details/fields
+
+# Definition phase  
+curl -X GET http://localhost:8080/api/editing/aspects/definition/fields
+
+# Post-production phase
+curl -X GET http://localhost:8080/api/editing/aspects/post-production/fields
+
+# Publishing phase
+curl -X GET http://localhost:8080/api/editing/aspects/publishing/fields
+
+# Post-publish phase
+curl -X GET http://localhost:8080/api/editing/aspects/post-publish/fields
+```
+
+#### Error Cases for Editing Aspects
+
+##### Invalid Aspect Key
+```bash
+curl -X GET http://localhost:8080/api/editing/aspects/invalid-key/fields
+```
+Expected response (400 Bad Request):
+```json
+{
+  "error": "Invalid aspect key: invalid-key"
+}
+```
+
+##### Wrong HTTP Method
+```bash
+curl -X POST http://localhost:8080/api/editing/aspects
+```
+Expected response (405 Method Not Allowed):
+```json
+{
+  "error": "Method not allowed"
+}
+```
+
+**Use Cases for Frontend Development:**
+- **Dynamic Form Generation**: Use field metadata to build editing forms
+- **Navigation Menus**: Display aspects with field counts and completion status
+- **Progress Tracking**: Show summary stats for each editing phase
+- **Field Validation**: Use required/type information for client-side validation
+- **Help Text**: Display field-specific guidance to users
+- **Workflow Ordering**: Present editing phases in the correct sequence (1-6)
+
+### 7. Error Testing Scenarios
 
 #### Test Invalid Phase Parameter
 ```bash

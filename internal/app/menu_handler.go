@@ -647,12 +647,12 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 		postPublishCompleted, postPublishTotal := m.videoManager.CalculatePostPublishProgress(videoToEdit)
 
 		editPhaseOptions := []huh.Option[int]{
-			huh.NewOption(m.getEditPhaseOptionText("Initial Details", initCompleted, initTotal), editPhaseInitial),
-			huh.NewOption(m.getEditPhaseOptionText("Work In Progress", workCompleted, workTotal), editPhaseWork),
-			huh.NewOption(m.getEditPhaseOptionText("Definition", defineCompleted, defineTotal), editPhaseDefinition),
-			huh.NewOption(m.getEditPhaseOptionText("Post-Production", editCompleted, editTotal), editPhasePostProduction),
-			huh.NewOption(m.getEditPhaseOptionText("Publishing Details", publishCompleted, publishTotal), editPhasePublishing),
-			huh.NewOption(m.getEditPhaseOptionText("Post-Publish Details", postPublishCompleted, postPublishTotal), editPhasePostPublish),
+			huh.NewOption(m.getEditPhaseOptionText(PhaseTitleInitialDetails, initCompleted, initTotal), editPhaseInitial),
+			huh.NewOption(m.getEditPhaseOptionText(PhaseTitleWorkProgress, workCompleted, workTotal), editPhaseWork),
+			huh.NewOption(m.getEditPhaseOptionText(PhaseTitleDefinition, defineCompleted, defineTotal), editPhaseDefinition),
+			huh.NewOption(m.getEditPhaseOptionText(PhaseTitlePostProduction, editCompleted, editTotal), editPhasePostProduction),
+			huh.NewOption(m.getEditPhaseOptionText(PhaseTitlePublishingDetails, publishCompleted, publishTotal), editPhasePublishing),
+			huh.NewOption(m.getEditPhaseOptionText(PhaseTitlePostPublish, postPublishCompleted, postPublishTotal), editPhasePostPublish),
 			huh.NewOption("Return to Video List", actionReturn),
 		}
 
@@ -686,14 +686,14 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 			}
 
 			initialFormFields := []huh.Field{
-				huh.NewInput().Title(m.colorTitleString("Project Name", updatedVideo.ProjectName)).Value(&updatedVideo.ProjectName),
-				huh.NewInput().Title(m.colorTitleString("Project URL", updatedVideo.ProjectURL)).Value(&updatedVideo.ProjectURL),
-				huh.NewInput().Title(m.colorTitleSponsorshipAmount("Sponsorship Amount", updatedVideo.Sponsorship.Amount)).Value(&updatedVideo.Sponsorship.Amount),
-				huh.NewInput().Title(m.colorTitleSponsoredEmails("Sponsorship Emails (comma separated)", updatedVideo.Sponsorship.Amount, updatedVideo.Sponsorship.Emails)).Value(&updatedVideo.Sponsorship.Emails),
-				huh.NewInput().Title(m.colorTitleStringInverse("Sponsorship Blocked Reason", updatedVideo.Sponsorship.Blocked)).Value(&updatedVideo.Sponsorship.Blocked),
-				huh.NewInput().Title(m.colorTitleString("Publish Date (YYYY-MM-DDTHH:MM)", updatedVideo.Date)).Value(&updatedVideo.Date),
-				huh.NewConfirm().Title(m.colorTitleBoolInverse("Delayed", updatedVideo.Delayed)).Value(&updatedVideo.Delayed), // True means NOT delayed, so inverse logic for green
-				huh.NewInput().Title(m.colorTitleString("Gist Path (.md file)", updatedVideo.Gist)).Value(&updatedVideo.Gist),
+				huh.NewInput().Title(m.colorTitleString(FieldTitleProjectName, updatedVideo.ProjectName)).Value(&updatedVideo.ProjectName),
+				huh.NewInput().Title(m.colorTitleString(FieldTitleProjectURL, updatedVideo.ProjectURL)).Value(&updatedVideo.ProjectURL),
+				huh.NewInput().Title(m.colorTitleSponsorshipAmount(FieldTitleSponsorshipAmount, updatedVideo.Sponsorship.Amount)).Value(&updatedVideo.Sponsorship.Amount),
+				huh.NewInput().Title(m.colorTitleSponsoredEmails(FieldTitleSponsorshipEmails, updatedVideo.Sponsorship.Amount, updatedVideo.Sponsorship.Emails)).Value(&updatedVideo.Sponsorship.Emails),
+				huh.NewInput().Title(m.colorTitleStringInverse(FieldTitleSponsorshipBlocked, updatedVideo.Sponsorship.Blocked)).Value(&updatedVideo.Sponsorship.Blocked),
+				huh.NewInput().Title(m.colorTitleString(FieldTitlePublishDate, updatedVideo.Date)).Value(&updatedVideo.Date),
+				huh.NewConfirm().Title(m.colorTitleBoolInverse(FieldTitleDelayed, updatedVideo.Delayed)).Value(&updatedVideo.Delayed), // True means NOT delayed, so inverse logic for green
+				huh.NewInput().Title(m.colorTitleString(FieldTitleGistPath, updatedVideo.Gist)).Value(&updatedVideo.Gist),
 				huh.NewConfirm().Affirmative("Save").Negative("Cancel").Value(&save),
 			}
 
@@ -702,38 +702,38 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 
 			if err != nil {
 				if errors.Is(err, huh.ErrUserAborted) {
-					fmt.Println(m.orangeStyle.Render("Initial details edit cancelled."))
+					fmt.Println(m.orangeStyle.Render(MessageInitialDetailsEditCancelled))
 					continue // Continue the loop to re-select edit phase
 				}
-				return fmt.Errorf("failed to run initial details edit form: %w", err)
+				return fmt.Errorf("%s: %w", ErrorRunInitialDetailsForm, err)
 			}
 
 			if save {
 				yaml := storage.YAML{}
 
 				if err := yaml.WriteVideo(updatedVideo, updatedVideo.Path); err != nil {
-					return fmt.Errorf("failed to save initial details: %w", err)
+					return fmt.Errorf("%s: %w", ErrorSaveInitialDetails, err)
 				}
-				fmt.Println(m.confirmationStyle.Render(fmt.Sprintf("Video '%s' initial details updated.", updatedVideo.Name)))
+				fmt.Println(m.confirmationStyle.Render(fmt.Sprintf("Video '%s' %s.", updatedVideo.Name, MessageInitialDetailsUpdated)))
 				videoToEdit = updatedVideo // Persist changes for the next loop iteration
 			} else {
-				fmt.Println(m.orangeStyle.Render("Changes not saved for initial details."))
+				fmt.Println(m.orangeStyle.Render(MessageChangesNotSavedInitialDetails))
 			}
 
 		case editPhaseWork:
 			save := true
 			workFormFields := []huh.Field{
-				huh.NewConfirm().Title(m.colorTitleBool("Code Done", updatedVideo.Code)).Value(&updatedVideo.Code),
-				huh.NewConfirm().Title(m.colorTitleBool("Talking Head Done", updatedVideo.Head)).Value(&updatedVideo.Head),
-				huh.NewConfirm().Title(m.colorTitleBool("Screen Recording Done", updatedVideo.Screen)).Value(&updatedVideo.Screen),
-				huh.NewText().Lines(3).CharLimit(1000).Title(m.colorTitleString("Related Videos (comma separated)", updatedVideo.RelatedVideos)).Value(&updatedVideo.RelatedVideos),
-				huh.NewConfirm().Title(m.colorTitleBool("Thumbnails Done", updatedVideo.Thumbnails)).Value(&updatedVideo.Thumbnails),
-				huh.NewConfirm().Title(m.colorTitleBool("Diagrams Done", updatedVideo.Diagrams)).Value(&updatedVideo.Diagrams),
-				huh.NewConfirm().Title(m.colorTitleBool("Screenshots Done", updatedVideo.Screenshots)).Value(&updatedVideo.Screenshots),
-				huh.NewInput().Title(m.colorTitleString("Files Location (e.g., Google Drive link)", updatedVideo.Location)).Value(&updatedVideo.Location),
-				huh.NewInput().Title(m.colorTitleString("Tagline", updatedVideo.Tagline)).Value(&updatedVideo.Tagline),
-				huh.NewInput().Title(m.colorTitleString("Tagline Ideas", updatedVideo.TaglineIdeas)).Value(&updatedVideo.TaglineIdeas),
-				huh.NewInput().Title(m.colorTitleString("Other Logos/Assets", updatedVideo.OtherLogos)).Value(&updatedVideo.OtherLogos),
+				huh.NewConfirm().Title(m.colorTitleBool(FieldTitleCodeDone, updatedVideo.Code)).Value(&updatedVideo.Code),
+				huh.NewConfirm().Title(m.colorTitleBool(FieldTitleTalkingHeadDone, updatedVideo.Head)).Value(&updatedVideo.Head),
+				huh.NewConfirm().Title(m.colorTitleBool(FieldTitleScreenRecordingDone, updatedVideo.Screen)).Value(&updatedVideo.Screen),
+				huh.NewText().Lines(3).CharLimit(1000).Title(m.colorTitleString(FieldTitleRelatedVideos, updatedVideo.RelatedVideos)).Value(&updatedVideo.RelatedVideos),
+				huh.NewConfirm().Title(m.colorTitleBool(FieldTitleThumbnailsDone, updatedVideo.Thumbnails)).Value(&updatedVideo.Thumbnails),
+				huh.NewConfirm().Title(m.colorTitleBool(FieldTitleDiagramsDone, updatedVideo.Diagrams)).Value(&updatedVideo.Diagrams),
+				huh.NewConfirm().Title(m.colorTitleBool(FieldTitleScreenshotsDone, updatedVideo.Screenshots)).Value(&updatedVideo.Screenshots),
+				huh.NewInput().Title(m.colorTitleString(FieldTitleFilesLocation, updatedVideo.Location)).Value(&updatedVideo.Location),
+				huh.NewInput().Title(m.colorTitleString(FieldTitleTagline, updatedVideo.Tagline)).Value(&updatedVideo.Tagline),
+				huh.NewInput().Title(m.colorTitleString(FieldTitleTaglineIdeas, updatedVideo.TaglineIdeas)).Value(&updatedVideo.TaglineIdeas),
+				huh.NewInput().Title(m.colorTitleString(FieldTitleOtherLogos, updatedVideo.OtherLogos)).Value(&updatedVideo.OtherLogos),
 				huh.NewConfirm().Affirmative("Save").Negative("Cancel").Value(&save),
 			}
 
@@ -742,28 +742,28 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 
 			if err != nil {
 				if errors.Is(err, huh.ErrUserAborted) {
-					fmt.Println(m.orangeStyle.Render("Work progress edit cancelled."))
+					fmt.Println(m.orangeStyle.Render(MessageWorkProgressEditCancelled))
 					continue // Continue the loop to re-select edit phase
 				}
-				return fmt.Errorf("failed to run work progress edit form: %w", err)
+				return fmt.Errorf("%s: %w", ErrorRunWorkProgressForm, err)
 			}
 
 			if save {
 				yaml := storage.YAML{}
 				// No longer store calculated values - both CLI and API use real-time calculations only
 				if err := yaml.WriteVideo(updatedVideo, updatedVideo.Path); err != nil {
-					return fmt.Errorf("failed to save work progress: %w", err)
+					return fmt.Errorf("%s: %w", ErrorSaveWorkProgress, err)
 				}
-				fmt.Println(m.confirmationStyle.Render(fmt.Sprintf("Video '%s' work progress updated.", updatedVideo.Name)))
+				fmt.Println(m.confirmationStyle.Render(fmt.Sprintf("Video '%s' %s.", updatedVideo.Name, MessageWorkProgressUpdated)))
 				videoToEdit = updatedVideo // Persist changes for the next loop iteration
 			} else {
-				fmt.Println(m.orangeStyle.Render("Changes not saved for work progress."))
+				fmt.Println(m.orangeStyle.Render(MessageChangesNotSavedWorkProgress))
 			}
 
 		case editPhaseDefinition:
 			updatedVideo, err = m.editPhaseDefinition(updatedVideo, m.settings) // updatedVideo was videoToEdit
 			if err != nil {
-				return fmt.Errorf("error during definition phase: %w", err)
+				return fmt.Errorf("%s: %w", ErrorDefinitionPhase, err)
 			}
 			videoToEdit = updatedVideo // Persist changes for the next loop iteration
 
@@ -771,7 +771,7 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 			save := true
 			originalRequestEditStatus := updatedVideo.RequestEdit
 
-			timeCodesTitle := "Timecodes"
+			timeCodesTitle := FieldTitleTimecodes
 			if strings.Contains(updatedVideo.Timecodes, "FIXME:") {
 				timeCodesTitle = m.orangeStyle.Render(timeCodesTitle)
 			} else {
@@ -779,12 +779,12 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 			}
 
 			editFormFields := []huh.Field{
-				huh.NewInput().Title(m.colorTitleString("Thumbnail Path", updatedVideo.Thumbnail)).Value(&updatedVideo.Thumbnail),
-				huh.NewInput().Title(m.colorTitleString("Members (comma separated)", updatedVideo.Members)).Value(&updatedVideo.Members),
-				huh.NewConfirm().Title(m.colorTitleBool("Edit Request", updatedVideo.RequestEdit)).Value(&updatedVideo.RequestEdit),
+				huh.NewInput().Title(m.colorTitleString(FieldTitleThumbnailPath, updatedVideo.Thumbnail)).Value(&updatedVideo.Thumbnail),
+				huh.NewInput().Title(m.colorTitleString(FieldTitleMembers, updatedVideo.Members)).Value(&updatedVideo.Members),
+				huh.NewConfirm().Title(m.colorTitleBool(FieldTitleRequestEdit, updatedVideo.RequestEdit)).Value(&updatedVideo.RequestEdit),
 				huh.NewText().Lines(5).CharLimit(10000).Title(timeCodesTitle).Value(&updatedVideo.Timecodes),
-				huh.NewConfirm().Title(m.colorTitleBool("Movie Done", updatedVideo.Movie)).Value(&updatedVideo.Movie),
-				huh.NewConfirm().Title(m.colorTitleBool("Slides Done", updatedVideo.Slides)).Value(&updatedVideo.Slides),
+				huh.NewConfirm().Title(m.colorTitleBool(FieldTitleMovieDone, updatedVideo.Movie)).Value(&updatedVideo.Movie),
+				huh.NewConfirm().Title(m.colorTitleBool(FieldTitleSlidesDone, updatedVideo.Slides)).Value(&updatedVideo.Slides),
 				huh.NewConfirm().Affirmative("Save").Negative("Cancel").Value(&save),
 			}
 
@@ -792,18 +792,18 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 			err = phaseEditForm.Run()
 			if err != nil {
 				if errors.Is(err, huh.ErrUserAborted) {
-					fmt.Println(m.orangeStyle.Render("Post-production edit cancelled."))
+					fmt.Println(m.orangeStyle.Render(MessagePostProductionEditCancelled))
 					// Continue the loop to re-select edit phase
 					continue
 				}
-				return fmt.Errorf("failed to run post-production edit form: %w", err)
+				return fmt.Errorf("%s: %w", ErrorRunPostProductionForm, err)
 			}
 
 			if save {
 				yaml := storage.YAML{}
 				// No longer store calculated values - both CLI and API use real-time calculations only
 				if err := yaml.WriteVideo(updatedVideo, updatedVideo.Path); err != nil {
-					return fmt.Errorf("failed to save post-production details: %w", err)
+					return fmt.Errorf("%s: %w", ErrorSavePostProductionDetails, err)
 				}
 
 				if !originalRequestEditStatus && updatedVideo.RequestEdit {
@@ -818,10 +818,10 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 						}
 					}
 				}
-				fmt.Println(m.confirmationStyle.Render(fmt.Sprintf("Video '%s' post-production details updated.", updatedVideo.Name)))
+				fmt.Println(m.confirmationStyle.Render(fmt.Sprintf("Video '%s' %s.", updatedVideo.Name, MessagePostProductionUpdated)))
 				videoToEdit = updatedVideo // Persist changes to the original reference for the next loop iteration
 			} else {
-				fmt.Println(m.orangeStyle.Render("Changes not saved for post-production."))
+				fmt.Println(m.orangeStyle.Render(MessageChangesNotSavedPostProduction))
 			}
 
 		case editPhasePublishing:
@@ -833,12 +833,12 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 			createHugo := updatedVideo.HugoPath != "" && updatedVideo.VideoId != ""
 
 			publishingFormFields := []huh.Field{
-				huh.NewInput().Title(m.colorTitleString("Video File Path", updatedVideo.UploadVideo)).Value(&updatedVideo.UploadVideo),
-				huh.NewConfirm().Title(m.colorTitleString("Upload Video to YouTube?", updatedVideo.VideoId)).Value(&uploadTrigger),
-				huh.NewNote().Title(m.colorTitleString("Current YouTube Video ID", updatedVideo.VideoId)).Description(updatedVideo.VideoId),
+				huh.NewInput().Title(m.colorTitleString(FieldTitleVideoFilePath, updatedVideo.UploadVideo)).Value(&updatedVideo.UploadVideo),
+				huh.NewConfirm().Title(m.colorTitleString(FieldTitleUploadToYouTube, updatedVideo.VideoId)).Value(&uploadTrigger),
+				huh.NewNote().Title(m.colorTitleString(FieldTitleCurrentVideoID, updatedVideo.VideoId)).Description(updatedVideo.VideoId),
 				// The m.colorTitleBool will show orange if createHugo is false (e.g. no VideoId)
 				// The action logic below also prevents Hugo creation if VideoId is missing.
-				huh.NewConfirm().Title(m.colorTitleBool("Create/Update Hugo Post", createHugo)).Value(&createHugo),
+				huh.NewConfirm().Title(m.colorTitleBool(FieldTitleCreateHugo, createHugo)).Value(&createHugo),
 				huh.NewConfirm().Affirmative("Save & Process Actions").Negative("Cancel").Value(&save),
 			}
 
@@ -948,15 +948,15 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 			// Define fields for the Post-Publish Details form
 			postPublishingFormFields := []huh.Field{
 				huh.NewNote().Title("Post-Publish Details"),
-				huh.NewConfirm().Title(m.colorTitleBool("DevOpsToolkit Post Sent (manual)", updatedVideo.DOTPosted)).Value(&updatedVideo.DOTPosted),
-				huh.NewConfirm().Title(m.colorTitleBool("BlueSky Post Sent", updatedVideo.BlueSkyPosted)).Value(&updatedVideo.BlueSkyPosted),
-				huh.NewConfirm().Title(m.colorTitleBool("LinkedIn Post Sent (manual)", updatedVideo.LinkedInPosted)).Value(&updatedVideo.LinkedInPosted),
-				huh.NewConfirm().Title(m.colorTitleBool("Slack Post Sent", updatedVideo.SlackPosted)).Value(&updatedVideo.SlackPosted),
-				huh.NewConfirm().Title(m.colorTitleBool("YouTube Highlight Created (manual)", updatedVideo.YouTubeHighlight)).Value(&updatedVideo.YouTubeHighlight),
-				huh.NewConfirm().Title(m.colorTitleBool("YouTube Pinned Comment Added (manual)", updatedVideo.YouTubeComment)).Value(&updatedVideo.YouTubeComment),
-				huh.NewConfirm().Title(m.colorTitleBool("Replied to YouTube Comments (manual)", updatedVideo.YouTubeCommentReply)).Value(&updatedVideo.YouTubeCommentReply),
-				huh.NewConfirm().Title(m.colorTitleBool("GDE Advocu Post Sent (manual)", updatedVideo.GDE)).Value(&updatedVideo.GDE),
-				huh.NewInput().Title(m.colorTitleString("Code Repository URL", updatedVideo.Repo)).Value(&updatedVideo.Repo),
+				huh.NewConfirm().Title(m.colorTitleBool(FieldTitleDOTPosted, updatedVideo.DOTPosted)).Value(&updatedVideo.DOTPosted),
+				huh.NewConfirm().Title(m.colorTitleBool(FieldTitleBlueSkyPosted, updatedVideo.BlueSkyPosted)).Value(&updatedVideo.BlueSkyPosted),
+				huh.NewConfirm().Title(m.colorTitleBool(FieldTitleLinkedInPosted, updatedVideo.LinkedInPosted)).Value(&updatedVideo.LinkedInPosted),
+				huh.NewConfirm().Title(m.colorTitleBool(FieldTitleSlackPosted, updatedVideo.SlackPosted)).Value(&updatedVideo.SlackPosted),
+				huh.NewConfirm().Title(m.colorTitleBool(FieldTitleYouTubeHighlight, updatedVideo.YouTubeHighlight)).Value(&updatedVideo.YouTubeHighlight),
+				huh.NewConfirm().Title(m.colorTitleBool(FieldTitleYouTubeComment, updatedVideo.YouTubeComment)).Value(&updatedVideo.YouTubeComment),
+				huh.NewConfirm().Title(m.colorTitleBool(FieldTitleYouTubeCommentReply, updatedVideo.YouTubeCommentReply)).Value(&updatedVideo.YouTubeCommentReply),
+				huh.NewConfirm().Title(m.colorTitleBool(FieldTitleGDEPosted, updatedVideo.GDE)).Value(&updatedVideo.GDE),
+				huh.NewInput().Title(m.colorTitleString(FieldTitleCodeRepository, updatedVideo.Repo)).Value(&updatedVideo.Repo),
 				huh.NewConfirm().Title(sponsorsNotifyText).Value(&updatedVideo.NotifiedSponsors), // Use sponsorsNotifyText here
 				huh.NewConfirm().Affirmative("Save").Negative("Cancel").Value(&save),
 			}
@@ -1190,7 +1190,7 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 
 			for !fieldSavedOrSkipped {
 				var selectedAction int = generalActionUnknown
-				titleFieldItself := huh.NewInput().Title("Title").Description(df.description).Value(&tempTitleValue)
+				titleFieldItself := huh.NewInput().Title(FieldTitleTitle).Description(df.description).Value(&tempTitleValue)
 				actionSelect := huh.NewSelect[int]().Title("Action for Title").Options(
 					huh.NewOption("Save Title & Continue", generalActionSave),
 					huh.NewOption("Ask AI for Suggestions", generalActionAskAI),
@@ -1204,7 +1204,7 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 						fmt.Println(m.orangeStyle.Render(fmt.Sprintf("Action for '%s' aborted by user.", df.name)))
 						df.revertField(originalFieldValue)
 						if fieldIdx == 0 {
-							fmt.Println(m.normalStyle.Render("Definition phase aborted."))
+							fmt.Println(m.normalStyle.Render(MessageDefinitionPhaseAborted))
 							return originalVideoForThisCall, nil
 						}
 						fieldSavedOrSkipped = true
@@ -1274,7 +1274,7 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 			fieldSavedOrSkipped := false
 			for !fieldSavedOrSkipped {
 				var selectedAction int = generalActionUnknown
-				descriptionFieldItself := huh.NewText().Title(m.colorTitleString("Description", tempDescriptionValue)).Description(df.description).Lines(7).CharLimit(5000).Value(&tempDescriptionValue) // Ensure Lines(7)
+				descriptionFieldItself := huh.NewText().Title(m.colorTitleString(FieldTitleDescription, tempDescriptionValue)).Description(df.description).Lines(7).CharLimit(5000).Value(&tempDescriptionValue) // Ensure Lines(7)
 				actionSelect := huh.NewSelect[int]().Title("Action for Description").Options(
 					huh.NewOption("Save Description & Continue", generalActionSave),
 					huh.NewOption("Ask AI for Suggestion", generalActionAskAI),
@@ -1288,7 +1288,7 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 						fmt.Println(m.orangeStyle.Render(fmt.Sprintf("Action for '%s' aborted by user.", df.name)))
 						df.revertField(originalFieldValue)
 						if fieldIdx == 0 {
-							fmt.Println(m.normalStyle.Render("Definition phase aborted."))
+							fmt.Println(m.normalStyle.Render(MessageDefinitionPhaseAborted))
 							return originalVideoForThisCall, nil
 						}
 						fieldSavedOrSkipped = true
@@ -1349,7 +1349,7 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 			for !fieldSavedOrSkipped {
 				var selectedAction int = generalActionUnknown
 
-				highlightFieldItself := huh.NewInput().Title(m.colorTitleString("Highlight", tempHighlightValue)).Description(df.description).Value(&tempHighlightValue)
+				highlightFieldItself := huh.NewInput().Title(m.colorTitleString(FieldTitleHighlight, tempHighlightValue)).Description(df.description).Value(&tempHighlightValue)
 				// No .Lines() for Input field
 
 				actionSelect := huh.NewSelect[int]().Title("Action for Highlight").Options(
@@ -1367,7 +1367,7 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 						fmt.Println(m.orangeStyle.Render(fmt.Sprintf("Action for '%s' aborted by user.", df.name)))
 						df.revertField(originalFieldValue)
 						if fieldIdx == 0 {
-							fmt.Println(m.normalStyle.Render("Definition phase aborted."))
+							fmt.Println(m.normalStyle.Render(MessageDefinitionPhaseAborted))
 							return originalVideoForThisCall, nil
 						}
 						fieldSavedOrSkipped = true
@@ -1469,7 +1469,7 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 			for !fieldSavedOrSkipped {
 				var selectedAction int = generalActionUnknown
 
-				tagsFieldItself := huh.NewText().Title(m.colorTitleString("Tags", tempTagsValue)).Description(df.description).Lines(3).CharLimit(450).Value(&tempTagsValue) // Set Lines(3)
+				tagsFieldItself := huh.NewText().Title(m.colorTitleString(FieldTitleTags, tempTagsValue)).Description(df.description).Lines(3).CharLimit(450).Value(&tempTagsValue) // Set Lines(3)
 				actionSelect := huh.NewSelect[int]().Title("Action for Tags").Options(
 					huh.NewOption("Save Tags & Continue", generalActionSave),
 					huh.NewOption("Ask AI for Suggestion", generalActionAskAI),
@@ -1485,7 +1485,7 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 						fmt.Println(m.orangeStyle.Render(fmt.Sprintf("Action for '%s' aborted by user.", df.name)))
 						df.revertField(originalFieldValue)
 						if fieldIdx == 0 { // If first field, aborting means exiting this phase
-							fmt.Println(m.normalStyle.Render("Definition phase aborted."))
+							fmt.Println(m.normalStyle.Render(MessageDefinitionPhaseAborted))
 							return originalVideoForThisCall, nil
 						}
 						fieldSavedOrSkipped = true // Mark as skipped to exit inner loop and go to next field
@@ -1548,7 +1548,7 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 			for !fieldSavedOrSkipped {
 				var selectedAction int = generalActionUnknown
 
-				descTagsFieldItself := huh.NewText().Title(m.colorTitleString("Description Tags", tempDescTagsValue)).Description(df.description).Lines(2).CharLimit(0).Value(&tempDescTagsValue) // Set Lines(2)
+				descTagsFieldItself := huh.NewText().Title(m.colorTitleString(FieldTitleDescriptionTags, tempDescTagsValue)).Description(df.description).Lines(2).CharLimit(0).Value(&tempDescTagsValue) // Set Lines(2)
 				actionSelect := huh.NewSelect[int]().Title("Action for Description Tags").Options(
 					huh.NewOption("Save Description Tags & Continue", generalActionSave),
 					huh.NewOption("Ask AI for Suggestion", generalActionAskAI),
@@ -1564,7 +1564,7 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 						fmt.Println(m.orangeStyle.Render(fmt.Sprintf("Action for '%s' aborted by user.", df.name)))
 						df.revertField(originalFieldValue)
 						if fieldIdx == 0 { // If first field, aborting means exiting this phase
-							fmt.Println(m.normalStyle.Render("Definition phase aborted."))
+							fmt.Println(m.normalStyle.Render(MessageDefinitionPhaseAborted))
 							return originalVideoForThisCall, nil
 						}
 						fieldSavedOrSkipped = true // Mark as skipped to exit inner loop and go to next field
@@ -1627,7 +1627,7 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 			for !fieldSavedOrSkipped {
 				var selectedAction int = generalActionUnknown
 
-				tweetFieldItself := huh.NewText().Title(m.colorTitleString("Tweet", tempTweetValue)).Description(df.description).Lines(4).CharLimit(280).Value(&tempTweetValue) // Set Lines(4)
+				tweetFieldItself := huh.NewText().Title(m.colorTitleString(FieldTitleTweet, tempTweetValue)).Description(df.description).Lines(4).CharLimit(280).Value(&tempTweetValue) // Set Lines(4)
 				actionSelect := huh.NewSelect[int]().Title("Action for Tweet").Options(
 					huh.NewOption("Save Tweet & Continue", generalActionSave),
 					huh.NewOption("Ask AI for Suggestions", generalActionAskAI),
@@ -1643,7 +1643,7 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 						fmt.Println(m.orangeStyle.Render(fmt.Sprintf("Action for '%s' aborted by user.", df.name)))
 						df.revertField(originalFieldValue)
 						if fieldIdx == 0 {
-							fmt.Println(m.normalStyle.Render("Definition phase aborted."))
+							fmt.Println(m.normalStyle.Render(MessageDefinitionPhaseAborted))
 							return originalVideoForThisCall, nil
 						}
 						fieldSavedOrSkipped = true
@@ -1724,7 +1724,7 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 				var selectedAction int = generalActionUnknown
 
 				animationsFieldItself := huh.NewText().
-					Title(m.colorTitleString("Animations Script", tempAnimationsValue)).
+					Title(m.colorTitleString(FieldTitleAnimationsScript, tempAnimationsValue)).
 					Description(df.description).
 					Lines(10). // More lines for animations
 					CharLimit(10000).
@@ -1853,7 +1853,7 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 					fmt.Println(m.orangeStyle.Render(fmt.Sprintf("Action for '%s' aborted by user.", df.name)))
 					df.revertField(originalFieldValue)
 					if fieldIdx == 0 {
-						fmt.Println(m.normalStyle.Render("Definition phase aborted."))
+						fmt.Println(m.normalStyle.Render(MessageDefinitionPhaseAborted))
 						return originalVideoForThisCall, nil
 					}
 					continue
@@ -1896,6 +1896,6 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 		}
 	}
 
-	fmt.Println(m.normalStyle.Render("--- Definition Phase Complete ---"))
+	fmt.Println(m.normalStyle.Render(MessageDefinitionPhaseComplete))
 	return videoToEdit, nil
 }

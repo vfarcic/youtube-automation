@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"devopstoolkit/youtube-automation/internal/aspect"
 	"devopstoolkit/youtube-automation/internal/configuration"
 	"devopstoolkit/youtube-automation/internal/filesystem"
 	"devopstoolkit/youtube-automation/internal/service"
@@ -18,10 +19,11 @@ import (
 
 // Server represents the REST API server
 type Server struct {
-	router       chi.Router
-	videoService *service.VideoService
-	port         int
-	httpServer   *http.Server
+	router        chi.Router
+	videoService  *service.VideoService
+	aspectService *aspect.Service
+	port          int
+	httpServer    *http.Server
 }
 
 // NewServer creates a new API server
@@ -30,10 +32,12 @@ func NewServer() *Server {
 	filesystem := &filesystem.Operations{}
 	videoManager := video.NewManager(filesystem.GetFilePath)
 	videoService := service.NewVideoService("index.yaml", filesystem, videoManager)
+	aspectService := aspect.NewService()
 
 	server := &Server{
-		videoService: videoService,
-		port:         configuration.GlobalSettings.API.Port,
+		videoService:  videoService,
+		aspectService: aspectService,
+		port:          configuration.GlobalSettings.API.Port,
 	}
 
 	server.setupRoutes()
@@ -69,6 +73,12 @@ func (s *Server) setupRoutes() {
 
 	// API routes
 	r.Route("/api", func(r chi.Router) {
+		// Editing aspects endpoints
+		r.Route("/editing/aspects", func(r chi.Router) {
+			r.Get("/", s.getEditingAspects)
+			r.Get("/{aspectKey}/fields", s.getAspectFields)
+		})
+
 		// Videos endpoints
 		r.Route("/videos", func(r chi.Router) {
 			r.Post("/", s.createVideo)
