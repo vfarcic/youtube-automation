@@ -21,7 +21,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.24.3' # From go.mod toolchain
+          go-version: '1.24.4' # From go.mod toolchain
 
       - name: Configure Git User
         run: |
