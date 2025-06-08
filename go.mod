@@ -11,7 +11,7 @@ require (
 	github.com/emersion/go-smtp v0.22.0
 	github.com/go-chi/chi/v5 v5.2.1
 	github.com/sirupsen/logrus v1.9.3
-	github.com/slack-go/slack v0.17.0
+	github.com/slack-go/slack v0.17.1
 	github.com/spf13/cobra v1.9.1
 	github.com/stretchr/testify v1.10.0
 	github.com/tmc/langchaingo v0.1.13

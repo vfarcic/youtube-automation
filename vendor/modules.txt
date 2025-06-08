@@ -183,7 +183,7 @@ github.com/rivo/uniseg
 # github.com/sirupsen/logrus v1.9.3
 ## explicit; go 1.13
 github.com/sirupsen/logrus
-# github.com/slack-go/slack v0.17.0
+# github.com/slack-go/slack v0.17.1
 ## explicit; go 1.22
 github.com/slack-go/slack
 github.com/slack-go/slack/internal/backoff
