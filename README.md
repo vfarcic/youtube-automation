@@ -2,6 +2,10 @@
 
 This project automates various aspects of managing a YouTube channel with both CLI and REST API interfaces.
 
+## Demo Manifests and Code Used in DevOps Toolkit Videos
+
+[![How I Fixed My Lazy Vibe Coding Habits with Taskmaster](https://img.youtube.com/vi/0WtCBbIHoKE/0.jpg)](https://youtu.be/0WtCBbIHoKE)
+
 ## Features
 
 *   **Video Lifecycle Management**: Complete workflow from ideas to publishing and post-publish activities
