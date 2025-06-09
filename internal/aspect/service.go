@@ -53,13 +53,14 @@ func (s *Service) GetAspectsOverview() AspectOverview {
 
 	for i, mapping := range mappings {
 		aspects[i] = AspectSummary{
-			Key:         mapping.AspectKey,
-			Title:       mapping.Title,
-			Description: mapping.Description,
-			Endpoint:    getEndpointForAspect(mapping.AspectKey),
-			Icon:        getIconForAspect(mapping.AspectKey),
-			Order:       i + 1,
-			FieldCount:  len(mapping.Fields),
+			Key:                 mapping.AspectKey,
+			Title:               mapping.Title,
+			Description:         mapping.Description,
+			Endpoint:            getEndpointForAspect(mapping.AspectKey),
+			Icon:                getIconForAspect(mapping.AspectKey),
+			Order:               i + 1,
+			FieldCount:          len(mapping.Fields),
+			CompletedFieldCount: 0, // Will be calculated in handler
 		}
 	}
 

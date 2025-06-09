@@ -350,22 +350,212 @@ curl -X DELETE "http://localhost:8080/api/videos/test-api-video?category=tutoria
 ```
 Expected response: 204 No Content (empty body)
 
-### 6. Video Editing Aspects Metadata
+### 6. Editing Aspects Management
 
-The editing aspects endpoints provide frontend applications with metadata about video editing workflow phases and their associated form fields.
-
-#### Get Editing Aspects Overview
+#### Get Editing Aspects Overview (Basic)
 ```bash
 curl -X GET http://localhost:8080/api/editing/aspects
 ```
-Expected response (~1KB lightweight overview):
+Expected response:
 ```json
 {
   "aspects": [
     {
       "key": "initial-details",
       "title": "Initial Details",
-      "description": "Basic project information and setup",
+      "description": "Basic video information and setup",
+      "endpoint": "/api/videos/{videoName}/initial-details",
+      "icon": "info",
+      "order": 1,
+      "fieldCount": 8,
+      "completedFieldCount": 0
+    },
+    {
+      "key": "work-progress",
+      "title": "Work Progress",
+      "description": "Video creation and production tracking",
+      "endpoint": "/api/videos/{videoName}/work-progress",
+      "icon": "work", 
+      "order": 2,
+      "fieldCount": 11,
+      "completedFieldCount": 0
+    },
+    {
+      "key": "definition",
+      "title": "Definition",
+      "description": "Video content definition and planning",
+      "endpoint": "/api/videos/{videoName}/definition",
+      "icon": "definition",
+      "order": 3,
+      "fieldCount": 9,
+      "completedFieldCount": 0
+    },
+    {
+      "key": "post-production",
+      "title": "Post Production",
+      "description": "Video editing and post-production tasks",
+      "endpoint": "/api/videos/{videoName}/post-production",
+      "icon": "edit",
+      "order": 4,
+      "fieldCount": 6,
+      "completedFieldCount": 0
+    },
+    {
+      "key": "publishing",
+      "title": "Publishing",
+      "description": "Video publishing and upload",
+      "endpoint": "/api/videos/{videoName}/publishing",
+      "icon": "publish",
+      "order": 5,
+      "fieldCount": 3,
+      "completedFieldCount": 0
+    },
+    {
+      "key": "post-publish",
+      "title": "Post Publish",
+      "description": "Post-publication tasks and follow-up activities",
+      "endpoint": "/api/videos/{videoName}/post-publish",
+      "icon": "post-publish",
+      "order": 6,
+      "fieldCount": 10,
+      "completedFieldCount": 0
+    }
+  ]
+}
+```
+
+#### **NEW**: Get Editing Aspects with Progress Tracking
+```bash
+# Get aspects overview with completion counts for a specific video
+curl -X GET "http://localhost:8080/api/editing/aspects?videoName=test-api-video&category=test-category"
+```
+Expected response with completion tracking:
+```json
+{
+  "aspects": [
+    {
+      "key": "initial-details",
+      "title": "Initial Details", 
+      "description": "Basic video information and setup",
+      "endpoint": "/api/videos/{videoName}/initial-details",
+      "icon": "info",
+      "order": 1,
+      "fieldCount": 8,
+      "completedFieldCount": 6
+    },
+    {
+      "key": "work-progress",
+      "title": "Work Progress",
+      "description": "Video creation and production tracking", 
+      "endpoint": "/api/videos/{videoName}/work-progress",
+      "icon": "work",
+      "order": 2,
+      "fieldCount": 11,
+      "completedFieldCount": 8
+    },
+    {
+      "key": "definition",
+      "title": "Definition",
+      "description": "Video content definition and planning",
+      "endpoint": "/api/videos/{videoName}/definition", 
+      "icon": "definition",
+      "order": 3,
+      "fieldCount": 9,
+      "completedFieldCount": 3
+    },
+    {
+      "key": "post-production",
+      "title": "Post Production",
+      "description": "Video editing and post-production tasks",
+      "endpoint": "/api/videos/{videoName}/post-production",
+      "icon": "edit", 
+      "order": 4,
+      "fieldCount": 6,
+      "completedFieldCount": 2
+    },
+    {
+      "key": "publishing",
+      "title": "Publishing",
+      "description": "Video publishing and upload",
+      "endpoint": "/api/videos/{videoName}/publishing",
+      "icon": "publish",
+      "order": 5,
+      "fieldCount": 3,
+      "completedFieldCount": 0
+    },
+    {
+      "key": "post-publish", 
+      "title": "Post Publish",
+      "description": "Post-publication tasks and follow-up activities",
+      "endpoint": "/api/videos/{videoName}/post-publish",
+      "icon": "post-publish",
+      "order": 6,
+      "fieldCount": 10,
+      "completedFieldCount": 0
+    }
+  ]
+}
+```
+
+**Progress Tracking Features:**
+- **Completion Calculation**: Shows actual completed field counts (e.g., "6/8 fields completed")
+- **Backend Consistency**: Uses same calculation logic as CLI progress tracking
+- **Dynamic Updates**: Completion counts reflect current video state
+- **Backward Compatibility**: Works with or without video context
+- **Error Handling**: Graceful fallback to 0 counts if video not found
+
+**Completion Criteria Used:**
+- **String/Text/Date/Select fields**: Not empty string
+- **Boolean fields**: Always complete (both true/false count as complete)
+- **Number fields**: Not nil/zero value
+
+#### Test Progress Tracking Error Cases
+```bash
+# Test with missing category parameter
+curl -X GET "http://localhost:8080/api/editing/aspects?videoName=test-video"
+```
+Expected response (400 Bad Request):
+```json
+{
+  "error": "When videoName is provided, category is also required"
+}
+```
+
+```bash
+# Test with non-existent video (should fallback gracefully to 0 counts)
+curl -X GET "http://localhost:8080/api/editing/aspects?videoName=nonexistent&category=test-category"
+```
+Expected response (200 OK with 0 completion counts):
+```json
+{
+  "aspects": [
+    {
+      "key": "initial-details",
+      "title": "Initial Details",
+      "description": "Basic video information and setup",
+      "endpoint": "/api/videos/{videoName}/initial-details", 
+      "icon": "info",
+      "order": 1,
+      "fieldCount": 8,
+      "completedFieldCount": 0
+    }
+    // ... other aspects with completedFieldCount: 0
+  ]
+}
+```
+
+#### **Legacy**: Get Editing Aspects Overview (Old Format)
+```bash
+curl -X GET http://localhost:8080/api/editing/aspects
+```
+Expected response:
+```json
+{
+  "aspects": [
+    {
+      "key": "initial-details",
+      "title": "Initial Details",
+      "description": "Basic video information and setup",
       "order": 1,
       "endpoint": "/api/videos/{videoName}/initial-details",
       "summary": {
@@ -389,19 +579,19 @@ Expected response (~1KB lightweight overview):
     {
       "key": "definition",
       "title": "Definition",
-      "description": "Video metadata and content definition",
+      "description": "Video content definition and structure",
       "order": 3,
       "endpoint": "/api/videos/{videoName}/definition",
       "summary": {
-        "fieldCount": 7,
-        "requiredFields": 1,
-        "hasRequiredFields": true
+        "fieldCount": 9,
+        "requiredFields": 0,
+        "hasRequiredFields": false
       }
     },
     {
       "key": "post-production",
       "title": "Post Production",
-      "description": "Video editing and post-production tasks",
+      "description": "Video editing and post-production",
       "order": 4,
       "endpoint": "/api/videos/{videoName}/post-production",
       "summary": {
@@ -537,7 +727,7 @@ Expected response (405 Method Not Allowed):
 **Use Cases for Frontend Development:**
 - **Dynamic Form Generation**: Use field metadata to build editing forms
 - **Navigation Menus**: Display aspects with field counts and completion status
-- **Progress Tracking**: Show summary stats for each editing phase
+- **Progress Tracking**: Show summary stats for each editing phase (NEW: with completedFieldCount)
 - **Field Validation**: Use required/type information for client-side validation
 - **Help Text**: Display field-specific guidance to users
 - **Workflow Ordering**: Present editing phases in the correct sequence (1-6)
@@ -598,6 +788,9 @@ Follow these steps to test a complete video workflow:
 10. **Move Video**: Test moving the video to a different category
 11. **Delete Video**: Clean up by deleting the test video
 
+**NEW**: Test the enhanced editing aspects endpoint during the workflow:
+12. **Check Progress**: Use `GET /api/editing/aspects?videoName=test-api-video&category=test-category` after each phase update to verify completion counts
+
 ## Notes
 
 - Replace `localhost:8080` with your actual server address and port
@@ -605,3 +798,4 @@ Follow these steps to test a complete video workflow:
 - The API uses JSON for all request/response bodies
 - Some operations (like YouTube upload) are placeholders in this implementation
 - Check the server logs for detailed error information if requests fail
+- **NEW**: The enhanced editing aspects endpoint with completion tracking provides real-time progress updates for better UI development

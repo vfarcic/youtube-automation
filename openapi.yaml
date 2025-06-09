@@ -662,11 +662,35 @@ paths:
         - Basic metadata (key, title, description)
         - UI configuration (icon, order, endpoint)
         - Field count for the aspect
+        - Completion count (when video context is provided)
+        
+        **Progress Tracking**: When both `videoName` and `category` query parameters are provided,
+        the response includes `completedFieldCount` showing how many fields have been filled
+        for each aspect. This enables UI progress indicators like "6/8 fields completed".
         
         Performance: ~500 bytes response vs ~15KB for full field details (97% reduction).
       operationId: getEditingAspects
       tags:
         - Editing
+      parameters:
+        - name: videoName
+          in: query
+          required: false
+          description: |
+            Optional video name for progress tracking. When provided with category,
+            enables completion count calculation for each aspect.
+          schema:
+            type: string
+            example: "kubernetes-tutorial"
+        - name: category
+          in: query
+          required: false
+          description: |
+            Optional video category for progress tracking. When provided with videoName,
+            enables completion count calculation for each aspect.
+          schema:
+            type: string
+            example: "tutorials"
       responses:
         '200':
           description: Editing aspects overview retrieved successfully
@@ -674,22 +698,64 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AspectOverviewResponse'
-              example:
-                aspects:
-                  - key: "initial-details"
-                    title: "Initial Details"
-                    description: "Basic video information and setup"
-                    endpoint: "/api/videos/{videoName}/initial-details"
-                    icon: "info"
-                    order: 1
-                    fieldCount: 8
-                  - key: "work-progress"
-                    title: "Work Progress"
-                    description: "Video creation and production tracking"
-                    endpoint: "/api/videos/{videoName}/work-progress"
-                    icon: "work"
-                    order: 2
-                    fieldCount: 11
+              examples:
+                without_video_context:
+                  summary: Basic overview without video context
+                  description: Standard response when no video context is provided
+                  value:
+                    aspects:
+                      - key: "initial-details"
+                        title: "Initial Details"
+                        description: "Basic video information and setup"
+                        endpoint: "/api/videos/{videoName}/initial-details"
+                        icon: "info"
+                        order: 1
+                        fieldCount: 8
+                        completedFieldCount: 0
+                      - key: "work-progress"
+                        title: "Work Progress"
+                        description: "Video creation and production tracking"
+                        endpoint: "/api/videos/{videoName}/work-progress"
+                        icon: "work"
+                        order: 2
+                        fieldCount: 11
+                        completedFieldCount: 0
+                with_video_context:
+                  summary: Progress tracking with video context
+                  description: Enhanced response showing actual completion counts when video context is provided
+                  value:
+                    aspects:
+                      - key: "initial-details"
+                        title: "Initial Details"
+                        description: "Basic video information and setup"
+                        endpoint: "/api/videos/{videoName}/initial-details"
+                        icon: "info"
+                        order: 1
+                        fieldCount: 8
+                        completedFieldCount: 6
+                      - key: "work-progress"
+                        title: "Work Progress"
+                        description: "Video creation and production tracking"
+                        endpoint: "/api/videos/{videoName}/work-progress"
+                        icon: "work"
+                        order: 2
+                        fieldCount: 11
+                        completedFieldCount: 8
+        '400':
+          description: Invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                missing_category:
+                  summary: Missing category when videoName provided
+                  value:
+                    error: "When videoName is provided, category is also required"
+                video_not_found:
+                  summary: Specified video not found
+                  value:
+                    error: "Video not found"
         '500':
           description: Internal server error
           content:
@@ -1303,6 +1369,13 @@ components:
           type: integer
           description: Number of fields in this aspect
           example: 11
+        completedFieldCount:
+          type: integer
+          description: |
+            Number of completed fields in this aspect. When video context is not provided,
+            this will be 0. When video context is provided via query parameters, this
+            shows the actual count of completed fields based on the video's current state.
+          example: 8
       required:
         - key
         - title
@@ -1311,6 +1384,10 @@ components:
         - icon
         - order
         - fieldCount
+        - completedFieldCount
+      description: |
+        Summary information for an editing aspect. Includes field counts and completion
+        tracking when video context is available.
 
     AspectField:
       type: object

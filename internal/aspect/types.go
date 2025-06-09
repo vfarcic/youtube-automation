@@ -32,13 +32,14 @@ type Aspect struct {
 
 // AspectSummary represents a lightweight aspect overview without fields
 type AspectSummary struct {
-	Key         string `json:"key"`
-	Title       string `json:"title"`
-	Description string `json:"description"`
-	Endpoint    string `json:"endpoint"`
-	Icon        string `json:"icon"`
-	Order       int    `json:"order"`
-	FieldCount  int    `json:"fieldCount"`
+	Key                 string `json:"key"`
+	Title               string `json:"title"`
+	Description         string `json:"description"`
+	Endpoint            string `json:"endpoint"`
+	Icon                string `json:"icon"`
+	Order               int    `json:"order"`
+	FieldCount          int    `json:"fieldCount"`
+	CompletedFieldCount int    `json:"completedFieldCount"`
 }
 
 // Field represents a single editable field within an aspect

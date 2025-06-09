@@ -5,11 +5,12 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/go-chi/chi/v5"
+
+	"devopstoolkit/youtube-automation/internal/aspect"
 	"devopstoolkit/youtube-automation/internal/storage"
 	video2 "devopstoolkit/youtube-automation/internal/video"
 	"devopstoolkit/youtube-automation/internal/workflow"
-
-	"github.com/go-chi/chi/v5"
 )
 
 // Request/Response types
@@ -432,8 +433,26 @@ func (s *Server) updateVideoPhase(w http.ResponseWriter, r *http.Request, phase 
 
 // getEditingAspects handles GET /api/editing/aspects
 // Returns lightweight overview of all aspects without fields
+// Optional query params: videoName and category for completion tracking
 func (s *Server) getEditingAspects(w http.ResponseWriter, r *http.Request) {
 	aspectOverview := s.aspectService.GetAspectsOverview()
+
+	// Check for optional video context for completion tracking
+	videoName := r.URL.Query().Get("videoName")
+	category := r.URL.Query().Get("category")
+
+	// If video context is provided, calculate completion counts
+	if videoName != "" && category != "" {
+		video, err := s.videoService.GetVideo(videoName, category)
+		if err != nil {
+			// If video is not found, continue with default 0 completion counts
+			// Don't fail the entire request for invalid video context
+		} else {
+			// Calculate completion counts for each aspect
+			s.calculateCompletionCounts(&aspectOverview, video)
+		}
+	}
+
 	writeJSON(w, http.StatusOK, aspectOverview)
 }
 
@@ -457,6 +476,32 @@ func (s *Server) getAspectFields(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, aspectFields)
+}
+
+// calculateCompletionCounts updates the aspectOverview with completion counts based on video data
+// Uses the shared video manager calculation functions for consistency with CLI
+func (s *Server) calculateCompletionCounts(aspectOverview *aspect.AspectOverview, video storage.Video) {
+	// Use shared video manager for consistent progress calculations
+	videoManager := video2.NewManager(nil) // We don't need filePathFunc for calculations
+
+	// Map aspect keys to their corresponding calculation functions
+	aspectCalculations := map[string]func(storage.Video) (int, int){
+		"initial-details": videoManager.CalculateInitialDetailsProgress,
+		"work-progress":   videoManager.CalculateWorkProgressProgress,
+		"definition":      videoManager.CalculateDefinePhaseCompletion,
+		"post-production": videoManager.CalculatePostProductionProgress,
+		"publishing":      videoManager.CalculatePublishingProgress,
+		"post-publish":    videoManager.CalculatePostPublishProgress,
+	}
+
+	// Update completion counts for each aspect
+	for i, aspectSummary := range aspectOverview.Aspects {
+		if calcFunc, exists := aspectCalculations[aspectSummary.Key]; exists {
+			completed, _ := calcFunc(video)
+			aspectOverview.Aspects[i].CompletedFieldCount = completed
+		}
+		// If aspect not found in mapping, keep default value of 0
+	}
 }
 
 // Utility functions

@@ -1064,11 +1064,15 @@ func TestGetEditingAspects(t *testing.T) {
 		}
 	}
 
-	// Verify aspects are in correct order
+	// Verify basic structure and order
 	for i, aspectSummary := range aspectOverview.Aspects {
 		expectedOrder := i + 1
 		if aspectSummary.Order != expectedOrder {
 			t.Errorf("Aspect %d: expected order %d, got %d", i, expectedOrder, aspectSummary.Order)
+		}
+		// TDD: Check for CompletedFieldCount (should be 0 without video context)
+		if aspectSummary.CompletedFieldCount != 0 {
+			t.Errorf("Aspect %d: completedFieldCount should be 0 without video context, got %d", i, aspectSummary.CompletedFieldCount)
 		}
 	}
 
@@ -1336,7 +1340,7 @@ func TestAPIResponseFormat(t *testing.T) {
 			t.Error("Aspect should be an object")
 		}
 
-		requiredFields := []string{"key", "title", "description", "endpoint", "icon", "order", "fieldCount"}
+		requiredFields := []string{"key", "title", "description", "endpoint", "icon", "order", "fieldCount", "completedFieldCount"}
 		for _, field := range requiredFields {
 			if _, exists := firstAspect[field]; !exists {
 				t.Errorf("Aspect should contain '%s' field", field)
@@ -1565,4 +1569,107 @@ func TestGetAspectFieldsAllAspects(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGetEditingAspectsWithCompletion(t *testing.T) {
+	server := setupTestServer(t)
+
+	// Create a test video with some completed fields
+	_, err := server.videoService.CreateVideo("test-video", "test-category")
+	require.NoError(t, err)
+
+	// Get the video and update some fields to simulate completion
+	video, err := server.videoService.GetVideo("test-video", "test-category")
+	require.NoError(t, err)
+
+	// Set some fields as completed for testing
+	video.Title = "Test Video Title"   // definition aspect - string field
+	video.Code = true                  // work-progress aspect - boolean field
+	video.ProjectName = "Test Project" // initial-details aspect - string field
+	video.Delayed = true               // initial-details aspect - boolean field
+
+	// Save the updated video
+	err = server.videoService.UpdateVideo(video)
+	require.NoError(t, err)
+
+	t.Run("Without video context - should return zero completion counts", func(t *testing.T) {
+		req, err := http.NewRequest("GET", "/api/editing/aspects", nil)
+		require.NoError(t, err)
+
+		rr := httptest.NewRecorder()
+		server.router.ServeHTTP(rr, req)
+
+		require.Equal(t, http.StatusOK, rr.Code)
+
+		var aspectOverview aspect.AspectOverview
+		err = json.Unmarshal(rr.Body.Bytes(), &aspectOverview)
+		require.NoError(t, err)
+
+		// All completion counts should be 0 without video context
+		for _, aspectSummary := range aspectOverview.Aspects {
+			assert.Equal(t, 0, aspectSummary.CompletedFieldCount,
+				"Aspect %s should have 0 completed fields without video context", aspectSummary.Key)
+		}
+	})
+
+	t.Run("With video context - should calculate actual completion counts", func(t *testing.T) {
+		req, err := http.NewRequest("GET", "/api/editing/aspects?videoName=test-video&category=test-category", nil)
+		require.NoError(t, err)
+
+		rr := httptest.NewRecorder()
+		server.router.ServeHTTP(rr, req)
+
+		require.Equal(t, http.StatusOK, rr.Code)
+
+		var aspectOverview aspect.AspectOverview
+		err = json.Unmarshal(rr.Body.Bytes(), &aspectOverview)
+		require.NoError(t, err)
+
+		// Check specific aspects for expected completion counts
+		for _, aspectSummary := range aspectOverview.Aspects {
+			switch aspectSummary.Key {
+			case "initial-details":
+				// Should have 2 completed fields: ProjectName (string) and Delayed (boolean)
+				assert.Greater(t, aspectSummary.CompletedFieldCount, 0,
+					"initial-details should have some completed fields")
+			case "work-progress":
+				// Should have at least 1 completed field: Code (boolean)
+				assert.Greater(t, aspectSummary.CompletedFieldCount, 0,
+					"work-progress should have some completed fields")
+			case "definition":
+				// Should have 1 completed field: Title (string)
+				assert.Greater(t, aspectSummary.CompletedFieldCount, 0,
+					"definition should have some completed fields")
+			}
+
+			// Completion count should never exceed field count
+			assert.LessOrEqual(t, aspectSummary.CompletedFieldCount, aspectSummary.FieldCount,
+				"Aspect %s completion count should not exceed field count", aspectSummary.Key)
+		}
+	})
+
+	t.Run("With invalid video context - should gracefully fallback to zero counts", func(t *testing.T) {
+		req, err := http.NewRequest("GET", "/api/editing/aspects?videoName=nonexistent&category=test-category", nil)
+		require.NoError(t, err)
+
+		rr := httptest.NewRecorder()
+		server.router.ServeHTTP(rr, req)
+
+		// Should still return 200 OK, not fail
+		require.Equal(t, http.StatusOK, rr.Code)
+
+		var aspectOverview aspect.AspectOverview
+		err = json.Unmarshal(rr.Body.Bytes(), &aspectOverview)
+		require.NoError(t, err)
+
+		// All completion counts should be 0 for invalid video context
+		for _, aspectSummary := range aspectOverview.Aspects {
+			assert.Equal(t, 0, aspectSummary.CompletedFieldCount,
+				"Aspect %s should have 0 completed fields for invalid video context", aspectSummary.Key)
+		}
+	})
+}
+
+func TestGetEditingAspectsAllAspects(t *testing.T) {
+	// ... existing code ...
 }

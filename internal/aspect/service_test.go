@@ -316,6 +316,10 @@ func TestGetAspectsOverview(t *testing.T) {
 			if aspect.FieldCount != expectedCount {
 				t.Errorf("Expected %d fields for aspect '%s', got %d", expectedCount, aspect.Key, aspect.FieldCount)
 			}
+			// TDD: Verify CompletedFieldCount is present and zero for now
+			if aspect.CompletedFieldCount != 0 {
+				t.Errorf("Expected CompletedFieldCount to be 0 for aspect '%s', got %d", aspect.Key, aspect.CompletedFieldCount)
+			}
 		}
 	})
 
@@ -355,7 +359,7 @@ func TestGetAspectsOverview(t *testing.T) {
 func TestGetAspectFields(t *testing.T) {
 	service := NewService()
 
-	t.Run("Should return valid fields for existing aspect", func(t *testing.T) {
+	t.Run("Should return fields for a valid aspect key", func(t *testing.T) {
 		aspectFields, err := service.GetAspectFields(AspectKeyInitialDetails)
 		if err != nil {
 			t.Fatalf("Expected no error for valid aspect, got: %v", err)

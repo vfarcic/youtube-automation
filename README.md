@@ -64,6 +64,8 @@ Starts the REST API server. See [docs/api-manual-testing.md](docs/api-manual-tes
 
 **Editing aspects metadata:**
 - `GET /api/editing/aspects` - **NEW**: Get editing aspects overview (lightweight, ~1KB)
+  - **NEW**: Optional query parameters: `?videoName={name}&category={cat}` for progress tracking
+  - **NEW**: Returns `completedFieldCount` alongside `fieldCount` for progress indicators ("6/8 fields completed")
 - `GET /api/editing/aspects/{aspectKey}/fields` - **NEW**: Get detailed field metadata for dynamic form generation
 
 **Phase-specific endpoints:**
@@ -83,6 +85,10 @@ Starts the REST API server. See [docs/api-manual-testing.md](docs/api-manual-tes
 const aspectsResponse = await fetch('/api/editing/aspects');
 const { aspects } = await aspectsResponse.json();
 
+// NEW: Get aspects with progress tracking for a specific video
+const progressResponse = await fetch('/api/editing/aspects?videoName=my-video&category=tutorials');
+const { aspects: aspectsWithProgress } = await progressResponse.json();
+
 // Get detailed fields for a specific aspect
 const fieldsResponse = await fetch(`/api/editing/aspects/${aspectKey}/fields`);
 const { aspectKey, aspectTitle, fields } = await fieldsResponse.json();
@@ -93,7 +99,7 @@ const { aspectKey, aspectTitle, fields } = await fieldsResponse.json();
 Use the aspects metadata to render dynamic editing interfaces:
 
 ```javascript
-// Render navigation tabs
+// Render navigation tabs with progress indicators
 function renderAspectTabs(aspects) {
   return aspects.map(aspect => ({
     key: aspect.key,
@@ -101,8 +107,21 @@ function renderAspectTabs(aspects) {
     description: aspect.description,
     icon: aspect.icon,
     fieldCount: aspect.fieldCount,
-    order: aspect.order
+    completedFieldCount: aspect.completedFieldCount, // NEW: Progress tracking
+    order: aspect.order,
+    progressPercentage: Math.round((aspect.completedFieldCount / aspect.fieldCount) * 100) // NEW: Calculate percentage
   }));
+}
+
+// NEW: Render progress indicators
+function renderProgressIndicator(aspect) {
+  const percentage = Math.round((aspect.completedFieldCount / aspect.fieldCount) * 100);
+  return `
+    <div class="progress-container">
+      <div class="progress-bar" style="width: ${percentage}%"></div>
+      <span class="progress-text">${aspect.completedFieldCount}/${aspect.fieldCount} fields completed</span>
+    </div>
+  `;
 }
 
 // Generate form fields from metadata
@@ -130,6 +149,15 @@ try {
 } catch (error) {
   console.error('Network Error:', error);
 }
+
+// NEW: Handle progress tracking errors
+try {
+  const response = await fetch('/api/editing/aspects?videoName=test&category=missing');
+  const { aspects } = await response.json();
+  // Gracefully handles non-existent videos with 0 completion counts
+} catch (error) {
+  console.error('Progress tracking error:', error);
+}
 ```
 
 **Benefits:**
@@ -137,6 +165,9 @@ try {
 - **Dynamic form generation** from field metadata
 - **Consistent field ordering** and validation rules
 - **Rich UI hints** for optimal user experience
+- **NEW**: **Real-time progress tracking** with completion counts
+- **NEW**: **Backend consistency** - uses same logic as CLI progress calculations
+- **NEW**: **Graceful error handling** for missing videos
 
 For complete API documentation and testing examples, see [docs/api-manual-testing.md](docs/api-manual-testing.md).
 
