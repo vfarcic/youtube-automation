@@ -811,6 +811,7 @@ paths:
                     required: true
                     order: 1
                     description: "The title of the video"
+                    completionCriteria: "filled_only"
                     uiHints:
                       inputType: "text"
                       placeholder: "Enter video title"
@@ -826,6 +827,7 @@ paths:
                     required: true
                     order: 2
                     description: "The description of the video"
+                    completionCriteria: "filled_required"
                     uiHints:
                       inputType: "textarea"
                       placeholder: "Enter video description"
@@ -1413,6 +1415,12 @@ components:
           type: string
           description: Human-readable description of the field
           example: "The title of the video"
+        completionCriteria:
+          type: string
+          description: |
+            Defines the completion criteria for this field, determining when it should be considered "complete" or "valid" for progress tracking and UI styling.
+          enum: ["filled_only", "empty_or_filled", "conditional", "true_only", "false_only", "filled_required"]
+          example: "filled_only"
         options:
           $ref: '#/components/schemas/FieldOptions'
         uiHints:
@@ -1433,6 +1441,7 @@ components:
         - required
         - order
         - description
+        - completionCriteria
 
     FieldOptions:
       type: object

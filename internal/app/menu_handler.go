@@ -14,8 +14,10 @@ import (
 	"time"
 
 	"devopstoolkit/youtube-automation/internal/ai"
+	"devopstoolkit/youtube-automation/internal/aspect"
 	"devopstoolkit/youtube-automation/internal/cli"
 	"devopstoolkit/youtube-automation/internal/configuration"
+	"devopstoolkit/youtube-automation/internal/constants"
 	"devopstoolkit/youtube-automation/internal/filesystem"
 	"devopstoolkit/youtube-automation/internal/markdown"
 	"devopstoolkit/youtube-automation/internal/notification"
@@ -47,6 +49,7 @@ type MenuHandler struct {
 	videoManager      *video.Manager
 	filesystem        *filesystem.Operations
 	videoService      *service.VideoService
+	aspectService     *aspect.Service
 	greenStyle        lipgloss.Style
 	orangeStyle       lipgloss.Style
 	redStyle          lipgloss.Style
@@ -107,52 +110,160 @@ func (m *MenuHandler) countCompletedTasks(fields []interface{}) (completed int, 
 	return completed, total
 }
 
-// Helper for form titles based on string value
+// Helper function that uses shared completion criteria logic from aspect service
+func (m *MenuHandler) colorTitleWithSharedLogic(aspectKey, fieldTitle, fieldValue string, boolValue *bool, sponsorshipAmount string) string {
+	// Map field titles to their corresponding field keys used in the completion service
+	fieldKey := m.getFieldKeyFromTitle(fieldTitle)
+
+	// Get completion criteria from the shared service
+	completionCriteria := m.aspectService.GetFieldCompletionCriteria(aspectKey, fieldKey)
+
+	// Apply completion logic based on the criteria
+	isComplete := false
+
+	switch completionCriteria {
+	case aspect.CompletionCriteriaFilledOnly:
+		// Complete when not empty and not "-"
+		isComplete = len(fieldValue) > 0 && fieldValue != "-"
+
+	case aspect.CompletionCriteriaFilledRequired:
+		// Must be filled (similar to filled_only for now)
+		isComplete = len(fieldValue) > 0 && fieldValue != "-"
+
+	case aspect.CompletionCriteriaEmptyOrFilled:
+		// Complete when empty OR filled (always green)
+		isComplete = true
+
+	case aspect.CompletionCriteriaTrueOnly:
+		// Complete when boolean is true
+		if boolValue != nil {
+			isComplete = *boolValue
+		}
+
+	case aspect.CompletionCriteriaFalseOnly:
+		// Complete when boolean is false
+		if boolValue != nil {
+			isComplete = !(*boolValue)
+		}
+
+	case aspect.CompletionCriteriaConditional:
+		// Special logic for sponsorship emails field
+		if fieldKey == "sponsorshipEmails" {
+			// Complete if sponsorship amount is empty/N/A/- OR emails have content
+			isComplete = (len(sponsorshipAmount) == 0 || sponsorshipAmount == "N/A" || sponsorshipAmount == "-") || len(fieldValue) > 0
+		} else {
+			// For other conditional fields, default to filled_only logic
+			isComplete = len(fieldValue) > 0 && fieldValue != "-"
+		}
+
+	default:
+		// Default to filled_only logic
+		isComplete = len(fieldValue) > 0 && fieldValue != "-"
+	}
+
+	if isComplete {
+		return m.greenStyle.Render(fieldTitle)
+	}
+	return m.orangeStyle.Render(fieldTitle)
+}
+
+// getFieldKeyFromTitle maps field titles to their corresponding field keys used in completion service
+func (m *MenuHandler) getFieldKeyFromTitle(fieldTitle string) string {
+	titleToKeyMap := map[string]string{
+		// Initial Details
+		constants.FieldTitleProjectName:        "projectName",
+		constants.FieldTitleProjectURL:         "projectURL",
+		constants.FieldTitleSponsorshipAmount:  "sponsorshipAmount",
+		constants.FieldTitleSponsorshipEmails:  "sponsorshipEmails",
+		constants.FieldTitleSponsorshipBlocked: "sponsorshipBlocked",
+		constants.FieldTitlePublishDate:        "publishDate",
+		constants.FieldTitleDelayed:            "delayed",
+		constants.FieldTitleGistPath:           "gistPath",
+
+		// Work Progress
+		constants.FieldTitleCodeDone:            "codeDone",
+		constants.FieldTitleTalkingHeadDone:     "talkingHeadDone",
+		constants.FieldTitleScreenRecordingDone: "screenRecordingDone",
+		constants.FieldTitleRelatedVideos:       "relatedVideos",
+		constants.FieldTitleThumbnailsDone:      "thumbnailsDone",
+		constants.FieldTitleDiagramsDone:        "diagramsDone",
+		constants.FieldTitleScreenshotsDone:     "screenshotsDone",
+		constants.FieldTitleFilesLocation:       "filesLocation",
+		constants.FieldTitleTagline:             "tagline",
+		constants.FieldTitleTaglineIdeas:        "taglineIdeas",
+		constants.FieldTitleOtherLogos:          "otherLogos",
+
+		// Definition
+		constants.FieldTitleTitle:            "title",
+		constants.FieldTitleDescription:      "description",
+		constants.FieldTitleHighlight:        "highlight",
+		constants.FieldTitleTags:             "tags",
+		constants.FieldTitleDescriptionTags:  "descriptionTags",
+		constants.FieldTitleTweet:            "tweet",
+		constants.FieldTitleAnimationsScript: "animationsScript",
+
+		// Post-Production
+		constants.FieldTitleThumbnailPath: "thumbnailPath",
+		constants.FieldTitleMembers:       "members",
+		constants.FieldTitleRequestEdit:   "requestEdit",
+		constants.FieldTitleTimecodes:     "timecodes",
+		constants.FieldTitleMovieDone:     "movieDone",
+		constants.FieldTitleSlidesDone:    "slidesDone",
+
+		// Publishing
+		constants.FieldTitleVideoFilePath:  "videoFilePath",
+		constants.FieldTitleCurrentVideoID: "youTubeVideoId",
+		constants.FieldTitleCreateHugo:     "hugoPostPath",
+
+		// Post-Publish
+		constants.FieldTitleDOTPosted:           "dotPosted",
+		constants.FieldTitleBlueSkyPosted:       "blueSkyPosted",
+		constants.FieldTitleLinkedInPosted:      "linkedInPosted",
+		constants.FieldTitleSlackPosted:         "slackPosted",
+		constants.FieldTitleYouTubeHighlight:    "youTubeHighlight",
+		constants.FieldTitleYouTubeComment:      "youTubeComment",
+		constants.FieldTitleYouTubeCommentReply: "youTubeCommentReply",
+		constants.FieldTitleGDEPosted:           "gdePosted",
+		constants.FieldTitleCodeRepository:      "codeRepository",
+		constants.FieldTitleNotifySponsors:      "notifySponsors",
+	}
+
+	if fieldKey, exists := titleToKeyMap[fieldTitle]; exists {
+		return fieldKey
+	}
+
+	// If no mapping found, return the title as-is as fallback
+	return fieldTitle
+}
+
+// Helper for form titles based on string value - now uses shared logic
 func (m *MenuHandler) colorTitleString(title, value string) string {
-	if len(value) > 0 && value != "-" { // Green if not empty and not just a dash
-		return m.greenStyle.Render(title)
-	}
-	return m.orangeStyle.Render(title)
+	return m.colorTitleWithSharedLogic("initial-details", title, value, nil, "")
 }
 
-// Helper for form titles based on boolean value
+// Helper for form titles based on boolean value - now uses shared logic
 func (m *MenuHandler) colorTitleBool(title string, value bool) string {
-	if value {
-		return m.greenStyle.Render(title)
-	}
-	return m.orangeStyle.Render(title)
+	return m.colorTitleWithSharedLogic("work-progress", title, "", &value, "")
 }
 
-// Helper for form titles for Sponsorship Amount (green if any text is present)
+// Helper for form titles for Sponsorship Amount - now uses shared logic
 func (m *MenuHandler) colorTitleSponsorshipAmount(title, value string) string {
-	if len(value) > 0 {
-		return m.greenStyle.Render(title)
-	}
-	return m.orangeStyle.Render(title)
+	return m.colorTitleWithSharedLogic("initial-details", title, value, nil, "")
 }
 
-// Helper for form titles for sponsored emails
+// Helper for form titles for sponsored emails - now uses shared logic
 func (m *MenuHandler) colorTitleSponsoredEmails(title, sponsoredAmount, sponsoredEmails string) string {
-	if len(sponsoredAmount) == 0 || sponsoredAmount == "N/A" || sponsoredAmount == "-" || len(sponsoredEmails) > 0 {
-		return m.greenStyle.Render(title)
-	}
-	return m.orangeStyle.Render(title) // Was RedStyle, now consistency with orangeStyle
+	return m.colorTitleWithSharedLogic("initial-details", title, sponsoredEmails, nil, sponsoredAmount)
 }
 
-// Helper for form titles based on string value (inverse logic: green if empty)
+// Helper for form titles based on string value (inverse logic) - now uses shared logic
 func (m *MenuHandler) colorTitleStringInverse(title, value string) string {
-	if len(value) > 0 {
-		return m.orangeStyle.Render(title)
-	}
-	return m.greenStyle.Render(title)
+	return m.colorTitleWithSharedLogic("initial-details", title, value, nil, "")
 }
 
-// Helper for form titles based on boolean value (inverse logic: green if false)
+// Helper for form titles based on boolean value (inverse logic) - now uses shared logic
 func (m *MenuHandler) colorTitleBoolInverse(title string, value bool) string {
-	if !value {
-		return m.greenStyle.Render(title)
-	}
-	return m.orangeStyle.Render(title)
+	return m.colorTitleWithSharedLogic("initial-details", title, "", &value, "")
 }
 
 // ChooseIndex displays the main menu and handles user selection
@@ -647,12 +758,12 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 		postPublishCompleted, postPublishTotal := m.videoManager.CalculatePostPublishProgress(videoToEdit)
 
 		editPhaseOptions := []huh.Option[int]{
-			huh.NewOption(m.getEditPhaseOptionText(PhaseTitleInitialDetails, initCompleted, initTotal), editPhaseInitial),
-			huh.NewOption(m.getEditPhaseOptionText(PhaseTitleWorkProgress, workCompleted, workTotal), editPhaseWork),
-			huh.NewOption(m.getEditPhaseOptionText(PhaseTitleDefinition, defineCompleted, defineTotal), editPhaseDefinition),
-			huh.NewOption(m.getEditPhaseOptionText(PhaseTitlePostProduction, editCompleted, editTotal), editPhasePostProduction),
-			huh.NewOption(m.getEditPhaseOptionText(PhaseTitlePublishingDetails, publishCompleted, publishTotal), editPhasePublishing),
-			huh.NewOption(m.getEditPhaseOptionText(PhaseTitlePostPublish, postPublishCompleted, postPublishTotal), editPhasePostPublish),
+			huh.NewOption(m.getEditPhaseOptionText(constants.PhaseTitleInitialDetails, initCompleted, initTotal), editPhaseInitial),
+			huh.NewOption(m.getEditPhaseOptionText(constants.PhaseTitleWorkProgress, workCompleted, workTotal), editPhaseWork),
+			huh.NewOption(m.getEditPhaseOptionText(constants.PhaseTitleDefinition, defineCompleted, defineTotal), editPhaseDefinition),
+			huh.NewOption(m.getEditPhaseOptionText(constants.PhaseTitlePostProduction, editCompleted, editTotal), editPhasePostProduction),
+			huh.NewOption(m.getEditPhaseOptionText(constants.PhaseTitlePublishingDetails, publishCompleted, publishTotal), editPhasePublishing),
+			huh.NewOption(m.getEditPhaseOptionText(constants.PhaseTitlePostPublish, postPublishCompleted, postPublishTotal), editPhasePostPublish),
 			huh.NewOption("Return to Video List", actionReturn),
 		}
 
@@ -686,14 +797,14 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 			}
 
 			initialFormFields := []huh.Field{
-				huh.NewInput().Title(m.colorTitleString(FieldTitleProjectName, updatedVideo.ProjectName)).Value(&updatedVideo.ProjectName),
-				huh.NewInput().Title(m.colorTitleString(FieldTitleProjectURL, updatedVideo.ProjectURL)).Value(&updatedVideo.ProjectURL),
-				huh.NewInput().Title(m.colorTitleSponsorshipAmount(FieldTitleSponsorshipAmount, updatedVideo.Sponsorship.Amount)).Value(&updatedVideo.Sponsorship.Amount),
-				huh.NewInput().Title(m.colorTitleSponsoredEmails(FieldTitleSponsorshipEmails, updatedVideo.Sponsorship.Amount, updatedVideo.Sponsorship.Emails)).Value(&updatedVideo.Sponsorship.Emails),
-				huh.NewInput().Title(m.colorTitleStringInverse(FieldTitleSponsorshipBlocked, updatedVideo.Sponsorship.Blocked)).Value(&updatedVideo.Sponsorship.Blocked),
-				huh.NewInput().Title(m.colorTitleString(FieldTitlePublishDate, updatedVideo.Date)).Value(&updatedVideo.Date),
-				huh.NewConfirm().Title(m.colorTitleBoolInverse(FieldTitleDelayed, updatedVideo.Delayed)).Value(&updatedVideo.Delayed), // True means NOT delayed, so inverse logic for green
-				huh.NewInput().Title(m.colorTitleString(FieldTitleGistPath, updatedVideo.Gist)).Value(&updatedVideo.Gist),
+				huh.NewInput().Title(m.colorTitleString(constants.FieldTitleProjectName, updatedVideo.ProjectName)).Value(&updatedVideo.ProjectName),
+				huh.NewInput().Title(m.colorTitleString(constants.FieldTitleProjectURL, updatedVideo.ProjectURL)).Value(&updatedVideo.ProjectURL),
+				huh.NewInput().Title(m.colorTitleSponsorshipAmount(constants.FieldTitleSponsorshipAmount, updatedVideo.Sponsorship.Amount)).Value(&updatedVideo.Sponsorship.Amount),
+				huh.NewInput().Title(m.colorTitleSponsoredEmails(constants.FieldTitleSponsorshipEmails, updatedVideo.Sponsorship.Amount, updatedVideo.Sponsorship.Emails)).Value(&updatedVideo.Sponsorship.Emails),
+				huh.NewInput().Title(m.colorTitleStringInverse(constants.FieldTitleSponsorshipBlocked, updatedVideo.Sponsorship.Blocked)).Value(&updatedVideo.Sponsorship.Blocked),
+				huh.NewInput().Title(m.colorTitleString(constants.FieldTitlePublishDate, updatedVideo.Date)).Value(&updatedVideo.Date),
+				huh.NewConfirm().Title(m.colorTitleBoolInverse(constants.FieldTitleDelayed, updatedVideo.Delayed)).Value(&updatedVideo.Delayed), // True means NOT delayed, so inverse logic for green
+				huh.NewInput().Title(m.colorTitleString(constants.FieldTitleGistPath, updatedVideo.Gist)).Value(&updatedVideo.Gist),
 				huh.NewConfirm().Affirmative("Save").Negative("Cancel").Value(&save),
 			}
 
@@ -723,17 +834,17 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 		case editPhaseWork:
 			save := true
 			workFormFields := []huh.Field{
-				huh.NewConfirm().Title(m.colorTitleBool(FieldTitleCodeDone, updatedVideo.Code)).Value(&updatedVideo.Code),
-				huh.NewConfirm().Title(m.colorTitleBool(FieldTitleTalkingHeadDone, updatedVideo.Head)).Value(&updatedVideo.Head),
-				huh.NewConfirm().Title(m.colorTitleBool(FieldTitleScreenRecordingDone, updatedVideo.Screen)).Value(&updatedVideo.Screen),
-				huh.NewText().Lines(3).CharLimit(1000).Title(m.colorTitleString(FieldTitleRelatedVideos, updatedVideo.RelatedVideos)).Value(&updatedVideo.RelatedVideos),
-				huh.NewConfirm().Title(m.colorTitleBool(FieldTitleThumbnailsDone, updatedVideo.Thumbnails)).Value(&updatedVideo.Thumbnails),
-				huh.NewConfirm().Title(m.colorTitleBool(FieldTitleDiagramsDone, updatedVideo.Diagrams)).Value(&updatedVideo.Diagrams),
-				huh.NewConfirm().Title(m.colorTitleBool(FieldTitleScreenshotsDone, updatedVideo.Screenshots)).Value(&updatedVideo.Screenshots),
-				huh.NewInput().Title(m.colorTitleString(FieldTitleFilesLocation, updatedVideo.Location)).Value(&updatedVideo.Location),
-				huh.NewInput().Title(m.colorTitleString(FieldTitleTagline, updatedVideo.Tagline)).Value(&updatedVideo.Tagline),
-				huh.NewInput().Title(m.colorTitleString(FieldTitleTaglineIdeas, updatedVideo.TaglineIdeas)).Value(&updatedVideo.TaglineIdeas),
-				huh.NewInput().Title(m.colorTitleString(FieldTitleOtherLogos, updatedVideo.OtherLogos)).Value(&updatedVideo.OtherLogos),
+				huh.NewConfirm().Title(m.colorTitleBool(constants.FieldTitleCodeDone, updatedVideo.Code)).Value(&updatedVideo.Code),
+				huh.NewConfirm().Title(m.colorTitleBool(constants.FieldTitleTalkingHeadDone, updatedVideo.Head)).Value(&updatedVideo.Head),
+				huh.NewConfirm().Title(m.colorTitleBool(constants.FieldTitleScreenRecordingDone, updatedVideo.Screen)).Value(&updatedVideo.Screen),
+				huh.NewText().Lines(3).CharLimit(1000).Title(m.colorTitleString(constants.FieldTitleRelatedVideos, updatedVideo.RelatedVideos)).Value(&updatedVideo.RelatedVideos),
+				huh.NewConfirm().Title(m.colorTitleBool(constants.FieldTitleThumbnailsDone, updatedVideo.Thumbnails)).Value(&updatedVideo.Thumbnails),
+				huh.NewConfirm().Title(m.colorTitleBool(constants.FieldTitleDiagramsDone, updatedVideo.Diagrams)).Value(&updatedVideo.Diagrams),
+				huh.NewConfirm().Title(m.colorTitleBool(constants.FieldTitleScreenshotsDone, updatedVideo.Screenshots)).Value(&updatedVideo.Screenshots),
+				huh.NewInput().Title(m.colorTitleString(constants.FieldTitleFilesLocation, updatedVideo.Location)).Value(&updatedVideo.Location),
+				huh.NewInput().Title(m.colorTitleString(constants.FieldTitleTagline, updatedVideo.Tagline)).Value(&updatedVideo.Tagline),
+				huh.NewInput().Title(m.colorTitleString(constants.FieldTitleTaglineIdeas, updatedVideo.TaglineIdeas)).Value(&updatedVideo.TaglineIdeas),
+				huh.NewInput().Title(m.colorTitleString(constants.FieldTitleOtherLogos, updatedVideo.OtherLogos)).Value(&updatedVideo.OtherLogos),
 				huh.NewConfirm().Affirmative("Save").Negative("Cancel").Value(&save),
 			}
 
@@ -771,7 +882,7 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 			save := true
 			originalRequestEditStatus := updatedVideo.RequestEdit
 
-			timeCodesTitle := FieldTitleTimecodes
+			timeCodesTitle := constants.FieldTitleTimecodes
 			if strings.Contains(updatedVideo.Timecodes, "FIXME:") {
 				timeCodesTitle = m.orangeStyle.Render(timeCodesTitle)
 			} else {
@@ -779,12 +890,12 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 			}
 
 			editFormFields := []huh.Field{
-				huh.NewInput().Title(m.colorTitleString(FieldTitleThumbnailPath, updatedVideo.Thumbnail)).Value(&updatedVideo.Thumbnail),
-				huh.NewInput().Title(m.colorTitleString(FieldTitleMembers, updatedVideo.Members)).Value(&updatedVideo.Members),
-				huh.NewConfirm().Title(m.colorTitleBool(FieldTitleRequestEdit, updatedVideo.RequestEdit)).Value(&updatedVideo.RequestEdit),
+				huh.NewInput().Title(m.colorTitleString(constants.FieldTitleThumbnailPath, updatedVideo.Thumbnail)).Value(&updatedVideo.Thumbnail),
+				huh.NewInput().Title(m.colorTitleString(constants.FieldTitleMembers, updatedVideo.Members)).Value(&updatedVideo.Members),
+				huh.NewConfirm().Title(m.colorTitleBool(constants.FieldTitleRequestEdit, updatedVideo.RequestEdit)).Value(&updatedVideo.RequestEdit),
 				huh.NewText().Lines(5).CharLimit(10000).Title(timeCodesTitle).Value(&updatedVideo.Timecodes),
-				huh.NewConfirm().Title(m.colorTitleBool(FieldTitleMovieDone, updatedVideo.Movie)).Value(&updatedVideo.Movie),
-				huh.NewConfirm().Title(m.colorTitleBool(FieldTitleSlidesDone, updatedVideo.Slides)).Value(&updatedVideo.Slides),
+				huh.NewConfirm().Title(m.colorTitleBool(constants.FieldTitleMovieDone, updatedVideo.Movie)).Value(&updatedVideo.Movie),
+				huh.NewConfirm().Title(m.colorTitleBool(constants.FieldTitleSlidesDone, updatedVideo.Slides)).Value(&updatedVideo.Slides),
 				huh.NewConfirm().Affirmative("Save").Negative("Cancel").Value(&save),
 			}
 
@@ -833,12 +944,12 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 			createHugo := updatedVideo.HugoPath != "" && updatedVideo.VideoId != ""
 
 			publishingFormFields := []huh.Field{
-				huh.NewInput().Title(m.colorTitleString(FieldTitleVideoFilePath, updatedVideo.UploadVideo)).Value(&updatedVideo.UploadVideo),
-				huh.NewConfirm().Title(m.colorTitleString(FieldTitleUploadToYouTube, updatedVideo.VideoId)).Value(&uploadTrigger),
-				huh.NewNote().Title(m.colorTitleString(FieldTitleCurrentVideoID, updatedVideo.VideoId)).Description(updatedVideo.VideoId),
+				huh.NewInput().Title(m.colorTitleString(constants.FieldTitleVideoFilePath, updatedVideo.UploadVideo)).Value(&updatedVideo.UploadVideo),
+				huh.NewConfirm().Title(m.colorTitleString(constants.FieldTitleUploadToYouTube, updatedVideo.VideoId)).Value(&uploadTrigger),
+				huh.NewNote().Title(m.colorTitleString(constants.FieldTitleCurrentVideoID, updatedVideo.VideoId)).Description(updatedVideo.VideoId),
 				// The m.colorTitleBool will show orange if createHugo is false (e.g. no VideoId)
 				// The action logic below also prevents Hugo creation if VideoId is missing.
-				huh.NewConfirm().Title(m.colorTitleBool(FieldTitleCreateHugo, createHugo)).Value(&createHugo),
+				huh.NewConfirm().Title(m.colorTitleBool(constants.FieldTitleCreateHugo, createHugo)).Value(&createHugo),
 				huh.NewConfirm().Affirmative("Save & Process Actions").Negative("Cancel").Value(&save),
 			}
 
@@ -948,15 +1059,15 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 			// Define fields for the Post-Publish Details form
 			postPublishingFormFields := []huh.Field{
 				huh.NewNote().Title("Post-Publish Details"),
-				huh.NewConfirm().Title(m.colorTitleBool(FieldTitleDOTPosted, updatedVideo.DOTPosted)).Value(&updatedVideo.DOTPosted),
-				huh.NewConfirm().Title(m.colorTitleBool(FieldTitleBlueSkyPosted, updatedVideo.BlueSkyPosted)).Value(&updatedVideo.BlueSkyPosted),
-				huh.NewConfirm().Title(m.colorTitleBool(FieldTitleLinkedInPosted, updatedVideo.LinkedInPosted)).Value(&updatedVideo.LinkedInPosted),
-				huh.NewConfirm().Title(m.colorTitleBool(FieldTitleSlackPosted, updatedVideo.SlackPosted)).Value(&updatedVideo.SlackPosted),
-				huh.NewConfirm().Title(m.colorTitleBool(FieldTitleYouTubeHighlight, updatedVideo.YouTubeHighlight)).Value(&updatedVideo.YouTubeHighlight),
-				huh.NewConfirm().Title(m.colorTitleBool(FieldTitleYouTubeComment, updatedVideo.YouTubeComment)).Value(&updatedVideo.YouTubeComment),
-				huh.NewConfirm().Title(m.colorTitleBool(FieldTitleYouTubeCommentReply, updatedVideo.YouTubeCommentReply)).Value(&updatedVideo.YouTubeCommentReply),
-				huh.NewConfirm().Title(m.colorTitleBool(FieldTitleGDEPosted, updatedVideo.GDE)).Value(&updatedVideo.GDE),
-				huh.NewInput().Title(m.colorTitleString(FieldTitleCodeRepository, updatedVideo.Repo)).Value(&updatedVideo.Repo),
+				huh.NewConfirm().Title(m.colorTitleBool(constants.FieldTitleDOTPosted, updatedVideo.DOTPosted)).Value(&updatedVideo.DOTPosted),
+				huh.NewConfirm().Title(m.colorTitleBool(constants.FieldTitleBlueSkyPosted, updatedVideo.BlueSkyPosted)).Value(&updatedVideo.BlueSkyPosted),
+				huh.NewConfirm().Title(m.colorTitleBool(constants.FieldTitleLinkedInPosted, updatedVideo.LinkedInPosted)).Value(&updatedVideo.LinkedInPosted),
+				huh.NewConfirm().Title(m.colorTitleBool(constants.FieldTitleSlackPosted, updatedVideo.SlackPosted)).Value(&updatedVideo.SlackPosted),
+				huh.NewConfirm().Title(m.colorTitleBool(constants.FieldTitleYouTubeHighlight, updatedVideo.YouTubeHighlight)).Value(&updatedVideo.YouTubeHighlight),
+				huh.NewConfirm().Title(m.colorTitleBool(constants.FieldTitleYouTubeComment, updatedVideo.YouTubeComment)).Value(&updatedVideo.YouTubeComment),
+				huh.NewConfirm().Title(m.colorTitleBool(constants.FieldTitleYouTubeCommentReply, updatedVideo.YouTubeCommentReply)).Value(&updatedVideo.YouTubeCommentReply),
+				huh.NewConfirm().Title(m.colorTitleBool(constants.FieldTitleGDEPosted, updatedVideo.GDE)).Value(&updatedVideo.GDE),
+				huh.NewInput().Title(m.colorTitleString(constants.FieldTitleCodeRepository, updatedVideo.Repo)).Value(&updatedVideo.Repo),
 				huh.NewConfirm().Title(sponsorsNotifyText).Value(&updatedVideo.NotifiedSponsors), // Use sponsorsNotifyText here
 				huh.NewConfirm().Affirmative("Save").Negative("Cancel").Value(&save),
 			}
@@ -1190,7 +1301,7 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 
 			for !fieldSavedOrSkipped {
 				var selectedAction int = generalActionUnknown
-				titleFieldItself := huh.NewInput().Title(FieldTitleTitle).Description(df.description).Value(&tempTitleValue)
+				titleFieldItself := huh.NewInput().Title(constants.FieldTitleTitle).Description(df.description).Value(&tempTitleValue)
 				actionSelect := huh.NewSelect[int]().Title("Action for Title").Options(
 					huh.NewOption("Save Title & Continue", generalActionSave),
 					huh.NewOption("Ask AI for Suggestions", generalActionAskAI),
@@ -1274,7 +1385,7 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 			fieldSavedOrSkipped := false
 			for !fieldSavedOrSkipped {
 				var selectedAction int = generalActionUnknown
-				descriptionFieldItself := huh.NewText().Title(m.colorTitleString(FieldTitleDescription, tempDescriptionValue)).Description(df.description).Lines(7).CharLimit(5000).Value(&tempDescriptionValue) // Ensure Lines(7)
+				descriptionFieldItself := huh.NewText().Title(m.colorTitleString(constants.FieldTitleDescription, tempDescriptionValue)).Description(df.description).Lines(7).CharLimit(5000).Value(&tempDescriptionValue) // Ensure Lines(7)
 				actionSelect := huh.NewSelect[int]().Title("Action for Description").Options(
 					huh.NewOption("Save Description & Continue", generalActionSave),
 					huh.NewOption("Ask AI for Suggestion", generalActionAskAI),
@@ -1349,7 +1460,7 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 			for !fieldSavedOrSkipped {
 				var selectedAction int = generalActionUnknown
 
-				highlightFieldItself := huh.NewInput().Title(m.colorTitleString(FieldTitleHighlight, tempHighlightValue)).Description(df.description).Value(&tempHighlightValue)
+				highlightFieldItself := huh.NewInput().Title(m.colorTitleString(constants.FieldTitleHighlight, tempHighlightValue)).Description(df.description).Value(&tempHighlightValue)
 				// No .Lines() for Input field
 
 				actionSelect := huh.NewSelect[int]().Title("Action for Highlight").Options(
@@ -1469,7 +1580,7 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 			for !fieldSavedOrSkipped {
 				var selectedAction int = generalActionUnknown
 
-				tagsFieldItself := huh.NewText().Title(m.colorTitleString(FieldTitleTags, tempTagsValue)).Description(df.description).Lines(3).CharLimit(450).Value(&tempTagsValue) // Set Lines(3)
+				tagsFieldItself := huh.NewText().Title(m.colorTitleString(constants.FieldTitleTags, tempTagsValue)).Description(df.description).Lines(3).CharLimit(450).Value(&tempTagsValue) // Set Lines(3)
 				actionSelect := huh.NewSelect[int]().Title("Action for Tags").Options(
 					huh.NewOption("Save Tags & Continue", generalActionSave),
 					huh.NewOption("Ask AI for Suggestion", generalActionAskAI),
@@ -1548,7 +1659,7 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 			for !fieldSavedOrSkipped {
 				var selectedAction int = generalActionUnknown
 
-				descTagsFieldItself := huh.NewText().Title(m.colorTitleString(FieldTitleDescriptionTags, tempDescTagsValue)).Description(df.description).Lines(2).CharLimit(0).Value(&tempDescTagsValue) // Set Lines(2)
+				descTagsFieldItself := huh.NewText().Title(m.colorTitleString(constants.FieldTitleDescriptionTags, tempDescTagsValue)).Description(df.description).Lines(2).CharLimit(0).Value(&tempDescTagsValue) // Set Lines(2)
 				actionSelect := huh.NewSelect[int]().Title("Action for Description Tags").Options(
 					huh.NewOption("Save Description Tags & Continue", generalActionSave),
 					huh.NewOption("Ask AI for Suggestion", generalActionAskAI),
@@ -1627,7 +1738,7 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 			for !fieldSavedOrSkipped {
 				var selectedAction int = generalActionUnknown
 
-				tweetFieldItself := huh.NewText().Title(m.colorTitleString(FieldTitleTweet, tempTweetValue)).Description(df.description).Lines(4).CharLimit(280).Value(&tempTweetValue) // Set Lines(4)
+				tweetFieldItself := huh.NewText().Title(m.colorTitleString(constants.FieldTitleTweet, tempTweetValue)).Description(df.description).Lines(4).CharLimit(280).Value(&tempTweetValue) // Set Lines(4)
 				actionSelect := huh.NewSelect[int]().Title("Action for Tweet").Options(
 					huh.NewOption("Save Tweet & Continue", generalActionSave),
 					huh.NewOption("Ask AI for Suggestions", generalActionAskAI),
@@ -1724,7 +1835,7 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 				var selectedAction int = generalActionUnknown
 
 				animationsFieldItself := huh.NewText().
-					Title(m.colorTitleString(FieldTitleAnimationsScript, tempAnimationsValue)).
+					Title(m.colorTitleString(constants.FieldTitleAnimationsScript, tempAnimationsValue)).
 					Description(df.description).
 					Lines(10). // More lines for animations
 					CharLimit(10000).
