@@ -1,15 +1,18 @@
 package app
 
-import "testing"
+import (
+	"devopstoolkit/youtube-automation/internal/constants"
+	"testing"
+)
 
 func TestPhaseTitleConstants(t *testing.T) {
 	expectedPhaseTitles := []string{
-		PhaseTitleInitialDetails,
-		PhaseTitleWorkProgress,
-		PhaseTitleDefinition,
-		PhaseTitlePostProduction,
-		PhaseTitlePublishingDetails,
-		PhaseTitlePostPublish,
+		constants.PhaseTitleInitialDetails,
+		constants.PhaseTitleWorkProgress,
+		constants.PhaseTitleDefinition,
+		constants.PhaseTitlePostProduction,
+		constants.PhaseTitlePublishingDetails,
+		constants.PhaseTitlePostPublish,
 	}
 
 	expectedValues := []string{
@@ -38,12 +41,12 @@ func TestFieldTitleConstants(t *testing.T) {
 		constant string
 		expected string
 	}{
-		{FieldTitleProjectName, "Project Name"},
-		{FieldTitleDescription, "Description"},
-		{FieldTitleCodeDone, "Code Done"},
-		{FieldTitleMovieDone, "Movie Done"},
-		{FieldTitleBlueSkyPosted, "BlueSky Post Sent"},
-		{FieldTitleDelayed, "Delayed"},
+		{constants.FieldTitleProjectName, "Project Name"},
+		{constants.FieldTitleDescription, "Description"},
+		{constants.FieldTitleCodeDone, "Code Done"},
+		{constants.FieldTitleMovieDone, "Movie Done"},
+		{constants.FieldTitleBlueSkyPosted, "BlueSky Post Sent"},
+		{constants.FieldTitleDelayed, "Delayed"},
 	}
 
 	for _, tc := range testCases {
@@ -100,12 +103,12 @@ func TestErrorConstants(t *testing.T) {
 func TestConstantsUniqueness(t *testing.T) {
 	// Test that no constants have duplicate values (except where intentional)
 	phaseTitles := map[string]bool{
-		PhaseTitleInitialDetails:    true,
-		PhaseTitleWorkProgress:      true,
-		PhaseTitleDefinition:        true,
-		PhaseTitlePostProduction:    true,
-		PhaseTitlePublishingDetails: true,
-		PhaseTitlePostPublish:       true,
+		constants.PhaseTitleInitialDetails:    true,
+		constants.PhaseTitleWorkProgress:      true,
+		constants.PhaseTitleDefinition:        true,
+		constants.PhaseTitlePostProduction:    true,
+		constants.PhaseTitlePublishingDetails: true,
+		constants.PhaseTitlePostPublish:       true,
 	}
 
 	if len(phaseTitles) != 6 {
@@ -114,12 +117,12 @@ func TestConstantsUniqueness(t *testing.T) {
 
 	// Test some key field titles for uniqueness
 	fieldTitles := map[string]bool{
-		FieldTitleProjectName:   true,
-		FieldTitleDescription:   true,
-		FieldTitleCodeDone:      true,
-		FieldTitleMovieDone:     true,
-		FieldTitleBlueSkyPosted: true,
-		FieldTitleDelayed:       true,
+		constants.FieldTitleProjectName:   true,
+		constants.FieldTitleDescription:   true,
+		constants.FieldTitleCodeDone:      true,
+		constants.FieldTitleMovieDone:     true,
+		constants.FieldTitleBlueSkyPosted: true,
+		constants.FieldTitleDelayed:       true,
 	}
 
 	if len(fieldTitles) != 6 {

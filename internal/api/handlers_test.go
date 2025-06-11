@@ -44,10 +44,12 @@ func setupTestServer(t *testing.T) *Server {
 	filesystem := &filesystem.Operations{}
 	videoManager := video.NewManager(filesystem.GetFilePath)
 	videoService := service.NewVideoService("index.yaml", filesystem, videoManager)
+	aspectService := aspect.NewService()
 
 	server := &Server{
-		videoService: videoService,
-		port:         8080,
+		videoService:  videoService,
+		aspectService: aspectService,
+		port:          8080,
 	}
 	server.setupRoutes()
 

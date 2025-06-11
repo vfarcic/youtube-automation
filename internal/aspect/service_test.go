@@ -750,3 +750,171 @@ func TestFieldTypeToUIHintsMapping(t *testing.T) {
 		})
 	}
 }
+
+func TestService_GetAspectFields_IncludesCompletionCriteria(t *testing.T) {
+	service := NewService()
+
+	// Test initial-details aspect
+	aspectFields, err := service.GetAspectFields("initial-details")
+	if err != nil {
+		t.Fatalf("Failed to get aspect fields: %v", err)
+	}
+
+	if aspectFields == nil {
+		t.Fatal("Expected aspect fields, got nil")
+	}
+
+	// Verify some specific fields have the expected completion criteria
+	expectedCriteria := map[string]string{
+		"Project Name":                         CompletionCriteriaFilledOnly,
+		"Sponsorship Amount":                   CompletionCriteriaFilledOnly,
+		"Sponsorship Emails (comma separated)": CompletionCriteriaConditional,
+		"Sponsorship Blocked Reason":           CompletionCriteriaEmptyOrFilled,
+		"Delayed":                              CompletionCriteriaFalseOnly,
+	}
+
+	fieldMap := make(map[string]Field)
+	for _, field := range aspectFields.Fields {
+		fieldMap[field.Name] = field
+	}
+
+	for fieldName, expectedCriteria := range expectedCriteria {
+		field, exists := fieldMap[fieldName]
+		if !exists {
+			t.Errorf("Expected field %s not found", fieldName)
+			continue
+		}
+
+		if field.CompletionCriteria == "" {
+			t.Errorf("Field %s missing completion criteria", fieldName)
+			continue
+		}
+
+		if field.CompletionCriteria != expectedCriteria {
+			t.Errorf("Field %s: expected completion criteria %s, got %s",
+				fieldName, expectedCriteria, field.CompletionCriteria)
+		}
+	}
+}
+
+func TestService_GetAspects_IncludesCompletionCriteria(t *testing.T) {
+	service := NewService()
+
+	metadata := service.GetAspects()
+
+	if len(metadata.Aspects) == 0 {
+		t.Fatal("Expected aspects, got none")
+	}
+
+	// Find initial-details aspect
+	var initialDetailsAspect *Aspect
+	for i := range metadata.Aspects {
+		if metadata.Aspects[i].Key == "initial-details" {
+			initialDetailsAspect = &metadata.Aspects[i]
+			break
+		}
+	}
+
+	if initialDetailsAspect == nil {
+		t.Fatal("Expected to find initial-details aspect")
+	}
+
+	// Verify fields have completion criteria
+	foundFieldWithCriteria := false
+	for _, field := range initialDetailsAspect.Fields {
+		if field.CompletionCriteria != "" {
+			foundFieldWithCriteria = true
+			break
+		}
+	}
+
+	if !foundFieldWithCriteria {
+		t.Error("Expected at least one field to have completion criteria")
+	}
+
+	// Check specific field
+	for _, field := range initialDetailsAspect.Fields {
+		if field.Name == "Project Name" {
+			if field.CompletionCriteria != CompletionCriteriaFilledOnly {
+				t.Errorf("Expected Project Name to have %s criteria, got %s",
+					CompletionCriteriaFilledOnly, field.CompletionCriteria)
+			}
+			break
+		}
+	}
+}
+
+func TestService_GetAspectFields_AllAspects(t *testing.T) {
+	service := NewService()
+
+	aspectKeys := []string{
+		"initial-details",
+		"work-progress",
+		"definition",
+		"post-production",
+		"publishing",
+		"post-publish",
+	}
+
+	for _, aspectKey := range aspectKeys {
+		t.Run(aspectKey, func(t *testing.T) {
+			aspectFields, err := service.GetAspectFields(aspectKey)
+			if err != nil {
+				t.Fatalf("Failed to get aspect fields for %s: %v", aspectKey, err)
+			}
+
+			if len(aspectFields.Fields) == 0 {
+				t.Errorf("Expected fields for aspect %s, got none", aspectKey)
+				return
+			}
+
+			// Verify all fields have completion criteria
+			for _, field := range aspectFields.Fields {
+				if field.CompletionCriteria == "" {
+					t.Errorf("Field %s in aspect %s missing completion criteria", field.Name, aspectKey)
+				}
+
+				// Verify completion criteria is a valid value
+				validCriteria := []string{
+					CompletionCriteriaFilledOnly,
+					CompletionCriteriaEmptyOrFilled,
+					CompletionCriteriaFilledRequired,
+					CompletionCriteriaTrueOnly,
+					CompletionCriteriaFalseOnly,
+					CompletionCriteriaConditional,
+					CompletionCriteriaNoFixme,
+				}
+
+				found := false
+				for _, valid := range validCriteria {
+					if field.CompletionCriteria == valid {
+						found = true
+						break
+					}
+				}
+
+				if !found {
+					t.Errorf("Field %s in aspect %s has invalid completion criteria: %s",
+						field.Name, aspectKey, field.CompletionCriteria)
+				}
+			}
+		})
+	}
+}
+
+func TestService_GetAspectFields_UnknownAspect(t *testing.T) {
+	service := NewService()
+
+	aspectFields, err := service.GetAspectFields("unknown-aspect")
+	if err == nil {
+		t.Error("Expected error for unknown aspect, got nil")
+	}
+
+	if aspectFields != nil {
+		t.Error("Expected nil aspect fields for unknown aspect, got non-nil")
+	}
+
+	if err != ErrAspectNotFound {
+		t.Errorf("Expected ErrAspectNotFound, got %v", err)
+	}
+}

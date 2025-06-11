@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"devopstoolkit/youtube-automation/internal/aspect"
 	"devopstoolkit/youtube-automation/internal/cli"
 	"devopstoolkit/youtube-automation/internal/filesystem"
 	"devopstoolkit/youtube-automation/internal/storage"
@@ -106,8 +107,9 @@ func TestGetEditPhaseOptionText(t *testing.T) {
 
 func TestColorTitleSponsoredEmails(t *testing.T) {
 	mh := &MenuHandler{
-		greenStyle:  ui.GreenStyle,
-		orangeStyle: ui.OrangeStyle,
+		aspectService: aspect.NewService(),
+		greenStyle:    ui.GreenStyle,
+		orangeStyle:   ui.OrangeStyle,
 	}
 	tests := []struct {
 		name            string
@@ -116,6 +118,7 @@ func TestColorTitleSponsoredEmails(t *testing.T) {
 		sponsoredEmails string
 		expected        string
 	}{
+		{"AmountEmptyEmailsEmpty", "Sponsor", "", "", mh.greenStyle.Render("Sponsor")},
 		{"AmountEmptyEmailsExist", "Sponsor", "", "test@example.com", mh.greenStyle.Render("Sponsor")},
 		{"AmountNAEmailsExist", "Sponsor", "N/A", "test@example.com", mh.greenStyle.Render("Sponsor")},
 		{"AmountDashEmailsExist", "Sponsor", "-", "test@example.com", mh.greenStyle.Render("Sponsor")},
@@ -135,8 +138,9 @@ func TestColorTitleSponsoredEmails(t *testing.T) {
 
 func TestColorTitleStringInverse(t *testing.T) {
 	mh := &MenuHandler{
-		greenStyle:  ui.GreenStyle,
-		orangeStyle: ui.OrangeStyle,
+		aspectService: aspect.NewService(),
+		greenStyle:    ui.GreenStyle,
+		orangeStyle:   ui.OrangeStyle,
 	}
 	tests := []struct {
 		name     string
@@ -159,8 +163,9 @@ func TestColorTitleStringInverse(t *testing.T) {
 
 func TestColorTitleBoolInverse(t *testing.T) {
 	mh := &MenuHandler{
-		greenStyle:  ui.GreenStyle,
-		orangeStyle: ui.OrangeStyle,
+		aspectService: aspect.NewService(),
+		greenStyle:    ui.GreenStyle,
+		orangeStyle:   ui.OrangeStyle,
 	}
 	tests := []struct {
 		name     string
@@ -183,8 +188,9 @@ func TestColorTitleBoolInverse(t *testing.T) {
 
 func TestColorTitleSponsorshipAmount(t *testing.T) {
 	mh := &MenuHandler{
-		greenStyle:  ui.GreenStyle,  // Initialize unexported field
-		orangeStyle: ui.OrangeStyle, // Initialize unexported field
+		aspectService: aspect.NewService(),
+		greenStyle:    ui.GreenStyle,  // Initialize unexported field
+		orangeStyle:   ui.OrangeStyle, // Initialize unexported field
 	}
 
 	tests := []struct {
@@ -300,8 +306,9 @@ func TestGetPhaseText(t *testing.T) {
 
 func TestColorTitleString(t *testing.T) {
 	mh := &MenuHandler{
-		greenStyle:  ui.GreenStyle,
-		orangeStyle: ui.OrangeStyle,
+		aspectService: aspect.NewService(),
+		greenStyle:    ui.GreenStyle,
+		orangeStyle:   ui.OrangeStyle,
 	}
 	tests := []struct {
 		name     string
@@ -323,8 +330,9 @@ func TestColorTitleString(t *testing.T) {
 
 func TestColorTitleBool(t *testing.T) {
 	mh := &MenuHandler{
-		greenStyle:  ui.GreenStyle,
-		orangeStyle: ui.OrangeStyle,
+		aspectService: aspect.NewService(),
+		greenStyle:    ui.GreenStyle,
+		orangeStyle:   ui.OrangeStyle,
 	}
 	tests := []struct {
 		name     string

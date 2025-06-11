@@ -655,6 +655,7 @@ Expected response:
       "type": "bool",
       "required": false,
       "order": 1,
+      "completionCriteria": "true_only",
       "options": {
         "helpText": "Mark as complete when all code examples and demos are ready"
       }
@@ -664,6 +665,7 @@ Expected response:
       "type": "bool",
       "required": false,
       "order": 2,
+      "completionCriteria": "true_only",
       "options": {
         "helpText": "Mark as complete when talking head segments are recorded"
       }
@@ -673,6 +675,7 @@ Expected response:
       "type": "bool", 
       "required": false,
       "order": 3,
+      "completionCriteria": "true_only",
       "options": {
         "helpText": "Mark as complete when screen recordings are finished"
       }
@@ -681,6 +684,51 @@ Expected response:
   ]
 }
 ```
+
+**NEW: Completion Criteria Field**
+
+Each field now includes a `completionCriteria` property that defines when the field should be considered "complete" for progress tracking and UI styling:
+
+- `"filled_only"` - Complete when field has any non-empty value (not "-" or empty string)
+- `"empty_or_filled"` - Always considered complete regardless of value
+- `"conditional"` - Complex logic based on other field values (e.g., sponsored emails only required when sponsor field is set)
+- `"true_only"` - Complete only when boolean field is `true`
+- `"false_only"` - Complete only when boolean field is `false`
+- `"filled_required"` - Must be filled (similar to filled_only but stricter validation)
+
+**Example completion criteria by field type:**
+```bash
+# Get initial-details fields to see different completion criteria
+curl -X GET http://localhost:8080/api/editing/aspects/initial-details/fields
+```
+Expected different completion criteria:
+```json
+{
+  "fields": [
+    {
+      "name": "Project Name",
+      "type": "string",
+      "completionCriteria": "filled_only"
+    },
+    {
+      "name": "Sponsored",
+      "type": "bool", 
+      "completionCriteria": "empty_or_filled"
+    },
+    {
+      "name": "Sponsored Emails",
+      "type": "string",
+      "completionCriteria": "conditional"
+    }
+  ]
+}
+```
+
+**Use Cases for Completion Criteria:**
+- **Progress Calculation**: Determine field completion for progress bars
+- **UI Styling**: Apply different colors/styles based on completion status
+- **Validation**: Implement consistent validation logic between CLI and web interfaces
+- **Workflow Logic**: Determine when phases or aspects can be considered complete
 
 #### Test Different Aspect Keys
 ```bash

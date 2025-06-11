@@ -1,11 +1,15 @@
 package aspect
 
 // Service provides access to editing aspect metadata
-type Service struct{}
+type Service struct {
+	completionService *CompletionService
+}
 
 // NewService creates a new aspect service
 func NewService() *Service {
-	return &Service{}
+	return &Service{
+		completionService: NewCompletionService(),
+	}
 }
 
 // GetAspects returns complete aspect metadata including all fields
@@ -18,15 +22,16 @@ func (s *Service) GetAspects() AspectMetadata {
 		fields := make([]Field, len(mapping.Fields))
 		for j, fieldMapping := range mapping.Fields {
 			fields[j] = Field{
-				Name:            fieldMapping.Title,
-				Type:            fieldMapping.FieldType,
-				Required:        fieldMapping.Required,
-				Order:           fieldMapping.Order,
-				Description:     getFieldDescription(fieldMapping.FieldKey),
-				Options:         FieldOptions{Values: fieldMapping.Options},
-				UIHints:         fieldMapping.UIHints,
-				ValidationHints: fieldMapping.ValidationHints,
-				DefaultValue:    fieldMapping.DefaultValue,
+				Name:               fieldMapping.Title,
+				Type:               fieldMapping.FieldType,
+				Required:           fieldMapping.Required,
+				Order:              fieldMapping.Order,
+				Description:        getFieldDescription(fieldMapping.FieldKey),
+				Options:            FieldOptions{Values: fieldMapping.Options},
+				UIHints:            fieldMapping.UIHints,
+				ValidationHints:    fieldMapping.ValidationHints,
+				DefaultValue:       fieldMapping.DefaultValue,
+				CompletionCriteria: s.completionService.GetFieldCompletionCriteria(mapping.AspectKey, fieldMapping.FieldKey),
 			}
 		}
 
@@ -78,15 +83,16 @@ func (s *Service) GetAspectFields(aspectKey string) (*AspectFields, error) {
 			fields := make([]Field, len(mapping.Fields))
 			for i, fieldMapping := range mapping.Fields {
 				fields[i] = Field{
-					Name:            fieldMapping.Title,
-					Type:            fieldMapping.FieldType,
-					Required:        fieldMapping.Required,
-					Order:           fieldMapping.Order,
-					Description:     getFieldDescription(fieldMapping.FieldKey),
-					Options:         FieldOptions{Values: fieldMapping.Options},
-					UIHints:         fieldMapping.UIHints,
-					ValidationHints: fieldMapping.ValidationHints,
-					DefaultValue:    fieldMapping.DefaultValue,
+					Name:               fieldMapping.Title,
+					Type:               fieldMapping.FieldType,
+					Required:           fieldMapping.Required,
+					Order:              fieldMapping.Order,
+					Description:        getFieldDescription(fieldMapping.FieldKey),
+					Options:            FieldOptions{Values: fieldMapping.Options},
+					UIHints:            fieldMapping.UIHints,
+					ValidationHints:    fieldMapping.ValidationHints,
+					DefaultValue:       fieldMapping.DefaultValue,
+					CompletionCriteria: s.completionService.GetFieldCompletionCriteria(mapping.AspectKey, fieldMapping.FieldKey),
 				}
 			}
 
@@ -99,6 +105,11 @@ func (s *Service) GetAspectFields(aspectKey string) (*AspectFields, error) {
 	}
 
 	return nil, ErrAspectNotFound
+}
+
+// GetFieldCompletionCriteria returns completion criteria for a specific field
+func (s *Service) GetFieldCompletionCriteria(aspectKey, fieldKey string) string {
+	return s.completionService.GetFieldCompletionCriteria(aspectKey, fieldKey)
 }
 
 // Helper functions for aspect metadata

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	"devopstoolkit/youtube-automation/internal/aspect"
 	"devopstoolkit/youtube-automation/internal/configuration"
 	"devopstoolkit/youtube-automation/internal/filesystem"
 	"devopstoolkit/youtube-automation/internal/service"
@@ -62,6 +63,7 @@ func New() *App {
 	fsOps := filesystem.NewOperations()
 	videoManager := video.NewManager(fsOps.GetFilePath)
 	videoService := service.NewVideoService("index.yaml", fsOps, videoManager)
+	aspectService := aspect.NewService()
 
 	confirmerInstance := &simpleConfirmer{}
 
@@ -72,6 +74,7 @@ func New() *App {
 		videoManager:      videoManager,
 		filesystem:        fsOps,
 		videoService:      videoService,
+		aspectService:     aspectService,
 		greenStyle:        ui.GreenStyle,
 		orangeStyle:       ui.OrangeStyle,
 		redStyle:          ui.RedStyle,
