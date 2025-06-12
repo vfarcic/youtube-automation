@@ -171,6 +171,35 @@ func TestVideoService_GetVideo(t *testing.T) {
 	}
 }
 
+func TestVideoService_GetVideo_PreservesNameFromFile(t *testing.T) {
+	service, tempDir, cleanup := setupTestVideoService(t)
+	defer cleanup()
+
+	videoFileName := "my-video-file"
+	videoDisplayName := "My Video Display Name"
+	category := "test-category"
+
+	// Create a video file with a different name in content
+	videoContent := "name: \"" + videoDisplayName + "\""
+	videoPath := filepath.Join(tempDir, "manuscript", category, videoFileName+".yaml")
+	err := os.WriteFile(videoPath, []byte(videoContent), 0644)
+	require.NoError(t, err)
+
+	// Create index entry for the video
+	index, err := service.yamlStorage.GetIndex()
+	require.NoError(t, err)
+	index = append(index, storage.VideoIndex{Name: videoFileName, Category: category})
+	err = service.yamlStorage.WriteIndex(index)
+	require.NoError(t, err)
+
+	// Get the video
+	video, err := service.GetVideo(videoFileName, category)
+	require.NoError(t, err)
+
+	// Assert that the display name from the file is preserved
+	assert.Equal(t, videoDisplayName, video.Name)
+}
+
 func TestVideoService_UpdateVideo(t *testing.T) {
 	service, _, cleanup := setupTestVideoService(t)
 	defer cleanup()
