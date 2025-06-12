@@ -217,7 +217,7 @@ paths:
         - name: videoName
           in: path
           required: true
-          description: The name of the video
+          description: The file-based ID of the video (e.g., 'my-video-file-name')
           schema:
             type: string
             example: "my-video"
@@ -258,7 +258,7 @@ paths:
         - name: videoName
           in: path
           required: true
-          description: The name of the video to update
+          description: The file-based ID of the video (e.g., 'my-video-file-name')
           schema:
             type: string
             example: "my-video"
@@ -298,7 +298,7 @@ paths:
         - name: videoName
           in: path
           required: true
-          description: The name of the video to delete
+          description: The file-based ID of the video (e.g., 'my-video-file-name')
           schema:
             type: string
             example: "my-video"
@@ -336,7 +336,7 @@ paths:
         - name: videoName
           in: path
           required: true
-          description: The name of the video to move
+          description: The file-based ID of the video (e.g., 'my-video-file-name')
           schema:
             type: string
             example: "my-video"
@@ -388,7 +388,7 @@ paths:
         - name: videoName
           in: path
           required: true
-          description: The name of the video
+          description: The file-based ID of the video (e.g., 'my-video-file-name')
           schema:
             type: string
             example: "my-video"
@@ -430,7 +430,7 @@ paths:
         - name: videoName
           in: path
           required: true
-          description: The name of the video
+          description: The file-based ID of the video (e.g., 'my-video-file-name')
           schema:
             type: string
             example: "my-video"
@@ -472,7 +472,7 @@ paths:
         - name: videoName
           in: path
           required: true
-          description: The name of the video
+          description: The file-based ID of the video (e.g., 'my-video-file-name')
           schema:
             type: string
             example: "my-video"
@@ -514,7 +514,7 @@ paths:
         - name: videoName
           in: path
           required: true
-          description: The name of the video
+          description: The file-based ID of the video (e.g., 'my-video-file-name')
           schema:
             type: string
             example: "my-video"
@@ -556,7 +556,7 @@ paths:
         - name: videoName
           in: path
           required: true
-          description: The name of the video
+          description: The file-based ID of the video (e.g., 'my-video-file-name')
           schema:
             type: string
             example: "my-video"
@@ -598,7 +598,7 @@ paths:
         - name: videoName
           in: path
           required: true
-          description: The name of the video
+          description: The file-based ID of the video (e.g., 'my-video-file-name')
           schema:
             type: string
             example: "my-video"
@@ -987,12 +987,11 @@ components:
       properties:
         name:
           type: string
-          description: The name of the video
-          example: "my-awesome-video"
+          description: The canonical display name of the video, read from the file
+          example: "My Awesome Video"
         index:
           type: integer
           description: The index number of the video
-          example: 1
         path:
           type: string
           description: The file system path to the video

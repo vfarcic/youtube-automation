@@ -275,7 +275,9 @@ func (s *VideoService) GetVideo(name, category string) (storage.Video, error) {
 		return storage.Video{}, fmt.Errorf("failed to get video %s: %w", name, err)
 	}
 
-	video.Name = name
+	if video.Name == "" {
+		video.Name = name
+	}
 	video.Category = category
 	video.Path = videoPath
 

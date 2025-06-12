@@ -210,15 +210,18 @@ curl -X GET "http://localhost:8080/api/videos/list?phase=invalid"
 
 #### Get Specific Video Details
 ```bash
-curl -X GET "http://localhost:8080/api/videos/test-api-video?category=test-category"
+curl -X GET "http://localhost:8080/api/videos/my-video-filename?category=test-category"
 ```
+
+**Note on Video IDs and Names:** The `{videoName}` in the URL path (e.g., `my-video-filename`) is the video's unique ID and must match its YAML filename (e.g., `my-video-filename.yaml`). This ID is used for all API lookups. The `name` field inside the returned JSON is the video's separate display name (e.g., "My Video Display Name"), which is read from the file and is independent of the filename ID.
+
 Expected response:
 ```json
 {
   "video": {
-    "name": "test-api-video",
+    "name": "My Video Display Name",
     "category": "test-category",
-    "path": "manuscript/test-category/test-api-video.yaml",
+    "path": "manuscript/test-category/my-video-filename.yaml",
     "init": {"completed": 0, "total": 8},
     "work": {"completed": 0, "total": 11},
     "define": {"completed": 0, "total": 9},
