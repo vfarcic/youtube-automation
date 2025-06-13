@@ -115,7 +115,7 @@ func (s *VideoService) GetVideosByPhase(phase int) ([]storage.Video, error) {
 	}
 
 	var videosInPhase []storage.Video
-	for i, videoIndex := range index {
+	for _, videoIndex := range index {
 		// Load video data once and use CalculateVideoPhase directly
 		// This avoids the double file I/O that GetVideoPhase does (load + reload)
 		videoPath := s.filesystem.GetFilePath(videoIndex.Category, videoIndex.Name, "yaml")
@@ -123,7 +123,6 @@ func (s *VideoService) GetVideosByPhase(phase int) ([]storage.Video, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to get video details for %s: %w", videoIndex.Name, err)
 		}
-		fullVideo.Index = i
 		fullVideo.Name = videoIndex.Name
 		fullVideo.Category = videoIndex.Category
 		fullVideo.Path = videoPath

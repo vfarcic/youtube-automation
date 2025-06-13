@@ -31,7 +31,6 @@ type VideoIndex struct {
 // All fields are already exported.
 type Video struct {
 	Name                 string
-	Index                int
 	Path                 string
 	Category             string
 	ProjectName          string

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"devopstoolkit/youtube-automation/internal/app"
+	"devopstoolkit/youtube-automation/internal/constants"
 )
 
 func TestNewService(t *testing.T) {
@@ -100,12 +100,12 @@ func TestAspectWorkflowOrder(t *testing.T) {
 		title    string
 		endpoint string
 	}{
-		{1, AspectKeyInitialDetails, app.PhaseTitleInitialDetails, "/api/videos/{videoName}/initial-details"},
-		{2, AspectKeyWorkProgress, app.PhaseTitleWorkProgress, "/api/videos/{videoName}/work-progress"},
-		{3, AspectKeyDefinition, app.PhaseTitleDefinition, "/api/videos/{videoName}/definition"},
-		{4, AspectKeyPostProduction, app.PhaseTitlePostProduction, "/api/videos/{videoName}/post-production"},
-		{5, AspectKeyPublishing, app.PhaseTitlePublishingDetails, "/api/videos/{videoName}/publishing"},
-		{6, AspectKeyPostPublish, app.PhaseTitlePostPublish, "/api/videos/{videoName}/post-publish"},
+		{1, AspectKeyInitialDetails, constants.PhaseTitleInitialDetails, "/api/videos/{videoName}/initial-details"},
+		{2, AspectKeyWorkProgress, constants.PhaseTitleWorkProgress, "/api/videos/{videoName}/work-progress"},
+		{3, AspectKeyDefinition, constants.PhaseTitleDefinition, "/api/videos/{videoName}/definition"},
+		{4, AspectKeyPostProduction, constants.PhaseTitlePostProduction, "/api/videos/{videoName}/post-production"},
+		{5, AspectKeyPublishing, constants.PhaseTitlePublishingDetails, "/api/videos/{videoName}/publishing"},
+		{6, AspectKeyPostPublish, constants.PhaseTitlePostPublish, "/api/videos/{videoName}/post-publish"},
 	}
 
 	for i, expected := range expectedWorkflow {
@@ -130,26 +130,26 @@ func TestFieldTitleConsistency(t *testing.T) {
 	service := NewService()
 	metadata := service.GetAspects()
 
-	// Test that Work Progress fields use app constants consistently
+	// Test that Work Progress fields use constants consistently
 	workProgressAspect := metadata.Aspects[1] // Index 1 = Work Progress
 
 	expectedWorkProgressFields := map[string]bool{
-		app.FieldTitleCodeDone:            true,
-		app.FieldTitleTalkingHeadDone:     true,
-		app.FieldTitleScreenRecordingDone: true,
-		app.FieldTitleRelatedVideos:       true,
-		app.FieldTitleThumbnailsDone:      true,
-		app.FieldTitleDiagramsDone:        true,
-		app.FieldTitleScreenshotsDone:     true,
-		app.FieldTitleFilesLocation:       true,
-		app.FieldTitleTagline:             true,
-		app.FieldTitleTaglineIdeas:        true,
-		app.FieldTitleOtherLogos:          true,
+		constants.FieldTitleCodeDone:            true,
+		constants.FieldTitleTalkingHeadDone:     true,
+		constants.FieldTitleScreenRecordingDone: true,
+		constants.FieldTitleRelatedVideos:       true,
+		constants.FieldTitleThumbnailsDone:      true,
+		constants.FieldTitleDiagramsDone:        true,
+		constants.FieldTitleScreenshotsDone:     true,
+		constants.FieldTitleFilesLocation:       true,
+		constants.FieldTitleTagline:             true,
+		constants.FieldTitleTaglineIdeas:        true,
+		constants.FieldTitleOtherLogos:          true,
 	}
 
 	for _, field := range workProgressAspect.Fields {
 		if expectedWorkProgressFields[field.Name] {
-			// This field should use app constants - mark as found
+			// This field should use constants - mark as found
 			delete(expectedWorkProgressFields, field.Name)
 		}
 	}
@@ -166,16 +166,16 @@ func TestPostProductionFieldConsistency(t *testing.T) {
 	service := NewService()
 	metadata := service.GetAspects()
 
-	// Test that Post-Production fields use app constants
+	// Test that Post-Production fields use constants
 	postProdAspect := metadata.Aspects[3] // Index 3 = Post-Production
 
 	expectedFields := []string{
-		app.FieldTitleThumbnailPath,
-		app.FieldTitleMembers,
-		app.FieldTitleRequestEdit,
-		app.FieldTitleTimecodes,
-		app.FieldTitleMovieDone,
-		app.FieldTitleSlidesDone,
+		constants.FieldTitleThumbnailPath,
+		constants.FieldTitleMembers,
+		constants.FieldTitleRequestEdit,
+		constants.FieldTitleTimecodes,
+		constants.FieldTitleMovieDone,
+		constants.FieldTitleSlidesDone,
 	}
 
 	actualFieldNames := make([]string, len(postProdAspect.Fields))
@@ -201,20 +201,20 @@ func TestPostPublishFieldConsistency(t *testing.T) {
 	service := NewService()
 	metadata := service.GetAspects()
 
-	// Test that Post-Publish fields use app constants
+	// Test that Post-Publish fields use constants
 	postPublishAspect := metadata.Aspects[5] // Index 5 = Post-Publish
 
 	expectedFields := []string{
-		app.FieldTitleDOTPosted,
-		app.FieldTitleBlueSkyPosted,
-		app.FieldTitleLinkedInPosted,
-		app.FieldTitleSlackPosted,
-		app.FieldTitleYouTubeHighlight,
-		app.FieldTitleYouTubeComment,
-		app.FieldTitleYouTubeCommentReply,
-		app.FieldTitleGDEPosted,
-		app.FieldTitleCodeRepository,
-		app.FieldTitleNotifySponsors,
+		constants.FieldTitleDOTPosted,
+		constants.FieldTitleBlueSkyPosted,
+		constants.FieldTitleLinkedInPosted,
+		constants.FieldTitleSlackPosted,
+		constants.FieldTitleYouTubeHighlight,
+		constants.FieldTitleYouTubeComment,
+		constants.FieldTitleYouTubeCommentReply,
+		constants.FieldTitleGDEPosted,
+		constants.FieldTitleCodeRepository,
+		constants.FieldTitleNotifySponsors,
 	}
 
 	actualFieldNames := make([]string, len(postPublishAspect.Fields))
@@ -246,7 +246,7 @@ func TestRequiredFields(t *testing.T) {
 	// Test required fields for Definition (based on actual mapping)
 	definitionAspect := metadata.Aspects[2]
 	requiredFieldsDefinition := []string{
-		app.FieldTitleTitle, // Required in mapping
+		constants.FieldTitleTitle, // Required in mapping
 	}
 
 	for _, requiredField := range requiredFieldsDefinition {
@@ -453,19 +453,19 @@ func TestGetAspectFields(t *testing.T) {
 			t.Errorf("Expected %d fields for work-progress, got %d", expectedFieldCount, len(result.Fields))
 		}
 
-		// Test the actual field names from mapping (using app constants)
+		// Test the actual field names from mapping (using constants)
 		expectedFieldNames := []string{
-			app.FieldTitleCodeDone,
-			app.FieldTitleTalkingHeadDone,
-			app.FieldTitleScreenRecordingDone,
-			app.FieldTitleRelatedVideos,
-			app.FieldTitleThumbnailsDone,
-			app.FieldTitleDiagramsDone,
-			app.FieldTitleScreenshotsDone,
-			app.FieldTitleFilesLocation,
-			app.FieldTitleTagline,
-			app.FieldTitleTaglineIdeas,
-			app.FieldTitleOtherLogos,
+			constants.FieldTitleCodeDone,
+			constants.FieldTitleTalkingHeadDone,
+			constants.FieldTitleScreenRecordingDone,
+			constants.FieldTitleRelatedVideos,
+			constants.FieldTitleThumbnailsDone,
+			constants.FieldTitleDiagramsDone,
+			constants.FieldTitleScreenshotsDone,
+			constants.FieldTitleFilesLocation,
+			constants.FieldTitleTagline,
+			constants.FieldTitleTaglineIdeas,
+			constants.FieldTitleOtherLogos,
 		}
 
 		for i, expectedName := range expectedFieldNames {

@@ -3,7 +3,7 @@ package aspect
 import (
 	"testing"
 
-	"devopstoolkit/youtube-automation/internal/app"
+	"devopstoolkit/youtube-automation/internal/constants"
 	"devopstoolkit/youtube-automation/internal/storage"
 )
 
@@ -36,12 +36,12 @@ func TestGetVideoAspectMappings(t *testing.T) {
 
 	t.Run("All aspects should have valid titles from constants", func(t *testing.T) {
 		expectedTitles := map[string]string{
-			AspectKeyInitialDetails: app.PhaseTitleInitialDetails,
-			AspectKeyWorkProgress:   app.PhaseTitleWorkProgress,
-			AspectKeyDefinition:     app.PhaseTitleDefinition,
-			AspectKeyPostProduction: app.PhaseTitlePostProduction,
-			AspectKeyPublishing:     app.PhaseTitlePublishingDetails,
-			AspectKeyPostPublish:    app.PhaseTitlePostPublish,
+			AspectKeyInitialDetails: constants.PhaseTitleInitialDetails,
+			AspectKeyWorkProgress:   constants.PhaseTitleWorkProgress,
+			AspectKeyDefinition:     constants.PhaseTitleDefinition,
+			AspectKeyPostProduction: constants.PhaseTitlePostProduction,
+			AspectKeyPublishing:     constants.PhaseTitlePublishingDetails,
+			AspectKeyPostPublish:    constants.PhaseTitlePostPublish,
 		}
 
 		for _, mapping := range mappings {
@@ -108,18 +108,18 @@ func TestGetVideoAspectMappings(t *testing.T) {
 			for _, field := range mapping.Fields {
 				switch field.FieldKey {
 				case "title":
-					if field.Title != app.FieldTitleTitle {
-						t.Errorf("Title field should use constant %s, got %s", app.FieldTitleTitle, field.Title)
+					if field.Title != constants.FieldTitleTitle {
+						t.Errorf("Title field should use constant %s, got %s", constants.FieldTitleTitle, field.Title)
 					}
 					titleFieldFound = true
 				case "codeDone":
-					if field.Title != app.FieldTitleCodeDone {
-						t.Errorf("Code field should use constant %s, got %s", app.FieldTitleCodeDone, field.Title)
+					if field.Title != constants.FieldTitleCodeDone {
+						t.Errorf("Code field should use constant %s, got %s", constants.FieldTitleCodeDone, field.Title)
 					}
 					codeFieldFound = true
 				case "delayed":
-					if field.Title != app.FieldTitleDelayed {
-						t.Errorf("Delayed field should use constant %s, got %s", app.FieldTitleDelayed, field.Title)
+					if field.Title != constants.FieldTitleDelayed {
+						t.Errorf("Delayed field should use constant %s, got %s", constants.FieldTitleDelayed, field.Title)
 					}
 					delayedFieldFound = true
 				}
@@ -280,7 +280,6 @@ func TestFieldMapping(t *testing.T) {
 func createTestVideo() storage.Video {
 	return storage.Video{
 		Name:                "test-video",
-		Index:               1,
 		Path:                "test-video.yaml",
 		Category:            "test-category",
 		ProjectName:         "Test Project",

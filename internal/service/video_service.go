@@ -159,13 +159,12 @@ func (s *VideoService) GetVideosByPhase(phase int) ([]storage.Video, error) {
 	}
 
 	var videosInPhase []storage.Video
-	for i, videoIndex := range index {
+	for _, videoIndex := range index {
 		videoPath := s.filesystem.GetFilePath(videoIndex.Category, videoIndex.Name, "yaml")
 		fullVideo, err := s.yamlStorage.GetVideo(videoPath)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get video details for %s: %w", videoIndex.Name, err)
 		}
-		fullVideo.Index = i
 		fullVideo.Name = videoIndex.Name
 		fullVideo.Category = videoIndex.Category
 		fullVideo.Path = videoPath
@@ -205,13 +204,12 @@ func (s *VideoService) GetAllVideos() ([]storage.Video, error) {
 	}
 
 	var allVideos []storage.Video
-	for i, video := range index {
+	for _, video := range index {
 		videoPath := s.filesystem.GetFilePath(video.Category, video.Name, "yaml")
 		fullVideo, err := s.yamlStorage.GetVideo(videoPath)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get video details for %s: %w", video.Name, err)
 		}
-		fullVideo.Index = i
 		fullVideo.Name = video.Name
 		fullVideo.Category = video.Category
 		fullVideo.Path = videoPath

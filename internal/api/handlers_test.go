@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -245,6 +246,10 @@ func TestServer_GetVideo(t *testing.T) {
 				require.NoError(t, err)
 				assert.Equal(t, tt.videoName, response.Video.Name)
 				assert.Equal(t, tt.category, response.Video.Category)
+
+				// Verify the response includes the string-based ID
+				expectedID := tt.category + "/" + tt.videoName
+				assert.Equal(t, expectedID, response.Video.ID, "Individual video response should include string-based ID")
 			}
 		})
 	}
@@ -411,7 +416,7 @@ func TestServer_UpdateVideoPhase(t *testing.T) {
 func TestVideoListItem(t *testing.T) {
 	t.Run("JSON serialization with expected field names", func(t *testing.T) {
 		item := VideoListItem{
-			ID:        1,
+			ID:        "devops/top-2025-tools",
 			Title:     "Top 10 DevOps Tools You MUST Use in 2025!",
 			Date:      "2025-01-06T16:00",
 			Thumbnail: "material/top-2025/thumbnail-01.jpg",
@@ -432,7 +437,7 @@ func TestVideoListItem(t *testing.T) {
 		require.NoError(t, err)
 
 		// Check all required fields are present with correct names
-		assert.Equal(t, float64(1), jsonMap["id"])
+		assert.Equal(t, "devops/top-2025-tools", jsonMap["id"])
 		assert.Equal(t, "Top 10 DevOps Tools You MUST Use in 2025!", jsonMap["title"])
 		assert.Equal(t, "2025-01-06T16:00", jsonMap["date"])
 		assert.Equal(t, "material/top-2025/thumbnail-01.jpg", jsonMap["thumbnail"])
@@ -448,7 +453,7 @@ func TestVideoListItem(t *testing.T) {
 
 	t.Run("size comparison with target ~200 bytes", func(t *testing.T) {
 		item := VideoListItem{
-			ID:        1,
+			ID:        "devops/top-2025-tools",
 			Title:     "Top 10 DevOps Tools You MUST Use in 2025!",
 			Date:      "2025-01-06T16:00",
 			Thumbnail: "material/top-2025/thumbnail-01.jpg",
@@ -475,7 +480,7 @@ func TestVideoListItem(t *testing.T) {
 	t.Run("VideoListResponse structure", func(t *testing.T) {
 		videos := []VideoListItem{
 			{
-				ID:        1,
+				ID:        "devops/video-1",
 				Title:     "Video 1",
 				Date:      "2025-01-01T12:00",
 				Thumbnail: "thumb1.jpg",
@@ -484,7 +489,7 @@ func TestVideoListItem(t *testing.T) {
 				Progress:  VideoProgress{Completed: 10, Total: 10},
 			},
 			{
-				ID:        2,
+				ID:        "ai/video-2",
 				Title:     "Video 2",
 				Date:      "2025-01-02T12:00",
 				Thumbnail: "thumb2.jpg",
@@ -509,7 +514,7 @@ func TestVideoListItem(t *testing.T) {
 
 		// Check first video in array
 		firstVideo := videosArray[0].(map[string]interface{})
-		assert.Equal(t, float64(1), firstVideo["id"])
+		assert.Equal(t, "devops/video-1", firstVideo["id"])
 		assert.Equal(t, "Video 1", firstVideo["title"])
 	})
 
@@ -518,7 +523,7 @@ func TestVideoListItem(t *testing.T) {
 		// ID (from Index), Title, Date, Thumbnail, Category, Status (derived), Progress
 
 		item := VideoListItem{
-			ID:        15,                 // Maps from storage.Video.Index
+			ID:        "test/test-video",  // Maps from storage.Video.Category + "/" + storage.Video.Name
 			Title:     "Test Title",       // Maps from storage.Video.Title
 			Date:      "2025-01-01T12:00", // Maps from storage.Video.Date
 			Thumbnail: "test.jpg",         // Maps from storage.Video.Thumbnail
@@ -531,7 +536,7 @@ func TestVideoListItem(t *testing.T) {
 		}
 
 		// Verify all fields are accessible and correctly typed
-		assert.Equal(t, 15, item.ID)
+		assert.Equal(t, "test/test-video", item.ID)
 		assert.Equal(t, "Test Title", item.Title)
 		assert.Equal(t, "2025-01-01T12:00", item.Date)
 		assert.Equal(t, "test.jpg", item.Thumbnail)
@@ -547,7 +552,6 @@ func TestTransformToVideoListItems(t *testing.T) {
 	t.Run("basic transformation", func(t *testing.T) {
 		videos := []storage.Video{
 			{
-				Index:     1,
 				Name:      "test-video",
 				Title:     "Test Video Title",
 				Date:      "2025-01-01T12:00",
@@ -561,7 +565,7 @@ func TestTransformToVideoListItems(t *testing.T) {
 		require.Len(t, result, 1, "Should return exactly one video")
 
 		video := result[0]
-		assert.Equal(t, 1, video.ID)
+		assert.Equal(t, "devops/test-video", video.ID)
 		assert.Equal(t, "Test Video Title", video.Title)
 		assert.Equal(t, "2025-01-01T12:00", video.Date)
 		assert.Equal(t, "test-thumb.jpg", video.Thumbnail)
@@ -575,7 +579,6 @@ func TestTransformToVideoListItems(t *testing.T) {
 	t.Run("edge cases and missing fields", func(t *testing.T) {
 		videos := []storage.Video{
 			{
-				Index:     3,
 				Name:      "no-title-video",
 				Title:     "",
 				Thumbnail: "",
@@ -588,7 +591,7 @@ func TestTransformToVideoListItems(t *testing.T) {
 		require.Len(t, result, 1, "Should return exactly one video")
 
 		video := result[0]
-		assert.Equal(t, 3, video.ID)
+		assert.Equal(t, "test/no-title-video", video.ID)
 		assert.Equal(t, "no-title-video", video.Title)  // Falls back to name
 		assert.Equal(t, "TBD", video.Date)              // Default for missing date
 		assert.Equal(t, "default.jpg", video.Thumbnail) // Default thumbnail
@@ -606,7 +609,7 @@ func TestTransformToVideoListItems(t *testing.T) {
 		}{
 			{
 				"basic draft",
-				storage.Video{Index: 1, Name: "test", Title: "Test", Category: "test"},
+				storage.Video{Name: "test", Title: "Test", Category: "test"},
 				"draft",
 			},
 		}
@@ -617,6 +620,97 @@ func TestTransformToVideoListItems(t *testing.T) {
 				assert.Equal(t, tc.expected, result[0].Status)
 			})
 		}
+	})
+
+	t.Run("should handle special characters and unicode", func(t *testing.T) {
+		videos := []storage.Video{
+			{
+				Name:     "Video with Spaces & Special!",
+				Title:    "Test Video",
+				Category: "test-category",
+			},
+			{
+				Name:     "Vidéo avec Accénts",
+				Title:    "French Video",
+				Category: "français",
+			},
+		}
+
+		result := transformToVideoListItems(videos)
+
+		require.Len(t, result, 2, "Should return exactly two videos")
+
+		// Filesystem operations sanitize special characters and convert to lowercase
+		assert.Equal(t, "test-category/video-with-spaces-&-special!", result[0].ID, "Should sanitize spaces but preserve & and !")
+		assert.Equal(t, "français/vidéo-avec-accénts", result[1].ID, "Should handle unicode characters and preserve accents")
+	})
+
+	t.Run("should handle malformed paths gracefully", func(t *testing.T) {
+		videos := []storage.Video{
+			{
+				Name:     "Test Video",
+				Title:    "Malformed Path Test",
+				Category: "test",
+			},
+			{
+				Name:     "Another Test",
+				Title:    "No Path Segments",
+				Category: "test",
+			},
+		}
+
+		result := transformToVideoListItems(videos)
+
+		require.Len(t, result, 2, "Should return exactly two videos")
+
+		// Both should use filesystem operations to generate consistent IDs
+		assert.Equal(t, "test/test-video", result[0].ID, "Should use filesystem operations for consistent naming")
+		assert.Equal(t, "test/another-test", result[1].ID, "Should use filesystem operations for consistent naming")
+	})
+
+	t.Run("should handle very long names and paths", func(t *testing.T) {
+		longName := strings.Repeat("Very Long Name ", 20) + "End"
+
+		videos := []storage.Video{
+			{
+				Name:     longName,
+				Title:    "Long Name Test",
+				Category: "test",
+			},
+		}
+
+		result := transformToVideoListItems(videos)
+
+		require.Len(t, result, 1, "Should return exactly one video")
+
+		video := result[0]
+		// Filesystem operations will convert to lowercase and replace spaces with hyphens
+		expectedFilename := strings.ToLower(strings.ReplaceAll(longName, " ", "-"))
+		assert.Equal(t, "test/"+expectedFilename, video.ID)
+		assert.Equal(t, "Long Name Test", video.Title)
+	})
+
+	t.Run("should handle path with no filename", func(t *testing.T) {
+		videos := []storage.Video{
+			{
+				Name:     "Fallback Name",
+				Title:    "No Filename Test",
+				Category: "test",
+			},
+			{
+				Name:     "Another Fallback",
+				Title:    "Empty Path Test",
+				Category: "test",
+			},
+		}
+
+		result := transformToVideoListItems(videos)
+
+		require.Len(t, result, 2, "Should return exactly two videos")
+
+		// Both should use filesystem operations to generate consistent IDs
+		assert.Equal(t, "test/fallback-name", result[0].ID, "Should use filesystem operations for consistent naming")
+		assert.Equal(t, "test/another-fallback", result[1].ID, "Should use filesystem operations for consistent naming")
 	})
 }
 
@@ -648,7 +742,7 @@ func TestServer_GetVideosList(t *testing.T) {
 
 		// Verify structure of returned videos
 		for _, video := range response.Videos {
-			assert.GreaterOrEqual(t, video.ID, 0) // ID might be 0 in test setup
+			assert.NotEmpty(t, video.ID) // ID should be string like "category/name"
 			assert.NotEmpty(t, video.Title)
 			assert.NotEmpty(t, video.Category)
 			assert.Contains(t, []string{"published", "draft"}, video.Status)
@@ -756,7 +850,6 @@ func BenchmarkTransformToVideoListItems(b *testing.B) {
 	videos := make([]storage.Video, 50) // Simulate 50 videos
 	for i := 0; i < 50; i++ {
 		videos[i] = storage.Video{
-			Index:     i + 1,
 			Name:      fmt.Sprintf("test-video-%d", i+1),
 			Title:     fmt.Sprintf("Test Video Title %d with Some Length", i+1),
 			Date:      "2025-01-06T16:30:45Z",
@@ -1674,4 +1767,175 @@ func TestGetEditingAspectsWithCompletion(t *testing.T) {
 
 func TestGetEditingAspectsAllAspects(t *testing.T) {
 	// ... existing code ...
+}
+
+// TestVideoListItem_StringID tests the new string-based ID system
+func TestVideoListItem_StringID(t *testing.T) {
+	t.Run("ID should be string-based path instead of numeric", func(t *testing.T) {
+		// This test expects the new string-based ID system
+		item := VideoListItem{
+			ID:        "devops/test-video", // Should be string path, not int
+			Name:      "test-video",        // Should include filename
+			Title:     "Test Video Title",
+			Date:      "2025-01-01T12:00",
+			Thumbnail: "test-thumb.jpg",
+			Category:  "devops",
+			Status:    "draft",
+			Progress: VideoProgress{
+				Completed: 5,
+				Total:     10,
+			},
+		}
+
+		// Verify ID is string type
+		assert.IsType(t, "", item.ID, "ID should be string type")
+		assert.Equal(t, "devops/test-video", item.ID)
+
+		// Test JSON serialization with string ID
+		jsonData, err := json.Marshal(item)
+		require.NoError(t, err)
+
+		var jsonMap map[string]interface{}
+		err = json.Unmarshal(jsonData, &jsonMap)
+		require.NoError(t, err)
+
+		// ID should be serialized as string, not number
+		assert.Equal(t, "devops/test-video", jsonMap["id"])
+		assert.IsType(t, "", jsonMap["id"], "JSON ID should be string type")
+	})
+}
+
+// TestTransformToVideoListItems_StringID tests transformation with string IDs
+func TestTransformToVideoListItems_StringID(t *testing.T) {
+	t.Run("should generate string-based IDs from category and name", func(t *testing.T) {
+		videos := []storage.Video{
+			{
+
+				Name:      "test-video",
+				Title:     "Test Video Title",
+				Date:      "2025-01-01T12:00",
+				Thumbnail: "test-thumb.jpg",
+				Category:  "devops",
+			},
+			{
+
+				Name:     "another-video",
+				Title:    "Another Video",
+				Category: "ai",
+			},
+		}
+
+		result := transformToVideoListItems(videos)
+
+		require.Len(t, result, 2, "Should return exactly two videos")
+
+		// First video should have string ID based on category/name
+		video1 := result[0]
+		assert.Equal(t, "devops/test-video", video1.ID)
+		assert.Equal(t, "test-video", video1.Name)
+		assert.Equal(t, "Test Video Title", video1.Title)
+		assert.Equal(t, "devops", video1.Category)
+
+		// Second video should have string ID based on category/name
+		video2 := result[1]
+		assert.Equal(t, "ai/another-video", video2.ID)
+		assert.Equal(t, "another-video", video2.Name)
+		assert.Equal(t, "Another Video", video2.Title)
+		assert.Equal(t, "ai", video2.Category)
+	})
+
+	t.Run("should extract filename from Path field when available", func(t *testing.T) {
+		videos := []storage.Video{
+			{
+				Name:      "Windsurf", // Display name with capital W
+				Title:     "Remote Environments with Dev Containers and Devpod: Are They Worth It?",
+				Date:      "2025-01-01T12:00",
+				Thumbnail: "windsurf-thumb.jpg",
+				Category:  "development",
+				Path:      "manuscript/development/windsurf.yaml", // Actual file path with lowercase
+			},
+			{
+				Name:     "AI for Policies", // Display name with spaces and capitals
+				Title:    "Using AI for Policy Management",
+				Category: "ai",
+				Path:     "manuscript/ai/ai-for-policies.yaml", // Actual file path with hyphens
+			},
+		}
+
+		result := transformToVideoListItems(videos)
+
+		require.Len(t, result, 2, "Should return exactly two videos")
+
+		// First video should extract filename from Path field
+		video1 := result[0]
+		assert.Equal(t, "development/windsurf", video1.ID, "Should extract 'windsurf' from path")
+		assert.Equal(t, "windsurf", video1.Name, "Should extract 'windsurf' filename")
+		assert.Equal(t, "Remote Environments with Dev Containers and Devpod: Are They Worth It?", video1.Title)
+		assert.Equal(t, "development", video1.Category)
+
+		// Second video should extract filename from Path field
+		video2 := result[1]
+		assert.Equal(t, "ai/ai-for-policies", video2.ID, "Should extract 'ai-for-policies' from path")
+		assert.Equal(t, "ai-for-policies", video2.Name, "Should extract 'ai-for-policies' filename")
+		assert.Equal(t, "Using AI for Policy Management", video2.Title)
+		assert.Equal(t, "ai", video2.Category)
+	})
+}
+
+// TestTransformToVideoListItems_EdgeCases tests edge cases and special characters
+func TestTransformToVideoListItems_EdgeCases(t *testing.T) {
+	t.Run("should handle empty and nil values gracefully", func(t *testing.T) {
+		videos := []storage.Video{
+			{
+				Name:     "", // Empty name
+				Title:    "Video with Empty Name",
+				Category: "test",
+				Path:     "", // Empty path
+			},
+			{
+				Name:     "valid-name",
+				Title:    "Valid Video",
+				Category: "", // Empty category
+				Path:     "manuscript/test/valid-name.yaml",
+			},
+		}
+
+		result := transformToVideoListItems(videos)
+
+		require.Len(t, result, 2, "Should return exactly two videos")
+
+		// First video with empty name should fallback to empty string
+		video1 := result[0]
+		assert.Equal(t, "test/", video1.ID, "Should handle empty name gracefully")
+		assert.Equal(t, "Video with Empty Name", video1.Title)
+		assert.Equal(t, "test", video1.Category)
+
+		// Second video with empty category
+		video2 := result[1]
+		assert.Equal(t, "/valid-name", video2.ID, "Should handle empty category gracefully")
+		assert.Equal(t, "Valid Video", video2.Title)
+	})
+
+	t.Run("should handle special characters and unicode", func(t *testing.T) {
+		videos := []storage.Video{
+			{
+				Name:     "Video with Spaces & Special!",
+				Title:    "Test Video",
+				Category: "test-category",
+			},
+			{
+				Name:     "Vidéo avec Accénts",
+				Title:    "French Video",
+				Category: "français",
+			},
+		}
+
+		result := transformToVideoListItems(videos)
+
+		require.Len(t, result, 2, "Should return exactly two videos")
+
+		// Filesystem operations sanitize special characters and convert to lowercase
+		assert.Equal(t, "test-category/video-with-spaces-&-special!", result[0].ID, "Should sanitize spaces but preserve & and !")
+		assert.Equal(t, "français/vidéo-avec-accénts", result[1].ID, "Should handle unicode characters and preserve accents")
+	})
 }
