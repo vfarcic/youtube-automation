@@ -1969,3 +1969,57 @@ func TestServer_GetVideo_NameShouldBeFilename(t *testing.T) {
 	assert.Equal(t, "test-video", response.Video.Name, "Name should be the filename part of ID, not the original input")
 	assert.Equal(t, "test-category", response.Video.Category, "Category should match the category part of ID")
 }
+
+func TestVideoAPI_JSONConsistency(t *testing.T) {
+	t.Run("GET and PUT should use consistent camelCase JSON field names", func(t *testing.T) {
+		// Test that the Video struct used by API handlers produces consistent JSON
+		video := storage.Video{
+			Name:        "test-video",
+			Category:    "devops",
+			ProjectName: "Test Project",
+			ProjectURL:  "https://example.com",
+			Sponsorship: storage.Sponsorship{
+				Amount:  "1000",
+				Emails:  "sponsor@example.com",
+				Blocked: "false",
+			},
+		}
+
+		// Test VideoWithID serialization (used in GET responses)
+		videoWithID := VideoWithID{
+			ID:    "devops/test-video",
+			Video: video,
+		}
+
+		jsonData, err := json.Marshal(videoWithID)
+		require.NoError(t, err)
+
+		var jsonMap map[string]interface{}
+		err = json.Unmarshal(jsonData, &jsonMap)
+		require.NoError(t, err)
+
+		// Should use camelCase (matches frontend expectation)
+		assert.Equal(t, "Test Project", jsonMap["projectName"])
+		assert.Equal(t, "https://example.com", jsonMap["projectURL"])
+
+		// Verify sponsorship nested fields are also camelCase
+		sponsorship, ok := jsonMap["sponsorship"].(map[string]interface{})
+		require.True(t, ok, "sponsorship should be a JSON object")
+		assert.Equal(t, "1000", sponsorship["amount"])
+		assert.Equal(t, "sponsor@example.com", sponsorship["emails"])
+		assert.Equal(t, "false", sponsorship["blocked"])
+
+		// Verify old PascalCase fields don't exist (would break frontend)
+		assert.NotContains(t, jsonMap, "ProjectName")
+		assert.NotContains(t, jsonMap, "ProjectURL")
+
+		// Test that the same JSON can be unmarshaled (PUT request simulation)
+		var deserializedVideo storage.Video
+		err = json.Unmarshal(jsonData, &deserializedVideo)
+		require.NoError(t, err)
+
+		assert.Equal(t, "Test Project", deserializedVideo.ProjectName)
+		assert.Equal(t, "https://example.com", deserializedVideo.ProjectURL)
+		assert.Equal(t, "1000", deserializedVideo.Sponsorship.Amount)
+	})
+}
