@@ -302,14 +302,17 @@ Expected response:
 curl -X PUT "http://localhost:8080/api/videos/test-api-video/work-progress?category=test-category" \
   -H "Content-Type: application/json" \
   -d '{
-    "codeDone": true,
-    "talkingHeadDone": true,
-    "screenRecordingDone": true,
-    "thumbnailsDone": true,
-    "diagramsDone": true,
-    "screenshotsDone": true,
-    "filesLocation": "https://drive.google.com/folder/example",
-    "tagline": "Learn API testing with this comprehensive guide"
+    "code": true,
+    "head": true,
+    "screen": true,
+    "thumbnails": true,
+    "diagrams": true,
+    "screenshots": true,
+    "location": "https://drive.google.com/folder/example",
+    "tagline": "Learn API testing with this comprehensive guide",
+    "relatedVideos": "Previous API tutorial series\nREST fundamentals video",
+    "taglineIdeas": "Master API testing in 30 minutes\nComplete REST API testing guide\nAPI testing made simple",
+    "otherLogos": "Postman, Insomnia"
   }'
 ```
 
@@ -323,8 +326,8 @@ curl -X PUT "http://localhost:8080/api/videos/test-api-video/definition?category
     "highlight": "Master API testing in 30 minutes",
     "tags": "api, testing, rest, development, tutorial",
     "descriptionTags": "#API #Testing #REST #Development",
-    "tweetText": "Just released a comprehensive guide to REST API testing! Perfect for developers looking to improve their testing skills. 🚀 #API #Testing",
-    "requestThumbnailGeneration": true
+    "tweet": "Just released a comprehensive guide to REST API testing! Perfect for developers looking to improve their testing skills. 🚀 #API #Testing",
+    "animations": "API request flow diagram\nHTTP status code visualization"
   }'
 ```
 
@@ -333,12 +336,12 @@ curl -X PUT "http://localhost:8080/api/videos/test-api-video/definition?category
 curl -X PUT "http://localhost:8080/api/videos/test-api-video/post-production?category=test-category" \
   -H "Content-Type: application/json" \
   -d '{
-    "thumbnailPath": "/path/to/thumbnail.jpg",
+    "thumbnail": "/path/to/thumbnail.jpg",
     "members": "John Doe, Jane Smith",
     "requestEdit": true,
     "timecodes": "00:00 - Introduction\n05:00 - Setup\n15:00 - Testing\n25:00 - Conclusion",
-    "movieDone": true,
-    "slidesDone": true
+    "movie": true,
+    "slides": true
   }'
 ```
 
@@ -347,9 +350,9 @@ curl -X PUT "http://localhost:8080/api/videos/test-api-video/post-production?cat
 curl -X PUT "http://localhost:8080/api/videos/test-api-video/publishing?category=test-category" \
   -H "Content-Type: application/json" \
   -d '{
-    "videoFilePath": "/path/to/final-video.mp4",
-    "uploadToYouTube": true,
-    "createHugoPost": true
+    "uploadVideo": "/path/to/final-video.mp4",
+    "videoId": "dQw4w9WgXcQ",
+    "hugoPath": "/content/posts/api-testing-guide.md"
   }'
 ```
 
@@ -358,14 +361,15 @@ curl -X PUT "http://localhost:8080/api/videos/test-api-video/publishing?category
 curl -X PUT "http://localhost:8080/api/videos/test-api-video/post-publish?category=test-category" \
   -H "Content-Type: application/json" \
   -d '{
-    "blueSkyPostSent": true,
-    "linkedInPostSent": true,
-    "slackPostSent": true,
-    "youTubeHighlightCreated": true,
-    "youTubePinnedCommentAdded": true,
-    "repliedToYouTubeComments": true,
-    "gdeAdvocuPostSent": false,
-    "codeRepositoryURL": "https://github.com/example/api-testing-guide",
+    "dotPosted": true,
+    "blueSkyPosted": true,
+    "linkedInPosted": true,
+    "slackPosted": true,
+    "youTubeHighlight": true,
+    "youTubeComment": true,
+    "youTubeCommentReply": true,
+    "gde": false,
+    "repo": "https://github.com/example/api-testing-guide",
     "notifiedSponsors": false
   }'
 ```
@@ -694,39 +698,83 @@ Expected response:
   },
   "fields": [
     {
-      "name": "Code Done",
-      "fieldName": "codeDone",
-      "type": "bool",
+      "name": "Code",
+      "fieldName": "code",
+      "type": "boolean",
       "required": false,
       "order": 1,
-      "completionCriteria": "true_only",
-      "options": {
-        "helpText": "Mark as complete when all code examples and demos are ready"
-      }
+      "description": "Field description",
+      "uiHints": {
+        "inputType": "checkbox",
+        "placeholder": "",
+        "helpText": "",
+        "multiline": false
+      },
+      "validationHints": {
+        "required": false
+      },
+      "defaultValue": false,
+      "completionCriteria": "filled_only"
     },
     {
-      "name": "Talking Head Done",
-      "fieldName": "talkingHeadDone", 
-      "type": "bool",
+      "name": "Head",
+      "fieldName": "head",
+      "type": "boolean",
       "required": false,
       "order": 2,
-      "completionCriteria": "true_only",
-      "options": {
-        "helpText": "Mark as complete when talking head segments are recorded"
-      }
+      "description": "Field description",
+      "uiHints": {
+        "inputType": "checkbox",
+        "placeholder": "",
+        "helpText": "",
+        "multiline": false
+      },
+      "validationHints": {
+        "required": false
+      },
+      "defaultValue": false,
+      "completionCriteria": "filled_only"
     },
     {
-      "name": "Screen Recording Done",
-      "fieldName": "screenRecordingDone",
-      "type": "bool", 
+      "name": "Screen",
+      "fieldName": "screen",
+      "type": "boolean",
       "required": false,
       "order": 3,
-      "completionCriteria": "true_only",
-      "options": {
-        "helpText": "Mark as complete when screen recordings are finished"
-      }
+      "description": "Field description",
+      "uiHints": {
+        "inputType": "checkbox",
+        "placeholder": "",
+        "helpText": "",
+        "multiline": false
+      },
+      "validationHints": {
+        "required": false
+      },
+      "defaultValue": false,
+      "completionCriteria": "filled_only"
+    },
+    {
+      "name": "Related Videos",
+      "fieldName": "relatedVideos",
+      "type": "text",
+      "required": false,
+      "order": 4,
+      "description": "List of related videos for reference",
+      "uiHints": {
+        "inputType": "textarea",
+        "placeholder": "",
+        "helpText": "",
+        "rows": 3,
+        "multiline": true
+      },
+      "validationHints": {
+        "required": false
+      },
+      "defaultValue": "",
+      "completionCriteria": "filled_only"
     }
-    // ... additional fields
+    // ... additional fields (11 total in work-progress aspect)
   ]
 }
 ```
@@ -735,8 +783,63 @@ Expected response:
 
 Each field now includes a `fieldName` property that contains the actual camelCase property name used in the video data API. This enables frontend applications to map between field metadata and video data without hardcoded conversion logic.
 
-- `name` - Display name for UI (e.g., "Description Tags")
-- `fieldName` - Actual property name in video data (e.g., "descriptionTags")
+- `name` - Display name for UI (e.g., "Project Name")
+- `fieldName` - Actual property name in video data (e.g., "projectName", "sponsorship.amount")
+
+**NEW: Enhanced Field Structure**
+
+Each field now includes comprehensive metadata for UI generation and validation:
+
+- `type` - Field data type: "string", "boolean", "text", "date"
+- `uiHints` - UI rendering information:
+  - `inputType` - HTML input type: "text", "checkbox", "textarea", "datetime"
+  - `placeholder` - User-friendly placeholder text
+  - `multiline` - Whether field supports multiple lines
+  - `rows` - Number of rows for textarea fields
+- `validationHints` - Validation rules and requirements
+- `defaultValue` - Default value for new videos
+- `description` - Field purpose and usage description
+
+**Date Field Format**
+
+Date fields use UTC datetime format with specific UI hints:
+```json
+{
+  "name": "Date",
+  "fieldName": "date",
+  "type": "date",
+  "uiHints": {
+    "inputType": "datetime",
+    "placeholder": "YYYY-MM-DDTHH:MM",
+    "helpText": "",
+    "multiline": false
+  }
+}
+```
+- **Format**: `YYYY-MM-DDTHH:MM` (e.g., "2024-01-15T14:30")
+- **Input Type**: `datetime` for UTC compatibility
+- **Validation**: Must match Go time format `2006-01-02T15:04`
+
+**Text Field Format**
+
+Multi-line text fields use textarea input with specific UI hints:
+```json
+{
+  "name": "Description",
+  "fieldName": "description",
+  "type": "text",
+  "uiHints": {
+    "inputType": "textarea",
+    "placeholder": "",
+    "helpText": "",
+    "rows": 3,
+    "multiline": true
+  }
+}
+```
+- **Input Type**: `textarea` for multi-line content
+- **Rows**: Default 3 rows for textarea height
+- **Multiline**: Always `true` for text type fields
 
 **NEW: Completion Criteria Field**
 
@@ -762,19 +865,58 @@ Expected different completion criteria:
       "name": "Project Name",
       "fieldName": "projectName",
       "type": "string",
+      "required": false,
+      "order": 1,
+      "description": "Name of the related project",
+      "uiHints": {
+        "inputType": "text",
+        "placeholder": "",
+        "helpText": "",
+        "multiline": false
+      },
+      "validationHints": {
+        "required": false
+      },
+      "defaultValue": "",
       "completionCriteria": "filled_only"
     },
     {
-      "name": "Sponsored",
-      "fieldName": "sponsored",
-      "type": "bool", 
-      "completionCriteria": "empty_or_filled"
+      "name": "Project URL",
+      "fieldName": "projectURL",
+      "type": "string",
+      "required": false,
+      "order": 2,
+      "description": "URL to the project repository or documentation",
+      "uiHints": {
+        "inputType": "text",
+        "placeholder": "",
+        "helpText": "",
+        "multiline": false
+      },
+      "validationHints": {
+        "required": false
+      },
+      "defaultValue": "",
+      "completionCriteria": "filled_only"
     },
     {
-      "name": "Sponsored Emails",
-      "fieldName": "sponsoredEmails",
+      "name": "Sponsorship Amount",
+      "fieldName": "sponsorship.amount",
       "type": "string",
-      "completionCriteria": "conditional"
+      "required": false,
+      "order": 3,
+      "description": "Field description",
+      "uiHints": {
+        "inputType": "text",
+        "placeholder": "",
+        "helpText": "",
+        "multiline": false
+      },
+      "validationHints": {
+        "required": false
+      },
+      "defaultValue": "",
+      "completionCriteria": "filled_only"
     }
   ]
 }

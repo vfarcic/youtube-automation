@@ -190,6 +190,30 @@ try {
 }
 ```
 
+### Field Types and Formats
+
+The API supports several field types with specific formatting requirements:
+
+#### Date Fields
+- **Format**: `YYYY-MM-DDTHH:MM` (e.g., "2024-01-15T14:30")
+- **Input Type**: `datetime` for UTC compatibility
+- **Validation**: Must match Go time format `2006-01-02T15:04`
+
+#### Text Fields
+- **Multi-line**: Use `textarea` input type with configurable rows
+- **Single-line**: Use `text` input type
+- **Examples**: Description, Tags, Timecodes
+
+#### Boolean Fields
+- **Input Type**: `checkbox`
+- **Completion**: Often uses `true_only` criteria
+- **Examples**: Code completion, Upload status
+
+#### String Fields
+- **Input Type**: `text`
+- **Validation**: Optional pattern matching
+- **Examples**: Title, Project Name
+
 **Benefits:**
 - **93% smaller payload** for overview endpoint (~1KB vs ~15KB)
 - **Dynamic form generation** from field metadata

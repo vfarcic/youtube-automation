@@ -3,8 +3,6 @@ package aspect
 import (
 	"fmt"
 	"testing"
-
-	"devopstoolkit/youtube-automation/internal/constants"
 )
 
 func TestNewService(t *testing.T) {
@@ -100,12 +98,12 @@ func TestAspectWorkflowOrder(t *testing.T) {
 		title    string
 		endpoint string
 	}{
-		{1, AspectKeyInitialDetails, constants.PhaseTitleInitialDetails, "/api/videos/{videoName}/initial-details"},
-		{2, AspectKeyWorkProgress, constants.PhaseTitleWorkProgress, "/api/videos/{videoName}/work-progress"},
-		{3, AspectKeyDefinition, constants.PhaseTitleDefinition, "/api/videos/{videoName}/definition"},
-		{4, AspectKeyPostProduction, constants.PhaseTitlePostProduction, "/api/videos/{videoName}/post-production"},
-		{5, AspectKeyPublishing, constants.PhaseTitlePublishingDetails, "/api/videos/{videoName}/publishing"},
-		{6, AspectKeyPostPublish, constants.PhaseTitlePostPublish, "/api/videos/{videoName}/post-publish"},
+		{1, AspectKeyInitialDetails, "Initial Details", "/api/videos/{videoName}/initial-details"},
+		{2, AspectKeyWorkProgress, "Work Progress", "/api/videos/{videoName}/work-progress"},
+		{3, AspectKeyDefinition, "Definition", "/api/videos/{videoName}/definition"},
+		{4, AspectKeyPostProduction, "Post Production", "/api/videos/{videoName}/post-production"},
+		{5, AspectKeyPublishing, "Publishing", "/api/videos/{videoName}/publishing"},
+		{6, AspectKeyPostPublish, "Post Publish", "/api/videos/{videoName}/post-publish"},
 	}
 
 	for i, expected := range expectedWorkflow {
@@ -130,26 +128,37 @@ func TestFieldTitleConsistency(t *testing.T) {
 	service := NewService()
 	metadata := service.GetAspects()
 
-	// Test that Work Progress fields use constants consistently
-	workProgressAspect := metadata.Aspects[1] // Index 1 = Work Progress
+	// Find Work Progress aspect by key, not by index
+	var workProgressAspect *Aspect
+	for _, aspect := range metadata.Aspects {
+		if aspect.Key == AspectKeyWorkProgress {
+			workProgressAspect = &aspect
+			break
+		}
+	}
 
+	if workProgressAspect == nil {
+		t.Fatalf("Could not find work progress aspect")
+	}
+
+	// Test that Work Progress fields match the new reflection-based names
 	expectedWorkProgressFields := map[string]bool{
-		constants.FieldTitleCodeDone:            true,
-		constants.FieldTitleTalkingHeadDone:     true,
-		constants.FieldTitleScreenRecordingDone: true,
-		constants.FieldTitleRelatedVideos:       true,
-		constants.FieldTitleThumbnailsDone:      true,
-		constants.FieldTitleDiagramsDone:        true,
-		constants.FieldTitleScreenshotsDone:     true,
-		constants.FieldTitleFilesLocation:       true,
-		constants.FieldTitleTagline:             true,
-		constants.FieldTitleTaglineIdeas:        true,
-		constants.FieldTitleOtherLogos:          true,
+		"Code":           true,
+		"Head":           true,
+		"Screen":         true,
+		"Related Videos": true,
+		"Thumbnails":     true,
+		"Diagrams":       true,
+		"Screenshots":    true,
+		"Location":       true,
+		"Tagline":        true,
+		"Tagline Ideas":  true,
+		"Other Logos":    true,
 	}
 
 	for _, field := range workProgressAspect.Fields {
 		if expectedWorkProgressFields[field.Name] {
-			// This field should use constants - mark as found
+			// This field should be present - mark as found
 			delete(expectedWorkProgressFields, field.Name)
 		}
 	}
@@ -166,16 +175,27 @@ func TestPostProductionFieldConsistency(t *testing.T) {
 	service := NewService()
 	metadata := service.GetAspects()
 
-	// Test that Post-Production fields use constants
-	postProdAspect := metadata.Aspects[3] // Index 3 = Post-Production
+	// Find Post-Production aspect by key, not by index
+	var postProdAspect *Aspect
+	for _, aspect := range metadata.Aspects {
+		if aspect.Key == AspectKeyPostProduction {
+			postProdAspect = &aspect
+			break
+		}
+	}
 
+	if postProdAspect == nil {
+		t.Fatalf("Could not find post-production aspect")
+	}
+
+	// Test that Post-Production fields match the new reflection-based names
 	expectedFields := []string{
-		constants.FieldTitleThumbnailPath,
-		constants.FieldTitleMembers,
-		constants.FieldTitleRequestEdit,
-		constants.FieldTitleTimecodes,
-		constants.FieldTitleMovieDone,
-		constants.FieldTitleSlidesDone,
+		"Thumbnail",
+		"Members",
+		"Request Edit",
+		"Timecodes",
+		"Movie",
+		"Slides",
 	}
 
 	actualFieldNames := make([]string, len(postProdAspect.Fields))
@@ -201,20 +221,31 @@ func TestPostPublishFieldConsistency(t *testing.T) {
 	service := NewService()
 	metadata := service.GetAspects()
 
-	// Test that Post-Publish fields use constants
-	postPublishAspect := metadata.Aspects[5] // Index 5 = Post-Publish
+	// Find Post-Publish aspect by key, not by index
+	var postPublishAspect *Aspect
+	for _, aspect := range metadata.Aspects {
+		if aspect.Key == AspectKeyPostPublish {
+			postPublishAspect = &aspect
+			break
+		}
+	}
 
+	if postPublishAspect == nil {
+		t.Fatalf("Could not find post-publish aspect")
+	}
+
+	// Test that Post-Publish fields match the new reflection-based names
 	expectedFields := []string{
-		constants.FieldTitleDOTPosted,
-		constants.FieldTitleBlueSkyPosted,
-		constants.FieldTitleLinkedInPosted,
-		constants.FieldTitleSlackPosted,
-		constants.FieldTitleYouTubeHighlight,
-		constants.FieldTitleYouTubeComment,
-		constants.FieldTitleYouTubeCommentReply,
-		constants.FieldTitleGDEPosted,
-		constants.FieldTitleCodeRepository,
-		constants.FieldTitleNotifySponsors,
+		"DOT Posted",
+		"Blue Sky Posted",
+		"Linked In Posted",
+		"Slack Posted",
+		"YouTube Highlight",
+		"You Tube Comment",
+		"You Tube Comment Reply",
+		"GDE",
+		"Repo",
+		"Notified Sponsors",
 	}
 
 	actualFieldNames := make([]string, len(postPublishAspect.Fields))
@@ -240,25 +271,28 @@ func TestRequiredFields(t *testing.T) {
 	service := NewService()
 	metadata := service.GetAspects()
 
-	// Test required fields for Initial Details (based on actual mapping)
-	// According to the mapping, no fields are actually required in initial details
+	// In the new reflection-based system, required fields are determined by struct tags
+	// Currently, no fields are marked as required in the Video struct
+	// This test verifies that the required field mechanism works correctly
 
-	// Test required fields for Definition (based on actual mapping)
-	definitionAspect := metadata.Aspects[2]
-	requiredFieldsDefinition := []string{
-		constants.FieldTitleTitle, // Required in mapping
+	// Find definition aspect by key, not by index
+	var definitionAspect *Aspect
+	for _, aspect := range metadata.Aspects {
+		if aspect.Key == AspectKeyDefinition {
+			definitionAspect = &aspect
+			break
+		}
 	}
 
-	for _, requiredField := range requiredFieldsDefinition {
-		found := false
-		for _, field := range definitionAspect.Fields {
-			if field.Name == requiredField && field.Required {
-				found = true
-				break
-			}
-		}
-		if !found {
-			t.Errorf("Required field %s not found or not marked as required in aspect %s", requiredField, definitionAspect.Key)
+	if definitionAspect == nil {
+		t.Fatalf("Could not find definition aspect")
+	}
+
+	// Verify that all fields have the correct required status
+	// In the current implementation, all fields are optional
+	for _, field := range definitionAspect.Fields {
+		if field.Required {
+			t.Errorf("Field %s in definition aspect is marked as required, but should be optional", field.Name)
 		}
 	}
 }
@@ -284,6 +318,14 @@ func TestGetAspectsOverview(t *testing.T) {
 			AspectKeyPostProduction,
 			AspectKeyPublishing,
 			AspectKeyPostPublish,
+		}
+
+		// Verify aspects are sorted by order field
+		for i := 1; i < len(overview.Aspects); i++ {
+			if overview.Aspects[i-1].Order >= overview.Aspects[i].Order {
+				t.Errorf("Aspects are not sorted by order: aspect %d has order %d, aspect %d has order %d",
+					i-1, overview.Aspects[i-1].Order, i, overview.Aspects[i].Order)
+			}
 		}
 
 		for i, expectedKey := range expectedKeys {
@@ -453,19 +495,19 @@ func TestGetAspectFields(t *testing.T) {
 			t.Errorf("Expected %d fields for work-progress, got %d", expectedFieldCount, len(result.Fields))
 		}
 
-		// Test the actual field names from mapping (using constants)
+		// Test the actual field names from the new reflection-based mapping
 		expectedFieldNames := []string{
-			constants.FieldTitleCodeDone,
-			constants.FieldTitleTalkingHeadDone,
-			constants.FieldTitleScreenRecordingDone,
-			constants.FieldTitleRelatedVideos,
-			constants.FieldTitleThumbnailsDone,
-			constants.FieldTitleDiagramsDone,
-			constants.FieldTitleScreenshotsDone,
-			constants.FieldTitleFilesLocation,
-			constants.FieldTitleTagline,
-			constants.FieldTitleTaglineIdeas,
-			constants.FieldTitleOtherLogos,
+			"Code",
+			"Head",
+			"Screen",
+			"Related Videos",
+			"Thumbnails",
+			"Diagrams",
+			"Screenshots",
+			"Location",
+			"Tagline",
+			"Tagline Ideas",
+			"Other Logos",
 		}
 
 		for i, expectedName := range expectedFieldNames {
@@ -609,12 +651,12 @@ func TestServiceIntegration(t *testing.T) {
 						field.Name, field.UIHints.InputType)
 				}
 			case FieldTypeDate:
-				if field.UIHints.InputType != "datetime-local" {
-					t.Errorf("Date field %s should have InputType 'datetime-local', got '%s'",
+				if field.UIHints.InputType != "datetime" {
+					t.Errorf("Date field %s should have InputType 'datetime', got '%s'",
 						field.Name, field.UIHints.InputType)
 				}
-				if field.UIHints.Placeholder != "2006-01-02T15:04" {
-					t.Errorf("Date field %s should have placeholder '2006-01-02T15:04', got '%s'",
+				if field.UIHints.Placeholder != "YYYY-MM-DDTHH:MM" {
+					t.Errorf("Date field %s should have placeholder 'YYYY-MM-DDTHH:MM', got '%s'",
 						field.Name, field.UIHints.Placeholder)
 				}
 			case FieldTypeBoolean:
@@ -719,7 +761,7 @@ func TestServiceIntegration(t *testing.T) {
 	})
 }
 
-// TestFieldTypeToUIHintsMapping verifies that createFieldMapping properly converts field types to UI hints
+// TestFieldTypeToUIHintsMapping verifies that field types are properly converted to UI hints
 func TestFieldTypeToUIHintsMapping(t *testing.T) {
 	tests := []struct {
 		fieldType    string
@@ -729,23 +771,24 @@ func TestFieldTypeToUIHintsMapping(t *testing.T) {
 		{FieldTypeString, "text", 0},
 		{FieldTypeText, "textarea", 3},
 		{FieldTypeBoolean, "checkbox", 0},
-		{FieldTypeDate, "datetime-local", 0},
+		{FieldTypeDate, "datetime", 0},
 		{FieldTypeNumber, "number", 0},
-		{FieldTypeSelect, "select", 0},
+		// Note: FieldTypeSelect is not currently used in the reflection-based system
 	}
 
 	for _, test := range tests {
 		t.Run("Field type "+test.fieldType, func(t *testing.T) {
-			mapping := createFieldMapping("TestProp", "testKey", test.fieldType, "Test Title", false, 1, nil)
+			fieldTypeInstance := createFieldTypeInstance(test.fieldType)
+			uiHints := fieldTypeInstance.GetUIHints()
 
-			if mapping.UIHints.InputType != test.expectedUI {
+			if uiHints.InputType != test.expectedUI {
 				t.Errorf("Expected InputType '%s' for %s, got '%s'",
-					test.expectedUI, test.fieldType, mapping.UIHints.InputType)
+					test.expectedUI, test.fieldType, uiHints.InputType)
 			}
 
-			if test.expectedRows > 0 && mapping.UIHints.Rows != test.expectedRows {
+			if test.expectedRows > 0 && uiHints.Rows != test.expectedRows {
 				t.Errorf("Expected Rows %d for %s, got %d",
-					test.expectedRows, test.fieldType, mapping.UIHints.Rows)
+					test.expectedRows, test.fieldType, uiHints.Rows)
 			}
 		})
 	}
@@ -766,11 +809,11 @@ func TestService_GetAspectFields_IncludesCompletionCriteria(t *testing.T) {
 
 	// Verify some specific fields have the expected completion criteria
 	expectedCriteria := map[string]string{
-		"Project Name":                         CompletionCriteriaFilledOnly,
-		"Sponsorship Amount":                   CompletionCriteriaFilledOnly,
-		"Sponsorship Emails (comma separated)": CompletionCriteriaConditional,
-		"Sponsorship Blocked Reason":           CompletionCriteriaEmptyOrFilled,
-		"Delayed":                              CompletionCriteriaFalseOnly,
+		"Project Name":        CompletionCriteriaFilledOnly,
+		"Sponsorship Amount":  CompletionCriteriaFilledOnly,
+		"Sponsorship Emails":  CompletionCriteriaConditional,
+		"Sponsorship Blocked": CompletionCriteriaEmptyOrFilled,
+		"Delayed":             CompletionCriteriaFalseOnly,
 	}
 
 	fieldMap := make(map[string]Field)

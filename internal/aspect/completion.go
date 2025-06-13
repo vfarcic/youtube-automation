@@ -19,16 +19,17 @@ func NewCompletionService() *CompletionService {
 // This maps field keys to their completion criteria based on the existing logic in video manager
 func (s *CompletionService) GetFieldCompletionCriteria(aspectKey, fieldKey string) string {
 	// Map field keys to their completion criteria based on existing video manager logic
+	// Updated to use the new reflection-based field names (JSON paths)
 	fieldCompletionMap := map[string]map[string]string{
 		"initial-details": {
-			"projectName":        CompletionCriteriaFilledOnly,    // non-empty, not "-"
-			"projectURL":         CompletionCriteriaFilledOnly,    // non-empty, not "-"
-			"sponsorshipAmount":  CompletionCriteriaFilledOnly,    // non-empty, not "-"
-			"sponsorshipEmails":  CompletionCriteriaConditional,   // special logic: complete if sponsorshipAmount is empty/N/A/- OR if emails has content
-			"sponsorshipBlocked": CompletionCriteriaEmptyOrFilled, // complete when empty (no blocking)
-			"publishDate":        CompletionCriteriaFilledOnly,    // non-empty, not "-"
-			"delayed":            CompletionCriteriaFalseOnly,     // complete when false (not delayed)
-			"gistPath":           CompletionCriteriaFilledOnly,    // non-empty, not "-"
+			"projectName":         CompletionCriteriaFilledOnly,    // non-empty, not "-"
+			"projectURL":          CompletionCriteriaFilledOnly,    // non-empty, not "-"
+			"sponsorship.amount":  CompletionCriteriaFilledOnly,    // non-empty, not "-"
+			"sponsorship.emails":  CompletionCriteriaConditional,   // special logic: complete if sponsorshipAmount is empty/N/A/- OR if emails has content
+			"sponsorship.blocked": CompletionCriteriaEmptyOrFilled, // complete when empty (no blocking)
+			"date":                CompletionCriteriaFilledOnly,    // non-empty, not "-"
+			"delayed":             CompletionCriteriaFalseOnly,     // complete when false (not delayed)
+			"gist":                CompletionCriteriaFilledOnly,    // non-empty, not "-"
 		},
 		"work-progress": {
 			"codeDone":            CompletionCriteriaTrueOnly,   // true when complete
@@ -168,7 +169,7 @@ func (s *CompletionService) isConditionalComplete(aspectKey, fieldKey string, va
 	// Handle special conditional logic cases
 	switch aspectKey {
 	case "initial-details":
-		if fieldKey == "sponsorshipEmails" {
+		if fieldKey == "sponsorship.emails" {
 			// Complete if sponsorshipAmount is empty/N/A/- OR if emails has content
 			amount := video.Sponsorship.Amount
 			if len(amount) == 0 || amount == "N/A" || amount == "-" {

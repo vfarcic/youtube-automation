@@ -1,5 +1,9 @@
 package aspect
 
+import (
+	"sort"
+)
+
 // Service provides access to editing aspect metadata
 type Service struct {
 	completionService *CompletionService
@@ -23,16 +27,16 @@ func (s *Service) GetAspects() AspectMetadata {
 		for j, fieldMapping := range mapping.Fields {
 			fields[j] = Field{
 				Name:               fieldMapping.Title,
-				FieldName:          fieldMapping.FieldKey,
+				FieldName:          fieldMapping.FieldName,
 				Type:               fieldMapping.FieldType,
 				Required:           fieldMapping.Required,
 				Order:              fieldMapping.Order,
-				Description:        getFieldDescription(fieldMapping.FieldKey),
+				Description:        getFieldDescription(fieldMapping.FieldName),
 				Options:            FieldOptions{Values: fieldMapping.Options},
 				UIHints:            fieldMapping.UIHints,
 				ValidationHints:    fieldMapping.ValidationHints,
 				DefaultValue:       fieldMapping.DefaultValue,
-				CompletionCriteria: s.completionService.GetFieldCompletionCriteria(mapping.AspectKey, fieldMapping.FieldKey),
+				CompletionCriteria: s.completionService.GetFieldCompletionCriteria(mapping.AspectKey, fieldMapping.FieldName),
 			}
 		}
 
@@ -42,10 +46,15 @@ func (s *Service) GetAspects() AspectMetadata {
 			Description: mapping.Description,
 			Endpoint:    getEndpointForAspect(mapping.AspectKey),
 			Icon:        getIconForAspect(mapping.AspectKey),
-			Order:       i + 1,
+			Order:       mapping.Order,
 			Fields:      fields,
 		}
 	}
+
+	// Sort aspects by order
+	sort.Slice(aspects, func(i, j int) bool {
+		return aspects[i].Order < aspects[j].Order
+	})
 
 	return AspectMetadata{
 		Aspects: aspects,
@@ -64,11 +73,16 @@ func (s *Service) GetAspectsOverview() AspectOverview {
 			Description:         mapping.Description,
 			Endpoint:            getEndpointForAspect(mapping.AspectKey),
 			Icon:                getIconForAspect(mapping.AspectKey),
-			Order:               i + 1,
+			Order:               mapping.Order,
 			FieldCount:          len(mapping.Fields),
 			CompletedFieldCount: 0, // Will be calculated in handler
 		}
 	}
+
+	// Sort aspects by order
+	sort.Slice(aspects, func(i, j int) bool {
+		return aspects[i].Order < aspects[j].Order
+	})
 
 	return AspectOverview{
 		Aspects: aspects,
@@ -85,16 +99,16 @@ func (s *Service) GetAspectFields(aspectKey string) (*AspectFields, error) {
 			for i, fieldMapping := range mapping.Fields {
 				fields[i] = Field{
 					Name:               fieldMapping.Title,
-					FieldName:          fieldMapping.FieldKey,
+					FieldName:          fieldMapping.FieldName,
 					Type:               fieldMapping.FieldType,
 					Required:           fieldMapping.Required,
 					Order:              fieldMapping.Order,
-					Description:        getFieldDescription(fieldMapping.FieldKey),
+					Description:        getFieldDescription(fieldMapping.FieldName),
 					Options:            FieldOptions{Values: fieldMapping.Options},
 					UIHints:            fieldMapping.UIHints,
 					ValidationHints:    fieldMapping.ValidationHints,
 					DefaultValue:       fieldMapping.DefaultValue,
-					CompletionCriteria: s.completionService.GetFieldCompletionCriteria(mapping.AspectKey, fieldMapping.FieldKey),
+					CompletionCriteria: s.completionService.GetFieldCompletionCriteria(mapping.AspectKey, fieldMapping.FieldName),
 				}
 			}
 

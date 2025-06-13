@@ -252,7 +252,7 @@ func (d DateFieldType) Validate(value interface{}) error {
 	if str != "" {
 		format := d.Format
 		if format == "" {
-			format = "2006-01-02T15:04" // Default format
+			format = "2006-01-02T15:04" // Default format for UTC datetime
 		}
 
 		_, err := time.Parse(format, str)
@@ -266,16 +266,17 @@ func (d DateFieldType) Validate(value interface{}) error {
 
 func (d DateFieldType) GetUIHints() UIHints {
 	placeholder := d.Placeholder
+
 	if placeholder == "" {
 		format := d.Format
 		if format == "" {
-			format = "2006-01-02T15:04"
+			format = "2006-01-02T15:04" // Default format for UTC datetime
 		}
-		placeholder = format
+		placeholder = "YYYY-MM-DDTHH:MM"
 	}
 
 	return UIHints{
-		InputType:   "datetime-local",
+		InputType:   "datetime",
 		Placeholder: placeholder,
 		HelpText:    d.HelpText,
 		Multiline:   false,
