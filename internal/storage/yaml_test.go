@@ -1,12 +1,15 @@
 package storage
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 )
 
@@ -351,4 +354,68 @@ func TestGetIndex_InvalidYAML(t *testing.T) {
 	if !strings.Contains(err.Error(), expectedErrorMsgPart) {
 		t.Errorf("Expected GetIndex error to contain '%s', got '%s'", expectedErrorMsgPart, err.Error())
 	}
+}
+
+func TestVideo_JSONConsistency(t *testing.T) {
+	t.Run("Video struct should serialize to camelCase JSON", func(t *testing.T) {
+		video := Video{
+			Name:        "test-video",
+			ProjectName: "Test Project",
+			ProjectURL:  "https://example.com",
+			Sponsorship: Sponsorship{
+				Amount:  "1000",
+				Emails:  "sponsor@example.com",
+				Blocked: "false",
+			},
+		}
+
+		// Test serialization (GET response behavior)
+		jsonData, err := json.Marshal(video)
+		require.NoError(t, err)
+
+		var jsonMap map[string]interface{}
+		err = json.Unmarshal(jsonData, &jsonMap)
+		require.NoError(t, err)
+
+		// Should be camelCase, not PascalCase
+		assert.Equal(t, "Test Project", jsonMap["projectName"])
+		assert.Equal(t, "https://example.com", jsonMap["projectURL"])
+
+		// Sponsorship nested fields should also be camelCase
+		sponsorship, ok := jsonMap["sponsorship"].(map[string]interface{})
+		require.True(t, ok, "sponsorship should be a JSON object")
+		assert.Equal(t, "1000", sponsorship["amount"])
+		assert.Equal(t, "sponsor@example.com", sponsorship["emails"])
+		assert.Equal(t, "false", sponsorship["blocked"])
+
+		// These PascalCase fields should NOT exist
+		assert.NotContains(t, jsonMap, "ProjectName")
+		assert.NotContains(t, jsonMap, "ProjectURL")
+	})
+
+	t.Run("Video struct should deserialize from camelCase JSON", func(t *testing.T) {
+		// Test deserialization (PUT request behavior)
+		jsonData := `{
+			"name": "test-video",
+			"projectName": "Test Project",
+			"projectURL": "https://example.com",
+			"sponsorship": {
+				"amount": "1000",
+				"emails": "sponsor@example.com",
+				"blocked": "false"
+			}
+		}`
+
+		var video Video
+		err := json.Unmarshal([]byte(jsonData), &video)
+		require.NoError(t, err)
+
+		assert.Equal(t, "test-video", video.Name)
+		assert.Equal(t, "Test Project", video.ProjectName)
+		assert.Equal(t, "https://example.com", video.ProjectURL)
+		assert.Equal(t, "1000", video.Sponsorship.Amount)
+		assert.Equal(t, "sponsor@example.com", video.Sponsorship.Emails)
+		assert.Equal(t, "false", video.Sponsorship.Blocked)
+	})
+
 }

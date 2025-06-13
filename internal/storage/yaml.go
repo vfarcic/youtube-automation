@@ -30,58 +30,58 @@ type VideoIndex struct {
 // Video represents all data associated with a video project.
 // All fields are already exported.
 type Video struct {
-	Name                 string
-	Path                 string
-	Category             string
-	ProjectName          string
-	ProjectURL           string
-	Sponsorship          Sponsorship
-	Date                 string
-	Delayed              bool
-	Screen               bool
-	Head                 bool
-	Thumbnails           bool
-	Diagrams             bool
-	Title                string
-	Description          string
-	Highlight            string
-	Tags                 string
-	DescriptionTags      string
-	Location             string
-	Tagline              string
-	TaglineIdeas         string
-	OtherLogos           string
-	Screenshots          bool
-	RequestThumbnail     bool
-	Thumbnail            string
-	Language             string
-	Members              string
-	Animations           string
-	RequestEdit          bool
-	Movie                bool
-	Timecodes            string
-	HugoPath             string
-	RelatedVideos        string
-	UploadVideo          string
-	VideoId              string
-	Tweet                string
-	LinkedInPosted       bool
-	SlackPosted          bool
-	HNPosted             bool
-	DOTPosted            bool
-	BlueSkyPosted        bool
-	YouTubeHighlight     bool
-	YouTubeComment       bool
-	YouTubeCommentReply  bool
-	Slides               bool
-	GDE                  bool
-	Repo                 string
-	NotifiedSponsors     bool
-	AppliedLanguage      string `yaml:"appliedLanguage,omitempty"`
-	AppliedAudioLanguage string `yaml:"appliedAudioLanguage,omitempty"`
-	AudioLanguage        string `yaml:"audioLanguage,omitempty"`
-	Gist                 string `yaml:"gist,omitempty"`
-	Code                 bool   `yaml:"code,omitempty"`
+	Name                 string      `json:"name"`
+	Path                 string      `json:"path"`
+	Category             string      `json:"category"`
+	ProjectName          string      `json:"projectName"`
+	ProjectURL           string      `json:"projectURL"`
+	Sponsorship          Sponsorship `json:"sponsorship"`
+	Date                 string      `json:"date"`
+	Delayed              bool        `json:"delayed"`
+	Screen               bool        `json:"screen"`
+	Head                 bool        `json:"head"`
+	Thumbnails           bool        `json:"thumbnails"`
+	Diagrams             bool        `json:"diagrams"`
+	Title                string      `json:"title"`
+	Description          string      `json:"description"`
+	Highlight            string      `json:"highlight"`
+	Tags                 string      `json:"tags"`
+	DescriptionTags      string      `json:"descriptionTags"`
+	Location             string      `json:"location"`
+	Tagline              string      `json:"tagline"`
+	TaglineIdeas         string      `json:"taglineIdeas"`
+	OtherLogos           string      `json:"otherLogos"`
+	Screenshots          bool        `json:"screenshots"`
+	RequestThumbnail     bool        `json:"requestThumbnail"`
+	Thumbnail            string      `json:"thumbnail"`
+	Language             string      `json:"language"`
+	Members              string      `json:"members"`
+	Animations           string      `json:"animations"`
+	RequestEdit          bool        `json:"requestEdit"`
+	Movie                bool        `json:"movie"`
+	Timecodes            string      `json:"timecodes"`
+	HugoPath             string      `json:"hugoPath"`
+	RelatedVideos        string      `json:"relatedVideos"`
+	UploadVideo          string      `json:"uploadVideo"`
+	VideoId              string      `json:"videoId"`
+	Tweet                string      `json:"tweet"`
+	LinkedInPosted       bool        `json:"linkedInPosted"`
+	SlackPosted          bool        `json:"slackPosted"`
+	HNPosted             bool        `json:"hnPosted"`
+	DOTPosted            bool        `json:"dotPosted"`
+	BlueSkyPosted        bool        `json:"blueSkyPosted"`
+	YouTubeHighlight     bool        `json:"youTubeHighlight"`
+	YouTubeComment       bool        `json:"youTubeComment"`
+	YouTubeCommentReply  bool        `json:"youTubeCommentReply"`
+	Slides               bool        `json:"slides"`
+	GDE                  bool        `json:"gde"`
+	Repo                 string      `json:"repo"`
+	NotifiedSponsors     bool        `json:"notifiedSponsors"`
+	AppliedLanguage      string      `yaml:"appliedLanguage,omitempty" json:"appliedLanguage,omitempty"`
+	AppliedAudioLanguage string      `yaml:"appliedAudioLanguage,omitempty" json:"appliedAudioLanguage,omitempty"`
+	AudioLanguage        string      `yaml:"audioLanguage,omitempty" json:"audioLanguage,omitempty"`
+	Gist                 string      `yaml:"gist,omitempty" json:"gist,omitempty"`
+	Code                 bool        `yaml:"code,omitempty" json:"code,omitempty"`
 }
 
 // Sponsorship holds details about video sponsorship.
@@ -93,9 +93,9 @@ type Video struct {
 // Sponsorship holds details about video sponsorship.
 // Fields Amount, Emails, and Blocked are already exported.
 type Sponsorship struct {
-	Amount  string
-	Emails  string
-	Blocked string
+	Amount  string `json:"amount"`
+	Emails  string `json:"emails"`
+	Blocked string `json:"blocked"`
 }
 
 // NewYAML creates a new YAML instance with default values
