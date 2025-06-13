@@ -695,6 +695,7 @@ Expected response:
   "fields": [
     {
       "name": "Code Done",
+      "fieldName": "codeDone",
       "type": "bool",
       "required": false,
       "order": 1,
@@ -704,7 +705,8 @@ Expected response:
       }
     },
     {
-      "name": "Talking Head Done", 
+      "name": "Talking Head Done",
+      "fieldName": "talkingHeadDone", 
       "type": "bool",
       "required": false,
       "order": 2,
@@ -715,6 +717,7 @@ Expected response:
     },
     {
       "name": "Screen Recording Done",
+      "fieldName": "screenRecordingDone",
       "type": "bool", 
       "required": false,
       "order": 3,
@@ -727,6 +730,13 @@ Expected response:
   ]
 }
 ```
+
+**NEW: Field Name Mapping**
+
+Each field now includes a `fieldName` property that contains the actual camelCase property name used in the video data API. This enables frontend applications to map between field metadata and video data without hardcoded conversion logic.
+
+- `name` - Display name for UI (e.g., "Description Tags")
+- `fieldName` - Actual property name in video data (e.g., "descriptionTags")
 
 **NEW: Completion Criteria Field**
 
@@ -750,16 +760,19 @@ Expected different completion criteria:
   "fields": [
     {
       "name": "Project Name",
+      "fieldName": "projectName",
       "type": "string",
       "completionCriteria": "filled_only"
     },
     {
       "name": "Sponsored",
+      "fieldName": "sponsored",
       "type": "bool", 
       "completionCriteria": "empty_or_filled"
     },
     {
       "name": "Sponsored Emails",
+      "fieldName": "sponsoredEmails",
       "type": "string",
       "completionCriteria": "conditional"
     }

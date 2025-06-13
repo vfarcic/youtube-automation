@@ -147,12 +147,23 @@ function renderProgressIndicator(aspect) {
 function renderFormFields(fields) {
   return fields.map(field => ({
     name: field.name,
+    fieldName: field.fieldName,  // NEW: Use for mapping to video data
     type: field.type,
     required: field.required,
     description: field.description,
     uiHints: field.uiHints,
     defaultValue: field.defaultValue
   }));
+}
+
+// NEW: Map field values between UI and API
+function mapFieldValues(fieldMetadata, videoData) {
+  const mappedValues = {};
+  fieldMetadata.forEach(field => {
+    // Use fieldName to get the correct property from video data
+    mappedValues[field.name] = videoData[field.fieldName];
+  });
+  return mappedValues;
 }
 ```
 

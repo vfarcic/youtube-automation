@@ -23,6 +23,7 @@ func (s *Service) GetAspects() AspectMetadata {
 		for j, fieldMapping := range mapping.Fields {
 			fields[j] = Field{
 				Name:               fieldMapping.Title,
+				FieldName:          fieldMapping.FieldKey,
 				Type:               fieldMapping.FieldType,
 				Required:           fieldMapping.Required,
 				Order:              fieldMapping.Order,
@@ -84,6 +85,7 @@ func (s *Service) GetAspectFields(aspectKey string) (*AspectFields, error) {
 			for i, fieldMapping := range mapping.Fields {
 				fields[i] = Field{
 					Name:               fieldMapping.Title,
+					FieldName:          fieldMapping.FieldKey,
 					Type:               fieldMapping.FieldType,
 					Required:           fieldMapping.Required,
 					Order:              fieldMapping.Order,

@@ -284,3 +284,32 @@ func TestConstantValues(t *testing.T) {
 		}
 	}
 }
+
+func TestFieldNameMapping(t *testing.T) {
+	// Test that Field struct correctly serializes FieldName property
+	field := Field{
+		Name:        "Test Field",
+		FieldName:   "testField",
+		Type:        FieldTypeString,
+		Required:    false,
+		Order:       1,
+		Description: "Test field description",
+		Options:     FieldOptions{},
+	}
+
+	// Test JSON serialization includes fieldName
+	jsonData, err := json.Marshal(field)
+	if err != nil {
+		t.Fatalf("Failed to marshal Field: %v", err)
+	}
+
+	var deserializedField Field
+	err = json.Unmarshal(jsonData, &deserializedField)
+	if err != nil {
+		t.Fatalf("Failed to unmarshal Field: %v", err)
+	}
+
+	if deserializedField.FieldName != "testField" {
+		t.Errorf("Expected deserialized fieldName 'testField', got '%s'", deserializedField.FieldName)
+	}
+}
