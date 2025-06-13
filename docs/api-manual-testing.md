@@ -2,6 +2,39 @@
 
 This guide provides step-by-step manual testing scenarios for the YouTube Automation REST API using `curl` commands.
 
+## Breaking Changes - String-Based IDs
+
+**Important:** As of the latest version, all video responses now include a string-based `id` field in the format `category/name` (e.g., `"tutorials/my-video"`). This replaces the previous numeric ID system and provides better consistency across the API.
+
+### Migration Guide for Frontend Applications
+
+If you're updating a frontend application that previously used numeric IDs, update your interfaces:
+
+```typescript
+// Before
+interface Video {
+  id: number;
+  name: string;
+  category: string;
+  // ... other fields
+}
+
+// After  
+interface Video {
+  id: string;        // Now string-based: "category/name"
+  name: string;
+  category: string;
+  // ... other fields
+}
+```
+
+### Key Changes:
+- **List endpoint** (`/api/videos/list`): Now includes `id` field with string values and `name` field for easy access
+- **Individual video endpoint** (`/api/videos/{videoName}`): Now includes `id` field in response
+- **ID format**: `category/name` (e.g., `"tutorials/kubernetes-guide"`)
+- **Name field**: Provides direct access to filename without parsing the ID
+- **URL paths**: Still use filename-based identifiers (unchanged)
+
 ## Prerequisites
 
 1. Start the API server:
@@ -129,7 +162,8 @@ Expected response:
 {
   "videos": [
     {
-      "id": 1,
+      "id": "development/rest-api-testing",
+      "name": "rest-api-testing",
       "title": "Complete Guide to REST API Testing",
       "date": "2025-01-06T16:00",
       "thumbnail": "material/api-testing/thumbnail.jpg",
@@ -142,7 +176,8 @@ Expected response:
       }
     },
     {
-      "id": 2,
+      "id": "devops/kubernetes-deployments",
+      "name": "kubernetes-deployments",
       "title": "Advanced Kubernetes Deployments",
       "date": "2025-01-08T14:30",
       "thumbnail": "material/kubernetes/deployment-thumb.jpg",
@@ -213,12 +248,17 @@ curl -X GET "http://localhost:8080/api/videos/list?phase=invalid"
 curl -X GET "http://localhost:8080/api/videos/my-video-filename?category=test-category"
 ```
 
-**Note on Video IDs and Names:** The `{videoName}` in the URL path (e.g., `my-video-filename`) is the video's unique ID and must match its YAML filename (e.g., `my-video-filename.yaml`). This ID is used for all API lookups. The `name` field inside the returned JSON is the video's separate display name (e.g., "My Video Display Name"), which is read from the file and is independent of the filename ID.
+**Note on Video IDs and Names:** 
+- The `{videoName}` in the URL path (e.g., `my-video-filename`) is the video's filename-based identifier and must match its YAML filename (e.g., `my-video-filename.yaml`). This is used for all API lookups.
+- The `id` field in API responses is a string-based identifier in the format `category/name` (e.g., `"test-category/my-video-filename"`). This provides a unique, human-readable identifier for frontend applications.
+- The `name` field in API responses provides direct access to the filename portion (e.g., `"my-video-filename"`) without requiring ID parsing.
+- The `title` field contains the video's display name (e.g., "My Video Display Name"), which is read from the file and is independent of both the filename and the string ID.
 
 Expected response:
 ```json
 {
   "video": {
+    "id": "test-category/my-video-filename",
     "name": "My Video Display Name",
     "category": "test-category",
     "path": "manuscript/test-category/my-video-filename.yaml",

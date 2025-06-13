@@ -4,10 +4,12 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 
 	"devopstoolkit/youtube-automation/internal/aspect"
+	"devopstoolkit/youtube-automation/internal/filesystem"
 	"devopstoolkit/youtube-automation/internal/storage"
 	video2 "devopstoolkit/youtube-automation/internal/video"
 	"devopstoolkit/youtube-automation/internal/workflow"
@@ -38,13 +40,36 @@ type GetVideosResponse struct {
 }
 
 type GetVideoResponse struct {
-	Video storage.Video `json:"video"`
+	Video VideoWithID `json:"video"`
+}
+
+// VideoWithID extends storage.Video with the string-based ID field
+type VideoWithID struct {
+	ID string `json:"id"`
+	storage.Video
+}
+
+// generateVideoID creates a string-based ID for a video using shared filesystem operations
+func generateVideoID(video storage.Video) string {
+	fsOps := filesystem.NewOperations()
+	expectedPath := fsOps.GetFilePath(video.Category, video.Name, "yaml")
+
+	// Extract filename from the expected path to ensure consistency
+	pathParts := strings.Split(expectedPath, "/")
+	filename := video.Name // fallback
+	if len(pathParts) > 0 {
+		filenameWithExt := pathParts[len(pathParts)-1]
+		filename = strings.TrimSuffix(filenameWithExt, ".yaml")
+	}
+
+	return video.Category + "/" + filename
 }
 
 // VideoListItem represents a lightweight video object optimized for list views
 // Reduces payload size from ~8.8KB to ~200 bytes per video (97% reduction)
 type VideoListItem struct {
-	ID        int           `json:"id"`
+	ID        string        `json:"id"`
+	Name      string        `json:"name"`
 	Title     string        `json:"title"`
 	Date      string        `json:"date"`
 	Thumbnail string        `json:"thumbnail"`
@@ -102,8 +127,24 @@ func transformToVideoListItems(videos []storage.Video) []VideoListItem {
 		}
 
 		// Map fields according to PRD requirements
+		// Generate string-based ID from category and filename (path-based)
+		// Use shared filesystem operations to ensure consistency with CLI
+		fsOps := filesystem.NewOperations()
+		expectedPath := fsOps.GetFilePath(video.Category, video.Name, "yaml")
+
+		// Extract filename from the expected path to ensure consistency
+		pathParts := strings.Split(expectedPath, "/")
+		filename := video.Name // fallback
+		if len(pathParts) > 0 {
+			filenameWithExt := pathParts[len(pathParts)-1]
+			filename = strings.TrimSuffix(filenameWithExt, ".yaml")
+		}
+
+		videoID := video.Category + "/" + filename
+
 		item := VideoListItem{
-			ID:        video.Index,
+			ID:        videoID,
+			Name:      filename,
 			Title:     title,
 			Date:      date,
 			Thumbnail: thumbnail,
@@ -279,7 +320,11 @@ func (s *Server) getVideo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, GetVideoResponse{Video: video})
+	videoWithID := VideoWithID{
+		ID:    generateVideoID(video),
+		Video: video,
+	}
+	writeJSON(w, http.StatusOK, GetVideoResponse{Video: videoWithID})
 }
 
 // updateVideo handles PUT /api/videos/{videoName}
@@ -300,7 +345,11 @@ func (s *Server) updateVideo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, GetVideoResponse{Video: req.Video})
+	videoWithID := VideoWithID{
+		ID:    generateVideoID(req.Video),
+		Video: req.Video,
+	}
+	writeJSON(w, http.StatusOK, GetVideoResponse{Video: videoWithID})
 }
 
 // deleteVideo handles DELETE /api/videos/{videoName}?category={category}
@@ -428,7 +477,11 @@ func (s *Server) updateVideoPhase(w http.ResponseWriter, r *http.Request, phase 
 		return
 	}
 
-	writeJSON(w, http.StatusOK, GetVideoResponse{Video: *updatedVideoPtr})
+	videoWithID := VideoWithID{
+		ID:    generateVideoID(*updatedVideoPtr),
+		Video: *updatedVideoPtr,
+	}
+	writeJSON(w, http.StatusOK, GetVideoResponse{Video: videoWithID})
 }
 
 // getEditingAspects handles GET /api/editing/aspects

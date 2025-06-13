@@ -173,7 +173,8 @@ paths:
                 $ref: '#/components/schemas/GetVideosListResponse'
               example:
                 videos:
-                  - name: "awesome-kubernetes-tutorial"
+                  - id: "tutorials/awesome-kubernetes-tutorial"
+                    name: "awesome-kubernetes-tutorial"
                     category: "tutorials"
                     date: "2025-05-27T10:00"
                     title: "Kubernetes Tutorial: From Zero to Hero"
@@ -183,7 +184,8 @@ paths:
                     progress:
                       completed: 3
                       total: 9
-                  - name: "docker-best-practices"
+                  - id: "devops/docker-best-practices"
+                    name: "docker-best-practices"
                     category: "devops"
                     date: "2025-05-30T14:00"
                     title: "Docker Best Practices for Production"
@@ -985,6 +987,10 @@ components:
     Video:
       type: object
       properties:
+        id:
+          type: string
+          description: The unique string-based identifier for the video (category/name format)
+          example: "category-01/my-awesome-video"
         name:
           type: string
           description: The canonical display name of the video, read from the file
@@ -1240,6 +1246,10 @@ components:
     VideoListItem:
       type: object
       properties:
+        id:
+          type: string
+          description: The unique string-based identifier for the video (category/name format)
+          example: "tutorials/my-awesome-video"
         name:
           type: string
           description: The name of the video
@@ -1284,6 +1294,7 @@ components:
               description: Total number of publish tasks
               example: 11
       required:
+        - id
         - name
         - category
         - title

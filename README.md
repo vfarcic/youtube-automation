@@ -60,8 +60,8 @@ Starts the REST API server. See [docs/api-manual-testing.md](docs/api-manual-tes
 - `POST /api/videos` - Create new video
 - `GET /api/videos/phases` - Get video phase summary
 - `GET /api/videos?phase={id}` - List videos in phase
-- `GET /api/videos/list?phase={id}` - Optimized lightweight video list with phase data (0-7) for frontend grids
-- `GET /api/videos/{name}?category={cat}` - Get video details
+- `GET /api/videos/list?phase={id}` - Optimized lightweight video list with phase data (0-7) for frontend grids (includes string-based IDs)
+- `GET /api/videos/{name}?category={cat}` - Get video details (includes string-based ID)
 - `PUT /api/videos/{name}` - Update video
 - `DELETE /api/videos/{name}?category={cat}` - Delete video
 - `PUT /api/videos/{name}/{phase}` - Update specific phase
@@ -81,6 +81,21 @@ Starts the REST API server. See [docs/api-manual-testing.md](docs/api-manual-tes
 - `/post-publish` - Social media and follow-up tasks
 
 ## Frontend Integration
+
+### String-Based Video IDs
+
+**Important:** All video responses now include a string-based `id` field in the format `category/name` (e.g., `"tutorials/kubernetes-guide"`). This provides consistent, human-readable identifiers for frontend applications.
+
+```javascript
+// Example video object structure
+{
+  "id": "tutorials/kubernetes-guide",     // NEW: String-based ID
+  "name": "kubernetes-guide",             // NEW: Filename for easy access
+  "category": "tutorials",                // Category
+  "title": "Kubernetes Guide",           // Display title
+  // ... other fields
+}
+```
 
 ### Fetching Editing Aspects
 
