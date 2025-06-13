@@ -171,7 +171,7 @@ func TestVideoService_GetVideo(t *testing.T) {
 	}
 }
 
-func TestVideoService_GetVideo_PreservesNameFromFile(t *testing.T) {
+func TestVideoService_GetVideo_SanitizesNameFromFile(t *testing.T) {
 	service, tempDir, cleanup := setupTestVideoService(t)
 	defer cleanup()
 
@@ -196,8 +196,10 @@ func TestVideoService_GetVideo_PreservesNameFromFile(t *testing.T) {
 	video, err := service.GetVideo(videoFileName, category)
 	require.NoError(t, err)
 
-	// Assert that the display name from the file is preserved
-	assert.Equal(t, videoDisplayName, video.Name)
+	// Assert that the name is sanitized for consistency with filenames
+	// The YAML content "My Video Display Name" should be sanitized to "my-video-display-name"
+	expectedSanitizedName := "my-video-display-name"
+	assert.Equal(t, expectedSanitizedName, video.Name)
 }
 
 func TestVideoService_UpdateVideo(t *testing.T) {
@@ -847,4 +849,37 @@ func slicesEqual(a, b []string) bool {
 		}
 	}
 	return true
+}
+
+func TestVideoService_SanitizedNamesIntegration(t *testing.T) {
+	service, tempDir, cleanup := setupTestVideoService(t)
+	defer cleanup()
+
+	// Test creating a video with unsanitized name
+	originalName := "Test Video With Spaces & Special!"
+	category := "test-category"
+
+	// Create video
+	videoIndex, err := service.CreateVideo(originalName, category)
+	require.NoError(t, err)
+
+	// Verify the stored name is sanitized
+	expectedSanitizedName := "test-video-with-spaces-&-special!"
+	assert.Equal(t, expectedSanitizedName, videoIndex.Name, "CreateVideo should store sanitized name")
+
+	// Verify we can retrieve the video using the sanitized name
+	retrievedVideo, err := service.GetVideo(expectedSanitizedName, category)
+	require.NoError(t, err)
+	assert.Equal(t, expectedSanitizedName, retrievedVideo.Name, "GetVideo should return sanitized name")
+
+	// Verify the actual file was created with sanitized filename
+	expectedFilePath := filepath.Join(tempDir, "manuscript", category, expectedSanitizedName+".yaml")
+	_, err = os.Stat(expectedFilePath)
+	assert.NoError(t, err, "File should be created with sanitized filename")
+
+	// Verify GetAllVideos returns sanitized names
+	allVideos, err := service.GetAllVideos()
+	require.NoError(t, err)
+	require.Len(t, allVideos, 1)
+	assert.Equal(t, expectedSanitizedName, allVideos[0].Name, "GetAllVideos should return sanitized names")
 }

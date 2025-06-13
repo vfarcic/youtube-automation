@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 )
@@ -46,21 +47,27 @@ func (o *Operations) GetDirPath(category string) string {
 	return fmt.Sprintf("%s%s", baseDir, sanitizedCategory)
 }
 
-// GetFilePath generates the full file path for a given category, name, and extension
-func (o *Operations) GetFilePath(category, name, extension string) string {
-	dirPath := o.GetDirPath(category) // category is sanitized in GetDirPath
-
-	// Sanitize the name part
+// SanitizeName applies the same sanitization logic used for filenames
+// This converts to lowercase, replaces spaces with hyphens, and removes problematic characters
+func (o *Operations) SanitizeName(name string) string {
 	// First, convert to lower case and replace spaces, similar to category
 	sanitizedName := strings.ReplaceAll(strings.ToLower(name), " ", "-")
 	// Then apply more general sanitization for problematic characters
 	sanitizedName = sanitizeFileName(sanitizedName)
+	return sanitizedName
+}
 
-	filePath := fmt.Sprintf("%s/%s.%s", dirPath, sanitizedName, extension)
-	// Further sanitization of the whole path is generally not needed if components are clean,
-	// but one final pass on the name part after construction can be an option.
-	// However, the current sanitizeFileName acts on the name component before path assembly.
-	return filePath
+// GetFilePath generates the full file path for a given category, name, and extension
+// Note: This method expects the name to already be sanitized (lowercase, spaces replaced with hyphens)
+// as this is now handled at the service layer for consistency
+func (o *Operations) GetFilePath(category, name, extension string) string {
+	// Convert category to lowercase and replace spaces with hyphens
+	sanitizedCategory := strings.ReplaceAll(strings.ToLower(category), " ", "-")
+
+	// Name is expected to already be sanitized at the service level
+	// No additional sanitization needed here
+
+	return filepath.Join("manuscript", sanitizedCategory, name+"."+extension)
 }
 
 // GetAnimations extracts animation cues and section titles from the specified markdown file.

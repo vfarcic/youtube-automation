@@ -4,12 +4,10 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 
 	"devopstoolkit/youtube-automation/internal/aspect"
-	"devopstoolkit/youtube-automation/internal/filesystem"
 	"devopstoolkit/youtube-automation/internal/storage"
 	video2 "devopstoolkit/youtube-automation/internal/video"
 	"devopstoolkit/youtube-automation/internal/workflow"
@@ -49,22 +47,6 @@ type VideoWithID struct {
 	storage.Video
 }
 
-// generateVideoID creates a string-based ID for a video using shared filesystem operations
-func generateVideoID(video storage.Video) string {
-	fsOps := filesystem.NewOperations()
-	expectedPath := fsOps.GetFilePath(video.Category, video.Name, "yaml")
-
-	// Extract filename from the expected path to ensure consistency
-	pathParts := strings.Split(expectedPath, "/")
-	filename := video.Name // fallback
-	if len(pathParts) > 0 {
-		filenameWithExt := pathParts[len(pathParts)-1]
-		filename = strings.TrimSuffix(filenameWithExt, ".yaml")
-	}
-
-	return video.Category + "/" + filename
-}
-
 // VideoListItem represents a lightweight video object optimized for list views
 // Reduces payload size from ~8.8KB to ~200 bytes per video (97% reduction)
 type VideoListItem struct {
@@ -88,79 +70,6 @@ type VideoProgress struct {
 // VideoListResponse contains the optimized video list for frontend consumption
 type VideoListResponse struct {
 	Videos []VideoListItem `json:"videos"`
-}
-
-// transformToVideoListItems converts full Video objects to lightweight VideoListItem format
-// This reduces payload size from ~8.8KB to ~200 bytes per video (97% reduction)
-func transformToVideoListItems(videos []storage.Video) []VideoListItem {
-	result := make([]VideoListItem, 0, len(videos))
-
-	for _, video := range videos {
-		// Use shared video manager for consistent progress calculation
-		videoManager := video2.NewManager(nil) // We don't need filePathFunc for calculations
-		overallCompleted, overallTotal := videoManager.CalculateOverallProgress(video)
-
-		// Determine status based on publishing completion using video manager
-		status := "draft"
-		publishCompleted, publishTotal := videoManager.CalculatePublishingProgress(video)
-		if publishTotal > 0 && publishCompleted == publishTotal {
-			status = "published"
-		}
-
-		// Use the shared phase calculation logic
-		phase := video2.CalculateVideoPhase(video)
-
-		// Handle edge cases for missing fields
-		title := video.Title
-		if title == "" {
-			title = video.Name // Fallback to name if title is empty
-		}
-
-		date := video.Date
-		if date == "" {
-			date = "TBD" // Indicate date to be determined
-		}
-
-		thumbnail := video.Thumbnail
-		if thumbnail == "" {
-			thumbnail = "default.jpg" // Default thumbnail placeholder
-		}
-
-		// Map fields according to PRD requirements
-		// Generate string-based ID from category and filename (path-based)
-		// Use shared filesystem operations to ensure consistency with CLI
-		fsOps := filesystem.NewOperations()
-		expectedPath := fsOps.GetFilePath(video.Category, video.Name, "yaml")
-
-		// Extract filename from the expected path to ensure consistency
-		pathParts := strings.Split(expectedPath, "/")
-		filename := video.Name // fallback
-		if len(pathParts) > 0 {
-			filenameWithExt := pathParts[len(pathParts)-1]
-			filename = strings.TrimSuffix(filenameWithExt, ".yaml")
-		}
-
-		videoID := video.Category + "/" + filename
-
-		item := VideoListItem{
-			ID:        videoID,
-			Name:      filename,
-			Title:     title,
-			Date:      date,
-			Thumbnail: thumbnail,
-			Category:  video.Category,
-			Status:    status,
-			Phase:     phase,
-			Progress: VideoProgress{
-				Completed: overallCompleted,
-				Total:     overallTotal,
-			},
-		}
-
-		result = append(result, item)
-	}
-
-	return result
 }
 
 // VideoPhaseListHandler handles GET /api/videos/list requests for video list data
@@ -304,13 +213,78 @@ func (s *Server) getVideosList(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, VideoListResponse{Videos: lightweightVideos})
 }
 
+// generateVideoID creates a string-based ID for a video using category and name
+func generateVideoID(video storage.Video) string {
+	return video.Category + "/" + video.Name
+}
+
+// transformToVideoListItems converts full Video objects to lightweight VideoListItem format
+// This reduces payload size from ~8.8KB to ~200 bytes per video (97% reduction)
+func transformToVideoListItems(videos []storage.Video) []VideoListItem {
+	result := make([]VideoListItem, 0, len(videos))
+
+	for _, video := range videos {
+		// Use shared video manager for consistent progress calculation
+		videoManager := video2.NewManager(nil) // We don't need filePathFunc for calculations
+		overallCompleted, overallTotal := videoManager.CalculateOverallProgress(video)
+
+		// Determine status based on publishing completion using video manager
+		status := "draft"
+		publishCompleted, publishTotal := videoManager.CalculatePublishingProgress(video)
+		if publishTotal > 0 && publishCompleted == publishTotal {
+			status = "published"
+		}
+
+		// Use the shared phase calculation logic
+		phase := video2.CalculateVideoPhase(video)
+
+		// Handle edge cases for missing fields
+		title := video.Title
+		if title == "" {
+			title = video.Name // Fallback to name if title is empty
+		}
+
+		date := video.Date
+		if date == "" {
+			date = "TBD" // Indicate date to be determined
+		}
+
+		thumbnail := video.Thumbnail
+		if thumbnail == "" {
+			thumbnail = "default.jpg" // Default thumbnail placeholder
+		}
+
+		// Generate string-based ID from category and name (already sanitized)
+		videoID := video.Category + "/" + video.Name
+
+		item := VideoListItem{
+			ID:        videoID,
+			Name:      video.Name, // Name is now already sanitized
+			Title:     title,
+			Date:      date,
+			Thumbnail: thumbnail,
+			Category:  video.Category,
+			Status:    status,
+			Phase:     phase,
+			Progress: VideoProgress{
+				Completed: overallCompleted,
+				Total:     overallTotal,
+			},
+		}
+
+		result = append(result, item)
+	}
+
+	return result
+}
+
 // getVideo handles GET /api/videos/{videoName}?category={category}
 func (s *Server) getVideo(w http.ResponseWriter, r *http.Request) {
 	videoName := chi.URLParam(r, "videoName")
 	category := r.URL.Query().Get("category")
 
 	if videoName == "" || category == "" {
-		writeError(w, http.StatusBadRequest, "video name and category are required", "")
+		writeError(w, http.StatusBadRequest, "video name and category query parameter are required", "")
 		return
 	}
 
@@ -320,6 +294,7 @@ func (s *Server) getVideo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// No need for videoForAPI since video.Name is now already sanitized
 	videoWithID := VideoWithID{
 		ID:    generateVideoID(video),
 		Video: video,
@@ -345,6 +320,7 @@ func (s *Server) updateVideo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// No need for videoForAPI since req.Video.Name is already correct
 	videoWithID := VideoWithID{
 		ID:    generateVideoID(req.Video),
 		Video: req.Video,
@@ -457,8 +433,6 @@ func (s *Server) updateVideoPhase(w http.ResponseWriter, r *http.Request, phase 
 	// First, get the video
 	videoToUpdate, err := s.videoService.GetVideo(videoName, category)
 	if err != nil {
-		// Distinguish between not found and other errors if GetVideo supports it
-		// For now, assuming a generic error or not found
 		writeError(w, http.StatusNotFound, "Video not found or error fetching video", err.Error())
 		return
 	}
@@ -472,11 +446,11 @@ func (s *Server) updateVideoPhase(w http.ResponseWriter, r *http.Request, phase 
 
 	// Ensure the pointer is not nil before dereferencing for the response
 	if updatedVideoPtr == nil {
-		// This case should ideally not be reached if UpdateVideoPhase returns an error on nil video
 		writeError(w, http.StatusInternalServerError, "UpdateVideoPhase returned nil video without error", "")
 		return
 	}
 
+	// No need for videoForAPI since updatedVideoPtr.Name is already correct
 	videoWithID := VideoWithID{
 		ID:    generateVideoID(*updatedVideoPtr),
 		Video: *updatedVideoPtr,
