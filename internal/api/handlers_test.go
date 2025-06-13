@@ -625,12 +625,12 @@ func TestTransformToVideoListItems(t *testing.T) {
 	t.Run("should handle special characters and unicode", func(t *testing.T) {
 		videos := []storage.Video{
 			{
-				Name:     "Video with Spaces & Special!",
+				Name:     "video-with-spaces-special", // Sanitized at service level
 				Title:    "Test Video",
 				Category: "test-category",
 			},
 			{
-				Name:     "Vidéo avec Accénts",
+				Name:     "vidéo-avec-accénts", // Sanitized at service level
 				Title:    "French Video",
 				Category: "français",
 			},
@@ -640,20 +640,20 @@ func TestTransformToVideoListItems(t *testing.T) {
 
 		require.Len(t, result, 2, "Should return exactly two videos")
 
-		// Filesystem operations sanitize special characters and convert to lowercase
-		assert.Equal(t, "test-category/video-with-spaces-&-special!", result[0].ID, "Should sanitize spaces but preserve & and !")
+		// Names are now sanitized at the service level, so they should be lowercase with hyphens
+		assert.Equal(t, "test-category/video-with-spaces-special", result[0].ID, "Should sanitize spaces and special characters")
 		assert.Equal(t, "français/vidéo-avec-accénts", result[1].ID, "Should handle unicode characters and preserve accents")
 	})
 
 	t.Run("should handle malformed paths gracefully", func(t *testing.T) {
 		videos := []storage.Video{
 			{
-				Name:     "Test Video",
+				Name:     "test-video", // Sanitized at service level
 				Title:    "Malformed Path Test",
 				Category: "test",
 			},
 			{
-				Name:     "Another Test",
+				Name:     "another-test", // Sanitized at service level
 				Title:    "No Path Segments",
 				Category: "test",
 			},
@@ -663,17 +663,19 @@ func TestTransformToVideoListItems(t *testing.T) {
 
 		require.Len(t, result, 2, "Should return exactly two videos")
 
-		// Both should use filesystem operations to generate consistent IDs
-		assert.Equal(t, "test/test-video", result[0].ID, "Should use filesystem operations for consistent naming")
-		assert.Equal(t, "test/another-test", result[1].ID, "Should use filesystem operations for consistent naming")
+		// Names are now sanitized at the service level
+		assert.Equal(t, "test/test-video", result[0].ID, "Should use sanitized names")
+		assert.Equal(t, "test/another-test", result[1].ID, "Should use sanitized names")
 	})
 
 	t.Run("should handle very long names and paths", func(t *testing.T) {
 		longName := strings.Repeat("Very Long Name ", 20) + "End"
 
+		// Sanitize the long name as the service would
+		sanitizedLongName := strings.ToLower(strings.ReplaceAll(longName, " ", "-"))
 		videos := []storage.Video{
 			{
-				Name:     longName,
+				Name:     sanitizedLongName, // Sanitized at service level
 				Title:    "Long Name Test",
 				Category: "test",
 			},
@@ -684,21 +686,20 @@ func TestTransformToVideoListItems(t *testing.T) {
 		require.Len(t, result, 1, "Should return exactly one video")
 
 		video := result[0]
-		// Filesystem operations will convert to lowercase and replace spaces with hyphens
-		expectedFilename := strings.ToLower(strings.ReplaceAll(longName, " ", "-"))
-		assert.Equal(t, "test/"+expectedFilename, video.ID)
+		// Names are now sanitized at the service level
+		assert.Equal(t, "test/"+sanitizedLongName, video.ID)
 		assert.Equal(t, "Long Name Test", video.Title)
 	})
 
 	t.Run("should handle path with no filename", func(t *testing.T) {
 		videos := []storage.Video{
 			{
-				Name:     "Fallback Name",
+				Name:     "fallback-name", // Sanitized at service level
 				Title:    "No Filename Test",
 				Category: "test",
 			},
 			{
-				Name:     "Another Fallback",
+				Name:     "another-fallback", // Sanitized at service level
 				Title:    "Empty Path Test",
 				Category: "test",
 			},
@@ -708,9 +709,9 @@ func TestTransformToVideoListItems(t *testing.T) {
 
 		require.Len(t, result, 2, "Should return exactly two videos")
 
-		// Both should use filesystem operations to generate consistent IDs
-		assert.Equal(t, "test/fallback-name", result[0].ID, "Should use filesystem operations for consistent naming")
-		assert.Equal(t, "test/another-fallback", result[1].ID, "Should use filesystem operations for consistent naming")
+		// Names are now sanitized at the service level
+		assert.Equal(t, "test/fallback-name", result[0].ID, "Should use sanitized names")
+		assert.Equal(t, "test/another-fallback", result[1].ID, "Should use sanitized names")
 	})
 }
 
@@ -1810,7 +1811,6 @@ func TestTransformToVideoListItems_StringID(t *testing.T) {
 	t.Run("should generate string-based IDs from category and name", func(t *testing.T) {
 		videos := []storage.Video{
 			{
-
 				Name:      "test-video",
 				Title:     "Test Video Title",
 				Date:      "2025-01-01T12:00",
@@ -1818,7 +1818,6 @@ func TestTransformToVideoListItems_StringID(t *testing.T) {
 				Category:  "devops",
 			},
 			{
-
 				Name:     "another-video",
 				Title:    "Another Video",
 				Category: "ai",
@@ -1844,21 +1843,21 @@ func TestTransformToVideoListItems_StringID(t *testing.T) {
 		assert.Equal(t, "ai", video2.Category)
 	})
 
-	t.Run("should extract filename from Path field when available", func(t *testing.T) {
+	t.Run("should use sanitized names from service layer", func(t *testing.T) {
 		videos := []storage.Video{
 			{
-				Name:      "Windsurf", // Display name with capital W
+				Name:      "windsurf", // Name is now sanitized at service level
 				Title:     "Remote Environments with Dev Containers and Devpod: Are They Worth It?",
 				Date:      "2025-01-01T12:00",
 				Thumbnail: "windsurf-thumb.jpg",
 				Category:  "development",
-				Path:      "manuscript/development/windsurf.yaml", // Actual file path with lowercase
+				Path:      "manuscript/development/windsurf.yaml",
 			},
 			{
-				Name:     "AI for Policies", // Display name with spaces and capitals
+				Name:     "ai-for-policies", // Name is now sanitized at service level
 				Title:    "Using AI for Policy Management",
 				Category: "ai",
-				Path:     "manuscript/ai/ai-for-policies.yaml", // Actual file path with hyphens
+				Path:     "manuscript/ai/ai-for-policies.yaml",
 			},
 		}
 
@@ -1866,17 +1865,16 @@ func TestTransformToVideoListItems_StringID(t *testing.T) {
 
 		require.Len(t, result, 2, "Should return exactly two videos")
 
-		// First video should extract filename from Path field
+		// Names are now already sanitized at the service level
 		video1 := result[0]
-		assert.Equal(t, "development/windsurf", video1.ID, "Should extract 'windsurf' from path")
-		assert.Equal(t, "windsurf", video1.Name, "Should extract 'windsurf' filename")
+		assert.Equal(t, "development/windsurf", video1.ID, "Should use sanitized name")
+		assert.Equal(t, "windsurf", video1.Name, "Should use sanitized name")
 		assert.Equal(t, "Remote Environments with Dev Containers and Devpod: Are They Worth It?", video1.Title)
 		assert.Equal(t, "development", video1.Category)
 
-		// Second video should extract filename from Path field
 		video2 := result[1]
-		assert.Equal(t, "ai/ai-for-policies", video2.ID, "Should extract 'ai-for-policies' from path")
-		assert.Equal(t, "ai-for-policies", video2.Name, "Should extract 'ai-for-policies' filename")
+		assert.Equal(t, "ai/ai-for-policies", video2.ID, "Should use sanitized name")
+		assert.Equal(t, "ai-for-policies", video2.Name, "Should use sanitized name")
 		assert.Equal(t, "Using AI for Policy Management", video2.Title)
 		assert.Equal(t, "ai", video2.Category)
 	})
@@ -1919,12 +1917,12 @@ func TestTransformToVideoListItems_EdgeCases(t *testing.T) {
 	t.Run("should handle special characters and unicode", func(t *testing.T) {
 		videos := []storage.Video{
 			{
-				Name:     "Video with Spaces & Special!",
+				Name:     "video-with-spaces-special", // Name is now sanitized at service level
 				Title:    "Test Video",
 				Category: "test-category",
 			},
 			{
-				Name:     "Vidéo avec Accénts",
+				Name:     "vidéo-avec-accénts", // Name is now sanitized at service level
 				Title:    "French Video",
 				Category: "français",
 			},
@@ -1934,8 +1932,40 @@ func TestTransformToVideoListItems_EdgeCases(t *testing.T) {
 
 		require.Len(t, result, 2, "Should return exactly two videos")
 
-		// Filesystem operations sanitize special characters and convert to lowercase
-		assert.Equal(t, "test-category/video-with-spaces-&-special!", result[0].ID, "Should sanitize spaces but preserve & and !")
-		assert.Equal(t, "français/vidéo-avec-accénts", result[1].ID, "Should handle unicode characters and preserve accents")
+		// Names are now sanitized at the service level
+		assert.Equal(t, "test-category/video-with-spaces-special", result[0].ID, "Should use sanitized name")
+		assert.Equal(t, "français/vidéo-avec-accénts", result[1].ID, "Should use sanitized name")
 	})
+}
+
+func TestServer_GetVideo_NameShouldBeFilename(t *testing.T) {
+	server := setupTestServer(t)
+
+	// Create test video with a name that will be sanitized
+	// Input: "Test Video" -> Expected filename: "test-video"
+	_, err := server.videoService.CreateVideo("Test Video", "test-category")
+	require.NoError(t, err)
+
+	url := "/api/videos/test-video?category=test-category"
+	req := httptest.NewRequest("GET", url, nil)
+	w := httptest.NewRecorder()
+
+	// Add chi context for URL parameters
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("videoName", "test-video")
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+	server.router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var response GetVideoResponse
+	err = json.Unmarshal(w.Body.Bytes(), &response)
+	require.NoError(t, err)
+
+	// The key assertion: name should be the filename, not the original input
+	// ID is "test-category/test-video", so name should be "test-video" (the filename part)
+	assert.Equal(t, "test-category/test-video", response.Video.ID, "ID should be category/filename")
+	assert.Equal(t, "test-video", response.Video.Name, "Name should be the filename part of ID, not the original input")
+	assert.Equal(t, "test-category", response.Video.Category, "Category should match the category part of ID")
 }

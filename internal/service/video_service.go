@@ -43,8 +43,11 @@ func (s *VideoService) CreateVideo(name, category string) (storage.VideoIndex, e
 		return storage.VideoIndex{}, fmt.Errorf("name and category are required")
 	}
 
+	// Sanitize the name to match the filename that will be created
+	sanitizedName := s.filesystem.SanitizeName(name)
+
 	vi := storage.VideoIndex{
-		Name:     name,
+		Name:     sanitizedName,
 		Category: category,
 	}
 
@@ -98,7 +101,7 @@ FIXME:
 	// Create the default video YAML file
 	videoPath := s.filesystem.GetFilePath(vi.Category, vi.Name, "yaml")
 	defaultVideo := storage.Video{
-		Name:     name,
+		Name:     sanitizedName,
 		Category: category,
 		Path:     videoPath,
 		// Initialize sponsorship
@@ -160,12 +163,15 @@ func (s *VideoService) GetVideosByPhase(phase int) ([]storage.Video, error) {
 
 	var videosInPhase []storage.Video
 	for _, videoIndex := range index {
-		videoPath := s.filesystem.GetFilePath(videoIndex.Category, videoIndex.Name, "yaml")
+		// Sanitize the name from index to match the actual filename
+		sanitizedName := s.filesystem.SanitizeName(videoIndex.Name)
+		videoPath := s.filesystem.GetFilePath(videoIndex.Category, sanitizedName, "yaml")
 		fullVideo, err := s.yamlStorage.GetVideo(videoPath)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get video details for %s: %w", videoIndex.Name, err)
 		}
-		fullVideo.Name = videoIndex.Name
+		// Always use sanitized name to ensure consistency with filenames
+		fullVideo.Name = s.filesystem.SanitizeName(fullVideo.Name)
 		fullVideo.Category = videoIndex.Category
 		fullVideo.Path = videoPath
 
@@ -205,12 +211,15 @@ func (s *VideoService) GetAllVideos() ([]storage.Video, error) {
 
 	var allVideos []storage.Video
 	for _, video := range index {
-		videoPath := s.filesystem.GetFilePath(video.Category, video.Name, "yaml")
+		// Sanitize the name from index to match the actual filename
+		sanitizedName := s.filesystem.SanitizeName(video.Name)
+		videoPath := s.filesystem.GetFilePath(video.Category, sanitizedName, "yaml")
 		fullVideo, err := s.yamlStorage.GetVideo(videoPath)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get video details for %s: %w", video.Name, err)
 		}
-		fullVideo.Name = video.Name
+		// Always use sanitized name to ensure consistency with filenames
+		fullVideo.Name = s.filesystem.SanitizeName(fullVideo.Name)
 		fullVideo.Category = video.Category
 		fullVideo.Path = videoPath
 		allVideos = append(allVideos, fullVideo)
@@ -247,7 +256,9 @@ func (s *VideoService) GetVideoPhases() (map[int]int, error) {
 	for _, videoIndex := range index {
 		// Load video data once and use CalculateVideoPhase directly
 		// This avoids the double file I/O that GetVideoPhase does (load + reload)
-		videoPath := s.filesystem.GetFilePath(videoIndex.Category, videoIndex.Name, "yaml")
+		// Sanitize the name from index to match the actual filename
+		sanitizedName := s.filesystem.SanitizeName(videoIndex.Name)
+		videoPath := s.filesystem.GetFilePath(videoIndex.Category, sanitizedName, "yaml")
 		fullVideo, err := s.yamlStorage.GetVideo(videoPath)
 		if err != nil {
 			// Log error but continue counting other videos
@@ -267,15 +278,17 @@ func (s *VideoService) GetVideo(name, category string) (storage.Video, error) {
 		return storage.Video{}, fmt.Errorf("name and category are required")
 	}
 
-	videoPath := s.filesystem.GetFilePath(category, name, "yaml")
+	// Sanitize the name to match the actual filename
+	sanitizedName := s.filesystem.SanitizeName(name)
+	videoPath := s.filesystem.GetFilePath(category, sanitizedName, "yaml")
 	video, err := s.yamlStorage.GetVideo(videoPath)
 	if err != nil {
 		return storage.Video{}, fmt.Errorf("failed to get video %s: %w", name, err)
 	}
 
-	if video.Name == "" {
-		video.Name = name
-	}
+	// Always use the sanitized filename to ensure consistency
+	// The filename is the source of truth, not the YAML content
+	video.Name = s.filesystem.SanitizeName(video.Name)
 	video.Category = category
 	video.Path = videoPath
 
@@ -297,8 +310,10 @@ func (s *VideoService) DeleteVideo(name, category string) error {
 		return fmt.Errorf("name and category are required")
 	}
 
-	videoPath := s.filesystem.GetFilePath(category, name, "yaml")
-	mdPath := s.filesystem.GetFilePath(category, name, "md")
+	// Sanitize the name to match the actual filename
+	sanitizedName := s.filesystem.SanitizeName(name)
+	videoPath := s.filesystem.GetFilePath(category, sanitizedName, "yaml")
+	mdPath := s.filesystem.GetFilePath(category, sanitizedName, "md")
 
 	// Delete both files
 	yamlErr := os.Remove(videoPath)
@@ -367,8 +382,10 @@ func (s *VideoService) MoveVideo(name, category, targetDir string) error {
 		return fmt.Errorf("name, category, and target directory are required")
 	}
 
-	currentYAMLPath := s.filesystem.GetFilePath(category, name, "yaml")
-	currentMDPath := s.filesystem.GetFilePath(category, name, "md")
+	// Sanitize the name to match the actual filename
+	sanitizedName := s.filesystem.SanitizeName(name)
+	currentYAMLPath := s.filesystem.GetFilePath(category, sanitizedName, "yaml")
+	currentMDPath := s.filesystem.GetFilePath(category, sanitizedName, "md")
 
 	// Use the robust file moving utility instead of the simpler implementation
 	_, _, err := utils.MoveVideoFiles(currentYAMLPath, currentMDPath, targetDir, name)

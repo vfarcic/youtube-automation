@@ -47,14 +47,14 @@ func TestGetFilePath(t *testing.T) {
 		{
 			name:      "simple case",
 			category:  "tutorials",
-			videoName: "My First Video",
+			videoName: "my-first-video", // Pre-sanitized name
 			extension: "md",
 			expected:  "manuscript/tutorials/my-first-video.md",
 		},
 		{
 			name:      "name with question mark",
 			category:  "faq",
-			videoName: "What is Go?",
+			videoName: "what-is-go", // Pre-sanitized name
 			extension: "yaml",
 			expected:  "manuscript/faq/what-is-go.yaml",
 		},
@@ -68,9 +68,50 @@ func TestGetFilePath(t *testing.T) {
 		{
 			name:      "category with spaces",
 			category:  "long form content",
-			videoName: "Deep Dive",
+			videoName: "deep-dive", // Pre-sanitized name
 			extension: "md",
 			expected:  "manuscript/long-form-content/deep-dive.md",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actual := ops.GetFilePath(tt.category, tt.videoName, tt.extension)
+			assert.Equal(t, tt.expected, actual)
+		})
+	}
+}
+
+func TestGetFilePath_WithPreSanitizedNames(t *testing.T) {
+	ops := NewOperations()
+
+	tests := []struct {
+		name      string
+		category  string
+		videoName string
+		extension string
+		expected  string
+	}{
+		{
+			name:      "already sanitized name",
+			category:  "ai",
+			videoName: "test-video", // Already sanitized
+			extension: "yaml",
+			expected:  "manuscript/ai/test-video.yaml",
+		},
+		{
+			name:      "already sanitized with hyphens",
+			category:  "development",
+			videoName: "amazon-q-developer", // Already sanitized
+			extension: "md",
+			expected:  "manuscript/development/amazon-q-developer.md",
+		},
+		{
+			name:      "lowercase single word",
+			category:  "test",
+			videoName: "warp", // Already sanitized
+			extension: "yaml",
+			expected:  "manuscript/test/warp.yaml",
 		},
 	}
 
@@ -200,6 +241,51 @@ func TestGetAnimations(t *testing.T) {
 
 			assert.Equal(t, tc.expectedAnims, anims, "Animations did not match")
 			assert.Equal(t, tc.expectedSections, sections, "Sections did not match")
+		})
+	}
+}
+
+func TestSanitizeName(t *testing.T) {
+	ops := NewOperations()
+
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "simple lowercase",
+			input:    "test",
+			expected: "test",
+		},
+		{
+			name:     "mixed case with spaces",
+			input:    "Test Video",
+			expected: "test-video",
+		},
+		{
+			name:     "with problematic characters",
+			input:    "Test: Video?",
+			expected: "test-video",
+		},
+		{
+			name:     "multiple spaces and hyphens",
+			input:    "Test  Video - Part 1",
+			expected: "test-video-part-1",
+		},
+		{
+			name:     "empty string",
+			input:    "",
+			expected: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := ops.SanitizeName(tt.input)
+			if result != tt.expected {
+				t.Errorf("SanitizeName(%q) = %q, want %q", tt.input, result, tt.expected)
+			}
 		})
 	}
 }
