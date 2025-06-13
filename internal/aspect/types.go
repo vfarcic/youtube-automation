@@ -68,7 +68,8 @@ type AspectSummary struct {
 
 // Field represents a single editable field within an aspect
 type Field struct {
-	Name               string          `json:"name"`
+	Name               string          `json:"name"`      // Display name for UI
+	FieldName          string          `json:"fieldName"` // Actual camelCase property name in video data API
 	Type               string          `json:"type"`
 	Required           bool            `json:"required"`
 	Order              int             `json:"order"`

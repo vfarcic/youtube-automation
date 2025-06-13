@@ -918,3 +918,46 @@ func TestService_GetAspectFields_UnknownAspect(t *testing.T) {
 		t.Errorf("Expected ErrAspectNotFound, got %v", err)
 	}
 }
+
+func TestGetAspectFields_IncludesFieldName(t *testing.T) {
+	service := NewService()
+
+	// Test with definition aspect which has well-known fields
+	aspectFields, err := service.GetAspectFields("definition")
+	if err != nil {
+		t.Fatalf("Failed to get aspect fields: %v", err)
+	}
+
+	if len(aspectFields.Fields) == 0 {
+		t.Fatal("Expected fields in definition aspect, got none")
+	}
+
+	// Test specific field mappings that we know should exist
+	expectedFieldNames := map[string]string{
+		"Title":            "title",           // Simple property
+		"Description Tags": "descriptionTags", // Compound property
+		"Highlight":        "highlight",       // Simple property
+	}
+
+	fieldsByName := make(map[string]Field)
+	for _, field := range aspectFields.Fields {
+		fieldsByName[field.Name] = field
+	}
+
+	for displayName, expectedFieldName := range expectedFieldNames {
+		field, exists := fieldsByName[displayName]
+		if !exists {
+			t.Errorf("Expected field with name '%s' not found", displayName)
+			continue
+		}
+
+		if field.FieldName != expectedFieldName {
+			t.Errorf("Field '%s': expected fieldName '%s', got '%s'", displayName, expectedFieldName, field.FieldName)
+		}
+
+		// Verify it's not empty
+		if field.FieldName == "" {
+			t.Errorf("Field '%s': fieldName should not be empty", displayName)
+		}
+	}
+}
