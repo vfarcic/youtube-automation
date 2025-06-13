@@ -1566,12 +1566,12 @@ func TestGetAspectFieldsEnhancedMetadata(t *testing.T) {
 					field.Name, field.UIHints.InputType)
 			}
 		case "date":
-			if field.UIHints.InputType != "datetime-local" {
-				t.Errorf("Date field '%s' should have InputType 'datetime-local', got '%s'",
+			if field.UIHints.InputType != "datetime" {
+				t.Errorf("Date field '%s' should have InputType 'datetime', got '%s'",
 					field.Name, field.UIHints.InputType)
 			}
-			if field.UIHints.Placeholder != "2006-01-02T15:04" {
-				t.Errorf("Date field '%s' should have placeholder '2006-01-02T15:04', got '%s'",
+			if field.UIHints.Placeholder != "YYYY-MM-DDTHH:MM" {
+				t.Errorf("Date field '%s' should have placeholder 'YYYY-MM-DDTHH:MM', got '%s'",
 					field.Name, field.UIHints.Placeholder)
 			}
 		case "boolean":

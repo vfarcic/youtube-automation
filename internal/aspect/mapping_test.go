@@ -1,9 +1,10 @@
 package aspect
 
 import (
+	"reflect"
+	"sort"
 	"testing"
 
-	"devopstoolkit/youtube-automation/internal/constants"
 	"devopstoolkit/youtube-automation/internal/storage"
 )
 
@@ -27,21 +28,28 @@ func TestGetVideoAspectMappings(t *testing.T) {
 			AspectKeyPostPublish,
 		}
 
-		for i, mapping := range mappings {
+		// Sort mappings by order to ensure consistent testing
+		sortedMappings := make([]AspectMapping, len(mappings))
+		copy(sortedMappings, mappings)
+		sort.Slice(sortedMappings, func(i, j int) bool {
+			return sortedMappings[i].Order < sortedMappings[j].Order
+		})
+
+		for i, mapping := range sortedMappings {
 			if mapping.AspectKey != expectedKeys[i] {
 				t.Errorf("Expected aspect key %s at index %d, got %s", expectedKeys[i], i, mapping.AspectKey)
 			}
 		}
 	})
 
-	t.Run("All aspects should have valid titles from constants", func(t *testing.T) {
+	t.Run("All aspects should have valid titles", func(t *testing.T) {
 		expectedTitles := map[string]string{
-			AspectKeyInitialDetails: constants.PhaseTitleInitialDetails,
-			AspectKeyWorkProgress:   constants.PhaseTitleWorkProgress,
-			AspectKeyDefinition:     constants.PhaseTitleDefinition,
-			AspectKeyPostProduction: constants.PhaseTitlePostProduction,
-			AspectKeyPublishing:     constants.PhaseTitlePublishingDetails,
-			AspectKeyPostPublish:    constants.PhaseTitlePostPublish,
+			AspectKeyInitialDetails: "Initial Details",
+			AspectKeyWorkProgress:   "Work Progress",
+			AspectKeyDefinition:     "Definition",
+			AspectKeyPostProduction: "Post Production",
+			AspectKeyPublishing:     "Publishing",
+			AspectKeyPostPublish:    "Post Publish",
 		}
 
 		for _, mapping := range mappings {
@@ -73,7 +81,7 @@ func TestGetVideoAspectMappings(t *testing.T) {
 			for i, field := range mapping.Fields {
 				expectedOrder := i + 1
 				if field.Order != expectedOrder {
-					t.Errorf("Field %s in aspect %s should have order %d, got %d", field.FieldKey, mapping.AspectKey, expectedOrder, field.Order)
+					t.Errorf("Field %s in aspect %s should have order %d, got %d", field.FieldName, mapping.AspectKey, expectedOrder, field.Order)
 				}
 			}
 		}
@@ -92,74 +100,55 @@ func TestGetVideoAspectMappings(t *testing.T) {
 		for _, mapping := range mappings {
 			for _, field := range mapping.Fields {
 				if !validTypes[field.FieldType] {
-					t.Errorf("Invalid field type %s for field %s in aspect %s", field.FieldType, field.FieldKey, mapping.AspectKey)
+					t.Errorf("Invalid field type %s for field %s in aspect %s", field.FieldType, field.FieldName, mapping.AspectKey)
 				}
 			}
 		}
 	})
 
-	t.Run("All field titles should match CLI constants", func(t *testing.T) {
-		// Test a sample of known field titles
-		titleFieldFound := false
-		codeFieldFound := false
-		delayedFieldFound := false
+	t.Run("Field names should match JSON struct tags", func(t *testing.T) {
+		// Test specific known fields to ensure they match JSON tags
+		expectedFieldNames := map[string]string{
+			"Project Name":        "projectName",
+			"Project URL":         "projectURL",
+			"Sponsorship Amount":  "sponsorship.amount",
+			"Sponsorship Emails":  "sponsorship.emails",
+			"Sponsorship Blocked": "sponsorship.blocked",
+			"Date":                "date",
+			"Delayed":             "delayed",
+			"Gist":                "gist",
+		}
 
+		// Find initial details mapping by key, not by index
+		var initialDetailsMapping *AspectMapping
 		for _, mapping := range mappings {
-			for _, field := range mapping.Fields {
-				switch field.FieldKey {
-				case "title":
-					if field.Title != constants.FieldTitleTitle {
-						t.Errorf("Title field should use constant %s, got %s", constants.FieldTitleTitle, field.Title)
-					}
-					titleFieldFound = true
-				case "codeDone":
-					if field.Title != constants.FieldTitleCodeDone {
-						t.Errorf("Code field should use constant %s, got %s", constants.FieldTitleCodeDone, field.Title)
-					}
-					codeFieldFound = true
-				case "delayed":
-					if field.Title != constants.FieldTitleDelayed {
-						t.Errorf("Delayed field should use constant %s, got %s", constants.FieldTitleDelayed, field.Title)
-					}
-					delayedFieldFound = true
-				}
+			if mapping.AspectKey == AspectKeyInitialDetails {
+				initialDetailsMapping = &mapping
+				break
 			}
 		}
 
-		if !titleFieldFound {
-			t.Error("Title field not found in mappings")
+		if initialDetailsMapping == nil {
+			t.Fatalf("Could not find initial details mapping")
 		}
-		if !codeFieldFound {
-			t.Error("Code field not found in mappings")
-		}
-		if !delayedFieldFound {
-			t.Error("Delayed field not found in mappings")
-		}
-	})
 
-	t.Run("All video properties should be valid", func(t *testing.T) {
-		// Create a sample video to verify property paths exist
-		video := storage.Video{}
-
-		for _, mapping := range mappings {
-			for _, field := range mapping.Fields {
-				// Test that GetVideoPropertyValue doesn't return nil for valid properties
-				value := GetVideoPropertyValue(video, field.VideoProperty)
-				// We don't test the value itself since zero values are valid,
-				// but the function should not panic and should return a non-nil interface{}
-				_ = value // Suppress unused variable warning
+		for _, field := range initialDetailsMapping.Fields {
+			if expectedFieldName, exists := expectedFieldNames[field.Name]; exists {
+				if field.FieldName != expectedFieldName {
+					t.Errorf("Field %s should have fieldName %s, got %s", field.Name, expectedFieldName, field.FieldName)
+				}
 			}
 		}
 	})
 
-	t.Run("Field keys should be unique within each aspect", func(t *testing.T) {
+	t.Run("Field names should be unique within each aspect", func(t *testing.T) {
 		for _, mapping := range mappings {
-			fieldKeys := make(map[string]bool)
+			fieldNames := make(map[string]bool)
 			for _, field := range mapping.Fields {
-				if fieldKeys[field.FieldKey] {
-					t.Errorf("Duplicate field key %s in aspect %s", field.FieldKey, mapping.AspectKey)
+				if fieldNames[field.FieldName] {
+					t.Errorf("Duplicate field name %s in aspect %s", field.FieldName, mapping.AspectKey)
 				}
-				fieldKeys[field.FieldKey] = true
+				fieldNames[field.FieldName] = true
 			}
 		}
 	})
@@ -184,478 +173,168 @@ func TestGetVideoAspectMappings(t *testing.T) {
 	})
 }
 
-func TestGetVideoPropertyValue(t *testing.T) {
+func TestGetFieldValueByJSONPath(t *testing.T) {
 	video := storage.Video{
 		ProjectName: "Test Project",
-		Title:       "Test Video",
-		Code:        true,
+		ProjectURL:  "https://github.com/test/project",
+		Date:        "2024-01-01T10:00",
 		Delayed:     false,
+		Gist:        "test.md",
 		Sponsorship: storage.Sponsorship{
-			Amount: "1000",
-			Emails: "test@example.com",
+			Amount:  "1000",
+			Emails:  "test@example.com",
+			Blocked: "No",
 		},
 	}
 
-	t.Run("Should return correct values for string properties", func(t *testing.T) {
-		value := GetVideoPropertyValue(video, "ProjectName")
+	t.Run("Should return correct values for simple string properties", func(t *testing.T) {
+		value := GetFieldValueByJSONPath(video, "projectName")
 		if value != "Test Project" {
 			t.Errorf("Expected 'Test Project', got %v", value)
-		}
-
-		value = GetVideoPropertyValue(video, "Title")
-		if value != "Test Video" {
-			t.Errorf("Expected 'Test Video', got %v", value)
 		}
 	})
 
 	t.Run("Should return correct values for boolean properties", func(t *testing.T) {
-		value := GetVideoPropertyValue(video, "Code")
-		if value != true {
-			t.Errorf("Expected true, got %v", value)
-		}
-
-		value = GetVideoPropertyValue(video, "Delayed")
+		value := GetFieldValueByJSONPath(video, "delayed")
 		if value != false {
 			t.Errorf("Expected false, got %v", value)
 		}
 	})
 
 	t.Run("Should return correct values for nested properties", func(t *testing.T) {
-		value := GetVideoPropertyValue(video, "Sponsorship.Amount")
+		value := GetFieldValueByJSONPath(video, "sponsorship.amount")
 		if value != "1000" {
 			t.Errorf("Expected '1000', got %v", value)
 		}
 
-		value = GetVideoPropertyValue(video, "Sponsorship.Emails")
+		value = GetFieldValueByJSONPath(video, "sponsorship.emails")
 		if value != "test@example.com" {
 			t.Errorf("Expected 'test@example.com', got %v", value)
 		}
 	})
 
-	t.Run("Should return nil for invalid property paths", func(t *testing.T) {
-		value := GetVideoPropertyValue(video, "InvalidProperty")
+	t.Run("Should return nil for non-existent properties", func(t *testing.T) {
+		value := GetFieldValueByJSONPath(video, "nonexistent")
 		if value != nil {
-			t.Errorf("Expected nil for invalid property, got %v", value)
+			t.Errorf("Expected nil for non-existent property, got %v", value)
+		}
+
+		value = GetFieldValueByJSONPath(video, "sponsorship.nonexistent")
+		if value != nil {
+			t.Errorf("Expected nil for non-existent nested property, got %v", value)
 		}
 	})
 }
 
-func TestFieldMapping(t *testing.T) {
-	t.Run("FieldMapping should have all required fields", func(t *testing.T) {
-		mapping := FieldMapping{
-			VideoProperty: "Test",
-			FieldKey:      "test",
-			FieldType:     FieldTypeString,
-			Title:         "Test Field",
-			Required:      true,
-			Order:         1,
-			Options:       []string{"option1", "option2"},
-		}
+func TestGenerateDisplayName(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{"ProjectName", "Project Name"},
+		{"ProjectURL", "Project URL"},
+		{"VideoId", "Video ID"},
+		{"DOTPosted", "DOT Posted"},
+		{"GDE", "GDE"},
+		{"YouTubeHighlight", "YouTube Highlight"},
+		{"BlueSkyPosted", "Blue Sky Posted"},
+		{"HNPosted", "HN Posted"},
+	}
 
-		if mapping.VideoProperty != "Test" {
-			t.Error("VideoProperty not set correctly")
-		}
-		if mapping.FieldKey != "test" {
-			t.Error("FieldKey not set correctly")
-		}
-		if mapping.FieldType != FieldTypeString {
-			t.Error("FieldType not set correctly")
-		}
-		if mapping.Title != "Test Field" {
-			t.Error("Title not set correctly")
-		}
-		if mapping.Required != true {
-			t.Error("Required not set correctly")
-		}
-		if mapping.Order != 1 {
-			t.Error("Order not set correctly")
-		}
-		if len(mapping.Options) != 2 {
-			t.Error("Options not set correctly")
-		}
-	})
-}
-
-// createTestVideo creates a test Video object with sample data
-func createTestVideo() storage.Video {
-	return storage.Video{
-		Name:                "test-video",
-		Path:                "test-video.yaml",
-		Category:            "test-category",
-		ProjectName:         "Test Project",
-		ProjectURL:          "https://github.com/test/project",
-		Title:               "Test Video Title",
-		Description:         "Test video description",
-		Date:                "2023-05-15T10:00",
-		Delayed:             false,
-		Code:                true,
-		Head:                false,
-		Screen:              true,
-		Thumbnails:          false,
-		Diagrams:            true,
-		Screenshots:         false,
-		Location:            "Drive Folder",
-		Tagline:             "Test tagline",
-		TaglineIdeas:        "Some ideas",
-		OtherLogos:          "Logo details",
-		Highlight:           "Test highlight",
-		Tags:                "tag1,tag2,tag3",
-		DescriptionTags:     "More tags for description",
-		Tweet:               "Test tweet text",
-		Animations:          "Animation script",
-		Thumbnail:           "/path/to/thumbnail.jpg",
-		Members:             "member1,member2",
-		RequestEdit:         false,
-		Timecodes:           "00:00 - Introduction",
-		Movie:               true,
-		Slides:              false,
-		UploadVideo:         "/path/to/video.mp4",
-		VideoId:             "abc123xyz",
-		HugoPath:            "/hugo/post/path",
-		DOTPosted:           true,
-		BlueSkyPosted:       false,
-		LinkedInPosted:      true,
-		SlackPosted:         false,
-		YouTubeHighlight:    true,
-		YouTubeComment:      false,
-		YouTubeCommentReply: true,
-		GDE:                 false,
-		Repo:                "https://github.com/test/repo",
-		NotifiedSponsors:    true,
-		Gist:                "/path/to/gist.md",
-		RelatedVideos:       "Related video 1\nRelated video 2",
-		Sponsorship: storage.Sponsorship{
-			Amount:  "1000",
-			Emails:  "sponsor@example.com",
-			Blocked: "",
-		},
+	for _, test := range tests {
+		t.Run(test.input, func(t *testing.T) {
+			result := generateDisplayName(test.input)
+			if result != test.expected {
+				t.Errorf("generateDisplayName(%s) = %s, expected %s", test.input, result, test.expected)
+			}
+		})
 	}
 }
 
-// TestCreateFieldMapping tests the createFieldMapping helper function
-func TestCreateFieldMapping(t *testing.T) {
-	t.Run("Should create string field mapping with correct metadata", func(t *testing.T) {
-		mapping := createFieldMapping("TestProperty", "testKey", FieldTypeString, "Test Title", false, 1, nil)
+func TestDetermineFieldType(t *testing.T) {
+	video := storage.Video{}
+	videoType := reflect.TypeOf(video)
 
-		// Test basic properties
-		if mapping.VideoProperty != "TestProperty" {
-			t.Errorf("Expected VideoProperty 'TestProperty', got '%s'", mapping.VideoProperty)
+	tests := []struct {
+		fieldName    string
+		expectedType string
+	}{
+		{"ProjectName", FieldTypeString},
+		{"Delayed", FieldTypeBoolean},
+		{"Code", FieldTypeBoolean},
+		{"Head", FieldTypeBoolean},
+		{"Date", FieldTypeDate},
+		{"Description", FieldTypeText},
+		{"Tags", FieldTypeText},
+		{"Timecodes", FieldTypeText},
+	}
+
+	for _, test := range tests {
+		t.Run(test.fieldName, func(t *testing.T) {
+			field, found := videoType.FieldByName(test.fieldName)
+			if !found {
+				t.Fatalf("Field %s not found in Video struct", test.fieldName)
+			}
+
+			result := determineFieldType(field.Type, test.fieldName)
+			if result != test.expectedType {
+				t.Errorf("determineFieldType for %s = %s, expected %s", test.fieldName, result, test.expectedType)
+			}
+		})
+	}
+}
+
+func TestGenerateFieldMapping(t *testing.T) {
+	videoType := reflect.TypeOf(storage.Video{})
+
+	t.Run("Should generate correct mapping for simple field", func(t *testing.T) {
+		mapping := generateFieldMapping(videoType, "ProjectName", 1)
+		if mapping == nil {
+			t.Fatal("Expected non-nil mapping")
 		}
-		if mapping.FieldKey != "testKey" {
-			t.Errorf("Expected FieldKey 'testKey', got '%s'", mapping.FieldKey)
+
+		if mapping.Name != "Project Name" {
+			t.Errorf("Expected name 'Project Name', got %s", mapping.Name)
+		}
+		if mapping.FieldName != "projectName" {
+			t.Errorf("Expected fieldName 'projectName', got %s", mapping.FieldName)
 		}
 		if mapping.FieldType != FieldTypeString {
-			t.Errorf("Expected FieldType '%s', got '%s'", FieldTypeString, mapping.FieldType)
-		}
-		if mapping.Title != "Test Title" {
-			t.Errorf("Expected Title 'Test Title', got '%s'", mapping.Title)
-		}
-		if mapping.Required != false {
-			t.Errorf("Expected Required false, got %t", mapping.Required)
+			t.Errorf("Expected fieldType 'string', got %s", mapping.FieldType)
 		}
 		if mapping.Order != 1 {
-			t.Errorf("Expected Order 1, got %d", mapping.Order)
-		}
-
-		// Test enhanced metadata
-		if mapping.UIHints.InputType != "text" {
-			t.Errorf("Expected InputType 'text', got '%s'", mapping.UIHints.InputType)
-		}
-		if mapping.ValidationHints.Required != false {
-			t.Errorf("Expected ValidationHints.Required false, got %t", mapping.ValidationHints.Required)
-		}
-		if mapping.DefaultValue != nil {
-			t.Errorf("Expected DefaultValue nil for non-required string, got %v", mapping.DefaultValue)
+			t.Errorf("Expected order 1, got %d", mapping.Order)
 		}
 	})
 
-	t.Run("Should create boolean field mapping with correct metadata", func(t *testing.T) {
-		mapping := createFieldMapping("BoolProperty", "boolKey", FieldTypeBoolean, "Bool Title", false, 2, nil)
+	t.Run("Should generate correct mapping for nested field", func(t *testing.T) {
+		mapping := generateFieldMapping(videoType, "Sponsorship.Amount", 1)
+		if mapping == nil {
+			t.Fatal("Expected non-nil mapping")
+		}
 
-		if mapping.FieldType != FieldTypeBoolean {
-			t.Errorf("Expected FieldType '%s', got '%s'", FieldTypeBoolean, mapping.FieldType)
+		if mapping.Name != "Sponsorship Amount" {
+			t.Errorf("Expected name 'Sponsorship Amount', got %s", mapping.Name)
 		}
-		if mapping.UIHints.InputType != "checkbox" {
-			t.Errorf("Expected InputType 'checkbox', got '%s'", mapping.UIHints.InputType)
+		if mapping.FieldName != "sponsorship.amount" {
+			t.Errorf("Expected fieldName 'sponsorship.amount', got %s", mapping.FieldName)
 		}
-		if mapping.DefaultValue != false {
-			t.Errorf("Expected DefaultValue false for boolean, got %v", mapping.DefaultValue)
+		if mapping.FieldType != FieldTypeString {
+			t.Errorf("Expected fieldType 'string', got %s", mapping.FieldType)
 		}
 	})
 
-	t.Run("Should create text field mapping with correct metadata", func(t *testing.T) {
-		mapping := createFieldMapping("TextProperty", "textKey", FieldTypeText, "Text Title", false, 3, nil)
-
-		if mapping.FieldType != FieldTypeText {
-			t.Errorf("Expected FieldType '%s', got '%s'", FieldTypeText, mapping.FieldType)
-		}
-		if mapping.UIHints.InputType != "textarea" {
-			t.Errorf("Expected InputType 'textarea', got '%s'", mapping.UIHints.InputType)
-		}
-		if mapping.UIHints.Rows != 3 {
-			t.Errorf("Expected Rows 3, got %d", mapping.UIHints.Rows)
+	t.Run("Should return nil for non-existent field", func(t *testing.T) {
+		mapping := generateFieldMapping(videoType, "NonExistentField", 1)
+		if mapping != nil {
+			t.Error("Expected nil mapping for non-existent field")
 		}
 	})
 
-	t.Run("Should create date field mapping with correct metadata", func(t *testing.T) {
-		mapping := createFieldMapping("DateProperty", "dateKey", FieldTypeDate, "Date Title", false, 4, nil)
-
-		if mapping.FieldType != FieldTypeDate {
-			t.Errorf("Expected FieldType '%s', got '%s'", FieldTypeDate, mapping.FieldType)
-		}
-		if mapping.UIHints.InputType != "datetime-local" {
-			t.Errorf("Expected InputType 'datetime-local', got '%s'", mapping.UIHints.InputType)
-		}
-		if mapping.UIHints.Placeholder != "2006-01-02T15:04" {
-			t.Errorf("Expected Placeholder '2006-01-02T15:04', got '%s'", mapping.UIHints.Placeholder)
-		}
-	})
-
-	t.Run("Should create number field mapping with correct metadata", func(t *testing.T) {
-		mapping := createFieldMapping("NumberProperty", "numberKey", FieldTypeNumber, "Number Title", false, 5, nil)
-
-		if mapping.FieldType != FieldTypeNumber {
-			t.Errorf("Expected FieldType '%s', got '%s'", FieldTypeNumber, mapping.FieldType)
-		}
-		if mapping.UIHints.InputType != "number" {
-			t.Errorf("Expected InputType 'number', got '%s'", mapping.UIHints.InputType)
-		}
-		if mapping.DefaultValue != 0 {
-			t.Errorf("Expected DefaultValue 0 for number, got %v", mapping.DefaultValue)
-		}
-	})
-
-	t.Run("Should create select field mapping with correct metadata", func(t *testing.T) {
-		options := []string{"option1", "option2", "option3"}
-		mapping := createFieldMapping("SelectProperty", "selectKey", FieldTypeSelect, "Select Title", false, 6, options)
-
-		if mapping.FieldType != FieldTypeSelect {
-			t.Errorf("Expected FieldType '%s', got '%s'", FieldTypeSelect, mapping.FieldType)
-		}
-		if mapping.UIHints.InputType != "select" {
-			t.Errorf("Expected InputType 'select', got '%s'", mapping.UIHints.InputType)
-		}
-		if len(mapping.UIHints.Options) != 3 {
-			t.Errorf("Expected 3 UIHints options, got %d", len(mapping.UIHints.Options))
-		}
-		if len(mapping.Options) != 3 {
-			t.Errorf("Expected 3 legacy options, got %d", len(mapping.Options))
-		}
-
-		// Test that UIHints.Options are properly structured
-		for i, option := range mapping.UIHints.Options {
-			expectedValue := options[i]
-			if option.Value != expectedValue {
-				t.Errorf("Expected option value '%s', got '%s'", expectedValue, option.Value)
-			}
-			if option.Label != expectedValue {
-				t.Errorf("Expected option label '%s', got '%s'", expectedValue, option.Label)
-			}
-		}
-	})
-
-	t.Run("Should handle required fields correctly", func(t *testing.T) {
-		mapping := createFieldMapping("RequiredProperty", "requiredKey", FieldTypeString, "Required Title", true, 1, nil)
-
-		if mapping.Required != true {
-			t.Errorf("Expected Required true, got %t", mapping.Required)
-		}
-		// Note: ValidationHints.Required comes from the field type instance, which doesn't get the required flag set
-		// The mapping.Required field is what should be used for actual validation
-		if mapping.ValidationHints.Required != false {
-			t.Errorf("Expected ValidationHints.Required false (field type instances don't get required flag), got %t", mapping.ValidationHints.Required)
-		}
-		if mapping.DefaultValue != "" {
-			t.Errorf("Expected DefaultValue empty string for required string, got %v", mapping.DefaultValue)
-		}
-	})
-
-	t.Run("Should fallback to string type for unknown field types", func(t *testing.T) {
-		mapping := createFieldMapping("UnknownProperty", "unknownKey", "unknown-type", "Unknown Title", false, 1, nil)
-
-		// Should fallback to string type behavior
-		if mapping.UIHints.InputType != "text" {
-			t.Errorf("Expected fallback InputType 'text', got '%s'", mapping.UIHints.InputType)
-		}
-	})
-}
-
-// TestEnhancedFieldMetadata tests that all mappings have proper enhanced metadata
-func TestEnhancedFieldMetadata(t *testing.T) {
-	mappings := GetVideoAspectMappings()
-
-	t.Run("All fields should have UI hints", func(t *testing.T) {
-		for _, mapping := range mappings {
-			for _, field := range mapping.Fields {
-				if field.UIHints.InputType == "" {
-					t.Errorf("Field %s in aspect %s should have InputType", field.FieldKey, mapping.AspectKey)
-				}
-
-				// Verify InputType matches FieldType expectations
-				switch field.FieldType {
-				case FieldTypeString:
-					if field.UIHints.InputType != "text" {
-						t.Errorf("String field %s should have InputType 'text', got '%s'", field.FieldKey, field.UIHints.InputType)
-					}
-				case FieldTypeText:
-					if field.UIHints.InputType != "textarea" {
-						t.Errorf("Text field %s should have InputType 'textarea', got '%s'", field.FieldKey, field.UIHints.InputType)
-					}
-					if field.UIHints.Rows == 0 {
-						t.Errorf("Text field %s should have Rows > 0", field.FieldKey)
-					}
-				case FieldTypeBoolean:
-					if field.UIHints.InputType != "checkbox" {
-						t.Errorf("Boolean field %s should have InputType 'checkbox', got '%s'", field.FieldKey, field.UIHints.InputType)
-					}
-				case FieldTypeDate:
-					if field.UIHints.InputType != "datetime-local" {
-						t.Errorf("Date field %s should have InputType 'datetime-local', got '%s'", field.FieldKey, field.UIHints.InputType)
-					}
-				case FieldTypeNumber:
-					if field.UIHints.InputType != "number" {
-						t.Errorf("Number field %s should have InputType 'number', got '%s'", field.FieldKey, field.UIHints.InputType)
-					}
-				case FieldTypeSelect:
-					if field.UIHints.InputType != "select" {
-						t.Errorf("Select field %s should have InputType 'select', got '%s'", field.FieldKey, field.UIHints.InputType)
-					}
-				}
-			}
-		}
-	})
-
-	t.Run("All fields should have validation hints", func(t *testing.T) {
-		for _, mapping := range mappings {
-			for _, field := range mapping.Fields {
-				// Note: ValidationHints.Required comes from field type instances which don't get the required flag set
-				// The mapping.Required field is the source of truth for validation.
-				// This test verifies that ValidationHints are present but doesn't enforce they match mapping.Required
-				// since the field type instances are created without the required parameter.
-				_ = field.ValidationHints // Just ensure it exists
-			}
-		}
-	})
-
-	t.Run("All fields should have appropriate default values", func(t *testing.T) {
-		for _, mapping := range mappings {
-			for _, field := range mapping.Fields {
-				switch field.FieldType {
-				case FieldTypeBoolean:
-					if field.DefaultValue != false {
-						t.Errorf("Boolean field %s should have DefaultValue false, got %v", field.FieldKey, field.DefaultValue)
-					}
-				case FieldTypeNumber:
-					if field.DefaultValue != 0 {
-						t.Errorf("Number field %s should have DefaultValue 0, got %v", field.FieldKey, field.DefaultValue)
-					}
-				case FieldTypeString, FieldTypeText, FieldTypeDate, FieldTypeSelect:
-					if field.Required {
-						if field.DefaultValue != "" {
-							t.Errorf("Required field %s should have DefaultValue empty string, got %v", field.FieldKey, field.DefaultValue)
-						}
-					} else {
-						if field.DefaultValue != nil {
-							t.Errorf("Non-required field %s should have DefaultValue nil, got %v", field.FieldKey, field.DefaultValue)
-						}
-					}
-				}
-			}
-		}
-	})
-
-	t.Run("Date fields should have proper UI hints", func(t *testing.T) {
-		foundDateField := false
-		for _, mapping := range mappings {
-			for _, field := range mapping.Fields {
-				if field.FieldType == FieldTypeDate {
-					foundDateField = true
-					if field.UIHints.Placeholder != "2006-01-02T15:04" {
-						t.Errorf("Date field %s should have placeholder '2006-01-02T15:04', got '%s'", field.FieldKey, field.UIHints.Placeholder)
-					}
-				}
-			}
-		}
-		if !foundDateField {
-			t.Error("Should have at least one date field to test")
-		}
-	})
-
-	t.Run("Text fields should have proper UI hints", func(t *testing.T) {
-		foundTextField := false
-		for _, mapping := range mappings {
-			for _, field := range mapping.Fields {
-				if field.FieldType == FieldTypeText {
-					foundTextField = true
-					if field.UIHints.Rows <= 0 {
-						t.Errorf("Text field %s should have Rows > 0, got %d", field.FieldKey, field.UIHints.Rows)
-					}
-				}
-			}
-		}
-		if !foundTextField {
-			t.Error("Should have at least one text field to test")
-		}
-	})
-}
-
-// TestGetDefaultValueForField tests the default value helper function
-func TestGetDefaultValueForField(t *testing.T) {
-	t.Run("Boolean fields should default to false", func(t *testing.T) {
-		value := getDefaultValueForField(FieldTypeBoolean, false)
-		if value != false {
-			t.Errorf("Expected false for boolean field, got %v", value)
-		}
-
-		value = getDefaultValueForField(FieldTypeBoolean, true)
-		if value != false {
-			t.Errorf("Expected false for required boolean field, got %v", value)
-		}
-	})
-
-	t.Run("Number fields should default to 0", func(t *testing.T) {
-		value := getDefaultValueForField(FieldTypeNumber, false)
-		if value != 0 {
-			t.Errorf("Expected 0 for number field, got %v", value)
-		}
-
-		value = getDefaultValueForField(FieldTypeNumber, true)
-		if value != 0 {
-			t.Errorf("Expected 0 for required number field, got %v", value)
-		}
-	})
-
-	t.Run("Required string/text fields should default to empty string", func(t *testing.T) {
-		stringTypes := []string{FieldTypeString, FieldTypeText, FieldTypeDate, FieldTypeSelect}
-
-		for _, fieldType := range stringTypes {
-			value := getDefaultValueForField(fieldType, true)
-			if value != "" {
-				t.Errorf("Expected empty string for required %s field, got %v", fieldType, value)
-			}
-		}
-	})
-
-	t.Run("Non-required string/text fields should default to nil", func(t *testing.T) {
-		stringTypes := []string{FieldTypeString, FieldTypeText, FieldTypeDate, FieldTypeSelect}
-
-		for _, fieldType := range stringTypes {
-			value := getDefaultValueForField(fieldType, false)
-			if value != nil {
-				t.Errorf("Expected nil for non-required %s field, got %v", fieldType, value)
-			}
-		}
-	})
-
-	t.Run("Unknown field types should default to nil", func(t *testing.T) {
-		value := getDefaultValueForField("unknown-type", false)
-		if value != nil {
-			t.Errorf("Expected nil for unknown field type, got %v", value)
-		}
-
-		value = getDefaultValueForField("unknown-type", true)
-		if value != nil {
-			t.Errorf("Expected nil for unknown required field type, got %v", value)
+	t.Run("Should return nil for non-existent nested field", func(t *testing.T) {
+		mapping := generateFieldMapping(videoType, "Sponsorship.NonExistent", 1)
+		if mapping != nil {
+			t.Error("Expected nil mapping for non-existent nested field")
 		}
 	})
 }

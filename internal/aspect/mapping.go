@@ -1,24 +1,24 @@
 package aspect
 
 import (
-	"devopstoolkit/youtube-automation/internal/constants"
 	"devopstoolkit/youtube-automation/internal/storage"
+	"reflect"
+	"regexp"
+	"strings"
 )
 
-// FieldMapping defines how a Video property maps to an aspect field
+// FieldMapping defines metadata for a form field, generated from struct reflection
 type FieldMapping struct {
-	VideoProperty string   `json:"videoProperty"`     // The property name in storage.Video
-	FieldKey      string   `json:"fieldKey"`          // The field key in the aspect
-	FieldType     string   `json:"fieldType"`         // The field type (string, boolean, etc.)
-	Title         string   `json:"title"`             // Display title (reused from CLI constants)
-	Required      bool     `json:"required"`          // Whether the field is required
-	Order         int      `json:"order"`             // Display order (matches CLI form order)
-	Options       []string `json:"options,omitempty"` // Options for select fields
-
-	// Enhanced metadata for frontend rendering (Task 3)
-	UIHints         UIHints         `json:"uiHints"`         // UI rendering hints
-	ValidationHints ValidationHints `json:"validationHints"` // Validation rule metadata
-	DefaultValue    interface{}     `json:"defaultValue"`    // Default value for the field
+	Name            string          `json:"name"`              // Generated from struct field name
+	FieldName       string          `json:"fieldName"`         // JSON field name from struct tags
+	FieldType       string          `json:"fieldType"`         // Determined from Go type
+	Title           string          `json:"title"`             // Same as Name for now
+	Required        bool            `json:"required"`          // Could be determined from validation tags
+	Order           int             `json:"order"`             // Based on struct field order
+	Options         []string        `json:"options,omitempty"` // For select fields (if needed)
+	UIHints         UIHints         `json:"uiHints"`           // Generated from field type
+	ValidationHints ValidationHints `json:"validationHints"`   // Generated from field type
+	DefaultValue    interface{}     `json:"defaultValue"`      // Based on Go zero values
 }
 
 // AspectMapping defines the complete mapping configuration for an editing aspect
@@ -26,267 +26,316 @@ type AspectMapping struct {
 	AspectKey   string         `json:"aspectKey"`   // The aspect identifier
 	Title       string         `json:"title"`       // Display title for the aspect
 	Description string         `json:"description"` // Description of the aspect
-	Fields      []FieldMapping `json:"fields"`      // Field mappings for this aspect
+	Fields      []FieldMapping `json:"fields"`      // Generated field mappings
+	Order       int            `json:"order"`       // Workflow order (1-6)
 }
 
-// createFieldMapping creates a FieldMapping with enhanced metadata using the field type system
-func createFieldMapping(videoProperty, fieldKey, fieldType, title string, required bool, order int, options []string) FieldMapping {
-	// Create the appropriate field type instance
-	var fieldTypeInstance FieldType
+// GetVideoAspectMappings generates aspect mappings directly from the storage.Video struct
+func GetVideoAspectMappings() []AspectMapping {
+	videoType := reflect.TypeOf(storage.Video{})
 
-	switch fieldType {
-	case FieldTypeString:
-		fieldTypeInstance = &StringFieldType{}
-	case FieldTypeText:
-		fieldTypeInstance = &TextFieldType{}
-	case FieldTypeBoolean:
-		fieldTypeInstance = &BooleanFieldType{}
-	case FieldTypeDate:
-		fieldTypeInstance = &DateFieldType{}
-	case FieldTypeNumber:
-		fieldTypeInstance = &NumberFieldType{}
-	case FieldTypeSelect:
-		selectOptions := make([]SelectOption, len(options))
-		for i, opt := range options {
-			selectOptions[i] = SelectOption{Value: opt, Label: opt}
-		}
-		fieldTypeInstance = &SelectFieldType{Options: selectOptions}
-	default:
-		fieldTypeInstance = &StringFieldType{} // Default fallback
+	// Define which fields belong to which aspects (this is the only configuration needed)
+	aspectFieldGroups := map[string][]string{
+		AspectKeyInitialDetails: {
+			"ProjectName", "ProjectURL", "Sponsorship.Amount", "Sponsorship.Emails", "Sponsorship.Blocked", "Date", "Delayed", "Gist",
+		},
+		AspectKeyWorkProgress: {
+			"Code", "Head", "Screen", "RelatedVideos", "Thumbnails", "Diagrams",
+			"Screenshots", "Location", "Tagline", "TaglineIdeas", "OtherLogos",
+		},
+		AspectKeyDefinition: {
+			"Title", "Description", "Highlight", "Tags", "DescriptionTags", "Tweet", "Animations",
+		},
+		AspectKeyPostProduction: {
+			"Thumbnail", "Members", "RequestEdit", "Timecodes", "Movie", "Slides",
+		},
+		AspectKeyPublishing: {
+			"UploadVideo", "VideoId", "HugoPath",
+		},
+		AspectKeyPostPublish: {
+			"DOTPosted", "BlueSkyPosted", "LinkedInPosted", "SlackPosted",
+			"YouTubeHighlight", "YouTubeComment", "YouTubeCommentReply",
+			"GDE", "Repo", "NotifiedSponsors",
+		},
 	}
 
-	return FieldMapping{
-		VideoProperty:   videoProperty,
-		FieldKey:        fieldKey,
+	aspectTitles := map[string]string{
+		AspectKeyInitialDetails: "Initial Details",
+		AspectKeyWorkProgress:   "Work Progress",
+		AspectKeyDefinition:     "Definition",
+		AspectKeyPostProduction: "Post Production",
+		AspectKeyPublishing:     "Publishing",
+		AspectKeyPostPublish:    "Post Publish",
+	}
+
+	aspectDescriptions := map[string]string{
+		AspectKeyInitialDetails: "Initial video details and project information",
+		AspectKeyWorkProgress:   "Work progress and content creation status",
+		AspectKeyDefinition:     "Video content definition and metadata",
+		AspectKeyPostProduction: "Post-production editing and review tasks",
+		AspectKeyPublishing:     "Publishing settings and video upload",
+		AspectKeyPostPublish:    "Post-publication tasks and social media",
+	}
+
+	// Define the correct workflow order for aspects (used by both CLI and API)
+	aspectOrder := map[string]int{
+		AspectKeyInitialDetails: 1,
+		AspectKeyWorkProgress:   2,
+		AspectKeyDefinition:     3,
+		AspectKeyPostProduction: 4,
+		AspectKeyPublishing:     5,
+		AspectKeyPostPublish:    6,
+	}
+
+	var aspects []AspectMapping
+
+	for aspectKey, fieldNames := range aspectFieldGroups {
+		var fields []FieldMapping
+
+		for order, fieldName := range fieldNames {
+			field := generateFieldMapping(videoType, fieldName, order+1)
+			if field != nil {
+				fields = append(fields, *field)
+			}
+		}
+
+		aspects = append(aspects, AspectMapping{
+			AspectKey:   aspectKey,
+			Title:       aspectTitles[aspectKey],
+			Description: aspectDescriptions[aspectKey],
+			Fields:      fields,
+			Order:       aspectOrder[aspectKey], // Set the correct workflow order
+		})
+	}
+
+	return aspects
+}
+
+// generateFieldMapping creates a FieldMapping from struct field reflection
+func generateFieldMapping(structType reflect.Type, fieldPath string, order int) *FieldMapping {
+	// Handle nested field paths like "Sponsorship.Amount"
+	parts := strings.Split(fieldPath, ".")
+
+	if len(parts) == 2 {
+		// Nested field like "Sponsorship.Amount"
+		parentFieldName := parts[0]
+		childFieldName := parts[1]
+
+		parentField, found := structType.FieldByName(parentFieldName)
+		if !found {
+			return nil
+		}
+
+		childField, found := parentField.Type.FieldByName(childFieldName)
+		if !found {
+			return nil
+		}
+
+		// Get JSON field names
+		parentJsonTag := strings.Split(parentField.Tag.Get("json"), ",")[0]
+		childJsonTag := strings.Split(childField.Tag.Get("json"), ",")[0]
+		jsonFieldName := parentJsonTag + "." + childJsonTag
+
+		// Generate display name
+		displayName := generateDisplayName(parentFieldName) + " " + generateDisplayName(childFieldName)
+
+		// Determine field type from Go type and field name
+		fieldType := determineFieldType(childField.Type, childFieldName)
+
+		// Create field type instance for UI hints
+		fieldTypeInstance := createFieldTypeInstance(fieldType)
+
+		return &FieldMapping{
+			Name:            displayName,
+			FieldName:       jsonFieldName,
+			FieldType:       fieldType,
+			Title:           displayName,
+			Required:        false,
+			Order:           order,
+			Options:         nil,
+			UIHints:         fieldTypeInstance.GetUIHints(),
+			ValidationHints: fieldTypeInstance.GetValidationHints(),
+			DefaultValue:    getDefaultValueForType(childField.Type),
+		}
+	}
+
+	// Regular field
+	field, found := structType.FieldByName(fieldPath)
+	if !found {
+		return nil
+	}
+
+	// Get JSON field name from tag
+	jsonTag := field.Tag.Get("json")
+	jsonFieldName := strings.Split(jsonTag, ",")[0]
+	if jsonFieldName == "" {
+		jsonFieldName = strings.ToLower(fieldPath)
+	}
+
+	// Generate display name from struct field name
+	displayName := generateDisplayName(fieldPath)
+
+	// Determine field type from Go type and field name
+	fieldType := determineFieldType(field.Type, fieldPath)
+
+	// Create field type instance for UI hints
+	fieldTypeInstance := createFieldTypeInstance(fieldType)
+
+	return &FieldMapping{
+		Name:            displayName,
+		FieldName:       jsonFieldName,
 		FieldType:       fieldType,
-		Title:           title,
-		Required:        required,
+		Title:           displayName,
+		Required:        false, // Could be enhanced with validation tags
 		Order:           order,
-		Options:         options,
+		Options:         nil,
 		UIHints:         fieldTypeInstance.GetUIHints(),
 		ValidationHints: fieldTypeInstance.GetValidationHints(),
-		DefaultValue:    getDefaultValueForField(fieldType, required),
+		DefaultValue:    getDefaultValueForType(field.Type),
 	}
 }
 
-// getDefaultValueForField returns appropriate default values based on field type
-func getDefaultValueForField(fieldType string, required bool) interface{} {
+// generateDisplayName converts struct field names to display names
+func generateDisplayName(fieldName string) string {
+	// Handle special cases first (before splitting)
+	specialCases := map[string]string{
+		"VideoId":          "Video ID",
+		"DOTPosted":        "DOT Posted",
+		"HNPosted":         "HN Posted",
+		"ProjectURL":       "Project URL",
+		"YouTubeHighlight": "YouTube Highlight",
+		"GDE":              "GDE",
+	}
+
+	if special, exists := specialCases[fieldName]; exists {
+		return special
+	}
+
+	// Convert camelCase/PascalCase to "Title Case"
+	re := regexp.MustCompile(`([a-z])([A-Z])`)
+	result := re.ReplaceAllString(fieldName, `$1 $2`)
+
+	// Handle common acronyms that might have been split
+	result = strings.ReplaceAll(result, " U R L", " URL")
+	result = strings.ReplaceAll(result, " I D", " ID")
+
+	return result
+}
+
+// determineFieldType maps Go types to field types, considering semantic meaning
+func determineFieldType(goType reflect.Type, fieldName string) string {
+	// First check for semantic field types based on field names
+	switch {
+	case fieldName == "Date" || fieldName == "date":
+		return FieldTypeDate
+	case isMultiLineTextField(fieldName):
+		return FieldTypeText
+	}
+
+	// Then check Go types
+	switch goType.Kind() {
+	case reflect.Bool:
+		return FieldTypeBoolean
+	case reflect.String:
+		return FieldTypeString
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return FieldTypeNumber
+	default:
+		return FieldTypeString
+	}
+}
+
+// isMultiLineTextField determines if a field should be treated as multi-line text
+func isMultiLineTextField(fieldName string) bool {
+	multiLineFields := map[string]bool{
+		"Description":     true,
+		"Tags":            true,
+		"DescriptionTags": true,
+		"Timecodes":       true,
+		"RelatedVideos":   true,
+		"Tweet":           true,
+		"Highlight":       true,
+		"TaglineIdeas":    true,
+		"Members":         true,
+		"Animations":      true,
+	}
+	return multiLineFields[fieldName]
+}
+
+// createFieldTypeInstance creates appropriate field type instances
+func createFieldTypeInstance(fieldType string) FieldType {
 	switch fieldType {
+	case FieldTypeString:
+		return &StringFieldType{}
+	case FieldTypeText:
+		return &TextFieldType{}
 	case FieldTypeBoolean:
-		return false
+		return &BooleanFieldType{}
+	case FieldTypeDate:
+		return &DateFieldType{}
 	case FieldTypeNumber:
+		return &NumberFieldType{}
+	default:
+		return &StringFieldType{}
+	}
+}
+
+// getDefaultValueForType returns appropriate default values based on Go type
+func getDefaultValueForType(goType reflect.Type) interface{} {
+	switch goType.Kind() {
+	case reflect.Bool:
+		return false
+	case reflect.String:
+		return ""
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		return 0
-	case FieldTypeString, FieldTypeText, FieldTypeDate, FieldTypeSelect:
-		if required {
-			return ""
+	default:
+		return nil
+	}
+}
+
+// GetFieldValueByJSONPath extracts a field value from any struct using JSON field path
+func GetFieldValueByJSONPath(data interface{}, jsonPath string) interface{} {
+	v := reflect.ValueOf(data)
+	if v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
+
+	// Handle nested paths like "sponsorship.amount"
+	parts := strings.Split(jsonPath, ".")
+
+	for _, part := range parts {
+		if v.Kind() != reflect.Struct {
+			return nil
 		}
-		return nil
-	default:
-		return nil
+
+		// Find field by JSON tag
+		field := findFieldByJSONTag(v.Type(), part)
+		if field == nil {
+			return nil
+		}
+
+		v = v.FieldByName(field.Name)
+		if !v.IsValid() {
+			return nil
+		}
 	}
+
+	return v.Interface()
 }
 
-// GetVideoAspectMappings returns the complete mapping configuration
-// This maps Video object properties to editing aspect fields
-// Field orders match the exact order they appear in CLI forms
-func GetVideoAspectMappings() []AspectMapping {
-	return []AspectMapping{
-		{
-			AspectKey:   AspectKeyInitialDetails,
-			Title:       constants.PhaseTitleInitialDetails,
-			Description: "Initial video details and project information",
-			Fields: []FieldMapping{
-				createFieldMapping("ProjectName", "projectName", FieldTypeString, constants.FieldTitleProjectName, false, 1, nil),
-				createFieldMapping("ProjectURL", "projectURL", FieldTypeString, constants.FieldTitleProjectURL, false, 2, nil),
-				createFieldMapping("Sponsorship.Amount", "sponsorshipAmount", FieldTypeString, constants.FieldTitleSponsorshipAmount, false, 3, nil),
-				createFieldMapping("Sponsorship.Emails", "sponsorshipEmails", FieldTypeString, constants.FieldTitleSponsorshipEmails, false, 4, nil),
-				createFieldMapping("Sponsorship.Blocked", "sponsorshipBlocked", FieldTypeString, constants.FieldTitleSponsorshipBlocked, false, 5, nil),
-				createFieldMapping("Date", "publishDate", FieldTypeDate, constants.FieldTitlePublishDate, false, 6, nil),
-				createFieldMapping("Delayed", "delayed", FieldTypeBoolean, constants.FieldTitleDelayed, false, 7, nil),
-				createFieldMapping("Gist", "gistPath", FieldTypeString, constants.FieldTitleGistPath, false, 8, nil),
-			},
-		},
-		{
-			AspectKey:   AspectKeyWorkProgress,
-			Title:       constants.PhaseTitleWorkProgress,
-			Description: "Work progress and content creation status",
-			Fields: []FieldMapping{
-				createFieldMapping("Code", "codeDone", FieldTypeBoolean, constants.FieldTitleCodeDone, false, 1, nil),
-				createFieldMapping("Head", "talkingHeadDone", FieldTypeBoolean, constants.FieldTitleTalkingHeadDone, false, 2, nil),
-				createFieldMapping("Screen", "screenRecordingDone", FieldTypeBoolean, constants.FieldTitleScreenRecordingDone, false, 3, nil),
-				createFieldMapping("RelatedVideos", "relatedVideos", FieldTypeText, constants.FieldTitleRelatedVideos, false, 4, nil),
-				createFieldMapping("Thumbnails", "thumbnailsDone", FieldTypeBoolean, constants.FieldTitleThumbnailsDone, false, 5, nil),
-				createFieldMapping("Diagrams", "diagramsDone", FieldTypeBoolean, constants.FieldTitleDiagramsDone, false, 6, nil),
-				createFieldMapping("Screenshots", "screenshotsDone", FieldTypeBoolean, constants.FieldTitleScreenshotsDone, false, 7, nil),
-				createFieldMapping("Location", "filesLocation", FieldTypeString, constants.FieldTitleFilesLocation, false, 8, nil),
-				createFieldMapping("Tagline", "tagline", FieldTypeString, constants.FieldTitleTagline, false, 9, nil),
-				createFieldMapping("TaglineIdeas", "taglineIdeas", FieldTypeText, constants.FieldTitleTaglineIdeas, false, 10, nil),
-				createFieldMapping("OtherLogos", "otherLogos", FieldTypeString, constants.FieldTitleOtherLogos, false, 11, nil),
-			},
-		},
-		{
-			AspectKey:   AspectKeyDefinition,
-			Title:       constants.PhaseTitleDefinition,
-			Description: "Video content definition and metadata",
-			Fields: []FieldMapping{
-				createFieldMapping("Title", "title", FieldTypeString, constants.FieldTitleTitle, true, 1, nil),
-				createFieldMapping("Description", "description", FieldTypeText, constants.FieldTitleDescription, false, 2, nil),
-				createFieldMapping("Highlight", "highlight", FieldTypeString, constants.FieldTitleHighlight, false, 3, nil),
-				createFieldMapping("Tags", "tags", FieldTypeString, constants.FieldTitleTags, false, 4, nil),
-				createFieldMapping("DescriptionTags", "descriptionTags", FieldTypeText, constants.FieldTitleDescriptionTags, false, 5, nil),
-				createFieldMapping("Tweet", "tweet", FieldTypeString, constants.FieldTitleTweet, false, 6, nil),
-				createFieldMapping("Animations", "animationsScript", FieldTypeText, constants.FieldTitleAnimationsScript, false, 7, nil),
-			},
-		},
-		{
-			AspectKey:   AspectKeyPostProduction,
-			Title:       constants.PhaseTitlePostProduction,
-			Description: "Post-production editing and review tasks",
-			Fields: []FieldMapping{
-				createFieldMapping("Thumbnail", "thumbnailPath", FieldTypeString, constants.FieldTitleThumbnailPath, false, 1, nil),
-				createFieldMapping("Members", "members", FieldTypeString, constants.FieldTitleMembers, false, 2, nil),
-				createFieldMapping("RequestEdit", "requestEdit", FieldTypeBoolean, constants.FieldTitleRequestEdit, false, 3, nil),
-				createFieldMapping("Timecodes", "timecodes", FieldTypeText, constants.FieldTitleTimecodes, false, 4, nil),
-				createFieldMapping("Movie", "movieDone", FieldTypeBoolean, constants.FieldTitleMovieDone, false, 5, nil),
-				createFieldMapping("Slides", "slidesDone", FieldTypeBoolean, constants.FieldTitleSlidesDone, false, 6, nil),
-			},
-		},
-		{
-			AspectKey:   AspectKeyPublishing,
-			Title:       constants.PhaseTitlePublishingDetails,
-			Description: "Publishing settings and video upload",
-			Fields: []FieldMapping{
-				createFieldMapping("UploadVideo", "videoFilePath", FieldTypeString, constants.FieldTitleVideoFilePath, false, 1, nil),
-				createFieldMapping("VideoId", "youTubeVideoId", FieldTypeString, constants.FieldTitleCurrentVideoID, false, 2, nil),
-				createFieldMapping("HugoPath", "hugoPostPath", FieldTypeString, constants.FieldTitleCreateHugo, false, 3, nil),
-			},
-		},
-		{
-			AspectKey:   AspectKeyPostPublish,
-			Title:       constants.PhaseTitlePostPublish,
-			Description: "Post-publication tasks and social media",
-			Fields: []FieldMapping{
-				createFieldMapping("DOTPosted", "dotPosted", FieldTypeBoolean, constants.FieldTitleDOTPosted, false, 1, nil),
-				createFieldMapping("BlueSkyPosted", "blueSkyPosted", FieldTypeBoolean, constants.FieldTitleBlueSkyPosted, false, 2, nil),
-				createFieldMapping("LinkedInPosted", "linkedInPosted", FieldTypeBoolean, constants.FieldTitleLinkedInPosted, false, 3, nil),
-				createFieldMapping("SlackPosted", "slackPosted", FieldTypeBoolean, constants.FieldTitleSlackPosted, false, 4, nil),
-				createFieldMapping("YouTubeHighlight", "youTubeHighlight", FieldTypeBoolean, constants.FieldTitleYouTubeHighlight, false, 5, nil),
-				createFieldMapping("YouTubeComment", "youTubeComment", FieldTypeBoolean, constants.FieldTitleYouTubeComment, false, 6, nil),
-				createFieldMapping("YouTubeCommentReply", "youTubeCommentReply", FieldTypeBoolean, constants.FieldTitleYouTubeCommentReply, false, 7, nil),
-				createFieldMapping("GDE", "gdePosted", FieldTypeBoolean, constants.FieldTitleGDEPosted, false, 8, nil),
-				createFieldMapping("Repo", "codeRepository", FieldTypeString, constants.FieldTitleCodeRepository, false, 9, nil),
-				createFieldMapping("NotifiedSponsors", "notifySponsors", FieldTypeBoolean, constants.FieldTitleNotifySponsors, false, 10, nil),
-			},
-		},
+// findFieldByJSONTag finds a struct field by its JSON tag
+func findFieldByJSONTag(t reflect.Type, jsonTag string) *reflect.StructField {
+	for i := 0; i < t.NumField(); i++ {
+		field := t.Field(i)
+		tag := field.Tag.Get("json")
+
+		// Handle tags like "amount,omitempty"
+		if tagName := strings.Split(tag, ",")[0]; tagName == jsonTag {
+			return &field
+		}
 	}
-}
-
-// GetVideoPropertyValue extracts a property value from a Video object using the property path
-func GetVideoPropertyValue(video storage.Video, propertyPath string) interface{} {
-	switch propertyPath {
-	// Initial Details
-	case "ProjectName":
-		return video.ProjectName
-	case "ProjectURL":
-		return video.ProjectURL
-	case "Sponsorship.Amount":
-		return video.Sponsorship.Amount
-	case "Sponsorship.Emails":
-		return video.Sponsorship.Emails
-	case "Sponsorship.Blocked":
-		return video.Sponsorship.Blocked
-	case "Date":
-		return video.Date
-	case "Delayed":
-		return video.Delayed
-	case "Gist":
-		return video.Gist
-
-	// Work Progress
-	case "Code":
-		return video.Code
-	case "Head":
-		return video.Head
-	case "Screen":
-		return video.Screen
-	case "RelatedVideos":
-		return video.RelatedVideos
-	case "Thumbnails":
-		return video.Thumbnails
-	case "Diagrams":
-		return video.Diagrams
-	case "Screenshots":
-		return video.Screenshots
-	case "Location":
-		return video.Location
-	case "Tagline":
-		return video.Tagline
-	case "TaglineIdeas":
-		return video.TaglineIdeas
-	case "OtherLogos":
-		return video.OtherLogos
-
-	// Definition
-	case "Title":
-		return video.Title
-	case "Description":
-		return video.Description
-	case "Highlight":
-		return video.Highlight
-	case "Tags":
-		return video.Tags
-	case "DescriptionTags":
-		return video.DescriptionTags
-	case "Tweet":
-		return video.Tweet
-	case "Animations":
-		return video.Animations
-
-	// Post-Production
-	case "Thumbnail":
-		return video.Thumbnail
-	case "Members":
-		return video.Members
-	case "RequestEdit":
-		return video.RequestEdit
-	case "Timecodes":
-		return video.Timecodes
-	case "Movie":
-		return video.Movie
-	case "Slides":
-		return video.Slides
-
-	// Publishing
-	case "UploadVideo":
-		return video.UploadVideo
-	case "VideoId":
-		return video.VideoId
-	case "HugoPath":
-		return video.HugoPath
-
-	// Post-Publish
-	case "DOTPosted":
-		return video.DOTPosted
-	case "BlueSkyPosted":
-		return video.BlueSkyPosted
-	case "LinkedInPosted":
-		return video.LinkedInPosted
-	case "SlackPosted":
-		return video.SlackPosted
-	case "YouTubeHighlight":
-		return video.YouTubeHighlight
-	case "YouTubeComment":
-		return video.YouTubeComment
-	case "YouTubeCommentReply":
-		return video.YouTubeCommentReply
-	case "GDE":
-		return video.GDE
-	case "Repo":
-		return video.Repo
-	case "NotifiedSponsors":
-		return video.NotifiedSponsors
-
-	default:
-		return nil
-	}
+	return nil
 }

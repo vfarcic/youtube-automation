@@ -16,8 +16,8 @@ func TestCompletionService_GetFieldCompletionCriteria(t *testing.T) {
 	}{
 		// Initial Details
 		{"initial-details", "projectName", CompletionCriteriaFilledOnly, "Project name should use filled_only"},
-		{"initial-details", "sponsorshipEmails", CompletionCriteriaConditional, "Sponsorship emails should use conditional logic"},
-		{"initial-details", "sponsorshipBlocked", CompletionCriteriaEmptyOrFilled, "Sponsorship blocked should use empty_or_filled"},
+		{"initial-details", "sponsorship.emails", CompletionCriteriaConditional, "Sponsorship emails should use conditional logic"},
+		{"initial-details", "sponsorship.blocked", CompletionCriteriaEmptyOrFilled, "Sponsorship blocked should use empty_or_filled"},
 		{"initial-details", "delayed", CompletionCriteriaFalseOnly, "Delayed should use false_only"},
 
 		// Work Progress
@@ -107,7 +107,7 @@ func TestCompletionService_IsFieldComplete_ConditionalSponsorshipEmails(t *testi
 				},
 			}
 
-			result := service.IsFieldComplete("initial-details", "sponsorshipEmails", tc.emailValue, video)
+			result := service.IsFieldComplete("initial-details", "sponsorship.emails", tc.emailValue, video)
 			if result != tc.expected {
 				t.Errorf("Expected %v for sponsorship amount '%s' and email '%s', got %v",
 					tc.expected, tc.sponsorshipAmount, tc.emailValue, result)
@@ -252,7 +252,7 @@ func TestCompletionService_IsFieldComplete_EmptyOrFilled(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.description, func(t *testing.T) {
 			// Use sponsorshipBlocked field which should have empty_or_filled criteria
-			result := service.IsFieldComplete("initial-details", "sponsorshipBlocked", tc.value, video)
+			result := service.IsFieldComplete("initial-details", "sponsorship.blocked", tc.value, video)
 			if result != tc.expected {
 				t.Errorf("Expected %v for %v (%T), got %v", tc.expected, tc.value, tc.value, result)
 			}

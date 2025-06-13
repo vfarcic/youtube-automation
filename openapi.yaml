@@ -1457,6 +1457,67 @@ components:
         - order
         - description
         - completionCriteria
+      examples:
+        stringField:
+          summary: String field example
+          value:
+            name: "Title"
+            fieldName: "title"
+            type: "string"
+            required: true
+            order: 1
+            description: "The title of the video"
+            completionCriteria: "filled_only"
+            uiHints:
+              inputType: "text"
+              placeholder: "Enter video title"
+              helpText: "The main title that will appear on YouTube"
+              multiline: false
+        textField:
+          summary: Multi-line text field example
+          value:
+            name: "Description"
+            fieldName: "description"
+            type: "text"
+            required: false
+            order: 2
+            description: "Detailed description of the video content"
+            completionCriteria: "empty_or_filled"
+            uiHints:
+              inputType: "textarea"
+              placeholder: "Enter detailed description..."
+              helpText: "Provide a comprehensive description"
+              rows: 3
+              multiline: true
+        dateField:
+          summary: Date field example with new format
+          value:
+            name: "Date"
+            fieldName: "date"
+            type: "date"
+            required: false
+            order: 3
+            description: "Scheduled date and time for the video"
+            completionCriteria: "empty_or_filled"
+            uiHints:
+              inputType: "datetime"
+              placeholder: "YYYY-MM-DDTHH:MM"
+              helpText: "Enter date and time in UTC format"
+              multiline: false
+        booleanField:
+          summary: Boolean field example
+          value:
+            name: "Code"
+            fieldName: "code"
+            type: "boolean"
+            required: false
+            order: 4
+            description: "Mark when code examples are ready"
+            completionCriteria: "true_only"
+            uiHints:
+              inputType: "checkbox"
+              helpText: "Check when all code examples are complete"
+              multiline: false
 
     FieldOptions:
       type: object
@@ -1474,12 +1535,16 @@ components:
       properties:
         inputType:
           type: string
-          description: HTML input type for rendering
-          enum: ["text", "textarea", "checkbox", "select", "date", "number"]
+          description: |
+            HTML input type for rendering. For date fields, uses 'datetime' input type 
+            with YYYY-MM-DDTHH:MM format for UTC compatibility.
+          enum: ["text", "textarea", "checkbox", "select", "datetime", "number"]
           example: "text"
         placeholder:
           type: string
-          description: Placeholder text for input fields
+          description: |
+            Placeholder text for input fields. For datetime fields, typically shows 
+            'YYYY-MM-DDTHH:MM' format.
           example: "Enter video title"
         helpText:
           type: string
