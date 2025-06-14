@@ -3,7 +3,7 @@
     "teller@2.0.7",
     "just@1.40.0",
     "git@2.49.0",
-    "nushell@0.104.0"
+    "nushell@0.104.1"
   ],
   "shell": {
     "scripts": {
