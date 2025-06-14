@@ -436,7 +436,7 @@ func TestVideoService_UpdateVideoPhase_InitialDetails(t *testing.T) {
 	updateData := map[string]interface{}{
 		"projectName":              "Test Project",
 		"projectURL":               "http://example.com",
-		"publishDate":              "2024-01-01T10:00",
+		"date":                     "2024-01-01T10:00",
 		"gistPath":                 "path/to/gist.md",
 		"delayed":                  false,
 		"sponsorshipAmount":        "100",
@@ -882,4 +882,72 @@ func TestVideoService_SanitizedNamesIntegration(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, allVideos, 1)
 	assert.Equal(t, expectedSanitizedName, allVideos[0].Name, "GetAllVideos should return sanitized names")
+}
+
+func TestVideoService_ReflectionBasedFieldMapping(t *testing.T) {
+	service, _, cleanup := setupTestVideoService(t)
+	defer cleanup()
+
+	_, err := service.CreateVideo("test-reflection", "test-category")
+	require.NoError(t, err)
+
+	videoToUpdate, err := service.GetVideo("test-reflection", "test-category")
+	require.NoError(t, err)
+
+	// Test that JSON field names work directly
+	updateData := map[string]interface{}{
+		"date":        "2025-01-01T12:00",
+		"title":       "Test Title",
+		"description": "Test Description",
+		"delayed":     true,
+		"screen":      true,
+	}
+
+	videoAfterUpdate, err := service.UpdateVideoPhase(&videoToUpdate, "initial-details", updateData)
+	require.NoError(t, err)
+	require.NotNil(t, videoAfterUpdate)
+
+	// Verify that direct JSON field mappings work
+	assert.Equal(t, "2025-01-01T12:00", videoAfterUpdate.Date)
+	assert.Equal(t, "Test Title", videoAfterUpdate.Title)
+	assert.Equal(t, "Test Description", videoAfterUpdate.Description)
+	assert.True(t, videoAfterUpdate.Delayed)
+	assert.True(t, videoAfterUpdate.Screen)
+
+	// Test that field name mappings work (frontend field names -> struct fields)
+	updateData2 := map[string]interface{}{
+		"codeDone":          true,
+		"talkingHeadDone":   true,
+		"filesLocation":     "/test/location",
+		"otherLogosAssets":  "logo1.png",
+		"sponsorshipAmount": "$500",
+		"sponsorshipEmails": "sponsor@test.com",
+	}
+
+	videoAfterUpdate2, err := service.UpdateVideoPhase(videoAfterUpdate, "work-progress", updateData2)
+	require.NoError(t, err)
+	require.NotNil(t, videoAfterUpdate2)
+
+	// Verify that field name mappings work correctly
+	assert.True(t, videoAfterUpdate2.Code)
+	assert.True(t, videoAfterUpdate2.Head)
+	assert.Equal(t, "/test/location", videoAfterUpdate2.Location)
+	assert.Equal(t, "logo1.png", videoAfterUpdate2.OtherLogos)
+	assert.Equal(t, "$500", videoAfterUpdate2.Sponsorship.Amount)
+	assert.Equal(t, "sponsor@test.com", videoAfterUpdate2.Sponsorship.Emails)
+
+	// Test that unknown fields are gracefully ignored
+	updateData3 := map[string]interface{}{
+		"title":               "Updated Title",
+		"unknownField":        "should be ignored",
+		"anotherUnknownField": 123,
+	}
+
+	videoAfterUpdate3, err := service.UpdateVideoPhase(videoAfterUpdate2, "definition", updateData3)
+	require.NoError(t, err)
+	require.NotNil(t, videoAfterUpdate3)
+
+	// Verify that known fields are updated and unknown fields are ignored
+	assert.Equal(t, "Updated Title", videoAfterUpdate3.Title)
+	// Unknown fields should not cause errors
 }

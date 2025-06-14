@@ -25,6 +25,7 @@ func (s *Service) GetAspects() AspectMetadata {
 	for i, mapping := range mappings {
 		fields := make([]Field, len(mapping.Fields))
 		for j, fieldMapping := range mapping.Fields {
+			completionFieldName := mapFieldNameForCompletion(fieldMapping.FieldName)
 			fields[j] = Field{
 				Name:               fieldMapping.Title,
 				FieldName:          fieldMapping.FieldName,
@@ -36,7 +37,7 @@ func (s *Service) GetAspects() AspectMetadata {
 				UIHints:            fieldMapping.UIHints,
 				ValidationHints:    fieldMapping.ValidationHints,
 				DefaultValue:       fieldMapping.DefaultValue,
-				CompletionCriteria: s.completionService.GetFieldCompletionCriteria(mapping.AspectKey, fieldMapping.FieldName),
+				CompletionCriteria: s.completionService.GetFieldCompletionCriteria(mapping.AspectKey, completionFieldName),
 			}
 		}
 
@@ -97,6 +98,7 @@ func (s *Service) GetAspectFields(aspectKey string) (*AspectFields, error) {
 		if mapping.AspectKey == aspectKey {
 			fields := make([]Field, len(mapping.Fields))
 			for i, fieldMapping := range mapping.Fields {
+				completionFieldName := mapFieldNameForCompletion(fieldMapping.FieldName)
 				fields[i] = Field{
 					Name:               fieldMapping.Title,
 					FieldName:          fieldMapping.FieldName,
@@ -108,7 +110,7 @@ func (s *Service) GetAspectFields(aspectKey string) (*AspectFields, error) {
 					UIHints:            fieldMapping.UIHints,
 					ValidationHints:    fieldMapping.ValidationHints,
 					DefaultValue:       fieldMapping.DefaultValue,
-					CompletionCriteria: s.completionService.GetFieldCompletionCriteria(mapping.AspectKey, fieldMapping.FieldName),
+					CompletionCriteria: s.completionService.GetFieldCompletionCriteria(mapping.AspectKey, completionFieldName),
 				}
 			}
 
@@ -126,6 +128,49 @@ func (s *Service) GetAspectFields(aspectKey string) (*AspectFields, error) {
 // GetFieldCompletionCriteria returns completion criteria for a specific field
 func (s *Service) GetFieldCompletionCriteria(aspectKey, fieldKey string) string {
 	return s.completionService.GetFieldCompletionCriteria(aspectKey, fieldKey)
+}
+
+// mapFieldNameForCompletion maps JSON field names to completion service field names
+func mapFieldNameForCompletion(jsonFieldName string) string {
+	// Map JSON field names to completion service field names
+	mappings := map[string]string{
+		"sponsorship.amount":  "sponsorshipAmount",
+		"sponsorship.emails":  "sponsorshipEmails",
+		"sponsorship.blocked": "sponsorshipBlockedReason",
+		"gist":                "gist",
+		"code":                "code",
+		"head":                "head",
+		"screen":              "screen",
+		"thumbnails":          "thumbnails",
+		"diagrams":            "diagrams",
+		"screenshots":         "screenshots",
+		"location":            "location",
+		"otherLogos":          "otherLogos",
+		"requestThumbnail":    "requestThumbnail",
+		"thumbnail":           "thumbnail",
+		"movie":               "movie",
+		"slides":              "slides",
+		"uploadVideo":         "uploadVideo",
+		"videoId":             "videoId",
+		"hugoPath":            "hugoPath",
+		"dotPosted":           "dotPosted",
+		"blueSkyPosted":       "blueSkyPosted",
+		"linkedInPosted":      "linkedInPosted",
+		"slackPosted":         "slackPosted",
+		"youTubeHighlight":    "youTubeHighlight",
+		"youTubeComment":      "youTubeComment",
+		"youTubeCommentReply": "youTubeCommentReply",
+		"gde":                 "gde",
+		"repo":                "repo",
+		"notifiedSponsors":    "notifiedSponsors",
+	}
+
+	if mapped, exists := mappings[jsonFieldName]; exists {
+		return mapped
+	}
+
+	// For fields that don't need mapping, return as-is
+	return jsonFieldName
 }
 
 // Helper functions for aspect metadata
@@ -157,26 +202,27 @@ func getIconForAspect(aspectKey string) string {
 func getFieldDescription(fieldKey string) string {
 	descriptionMap := map[string]string{
 		// Initial Details
-		"projectName":       "Name of the related project",
-		"projectURL":        "URL to the project repository or documentation",
-		"publishDate":       "Scheduled publication date and time",
-		"gistPath":          "Path to the manuscript/gist file",
-		"sponsorshipAmount": "Sponsorship amount if applicable",
-		"sponsorshipEmails": "Sponsor contact emails",
-		"delayed":           "Whether the video is delayed",
+		"projectName":              "Name of the related project",
+		"projectURL":               "URL to the project repository or documentation",
+		"date":                     "Scheduled publication date and time",
+		"gist":                     "Path to the manuscript/gist file",
+		"sponsorshipAmount":        "Sponsorship amount if applicable",
+		"sponsorshipEmails":        "Sponsor contact emails",
+		"sponsorshipBlockedReason": "Reason for sponsorship blocking if applicable",
+		"delayed":                  "Whether the video is delayed",
 
 		// Work Progress
-		"codeDone":            "Code/demonstration completed",
-		"talkingHeadDone":     "Talking head video recorded",
-		"screenRecordingDone": "Screen recording completed",
-		"relatedVideos":       "List of related videos for reference",
-		"thumbnailsDone":      "Thumbnail images prepared",
-		"diagramsDone":        "Diagrams and visual aids created",
-		"screenshotsDone":     "Screenshots captured",
-		"filesLocation":       "File storage location or Google Drive link",
-		"tagline":             "Video tagline or subtitle",
-		"taglineIdeas":        "Alternative tagline options",
-		"otherLogos":          "Additional logos or assets needed",
+		"code":          "Code/demonstration completed",
+		"head":          "Talking head video recorded",
+		"screen":        "Screen recording completed",
+		"relatedVideos": "List of related videos for reference",
+		"thumbnails":    "Thumbnail images prepared",
+		"diagrams":      "Diagrams and visual aids created",
+		"screenshots":   "Screenshots captured",
+		"location":      "File storage location or Google Drive link",
+		"tagline":       "Video tagline or subtitle",
+		"taglineIdeas":  "Alternative tagline options",
+		"otherLogos":    "Additional logos or assets needed",
 
 		// Definition
 		"title":            "Video title",
@@ -191,27 +237,27 @@ func getFieldDescription(fieldKey string) string {
 		// Post-Production
 		"thumbnailPath": "Path to thumbnail image file",
 		"members":       "Team members involved",
-		"editRequest":   "Special editing requests or notes",
+		"requestEdit":   "Special editing requests or notes",
 		"timecodes":     "Important timestamp markers",
 		"movieDone":     "Video editing completed",
 		"slidesDone":    "Presentation slides finalized",
 
 		// Publishing
-		"videoFilePath":   "Path to final video file",
-		"uploadToYoutube": "Upload video to YouTube",
-		"createHugoPost":  "Create blog post with Hugo",
+		"videoFilePath":  "Path to final video file",
+		"youTubeVideoId": "YouTube video ID after upload",
+		"hugoPostPath":   "Path to Hugo blog post",
 
 		// Post-Publish
-		"devOpstoolkitPosted":     "Posted to DevOpsToolkit",
-		"blueskyPosted":           "Posted to BlueSky social media",
-		"linkedinPosted":          "Posted to LinkedIn",
-		"slackPosted":             "Posted to Slack channels",
-		"youtubeHighlightCreated": "YouTube highlight reel created",
-		"youtubePinnedComment":    "Pinned comment added to YouTube",
-		"youtubeCommentsReplied":  "Replied to YouTube comments",
-		"gdeAdvocuPosted":         "Posted to GDE Advocu",
-		"codeRepositoryURL":       "Link to associated code repository",
-		"notifySponsors":          "Notify sponsors of publication",
+		"dotPosted":           "Posted to DevOpsToolkit",
+		"blueSkyPosted":       "Posted to BlueSky social media",
+		"linkedInPosted":      "Posted to LinkedIn",
+		"slackPosted":         "Posted to Slack channels",
+		"youTubeHighlight":    "YouTube highlight reel created",
+		"youTubeComment":      "Pinned comment added to YouTube",
+		"youTubeCommentReply": "Replied to YouTube comments",
+		"gdePosted":           "Posted to GDE Advocu",
+		"codeRepository":      "Link to associated code repository",
+		"notifySponsors":      "Notify sponsors of publication",
 	}
 
 	description, exists := descriptionMap[fieldKey]

@@ -5,6 +5,7 @@ import (
 	"math/rand/v2"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strings"
 	"time"
@@ -442,294 +443,284 @@ type Category struct {
 
 // applyPhaseUpdates applies updates to a video based on its phase
 func (s *VideoService) applyPhaseUpdates(video *storage.Video, phase string, updateData map[string]interface{}) error {
-	switch phase {
-	case "initial-details":
-		return s.applyInitialDetailsUpdates(video, updateData)
-	case "work-progress":
-		return s.applyWorkProgressUpdates(video, updateData)
-	case "definition":
-		return s.applyDefinitionUpdates(video, updateData)
-	case "post-production":
-		return s.applyPostProductionUpdates(video, updateData)
-	case "publishing":
-		return s.applyPublishingUpdates(video, updateData)
-	case "post-publish":
-		return s.applyPostPublishUpdates(video, updateData)
-	default:
+	// Validate phase
+	validPhases := map[string]bool{
+		"initial-details": true,
+		"work-progress":   true,
+		"definition":      true,
+		"post-production": true,
+		"publishing":      true,
+		"post-publish":    true,
+	}
+
+	if !validPhases[phase] {
 		return fmt.Errorf("unknown phase: %s", phase)
 	}
+
+	// Use generic field mapping for all phases
+	return s.updateVideoFields(video, updateData)
 }
 
-// applyInitialDetailsUpdates applies updates to the initial details phase
-func (s *VideoService) applyInitialDetailsUpdates(video *storage.Video, updateData map[string]interface{}) error {
-	if val, ok := updateData["projectName"]; ok {
-		if str, ok := val.(string); ok {
-			video.ProjectName = str
+// updateVideoFields uses reflection to map JSON field names to struct fields
+// This eliminates the need for hard-coded field mappings and prevents field name mismatches
+func (s *VideoService) updateVideoFields(video *storage.Video, updateData map[string]interface{}) error {
+	if video == nil {
+		return fmt.Errorf("video cannot be nil")
+	}
+
+	videoValue := reflect.ValueOf(video).Elem() // Get the underlying value that the pointer points to
+	videoType := videoValue.Type()
+
+	// Create a map of JSON field names to struct field indices for fast lookup
+	jsonToFieldMap := make(map[string]int)
+	for i := 0; i < videoType.NumField(); i++ {
+		field := videoType.Field(i)
+		jsonTag := field.Tag.Get("json")
+		if jsonTag != "" && jsonTag != "-" {
+			// Handle json tags like "fieldName,omitempty"
+			jsonFieldName := strings.Split(jsonTag, ",")[0]
+			jsonToFieldMap[jsonFieldName] = i
 		}
 	}
-	if val, ok := updateData["projectURL"]; ok {
-		if str, ok := val.(string); ok {
-			video.ProjectURL = str
+
+	// Apply updates from the updateData map
+	for jsonFieldName, newValue := range updateData {
+		fieldIndex, exists := jsonToFieldMap[jsonFieldName]
+		if !exists {
+			// Handle nested fields (like sponsorship.amount -> sponsorshipAmount)
+			if err := s.updateNestedField(video, jsonFieldName, newValue); err != nil {
+				// If it's not a nested field either, skip it (could be a frontend-only field)
+				continue
+			}
+			continue
+		}
+
+		fieldValue := videoValue.Field(fieldIndex)
+		if !fieldValue.CanSet() {
+			continue // Skip unexported fields
+		}
+
+		// Type-safe assignment based on the field's actual type
+		if err := s.setFieldValue(fieldValue, newValue); err != nil {
+			return fmt.Errorf("failed to set field %s: %w", jsonFieldName, err)
 		}
 	}
-	if val, ok := updateData["sponsorshipAmount"]; ok {
-		if str, ok := val.(string); ok {
+
+	return nil
+}
+
+// updateNestedField handles special cases like sponsorship fields and field name mappings
+func (s *VideoService) updateNestedField(video *storage.Video, fieldName string, newValue interface{}) error {
+	// Handle sponsorship fields
+	switch fieldName {
+	case "sponsorshipAmount":
+		if str, ok := newValue.(string); ok {
 			video.Sponsorship.Amount = str
+			return nil
 		}
-	}
-	if val, ok := updateData["sponsorshipEmails"]; ok {
-		if str, ok := val.(string); ok {
+	case "sponsorshipEmails":
+		if str, ok := newValue.(string); ok {
 			video.Sponsorship.Emails = str
+			return nil
 		}
-	}
-	if val, ok := updateData["sponsorshipBlockedReason"]; ok {
-		if str, ok := val.(string); ok {
+	case "sponsorshipBlockedReason":
+		if str, ok := newValue.(string); ok {
 			video.Sponsorship.Blocked = str
+			return nil
 		}
-	}
-	if val, ok := updateData["publishDate"]; ok {
-		if str, ok := val.(string); ok {
-			video.Date = str
-		}
-	}
-	if val, ok := updateData["delayed"]; ok {
-		if b, ok := val.(bool); ok {
-			video.Delayed = b
-		}
-	}
-	if val, ok := updateData["gistPath"]; ok {
-		if str, ok := val.(string); ok {
-			video.Gist = str
-		}
-	}
 
-	return nil
-}
-
-// applyWorkProgressUpdates applies updates to the work progress phase
-func (s *VideoService) applyWorkProgressUpdates(video *storage.Video, updateData map[string]interface{}) error {
-	if val, ok := updateData["codeDone"]; ok {
-		if b, ok := val.(bool); ok {
+	// Handle field name mappings that don't match JSON tags
+	case "codeDone":
+		if b, ok := newValue.(bool); ok {
 			video.Code = b
+			return nil
 		}
-	}
-	if val, ok := updateData["talkingHeadDone"]; ok {
-		if b, ok := val.(bool); ok {
+	case "talkingHeadDone":
+		if b, ok := newValue.(bool); ok {
 			video.Head = b
+			return nil
 		}
-	}
-	if val, ok := updateData["screenRecordingDone"]; ok {
-		if b, ok := val.(bool); ok {
+	case "screenRecordingDone":
+		if b, ok := newValue.(bool); ok {
 			video.Screen = b
+			return nil
 		}
-	}
-	if val, ok := updateData["relatedVideos"]; ok {
-		if str, ok := val.(string); ok {
-			video.RelatedVideos = str
-		}
-	}
-	if val, ok := updateData["thumbnailsDone"]; ok {
-		if b, ok := val.(bool); ok {
+	case "thumbnailsDone":
+		if b, ok := newValue.(bool); ok {
 			video.Thumbnails = b
+			return nil
 		}
-	}
-	if val, ok := updateData["diagramsDone"]; ok {
-		if b, ok := val.(bool); ok {
+	case "diagramsDone":
+		if b, ok := newValue.(bool); ok {
 			video.Diagrams = b
+			return nil
 		}
-	}
-	if val, ok := updateData["screenshotsDone"]; ok {
-		if b, ok := val.(bool); ok {
+	case "screenshotsDone":
+		if b, ok := newValue.(bool); ok {
 			video.Screenshots = b
+			return nil
 		}
-	}
-	if val, ok := updateData["filesLocation"]; ok {
-		if str, ok := val.(string); ok {
+	case "filesLocation":
+		if str, ok := newValue.(string); ok {
 			video.Location = str
+			return nil
 		}
-	}
-	if val, ok := updateData["tagline"]; ok {
-		if str, ok := val.(string); ok {
-			video.Tagline = str
-		}
-	}
-	if val, ok := updateData["taglineIdeas"]; ok {
-		if str, ok := val.(string); ok {
-			video.TaglineIdeas = str
-		}
-	}
-	if val, ok := updateData["otherLogosAssets"]; ok {
-		if str, ok := val.(string); ok {
+	case "otherLogosAssets":
+		if str, ok := newValue.(string); ok {
 			video.OtherLogos = str
+			return nil
 		}
-	}
-
-	return nil
-}
-
-// applyDefinitionUpdates applies updates to the definition phase
-func (s *VideoService) applyDefinitionUpdates(video *storage.Video, updateData map[string]interface{}) error {
-	if val, ok := updateData["title"]; ok {
-		if str, ok := val.(string); ok {
-			video.Title = str
-		}
-	}
-	if val, ok := updateData["description"]; ok {
-		if str, ok := val.(string); ok {
-			video.Description = str
-		}
-	}
-	if val, ok := updateData["highlight"]; ok {
-		if str, ok := val.(string); ok {
-			video.Highlight = str
-		}
-	}
-	if val, ok := updateData["tags"]; ok {
-		if str, ok := val.(string); ok {
-			video.Tags = str
-		}
-	}
-	if val, ok := updateData["descriptionTags"]; ok {
-		if str, ok := val.(string); ok {
-			video.DescriptionTags = str
-		}
-	}
-	if val, ok := updateData["tweetText"]; ok {
-		if str, ok := val.(string); ok {
+	case "tweetText":
+		if str, ok := newValue.(string); ok {
 			video.Tweet = str
+			return nil
 		}
-	}
-	if val, ok := updateData["animationsScript"]; ok {
-		if str, ok := val.(string); ok {
+	case "animationsScript":
+		if str, ok := newValue.(string); ok {
 			video.Animations = str
+			return nil
 		}
-	}
-	if val, ok := updateData["requestThumbnailGeneration"]; ok {
-		if b, ok := val.(bool); ok {
+	case "requestThumbnailGeneration":
+		if b, ok := newValue.(bool); ok {
 			video.RequestThumbnail = b
+			return nil
 		}
-	}
-	if val, ok := updateData["gistPath"]; ok {
-		if str, ok := val.(string); ok {
+	case "gistPath":
+		if str, ok := newValue.(string); ok {
 			video.Gist = str
+			return nil
 		}
-	}
-
-	return nil
-}
-
-// applyPostProductionUpdates applies updates to the post-production phase
-func (s *VideoService) applyPostProductionUpdates(video *storage.Video, updateData map[string]interface{}) error {
-	if val, ok := updateData["thumbnailPath"]; ok {
-		if str, ok := val.(string); ok {
+	case "thumbnailPath":
+		if str, ok := newValue.(string); ok {
 			video.Thumbnail = str
+			return nil
 		}
-	}
-	if val, ok := updateData["members"]; ok {
-		if str, ok := val.(string); ok {
-			video.Members = str
-		}
-	}
-	if val, ok := updateData["requestEdit"]; ok {
-		if b, ok := val.(bool); ok {
-			video.RequestEdit = b
-		}
-	}
-	if val, ok := updateData["timecodes"]; ok {
-		if str, ok := val.(string); ok {
-			video.Timecodes = str
-		}
-	}
-	if val, ok := updateData["movieDone"]; ok {
-		if b, ok := val.(bool); ok {
+	case "movieDone":
+		if b, ok := newValue.(bool); ok {
 			video.Movie = b
+			return nil
 		}
-	}
-	if val, ok := updateData["slidesDone"]; ok {
-		if b, ok := val.(bool); ok {
+	case "slidesDone":
+		if b, ok := newValue.(bool); ok {
 			video.Slides = b
+			return nil
 		}
-	}
-
-	return nil
-}
-
-// applyPublishingUpdates applies updates to the publishing phase
-func (s *VideoService) applyPublishingUpdates(video *storage.Video, updateData map[string]interface{}) error {
-	if val, ok := updateData["videoFilePath"]; ok {
-		if str, ok := val.(string); ok {
+	case "videoFilePath":
+		if str, ok := newValue.(string); ok {
 			video.UploadVideo = str
+			return nil
 		}
-	}
-	if val, ok := updateData["uploadToYouTube"]; ok {
-		if b, ok := val.(bool); ok && b {
+
+	// Handle special publishing actions
+	case "uploadToYouTube":
+		if b, ok := newValue.(bool); ok && b {
 			// TODO: Implement YouTube upload logic
 			// For now, just mark as completed
 			video.VideoId = "placeholder-youtube-id"
+			return nil
 		}
-	}
-	if val, ok := updateData["createHugoPost"]; ok {
-		if b, ok := val.(bool); ok && b {
+	case "createHugoPost":
+		if b, ok := newValue.(bool); ok && b {
 			// TODO: Implement Hugo post creation logic
 			// For now, just mark as completed
 			video.HugoPath = "placeholder-hugo-path"
+			return nil
+		}
+
+	// Handle post-publish field mappings
+	case "dotPosted":
+		if b, ok := newValue.(bool); ok {
+			video.DOTPosted = b
+			return nil
+		}
+	case "blueSkyPostSent":
+		if b, ok := newValue.(bool); ok {
+			video.BlueSkyPosted = b
+			return nil
+		}
+	case "linkedInPostSent":
+		if b, ok := newValue.(bool); ok {
+			video.LinkedInPosted = b
+			return nil
+		}
+	case "slackPostSent":
+		if b, ok := newValue.(bool); ok {
+			video.SlackPosted = b
+			return nil
+		}
+	case "youTubeHighlightCreated":
+		if b, ok := newValue.(bool); ok {
+			video.YouTubeHighlight = b
+			return nil
+		}
+	case "youTubePinnedCommentAdded":
+		if b, ok := newValue.(bool); ok {
+			video.YouTubeComment = b
+			return nil
+		}
+	case "repliedToYouTubeComments":
+		if b, ok := newValue.(bool); ok {
+			video.YouTubeCommentReply = b
+			return nil
+		}
+	case "gdeAdvocuPostSent":
+		if b, ok := newValue.(bool); ok {
+			video.GDE = b
+			return nil
+		}
+	case "codeRepositoryURL":
+		if str, ok := newValue.(string); ok {
+			video.Repo = str
+			return nil
 		}
 	}
 
-	return nil
+	return fmt.Errorf("unknown nested field: %s", fieldName)
 }
 
-// applyPostPublishUpdates applies updates to the post-publish phase
-func (s *VideoService) applyPostPublishUpdates(video *storage.Video, updateData map[string]interface{}) error {
-	if val, ok := updateData["dotPosted"]; ok {
-		if b, ok := val.(bool); ok {
-			video.DOTPosted = b
-		}
+// setFieldValue safely sets a field value with proper type conversion
+func (s *VideoService) setFieldValue(fieldValue reflect.Value, newValue interface{}) error {
+	if newValue == nil {
+		return nil // Skip nil values
 	}
-	if val, ok := updateData["blueSkyPostSent"]; ok {
-		if b, ok := val.(bool); ok {
-			video.BlueSkyPosted = b
+
+	fieldType := fieldValue.Type()
+	newValueType := reflect.TypeOf(newValue)
+
+	// Handle type conversions
+	switch fieldType.Kind() {
+	case reflect.String:
+		if str, ok := newValue.(string); ok {
+			fieldValue.SetString(str)
+		} else {
+			return fmt.Errorf("expected string, got %v", newValueType)
 		}
-	}
-	if val, ok := updateData["linkedInPostSent"]; ok {
-		if b, ok := val.(bool); ok {
-			video.LinkedInPosted = b
+	case reflect.Bool:
+		if b, ok := newValue.(bool); ok {
+			fieldValue.SetBool(b)
+		} else {
+			return fmt.Errorf("expected bool, got %v", newValueType)
 		}
-	}
-	if val, ok := updateData["slackPostSent"]; ok {
-		if b, ok := val.(bool); ok {
-			video.SlackPosted = b
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		if i, ok := newValue.(int64); ok {
+			fieldValue.SetInt(i)
+		} else if i, ok := newValue.(int); ok {
+			fieldValue.SetInt(int64(i))
+		} else if f, ok := newValue.(float64); ok {
+			fieldValue.SetInt(int64(f))
+		} else {
+			return fmt.Errorf("expected integer, got %v", newValueType)
 		}
-	}
-	if val, ok := updateData["youTubeHighlightCreated"]; ok {
-		if b, ok := val.(bool); ok {
-			video.YouTubeHighlight = b
+	case reflect.Float32, reflect.Float64:
+		if f, ok := newValue.(float64); ok {
+			fieldValue.SetFloat(f)
+		} else if i, ok := newValue.(int); ok {
+			fieldValue.SetFloat(float64(i))
+		} else {
+			return fmt.Errorf("expected float, got %v", newValueType)
 		}
-	}
-	if val, ok := updateData["youTubePinnedCommentAdded"]; ok {
-		if b, ok := val.(bool); ok {
-			video.YouTubeComment = b
-		}
-	}
-	if val, ok := updateData["repliedToYouTubeComments"]; ok {
-		if b, ok := val.(bool); ok {
-			video.YouTubeCommentReply = b
-		}
-	}
-	if val, ok := updateData["gdeAdvocuPostSent"]; ok {
-		if b, ok := val.(bool); ok {
-			video.GDE = b
-		}
-	}
-	if val, ok := updateData["codeRepositoryURL"]; ok {
-		if str, ok := val.(string); ok {
-			video.Repo = str
-		}
-	}
-	if val, ok := updateData["notifiedSponsors"]; ok {
-		if b, ok := val.(bool); ok {
-			video.NotifiedSponsors = b
-		}
+	default:
+		return fmt.Errorf("unsupported field type: %v", fieldType)
 	}
 
 	return nil

@@ -101,6 +101,39 @@ youtube-release [flags]
 - `hugo.go` - Hugo integration
 - `bluesky.go` - Bluesky social media integration
 
+## Field Completion System
+
+The project uses a reflection-based completion system that reads completion criteria directly from struct tags in `internal/storage/yaml.go`. This eliminates hard-coded field mappings and ensures consistency between the data model and validation logic.
+
+### Struct Tag Format
+
+```go
+type Video struct {
+    Date string `json:"date" completion:"filled_only"`
+    Code bool   `json:"code" completion:"true_only"`
+    // ... other fields
+}
+```
+
+### Completion Criteria
+
+- `filled_only` - Complete when field has any non-empty value
+- `true_only` - Complete only when boolean field is `true`
+- `false_only` - Complete only when boolean field is `false`
+- `conditional_sponsorship` - Special logic for sponsorship emails
+- `conditional_sponsors` - Special logic for sponsor notifications
+- `empty_or_filled` - Always considered complete
+- `no_fixme` - Complete when field doesn't contain "FIXME"
+
+### Implementation
+
+The `CompletionService` in `internal/aspect/completion.go` uses reflection to:
+1. Read struct tags at startup
+2. Cache completion criteria for performance
+3. Provide consistent validation across CLI and API interfaces
+
+This approach ensures that field validation rules are defined once in the data model and automatically used throughout the application.
+
 ## Contributing
 
 [Add contribution guidelines]

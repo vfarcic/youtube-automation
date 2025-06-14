@@ -30,58 +30,58 @@ type VideoIndex struct {
 // Video represents all data associated with a video project.
 // All fields are already exported.
 type Video struct {
-	Name                 string      `json:"name"`
-	Path                 string      `json:"path"`
-	Category             string      `json:"category"`
-	ProjectName          string      `json:"projectName"`
-	ProjectURL           string      `json:"projectURL"`
+	Name                 string      `json:"name" completion:"filled_only"`
+	Path                 string      `json:"path" completion:"filled_only"`
+	Category             string      `json:"category" completion:"filled_only"`
+	ProjectName          string      `json:"projectName" completion:"filled_only"`
+	ProjectURL           string      `json:"projectURL" completion:"filled_only"`
 	Sponsorship          Sponsorship `json:"sponsorship"`
-	Date                 string      `json:"date"`
-	Delayed              bool        `json:"delayed"`
-	Screen               bool        `json:"screen"`
-	Head                 bool        `json:"head"`
-	Thumbnails           bool        `json:"thumbnails"`
-	Diagrams             bool        `json:"diagrams"`
-	Title                string      `json:"title"`
-	Description          string      `json:"description"`
-	Highlight            string      `json:"highlight"`
-	Tags                 string      `json:"tags"`
-	DescriptionTags      string      `json:"descriptionTags"`
-	Location             string      `json:"location"`
-	Tagline              string      `json:"tagline"`
-	TaglineIdeas         string      `json:"taglineIdeas"`
-	OtherLogos           string      `json:"otherLogos"`
-	Screenshots          bool        `json:"screenshots"`
-	RequestThumbnail     bool        `json:"requestThumbnail"`
-	Thumbnail            string      `json:"thumbnail"`
-	Language             string      `json:"language"`
-	Members              string      `json:"members"`
-	Animations           string      `json:"animations"`
-	RequestEdit          bool        `json:"requestEdit"`
-	Movie                bool        `json:"movie"`
-	Timecodes            string      `json:"timecodes"`
-	HugoPath             string      `json:"hugoPath"`
-	RelatedVideos        string      `json:"relatedVideos"`
-	UploadVideo          string      `json:"uploadVideo"`
-	VideoId              string      `json:"videoId"`
-	Tweet                string      `json:"tweet"`
-	LinkedInPosted       bool        `json:"linkedInPosted"`
-	SlackPosted          bool        `json:"slackPosted"`
-	HNPosted             bool        `json:"hnPosted"`
-	DOTPosted            bool        `json:"dotPosted"`
-	BlueSkyPosted        bool        `json:"blueSkyPosted"`
-	YouTubeHighlight     bool        `json:"youTubeHighlight"`
-	YouTubeComment       bool        `json:"youTubeComment"`
-	YouTubeCommentReply  bool        `json:"youTubeCommentReply"`
-	Slides               bool        `json:"slides"`
-	GDE                  bool        `json:"gde"`
-	Repo                 string      `json:"repo"`
-	NotifiedSponsors     bool        `json:"notifiedSponsors"`
-	AppliedLanguage      string      `yaml:"appliedLanguage,omitempty" json:"appliedLanguage,omitempty"`
-	AppliedAudioLanguage string      `yaml:"appliedAudioLanguage,omitempty" json:"appliedAudioLanguage,omitempty"`
-	AudioLanguage        string      `yaml:"audioLanguage,omitempty" json:"audioLanguage,omitempty"`
-	Gist                 string      `yaml:"gist,omitempty" json:"gist,omitempty"`
-	Code                 bool        `yaml:"code,omitempty" json:"code,omitempty"`
+	Date                 string      `json:"date" completion:"filled_only"`
+	Delayed              bool        `json:"delayed" completion:"false_only"`
+	Screen               bool        `json:"screen" completion:"true_only"`
+	Head                 bool        `json:"head" completion:"true_only"`
+	Thumbnails           bool        `json:"thumbnails" completion:"true_only"`
+	Diagrams             bool        `json:"diagrams" completion:"true_only"`
+	Title                string      `json:"title" completion:"filled_only"`
+	Description          string      `json:"description" completion:"filled_only"`
+	Highlight            string      `json:"highlight" completion:"filled_only"`
+	Tags                 string      `json:"tags" completion:"filled_only"`
+	DescriptionTags      string      `json:"descriptionTags" completion:"filled_only"`
+	Location             string      `json:"location" completion:"filled_only"`
+	Tagline              string      `json:"tagline" completion:"filled_only"`
+	TaglineIdeas         string      `json:"taglineIdeas" completion:"filled_only"`
+	OtherLogos           string      `json:"otherLogos" completion:"filled_only"`
+	Screenshots          bool        `json:"screenshots" completion:"true_only"`
+	RequestThumbnail     bool        `json:"requestThumbnail" completion:"true_only"`
+	Thumbnail            string      `json:"thumbnail" completion:"filled_only"`
+	Language             string      `json:"language" completion:"filled_only"`
+	Members              string      `json:"members" completion:"filled_only"`
+	Animations           string      `json:"animations" completion:"filled_only"`
+	RequestEdit          bool        `json:"requestEdit" completion:"true_only"`
+	Movie                bool        `json:"movie" completion:"filled_only"`
+	Timecodes            string      `json:"timecodes" completion:"no_fixme"`
+	HugoPath             string      `json:"hugoPath" completion:"filled_only"`
+	RelatedVideos        string      `json:"relatedVideos" completion:"filled_only"`
+	UploadVideo          string      `json:"uploadVideo" completion:"filled_only"`
+	VideoId              string      `json:"videoId" completion:"filled_only"`
+	Tweet                string      `json:"tweet" completion:"filled_only"`
+	LinkedInPosted       bool        `json:"linkedInPosted" completion:"true_only"`
+	SlackPosted          bool        `json:"slackPosted" completion:"true_only"`
+	HNPosted             bool        `json:"hnPosted" completion:"true_only"`
+	DOTPosted            bool        `json:"dotPosted" completion:"true_only"`
+	BlueSkyPosted        bool        `json:"blueSkyPosted" completion:"true_only"`
+	YouTubeHighlight     bool        `json:"youTubeHighlight" completion:"true_only"`
+	YouTubeComment       bool        `json:"youTubeComment" completion:"true_only"`
+	YouTubeCommentReply  bool        `json:"youTubeCommentReply" completion:"true_only"`
+	Slides               bool        `json:"slides" completion:"true_only"`
+	GDE                  bool        `json:"gde" completion:"true_only"`
+	Repo                 string      `json:"repo" completion:"filled_only"`
+	NotifiedSponsors     bool        `json:"notifiedSponsors" completion:"conditional_sponsors"`
+	AppliedLanguage      string      `yaml:"appliedLanguage,omitempty" json:"appliedLanguage,omitempty" completion:"filled_only"`
+	AppliedAudioLanguage string      `yaml:"appliedAudioLanguage,omitempty" json:"appliedAudioLanguage,omitempty" completion:"filled_only"`
+	AudioLanguage        string      `yaml:"audioLanguage,omitempty" json:"audioLanguage,omitempty" completion:"filled_only"`
+	Gist                 string      `yaml:"gist,omitempty" json:"gist,omitempty" completion:"filled_only"`
+	Code                 bool        `yaml:"code,omitempty" json:"code,omitempty" completion:"true_only"`
 }
 
 // Sponsorship holds details about video sponsorship.
@@ -93,9 +93,9 @@ type Video struct {
 // Sponsorship holds details about video sponsorship.
 // Fields Amount, Emails, and Blocked are already exported.
 type Sponsorship struct {
-	Amount  string `json:"amount"`
-	Emails  string `json:"emails"`
-	Blocked string `json:"blocked"`
+	Amount  string `json:"amount" completion:"filled_only"`
+	Emails  string `json:"emails" completion:"conditional_sponsorship"`
+	Blocked string `json:"blocked" completion:"empty_or_filled"`
 }
 
 // NewYAML creates a new YAML instance with default values
