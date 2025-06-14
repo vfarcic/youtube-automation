@@ -3,6 +3,8 @@ package aspect
 import (
 	"devopstoolkit/youtube-automation/internal/storage"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestCompletionService_GetFieldCompletionCriteria(t *testing.T) {
@@ -256,6 +258,75 @@ func TestCompletionService_IsFieldComplete_EmptyOrFilled(t *testing.T) {
 			if result != tc.expected {
 				t.Errorf("Expected %v for %v (%T), got %v", tc.expected, tc.value, tc.value, result)
 			}
+		})
+	}
+}
+
+// TestCompletionService_CacheKeySeparatorPreventsCollisions tests that nested field keys
+// use proper separators to prevent cache key collisions
+func TestCompletionService_CacheKeySeparatorPreventsCollisions(t *testing.T) {
+	service := NewCompletionService()
+
+	// Test that sponsorship fields have proper separators in their cache keys
+	// This should demonstrate the current bug where "sponsorshipamount" could collide
+	// if there were fields like "sponsor" + "shipamount"
+
+	// Check that the cache contains properly separated keys
+	// The cache is private, so we'll test indirectly through the behavior
+
+	// First, let's verify that sponsorship fields work correctly
+	// (this test will pass even with the current bug, but sets up for the fix)
+	criteria := service.GetFieldCompletionCriteria("initial-details", "sponsorshipAmount")
+	assert.Equal(t, "filled_only", criteria, "sponsorshipAmount should have filled_only criteria")
+
+	// Test the current behavior and then verify it should be improved
+	mappedKey := service.mapFieldKeyForCompletion("sponsorshipAmount")
+
+	// FIXED: Now we expect proper separators to prevent collisions
+	expectedKey := "sponsorship.amount" // This should be the fixed behavior
+	assert.Equal(t, expectedKey, mappedKey, "Fixed implementation should use separators to prevent cache key collisions")
+
+	// Test multiple fields to show the fixed collision prevention
+	testCases := []struct {
+		field       string
+		expectedKey string // What it should be after fix
+	}{
+		{"sponsorshipAmount", "sponsorship.amount"},
+		{"sponsorshipEmails", "sponsorship.emails"},
+		{"sponsorshipBlockedReason", "sponsorship.blocked"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.field, func(t *testing.T) {
+			mapped := service.mapFieldKeyForCompletion(tc.field)
+			// Now assert the FIXED behavior
+			assert.Equal(t, tc.expectedKey, mapped,
+				"Fixed implementation for %s should be %s with proper separator",
+				tc.field, tc.expectedKey)
+		})
+	}
+}
+
+// TestCompletionService_FieldMappingConsistency tests that field mappings are consistent
+// and don't create ambiguous cache keys
+func TestCompletionService_FieldMappingConsistency(t *testing.T) {
+	service := NewCompletionService()
+
+	// Test multiple sponsorship fields to ensure they map consistently WITH SEPARATORS
+	testCases := []struct {
+		fieldKey    string
+		expectedKey string
+	}{
+		{"sponsorshipAmount", "sponsorship.amount"},         // Fixed behavior with separator
+		{"sponsorshipEmails", "sponsorship.emails"},         // Fixed behavior with separator
+		{"sponsorshipBlockedReason", "sponsorship.blocked"}, // Fixed behavior with separator
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.fieldKey, func(t *testing.T) {
+			mappedKey := service.mapFieldKeyForCompletion(tc.fieldKey)
+			assert.Equal(t, tc.expectedKey, mappedKey,
+				"Field %s should map to %s with proper separator", tc.fieldKey, tc.expectedKey)
 		})
 	}
 }
