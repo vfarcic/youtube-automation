@@ -52,7 +52,7 @@ func (s *CompletionService) cacheStructCompletionCriteria(structType reflect.Typ
 		// Build full field name with prefix for nested structs
 		var fullFieldName string
 		if prefix != "" {
-			fullFieldName = prefix + jsonFieldName // e.g., "sponsorshipamount"
+			fullFieldName = prefix + "." + jsonFieldName // FIX: Add separator to prevent collisions
 		} else {
 			fullFieldName = jsonFieldName
 		}
@@ -85,13 +85,13 @@ func (s *CompletionService) GetFieldCompletionCriteria(aspectKey, fieldKey strin
 
 // mapFieldKeyForCompletion handles special field name mappings for nested and special fields
 func (s *CompletionService) mapFieldKeyForCompletion(fieldKey string) string {
-	// Map special field names to their struct tag equivalents
+	// Map special field names to their struct tag equivalents with proper separators
 	mappings := map[string]string{
-		"sponsorshipAmount":        "sponsorshipamount",
-		"sponsorshipEmails":        "sponsorshipemails",
-		"sponsorshipBlockedReason": "sponsorshipblocked",
-		"notifySponsors":           "notifiedSponsors", // Handle legacy field name
-		"notifiedSponsors":         "notifiedSponsors", // Direct mapping
+		"sponsorshipAmount":        "sponsorship.amount",  // FIX: Use separator
+		"sponsorshipEmails":        "sponsorship.emails",  // FIX: Use separator
+		"sponsorshipBlockedReason": "sponsorship.blocked", // FIX: Use separator
+		"notifySponsors":           "notifiedSponsors",    // Handle legacy field name (no prefix)
+		"notifiedSponsors":         "notifiedSponsors",    // Direct mapping (no prefix)
 	}
 
 	if mapped, exists := mappings[fieldKey]; exists {

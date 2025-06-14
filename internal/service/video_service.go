@@ -585,11 +585,7 @@ func (s *VideoService) updateNestedField(video *storage.Video, fieldName string,
 			video.RequestThumbnail = b
 			return nil
 		}
-	case "gistPath":
-		if str, ok := newValue.(string); ok {
-			video.Gist = str
-			return nil
-		}
+
 	case "thumbnailPath":
 		if str, ok := newValue.(string); ok {
 			video.Thumbnail = str

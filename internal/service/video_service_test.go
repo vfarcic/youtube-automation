@@ -437,7 +437,7 @@ func TestVideoService_UpdateVideoPhase_InitialDetails(t *testing.T) {
 		"projectName":              "Test Project",
 		"projectURL":               "http://example.com",
 		"date":                     "2024-01-01T10:00",
-		"gistPath":                 "path/to/gist.md",
+		"gist":                     "path/to/gist.md", // FIX: Use correct field name
 		"delayed":                  false,
 		"sponsorshipAmount":        "100",
 		"sponsorshipEmails":        "sponsor@example.com",
@@ -518,7 +518,7 @@ func TestVideoService_UpdateVideoPhase_Definition(t *testing.T) {
 		"tweetText":                  "New Tweet Text",
 		"animationsScript":           "New Animations Script",
 		"requestThumbnailGeneration": true,
-		"gistPath":                   "new/gist/path.md",
+		"gist":                       "new/gist/path.md", // FIX: Use correct field name
 	}
 
 	videoAfterUpdate, err := service.UpdateVideoPhase(&videoToUpdate, "definition", updateData)
@@ -950,4 +950,39 @@ func TestVideoService_ReflectionBasedFieldMapping(t *testing.T) {
 	// Verify that known fields are updated and unknown fields are ignored
 	assert.Equal(t, "Updated Title", videoAfterUpdate3.Title)
 	// Unknown fields should not cause errors
+}
+
+// TestVideoService_FieldNameConsistency_GistPath tests that field names used in tests
+// match the actual JSON field names in the struct to prevent bugs like gistPath vs gist
+func TestVideoService_FieldNameConsistency_GistPath(t *testing.T) {
+	service, _, cleanup := setupTestVideoService(t)
+	defer cleanup()
+
+	_, err := service.CreateVideo("test-field-consistency", "test-category")
+	require.NoError(t, err)
+
+	videoToUpdate, err := service.GetVideo("test-field-consistency", "test-category")
+	require.NoError(t, err)
+
+	// Test that using "gist" (correct field name) works
+	updateDataCorrect := map[string]interface{}{
+		"gist": "path/to/correct/gist.md",
+	}
+
+	videoAfterCorrectUpdate, err := service.UpdateVideoPhase(&videoToUpdate, "initial-details", updateDataCorrect)
+	require.NoError(t, err)
+	assert.Equal(t, "path/to/correct/gist.md", videoAfterCorrectUpdate.Gist)
+
+	// Test that using "gistPath" (incorrect field name) should NOT work
+	// This test should demonstrate the bug - if we use the wrong field name,
+	// the update should not affect the Gist field
+	updateDataIncorrect := map[string]interface{}{
+		"gistPath": "path/to/incorrect/gist.md", // Wrong field name!
+	}
+
+	videoAfterIncorrectUpdate, err := service.UpdateVideoPhase(&videoToUpdate, "initial-details", updateDataIncorrect)
+	require.NoError(t, err)
+	// The Gist field should remain unchanged since "gistPath" is not the correct JSON field name
+	assert.Equal(t, "path/to/correct/gist.md", videoAfterIncorrectUpdate.Gist,
+		"Using incorrect field name 'gistPath' should not update the Gist field")
 }
