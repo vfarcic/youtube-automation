@@ -1,93 +1,104 @@
 package aspect
 
 import (
-	"devopstoolkit/youtube-automation/internal/storage"
+	"reflect"
 	"strings"
+
+	"devopstoolkit/youtube-automation/internal/storage"
 )
 
-// CompletionService provides field-level completion criteria logic
-// This service extracts the completion logic from the video manager functions
-// to enable both API and CLI to use the same field completion rules
-type CompletionService struct{}
+// CompletionService handles field completion logic using struct tag reflection
+type CompletionService struct {
+	fieldCompletionCache map[string]string // Cache for field completion criteria
+}
 
 // NewCompletionService creates a new completion service
 func NewCompletionService() *CompletionService {
-	return &CompletionService{}
+	service := &CompletionService{
+		fieldCompletionCache: make(map[string]string),
+	}
+	service.initializeCompletionCache()
+	return service
+}
+
+// initializeCompletionCache uses reflection to build a cache of field completion criteria from struct tags
+func (s *CompletionService) initializeCompletionCache() {
+	// Get completion criteria from Video struct
+	videoType := reflect.TypeOf(storage.Video{})
+	s.cacheStructCompletionCriteria(videoType, "")
+
+	// Get completion criteria from nested Sponsorship struct
+	sponsorshipType := reflect.TypeOf(storage.Sponsorship{})
+	s.cacheStructCompletionCriteria(sponsorshipType, "sponsorship")
+}
+
+// cacheStructCompletionCriteria extracts completion criteria from struct tags and caches them
+func (s *CompletionService) cacheStructCompletionCriteria(structType reflect.Type, prefix string) {
+	for i := 0; i < structType.NumField(); i++ {
+		field := structType.Field(i)
+
+		// Get JSON field name
+		jsonTag := field.Tag.Get("json")
+		if jsonTag == "" || jsonTag == "-" {
+			continue
+		}
+
+		// Parse JSON tag to get field name (remove omitempty, etc.)
+		jsonFieldName := strings.Split(jsonTag, ",")[0]
+		if jsonFieldName == "" {
+			continue
+		}
+
+		// Build full field name with prefix for nested structs
+		var fullFieldName string
+		if prefix != "" {
+			fullFieldName = prefix + jsonFieldName // e.g., "sponsorshipamount"
+		} else {
+			fullFieldName = jsonFieldName
+		}
+
+		// Get completion criteria from struct tag
+		completionTag := field.Tag.Get("completion")
+		if completionTag != "" {
+			s.fieldCompletionCache[fullFieldName] = completionTag
+		} else {
+			// Default to filled_only if no completion tag specified
+			s.fieldCompletionCache[fullFieldName] = "filled_only"
+		}
+	}
 }
 
 // GetFieldCompletionCriteria returns the completion criteria for a specific field
-// This maps field keys to their completion criteria based on the existing logic in video manager
+// This now uses reflection to read criteria from struct tags instead of hard-coded mappings
 func (s *CompletionService) GetFieldCompletionCriteria(aspectKey, fieldKey string) string {
-	// Map field keys to their completion criteria based on existing video manager logic
-	// Updated to use the new reflection-based field names (JSON paths)
-	fieldCompletionMap := map[string]map[string]string{
-		"initial-details": {
-			"projectName":         CompletionCriteriaFilledOnly,    // non-empty, not "-"
-			"projectURL":          CompletionCriteriaFilledOnly,    // non-empty, not "-"
-			"sponsorship.amount":  CompletionCriteriaFilledOnly,    // non-empty, not "-"
-			"sponsorship.emails":  CompletionCriteriaConditional,   // special logic: complete if sponsorshipAmount is empty/N/A/- OR if emails has content
-			"sponsorship.blocked": CompletionCriteriaEmptyOrFilled, // complete when empty (no blocking)
-			"date":                CompletionCriteriaFilledOnly,    // non-empty, not "-"
-			"delayed":             CompletionCriteriaFalseOnly,     // complete when false (not delayed)
-			"gist":                CompletionCriteriaFilledOnly,    // non-empty, not "-"
-		},
-		"work-progress": {
-			"codeDone":            CompletionCriteriaTrueOnly,   // true when complete
-			"talkingHeadDone":     CompletionCriteriaTrueOnly,   // true when complete
-			"screenRecordingDone": CompletionCriteriaTrueOnly,   // true when complete
-			"relatedVideos":       CompletionCriteriaFilledOnly, // non-empty, not "-"
-			"thumbnailsDone":      CompletionCriteriaTrueOnly,   // true when complete
-			"diagramsDone":        CompletionCriteriaTrueOnly,   // true when complete
-			"screenshotsDone":     CompletionCriteriaTrueOnly,   // true when complete
-			"filesLocation":       CompletionCriteriaFilledOnly, // non-empty, not "-"
-			"tagline":             CompletionCriteriaFilledOnly, // non-empty, not "-"
-			"taglineIdeas":        CompletionCriteriaFilledOnly, // non-empty, not "-"
-			"otherLogos":          CompletionCriteriaFilledOnly, // non-empty, not "-"
-		},
-		"definition": {
-			"title":            CompletionCriteriaFilledOnly, // non-empty, not "-"
-			"description":      CompletionCriteriaFilledOnly, // non-empty, not "-"
-			"highlight":        CompletionCriteriaFilledOnly, // non-empty, not "-"
-			"tags":             CompletionCriteriaFilledOnly, // non-empty, not "-"
-			"descriptionTags":  CompletionCriteriaFilledOnly, // non-empty, not "-"
-			"tweet":            CompletionCriteriaFilledOnly, // non-empty, not "-"
-			"animationsScript": CompletionCriteriaFilledOnly, // non-empty, not "-"
-		},
-		"post-production": {
-			"thumbnailPath": CompletionCriteriaFilledOnly, // non-empty, not "-"
-			"members":       CompletionCriteriaFilledOnly, // non-empty, not "-"
-			"requestEdit":   CompletionCriteriaTrueOnly,   // true when complete
-			"timecodes":     CompletionCriteriaNoFixme,    // complete when content doesn't contain "FIXME:"
-			"movieDone":     CompletionCriteriaTrueOnly,   // true when complete
-			"slidesDone":    CompletionCriteriaTrueOnly,   // true when complete
-		},
-		"publishing": {
-			"videoFilePath":  CompletionCriteriaFilledOnly, // non-empty, not "-"
-			"youTubeVideoId": CompletionCriteriaFilledOnly, // non-empty, not "-"
-			"hugoPostPath":   CompletionCriteriaFilledOnly, // non-empty, not "-"
-		},
-		"post-publish": {
-			"dotPosted":           CompletionCriteriaTrueOnly,    // true when complete
-			"blueSkyPosted":       CompletionCriteriaTrueOnly,    // true when complete
-			"linkedInPosted":      CompletionCriteriaTrueOnly,    // true when complete
-			"slackPosted":         CompletionCriteriaTrueOnly,    // true when complete
-			"youTubeHighlight":    CompletionCriteriaTrueOnly,    // true when complete
-			"youTubeComment":      CompletionCriteriaTrueOnly,    // true when complete
-			"youTubeCommentReply": CompletionCriteriaTrueOnly,    // true when complete
-			"gdePosted":           CompletionCriteriaTrueOnly,    // true when complete
-			"codeRepository":      CompletionCriteriaFilledOnly,  // non-empty, not "-"
-			"notifySponsors":      CompletionCriteriaConditional, // complete if no sponsorship OR if notified
-		},
+	// Handle special field name mappings for nested fields
+	mappedFieldKey := s.mapFieldKeyForCompletion(fieldKey)
+
+	// Look up completion criteria from cache
+	if criteria, exists := s.fieldCompletionCache[mappedFieldKey]; exists {
+		return criteria
 	}
 
-	if aspectFields, exists := fieldCompletionMap[aspectKey]; exists {
-		if criteria, exists := aspectFields[fieldKey]; exists {
-			return criteria
-		}
+	// Default fallback
+	return "filled_only"
+}
+
+// mapFieldKeyForCompletion handles special field name mappings for nested and special fields
+func (s *CompletionService) mapFieldKeyForCompletion(fieldKey string) string {
+	// Map special field names to their struct tag equivalents
+	mappings := map[string]string{
+		"sponsorshipAmount":        "sponsorshipamount",
+		"sponsorshipEmails":        "sponsorshipemails",
+		"sponsorshipBlockedReason": "sponsorshipblocked",
+		"notifySponsors":           "notifiedSponsors", // Handle legacy field name
+		"notifiedSponsors":         "notifiedSponsors", // Direct mapping
 	}
 
-	// Default completion criteria based on field type if not specifically mapped
-	return CompletionCriteriaFilledOnly
+	if mapped, exists := mappings[fieldKey]; exists {
+		return mapped
+	}
+
+	return fieldKey
 }
 
 // IsFieldComplete checks if a specific field is complete based on its completion criteria
@@ -96,20 +107,22 @@ func (s *CompletionService) IsFieldComplete(aspectKey, fieldKey string, fieldVal
 	criteria := s.GetFieldCompletionCriteria(aspectKey, fieldKey)
 
 	switch criteria {
-	case CompletionCriteriaFilledOnly:
+	case "filled_only":
 		return s.isFilledOnly(fieldValue)
-	case CompletionCriteriaEmptyOrFilled:
+	case "empty_or_filled":
 		return s.isEmptyOrFilled(fieldValue)
-	case CompletionCriteriaFilledRequired:
+	case "filled_required":
 		return s.isFilledRequired(fieldValue)
-	case CompletionCriteriaTrueOnly:
+	case "true_only":
 		return s.isTrueOnly(fieldValue)
-	case CompletionCriteriaFalseOnly:
+	case "false_only":
 		return s.isFalseOnly(fieldValue)
-	case CompletionCriteriaNoFixme:
+	case "no_fixme":
 		return s.isNoFixme(fieldValue)
-	case CompletionCriteriaConditional:
-		return s.isConditionalComplete(aspectKey, fieldKey, fieldValue, video)
+	case "conditional_sponsorship":
+		return s.isConditionalSponsorshipComplete(fieldKey, fieldValue, video)
+	case "conditional_sponsors":
+		return s.isConditionalSponsorsComplete(fieldKey, fieldValue, video)
 	default:
 		return s.isFilledOnly(fieldValue) // Default behavior
 	}
@@ -165,31 +178,22 @@ func (s *CompletionService) isNoFixme(value interface{}) bool {
 	return false
 }
 
-func (s *CompletionService) isConditionalComplete(aspectKey, fieldKey string, value interface{}, video storage.Video) bool {
-	// Handle special conditional logic cases
-	switch aspectKey {
-	case "initial-details":
-		if fieldKey == "sponsorship.emails" {
-			// Complete if sponsorshipAmount is empty/N/A/- OR if emails has content
-			amount := video.Sponsorship.Amount
-			if len(amount) == 0 || amount == "N/A" || amount == "-" {
-				return true // No sponsorship, so emails field is complete
-			}
-			// Has sponsorship, check if emails are filled
-			return s.isFilledOnly(value)
-		}
-	case "post-publish":
-		if fieldKey == "notifySponsors" {
-			// Complete if no sponsorship OR if notified
-			amount := video.Sponsorship.Amount
-			if len(amount) == 0 || amount == "N/A" || amount == "-" {
-				return true // No sponsorship, so notification not needed
-			}
-			// Has sponsorship, check if notified
-			return s.isTrueOnly(value)
-		}
+func (s *CompletionService) isConditionalSponsorshipComplete(fieldKey string, value interface{}, video storage.Video) bool {
+	// Handle sponsorship emails field - complete if sponsorshipAmount is empty/N/A/- OR if emails has content
+	amount := video.Sponsorship.Amount
+	if len(amount) == 0 || amount == "N/A" || amount == "-" {
+		return true // No sponsorship, so emails field is complete
 	}
-
-	// Default to filled_only for unknown conditional cases
+	// Has sponsorship, check if emails are filled
 	return s.isFilledOnly(value)
+}
+
+func (s *CompletionService) isConditionalSponsorsComplete(fieldKey string, value interface{}, video storage.Video) bool {
+	// Handle notifySponsors field - complete if no sponsorship OR if notified
+	amount := video.Sponsorship.Amount
+	if len(amount) == 0 || amount == "N/A" || amount == "-" {
+		return true // No sponsorship, so notification not needed
+	}
+	// Has sponsorship, check if notified
+	return s.isTrueOnly(value)
 }

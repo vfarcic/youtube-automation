@@ -809,11 +809,11 @@ func TestService_GetAspectFields_IncludesCompletionCriteria(t *testing.T) {
 
 	// Verify some specific fields have the expected completion criteria
 	expectedCriteria := map[string]string{
-		"Project Name":        CompletionCriteriaFilledOnly,
-		"Sponsorship Amount":  CompletionCriteriaFilledOnly,
-		"Sponsorship Emails":  CompletionCriteriaConditional,
-		"Sponsorship Blocked": CompletionCriteriaEmptyOrFilled,
-		"Delayed":             CompletionCriteriaFalseOnly,
+		"Project Name":        "filled_only",
+		"Sponsorship Amount":  "filled_only",
+		"Sponsorship Emails":  "conditional_sponsorship",
+		"Sponsorship Blocked": "empty_or_filled",
+		"Delayed":             "false_only",
 	}
 
 	fieldMap := make(map[string]Field)
@@ -878,9 +878,9 @@ func TestService_GetAspects_IncludesCompletionCriteria(t *testing.T) {
 	// Check specific field
 	for _, field := range initialDetailsAspect.Fields {
 		if field.Name == "Project Name" {
-			if field.CompletionCriteria != CompletionCriteriaFilledOnly {
+			if field.CompletionCriteria != "filled_only" {
 				t.Errorf("Expected Project Name to have %s criteria, got %s",
-					CompletionCriteriaFilledOnly, field.CompletionCriteria)
+					"filled_only", field.CompletionCriteria)
 			}
 			break
 		}
@@ -919,13 +919,14 @@ func TestService_GetAspectFields_AllAspects(t *testing.T) {
 
 				// Verify completion criteria is a valid value
 				validCriteria := []string{
-					CompletionCriteriaFilledOnly,
-					CompletionCriteriaEmptyOrFilled,
-					CompletionCriteriaFilledRequired,
-					CompletionCriteriaTrueOnly,
-					CompletionCriteriaFalseOnly,
-					CompletionCriteriaConditional,
-					CompletionCriteriaNoFixme,
+					"filled_only",
+					"empty_or_filled",
+					"filled_required",
+					"true_only",
+					"false_only",
+					"conditional_sponsorship",
+					"conditional_sponsors",
+					"no_fixme",
 				}
 
 				found := false

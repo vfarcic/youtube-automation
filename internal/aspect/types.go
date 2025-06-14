@@ -2,29 +2,8 @@ package aspect
 
 import "errors"
 
-// Completion criteria constants for field completion logic
-const (
-	// CompletionCriteriaFilledOnly indicates field is complete when not empty and not "-"
-	CompletionCriteriaFilledOnly = "filled_only"
-
-	// CompletionCriteriaEmptyOrFilled indicates field is complete when empty OR filled
-	CompletionCriteriaEmptyOrFilled = "empty_or_filled"
-
-	// CompletionCriteriaFilledRequired indicates field must be filled (required fields)
-	CompletionCriteriaFilledRequired = "filled_required"
-
-	// CompletionCriteriaTrueOnly indicates boolean field is complete when true
-	CompletionCriteriaTrueOnly = "true_only"
-
-	// CompletionCriteriaFalseOnly indicates boolean field is complete when false
-	CompletionCriteriaFalseOnly = "false_only"
-
-	// CompletionCriteriaConditional indicates field has special conditional logic
-	CompletionCriteriaConditional = "conditional"
-
-	// CompletionCriteriaNoFixme indicates field is complete when content doesn't contain "FIXME:"
-	CompletionCriteriaNoFixme = "no_fixme"
-)
+// Note: Completion criteria are now defined directly in struct tags in storage/yaml.go
+// This eliminates the need for constants and makes the system more maintainable
 
 // AspectMetadata represents the complete metadata structure for all aspects
 type AspectMetadata struct {

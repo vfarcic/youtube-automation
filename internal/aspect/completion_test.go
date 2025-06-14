@@ -15,32 +15,32 @@ func TestCompletionService_GetFieldCompletionCriteria(t *testing.T) {
 		description  string
 	}{
 		// Initial Details
-		{"initial-details", "projectName", CompletionCriteriaFilledOnly, "Project name should use filled_only"},
-		{"initial-details", "sponsorship.emails", CompletionCriteriaConditional, "Sponsorship emails should use conditional logic"},
-		{"initial-details", "sponsorship.blocked", CompletionCriteriaEmptyOrFilled, "Sponsorship blocked should use empty_or_filled"},
-		{"initial-details", "delayed", CompletionCriteriaFalseOnly, "Delayed should use false_only"},
+		{"initial-details", "projectName", "filled_only", "Project name should use filled_only"},
+		{"initial-details", "sponsorshipEmails", "conditional_sponsorship", "Sponsorship emails should use conditional_sponsorship logic"},
+		{"initial-details", "sponsorshipBlockedReason", "empty_or_filled", "Sponsorship blocked should use empty_or_filled"},
+		{"initial-details", "delayed", "false_only", "Delayed should use false_only"},
 
 		// Work Progress
-		{"work-progress", "codeDone", CompletionCriteriaTrueOnly, "Code done should use true_only"},
-		{"work-progress", "relatedVideos", CompletionCriteriaFilledOnly, "Related videos should use filled_only"},
+		{"work-progress", "code", "true_only", "Code done should use true_only"},
+		{"work-progress", "relatedVideos", "filled_only", "Related videos should use filled_only"},
 
 		// Definition
-		{"definition", "title", CompletionCriteriaFilledOnly, "Title should use filled_only"},
-		{"definition", "description", CompletionCriteriaFilledOnly, "Description should use filled_only"},
+		{"definition", "title", "filled_only", "Title should use filled_only"},
+		{"definition", "description", "filled_only", "Description should use filled_only"},
 
 		// Post-Production
-		{"post-production", "requestEdit", CompletionCriteriaTrueOnly, "Request edit should use true_only"},
-		{"post-production", "timecodes", CompletionCriteriaNoFixme, "Timecodes should use no_fixme"},
+		{"post-production", "requestEdit", "true_only", "Request edit should use true_only"},
+		{"post-production", "timecodes", "no_fixme", "Timecodes should use no_fixme"},
 
 		// Publishing
-		{"publishing", "videoFilePath", CompletionCriteriaFilledOnly, "Video file path should use filled_only"},
+		{"publishing", "videoFilePath", "filled_only", "Video file path should use filled_only"},
 
 		// Post-Publish
-		{"post-publish", "dotPosted", CompletionCriteriaTrueOnly, "DOT posted should use true_only"},
-		{"post-publish", "notifySponsors", CompletionCriteriaConditional, "Notify sponsors should use conditional logic"},
+		{"post-publish", "dotPosted", "true_only", "DOT posted should use true_only"},
+		{"post-publish", "notifiedSponsors", "conditional_sponsors", "Notify sponsors should use conditional_sponsors logic"},
 
 		// Unknown field should return default
-		{"unknown-aspect", "unknown-field", CompletionCriteriaFilledOnly, "Unknown fields should default to filled_only"},
+		{"unknown-aspect", "unknown-field", "filled_only", "Unknown fields should default to filled_only"},
 	}
 
 	for _, tc := range testCases {
@@ -107,7 +107,7 @@ func TestCompletionService_IsFieldComplete_ConditionalSponsorshipEmails(t *testi
 				},
 			}
 
-			result := service.IsFieldComplete("initial-details", "sponsorship.emails", tc.emailValue, video)
+			result := service.IsFieldComplete("initial-details", "sponsorshipEmails", tc.emailValue, video)
 			if result != tc.expected {
 				t.Errorf("Expected %v for sponsorship amount '%s' and email '%s', got %v",
 					tc.expected, tc.sponsorshipAmount, tc.emailValue, result)
@@ -140,7 +140,7 @@ func TestCompletionService_IsFieldComplete_ConditionalNotifySponsors(t *testing.
 				},
 			}
 
-			result := service.IsFieldComplete("post-publish", "notifySponsors", tc.notifyValue, video)
+			result := service.IsFieldComplete("post-publish", "notifiedSponsors", tc.notifyValue, video)
 			if result != tc.expected {
 				t.Errorf("Expected %v for sponsorship amount '%s' and notify value %v, got %v",
 					tc.expected, tc.sponsorshipAmount, tc.notifyValue, result)
@@ -168,7 +168,7 @@ func TestCompletionService_IsFieldComplete_TrueOnly(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.description, func(t *testing.T) {
 			// Use a field that should have true_only criteria
-			result := service.IsFieldComplete("work-progress", "codeDone", tc.value, video)
+			result := service.IsFieldComplete("work-progress", "code", tc.value, video)
 			if result != tc.expected {
 				t.Errorf("Expected %v for %v (%T), got %v", tc.expected, tc.value, tc.value, result)
 			}
@@ -252,7 +252,7 @@ func TestCompletionService_IsFieldComplete_EmptyOrFilled(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.description, func(t *testing.T) {
 			// Use sponsorshipBlocked field which should have empty_or_filled criteria
-			result := service.IsFieldComplete("initial-details", "sponsorship.blocked", tc.value, video)
+			result := service.IsFieldComplete("initial-details", "sponsorshipBlockedReason", tc.value, video)
 			if result != tc.expected {
 				t.Errorf("Expected %v for %v (%T), got %v", tc.expected, tc.value, tc.value, result)
 			}

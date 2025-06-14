@@ -279,7 +279,7 @@ curl -X PUT "http://localhost:8080/api/videos/test-api-video/initial-details?cat
   -d '{
     "projectName": "Test API Project",
     "projectURL": "https://github.com/example/test-project",
-    "publishDate": "2023-12-25T10:00",
+    "date": "2023-12-25T10:00",
     "gistPath": "manuscript/test-category/test-api-video.md"
   }'
 ```

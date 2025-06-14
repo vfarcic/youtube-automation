@@ -122,31 +122,31 @@ func (m *MenuHandler) colorTitleWithSharedLogic(aspectKey, fieldTitle, fieldValu
 	isComplete := false
 
 	switch completionCriteria {
-	case aspect.CompletionCriteriaFilledOnly:
+	case "filled_only":
 		// Complete when not empty and not "-"
 		isComplete = len(fieldValue) > 0 && fieldValue != "-"
 
-	case aspect.CompletionCriteriaFilledRequired:
+	case "filled_required":
 		// Must be filled (similar to filled_only for now)
 		isComplete = len(fieldValue) > 0 && fieldValue != "-"
 
-	case aspect.CompletionCriteriaEmptyOrFilled:
+	case "empty_or_filled":
 		// Complete when empty OR filled (always green)
 		isComplete = true
 
-	case aspect.CompletionCriteriaTrueOnly:
+	case "true_only":
 		// Complete when boolean is true
 		if boolValue != nil {
 			isComplete = *boolValue
 		}
 
-	case aspect.CompletionCriteriaFalseOnly:
+	case "false_only":
 		// Complete when boolean is false
 		if boolValue != nil {
 			isComplete = !(*boolValue)
 		}
 
-	case aspect.CompletionCriteriaConditional:
+	case "conditional_sponsorship":
 		// Special logic for sponsorship emails field
 		if fieldKey == "sponsorshipEmails" {
 			// Complete if sponsorship amount is empty/N/A/- OR emails have content
@@ -155,6 +155,23 @@ func (m *MenuHandler) colorTitleWithSharedLogic(aspectKey, fieldTitle, fieldValu
 			// For other conditional fields, default to filled_only logic
 			isComplete = len(fieldValue) > 0 && fieldValue != "-"
 		}
+
+	case "conditional_sponsors":
+		// Special logic for notify sponsors field
+		if fieldKey == "notifySponsors" || fieldKey == "notifiedSponsors" {
+			// Complete if sponsorship amount is empty/N/A/- OR notification is done
+			isComplete = (len(sponsorshipAmount) == 0 || sponsorshipAmount == "N/A" || sponsorshipAmount == "-")
+			if !isComplete && boolValue != nil {
+				isComplete = *boolValue
+			}
+		} else {
+			// For other conditional fields, default to filled_only logic
+			isComplete = len(fieldValue) > 0 && fieldValue != "-"
+		}
+
+	case "no_fixme":
+		// Complete when content doesn't contain FIXME
+		isComplete = len(fieldValue) > 0 && !strings.Contains(fieldValue, "FIXME")
 
 	default:
 		// Default to filled_only logic
@@ -175,20 +192,20 @@ func (m *MenuHandler) getFieldKeyFromTitle(fieldTitle string) string {
 		constants.FieldTitleProjectURL:         "projectURL",
 		constants.FieldTitleSponsorshipAmount:  "sponsorshipAmount",
 		constants.FieldTitleSponsorshipEmails:  "sponsorshipEmails",
-		constants.FieldTitleSponsorshipBlocked: "sponsorshipBlocked",
-		constants.FieldTitlePublishDate:        "publishDate",
+		constants.FieldTitleSponsorshipBlocked: "sponsorshipBlockedReason",
+		constants.FieldTitlePublishDate:        "date",
 		constants.FieldTitleDelayed:            "delayed",
-		constants.FieldTitleGistPath:           "gistPath",
+		constants.FieldTitleGistPath:           "gist",
 
 		// Work Progress
-		constants.FieldTitleCodeDone:            "codeDone",
-		constants.FieldTitleTalkingHeadDone:     "talkingHeadDone",
-		constants.FieldTitleScreenRecordingDone: "screenRecordingDone",
+		constants.FieldTitleCodeDone:            "code",
+		constants.FieldTitleTalkingHeadDone:     "head",
+		constants.FieldTitleScreenRecordingDone: "screen",
 		constants.FieldTitleRelatedVideos:       "relatedVideos",
-		constants.FieldTitleThumbnailsDone:      "thumbnailsDone",
-		constants.FieldTitleDiagramsDone:        "diagramsDone",
-		constants.FieldTitleScreenshotsDone:     "screenshotsDone",
-		constants.FieldTitleFilesLocation:       "filesLocation",
+		constants.FieldTitleThumbnailsDone:      "thumbnails",
+		constants.FieldTitleDiagramsDone:        "diagrams",
+		constants.FieldTitleScreenshotsDone:     "screenshots",
+		constants.FieldTitleFilesLocation:       "location",
 		constants.FieldTitleTagline:             "tagline",
 		constants.FieldTitleTaglineIdeas:        "taglineIdeas",
 		constants.FieldTitleOtherLogos:          "otherLogos",
