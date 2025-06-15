@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"devopstoolkit/youtube-automation/internal/ai"
 	"devopstoolkit/youtube-automation/internal/aspect"
 	"devopstoolkit/youtube-automation/internal/storage"
 	video2 "devopstoolkit/youtube-automation/internal/video"
@@ -98,6 +99,35 @@ type CategoryInfo struct {
 type ErrorResponse struct {
 	Error   string `json:"error"`
 	Message string `json:"message,omitempty"`
+}
+
+// AI Request/Response types
+type AIRequest struct {
+	Manuscript string `json:"manuscript"`
+}
+
+type AITitlesResponse struct {
+	Titles []string `json:"titles"`
+}
+
+type AIDescriptionResponse struct {
+	Description string `json:"description"`
+}
+
+type AITagsResponse struct {
+	Tags []string `json:"tags"`
+}
+
+type AITweetsResponse struct {
+	Tweets []string `json:"tweets"`
+}
+
+type AIHighlightsResponse struct {
+	Highlights []string `json:"highlights"`
+}
+
+type AIDescriptionTagsResponse struct {
+	DescriptionTags []string `json:"description_tags"`
 }
 
 // createVideo handles POST /api/videos
@@ -548,4 +578,174 @@ func writeError(w http.ResponseWriter, status int, message string, details ...st
 	}
 
 	json.NewEncoder(w).Encode(errorData)
+}
+
+// AI Handlers - these call the existing AI functions directly
+
+// aiTitles handles POST /api/ai/titles
+func (s *Server) aiTitles(w http.ResponseWriter, r *http.Request) {
+	var req AIRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "Invalid JSON")
+		return
+	}
+
+	if req.Manuscript == "" {
+		writeError(w, http.StatusBadRequest, "manuscript is required")
+		return
+	}
+
+	config, err := ai.GetAIConfig()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Failed to get AI configuration", err.Error())
+		return
+	}
+
+	titles, err := ai.SuggestTitles(r.Context(), req.Manuscript, config)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Failed to generate titles", err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, AITitlesResponse{Titles: titles})
+}
+
+// aiDescription handles POST /api/ai/description
+func (s *Server) aiDescription(w http.ResponseWriter, r *http.Request) {
+	var req AIRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "Invalid JSON")
+		return
+	}
+
+	if req.Manuscript == "" {
+		writeError(w, http.StatusBadRequest, "manuscript is required")
+		return
+	}
+
+	config, err := ai.GetAIConfig()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Failed to get AI configuration", err.Error())
+		return
+	}
+
+	description, err := ai.SuggestDescription(r.Context(), req.Manuscript, config)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Failed to generate description", err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, AIDescriptionResponse{Description: description})
+}
+
+// aiTags handles POST /api/ai/tags
+func (s *Server) aiTags(w http.ResponseWriter, r *http.Request) {
+	var req AIRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "Invalid JSON")
+		return
+	}
+
+	if req.Manuscript == "" {
+		writeError(w, http.StatusBadRequest, "manuscript is required")
+		return
+	}
+
+	config, err := ai.GetAIConfig()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Failed to get AI configuration", err.Error())
+		return
+	}
+
+	tags, err := ai.SuggestTags(r.Context(), req.Manuscript, config)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Failed to generate tags", err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, AITagsResponse{Tags: []string{tags}})
+}
+
+// aiTweets handles POST /api/ai/tweets
+func (s *Server) aiTweets(w http.ResponseWriter, r *http.Request) {
+	var req AIRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "Invalid JSON")
+		return
+	}
+
+	if req.Manuscript == "" {
+		writeError(w, http.StatusBadRequest, "manuscript is required")
+		return
+	}
+
+	config, err := ai.GetAIConfig()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Failed to get AI configuration", err.Error())
+		return
+	}
+
+	tweets, err := ai.SuggestTweets(r.Context(), req.Manuscript, config)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Failed to generate tweets", err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, AITweetsResponse{Tweets: tweets})
+}
+
+// aiHighlights handles POST /api/ai/highlights
+func (s *Server) aiHighlights(w http.ResponseWriter, r *http.Request) {
+	var req AIRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "Invalid JSON")
+		return
+	}
+
+	if req.Manuscript == "" {
+		writeError(w, http.StatusBadRequest, "manuscript is required")
+		return
+	}
+
+	config, err := ai.GetAIConfig()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Failed to get AI configuration", err.Error())
+		return
+	}
+
+	highlights, err := ai.SuggestHighlights(r.Context(), req.Manuscript, config)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Failed to generate highlights", err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, AIHighlightsResponse{Highlights: highlights})
+}
+
+// aiDescriptionTags handles POST /api/ai/description-tags
+func (s *Server) aiDescriptionTags(w http.ResponseWriter, r *http.Request) {
+	var req AIRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "Invalid JSON")
+		return
+	}
+
+	if req.Manuscript == "" {
+		writeError(w, http.StatusBadRequest, "manuscript is required")
+		return
+	}
+
+	config, err := ai.GetAIConfig()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Failed to get AI configuration", err.Error())
+		return
+	}
+
+	descriptionTags, err := ai.SuggestDescriptionTags(r.Context(), req.Manuscript, config)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Failed to generate description tags", err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, AIDescriptionTagsResponse{DescriptionTags: []string{descriptionTags}})
 }

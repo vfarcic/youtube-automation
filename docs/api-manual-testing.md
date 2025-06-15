@@ -397,7 +397,235 @@ curl -X DELETE "http://localhost:8080/api/videos/test-api-video?category=tutoria
 ```
 Expected response: 204 No Content (empty body)
 
-### 6. Editing Aspects Management
+### 6. AI Content Generation
+
+#### Generate Video Titles
+```bash
+curl -X POST http://localhost:8080/api/ai/titles \
+  -H "Content-Type: application/json" \
+  -d '{
+    "manuscript": "This tutorial covers advanced Kubernetes deployment strategies including blue-green deployments, canary releases, and rolling updates. We will explore how to implement these patterns using kubectl and Helm charts."
+  }'
+```
+Expected response:
+```json
+{
+  "titles": [
+    "Advanced Kubernetes Deployment Strategies: Blue-Green, Canary & Rolling Updates",
+    "Master Kubernetes Deployments: Complete Guide to Blue-Green and Canary Releases",
+    "Kubernetes Deployment Patterns: From Rolling Updates to Advanced Strategies"
+  ]
+}
+```
+
+#### Generate Video Description
+```bash
+curl -X POST http://localhost:8080/api/ai/description \
+  -H "Content-Type: application/json" \
+  -d '{
+    "manuscript": "This tutorial covers advanced Kubernetes deployment strategies including blue-green deployments, canary releases, and rolling updates. We will explore how to implement these patterns using kubectl and Helm charts."
+  }'
+```
+Expected response:
+```json
+{
+  "description": "In this comprehensive tutorial, we dive deep into advanced Kubernetes deployment strategies that every DevOps engineer should master. Learn how to implement blue-green deployments for zero-downtime releases, set up canary deployments for safe feature rollouts, and optimize rolling updates for your applications.\n\nWe'll cover practical implementation using kubectl and Helm charts, with real-world examples and best practices. Perfect for intermediate to advanced Kubernetes users looking to enhance their deployment workflows.\n\nTopics covered:\n- Blue-green deployment implementation\n- Canary release strategies\n- Rolling update optimization\n- kubectl and Helm integration\n- Production deployment best practices"
+  }
+}
+```
+
+#### Generate Video Tags
+```bash
+curl -X POST http://localhost:8080/api/ai/tags \
+  -H "Content-Type: application/json" \
+  -d '{
+    "manuscript": "This tutorial covers advanced Kubernetes deployment strategies including blue-green deployments, canary releases, and rolling updates. We will explore how to implement these patterns using kubectl and Helm charts."
+  }'
+```
+Expected response:
+```json
+{
+  "tags": [
+    "kubernetes",
+    "deployment",
+    "devops",
+    "blue-green",
+    "canary",
+    "rolling-updates",
+    "kubectl",
+    "helm",
+    "container-orchestration",
+    "cloud-native"
+  ]
+}
+```
+
+#### Generate Social Media Tweets
+```bash
+curl -X POST http://localhost:8080/api/ai/tweets \
+  -H "Content-Type: application/json" \
+  -d '{
+    "manuscript": "This tutorial covers advanced Kubernetes deployment strategies including blue-green deployments, canary releases, and rolling updates. We will explore how to implement these patterns using kubectl and Helm charts."
+  }'
+```
+Expected response:
+```json
+{
+  "tweets": [
+    "🚀 New tutorial: Master advanced Kubernetes deployment strategies! Learn blue-green deployments, canary releases, and rolling updates with practical kubectl and Helm examples. Perfect for leveling up your DevOps skills! #Kubernetes #DevOps #CloudNative",
+    "Zero-downtime deployments made easy! 📹 Just dropped a comprehensive guide to Kubernetes deployment patterns including blue-green and canary strategies. Check it out! #Kubernetes #Deployment #DevOps",
+    "Ready to take your Kubernetes deployments to the next level? 🎯 New video covers advanced strategies every DevOps engineer should know. Blue-green, canary, rolling updates + more! #Kubernetes #DevOps"
+  ]
+}
+```
+
+#### Generate Video Highlights
+```bash
+curl -X POST http://localhost:8080/api/ai/highlights \
+  -H "Content-Type: application/json" \
+  -d '{
+    "manuscript": "This tutorial covers advanced Kubernetes deployment strategies including blue-green deployments, canary releases, and rolling updates. We will explore how to implement these patterns using kubectl and Helm charts."
+  }'
+```
+Expected response:
+```json
+{
+  "highlights": [
+    "Master zero-downtime deployments with blue-green strategies",
+    "Implement safe feature rollouts using canary releases",
+    "Optimize rolling updates for production workloads",
+    "Practical kubectl and Helm chart examples included"
+  ]
+}
+```
+
+#### Generate Description with Tags
+```bash
+curl -X POST http://localhost:8080/api/ai/description-tags \
+  -H "Content-Type: application/json" \
+  -d '{
+    "manuscript": "This tutorial covers advanced Kubernetes deployment strategies including blue-green deployments, canary releases, and rolling updates. We will explore how to implement these patterns using kubectl and Helm charts."
+  }'
+```
+Expected response:
+```json
+{
+  "description": "In this comprehensive tutorial, we dive deep into advanced Kubernetes deployment strategies that every DevOps engineer should master. Learn how to implement blue-green deployments for zero-downtime releases, set up canary deployments for safe feature rollouts, and optimize rolling updates for your applications.\n\nWe'll cover practical implementation using kubectl and Helm charts, with real-world examples and best practices. Perfect for intermediate to advanced Kubernetes users looking to enhance their deployment workflows.\n\nTopics covered:\n- Blue-green deployment implementation\n- Canary release strategies\n- Rolling update optimization\n- kubectl and Helm integration\n- Production deployment best practices",
+  "tags": "#Kubernetes #DevOps #BlueGreen #CanaryDeployment #RollingUpdates #kubectl #Helm #CloudNative #ContainerOrchestration #DeploymentStrategies"
+}
+```
+
+#### AI API Error Cases
+
+##### Invalid JSON
+```bash
+curl -X POST http://localhost:8080/api/ai/titles \
+  -H "Content-Type: application/json" \
+  -d '{invalid json}'
+```
+Expected response (400 Bad Request):
+```json
+{
+  "error": "Invalid JSON format"
+}
+```
+
+##### Missing Manuscript
+```bash
+curl -X POST http://localhost:8080/api/ai/titles \
+  -H "Content-Type: application/json" \
+  -d '{}'
+```
+Expected response (400 Bad Request):
+```json
+{
+  "error": "manuscript field is required and cannot be empty"
+}
+```
+
+##### Empty Manuscript
+```bash
+curl -X POST http://localhost:8080/api/ai/titles \
+  -H "Content-Type: application/json" \
+  -d '{"manuscript": ""}'
+```
+Expected response (400 Bad Request):
+```json
+{
+  "error": "manuscript field is required and cannot be empty"
+}
+```
+
+##### Wrong HTTP Method
+```bash
+curl -X GET http://localhost:8080/api/ai/titles
+```
+Expected response (405 Method Not Allowed):
+```json
+{
+  "error": "Method not allowed"
+}
+```
+
+##### Invalid Content-Type
+```bash
+curl -X POST http://localhost:8080/api/ai/titles \
+  -H "Content-Type: text/plain" \
+  -d '{"manuscript": "test content"}'
+```
+Expected response (400 Bad Request):
+```json
+{
+  "error": "Content-Type must be application/json"
+}
+```
+
+#### AI API Performance Characteristics
+
+**Response Times:**
+- Typical response time: 2-8 seconds (depends on AI provider)
+- Timeout: 30 seconds maximum
+- Concurrent requests: Supported (up to 100 simultaneous)
+
+**Content Limits:**
+- Minimum manuscript length: 10 characters
+- Maximum manuscript length: 100,000 characters
+- Optimal manuscript length: 500-5,000 characters for best results
+
+**Rate Limiting:**
+- No built-in rate limiting (depends on AI provider limits)
+- Recommended: Max 10 requests per minute per client
+
+#### Test AI API with Different Content Types
+
+##### Technical Tutorial Content
+```bash
+curl -X POST http://localhost:8080/api/ai/titles \
+  -H "Content-Type: application/json" \
+  -d '{
+    "manuscript": "In this comprehensive guide, we will explore Infrastructure as Code using Terraform. We will cover provider configuration, resource management, state management, and best practices for team collaboration. The tutorial includes hands-on examples with AWS, Azure, and Google Cloud Platform."
+  }'
+```
+
+##### Entertainment/Gaming Content
+```bash
+curl -X POST http://localhost:8080/api/ai/description \
+  -H "Content-Type: application/json" \
+  -d '{
+    "manuscript": "Join me for an epic gaming session where we tackle the hardest boss fights in Elden Ring. I will share my strategies, weapon recommendations, and the mistakes you should avoid. This playthrough includes commentary and tips for both beginners and experienced players."
+  }'
+```
+
+##### Educational Content
+```bash
+curl -X POST http://localhost:8080/api/ai/tags \
+  -H "Content-Type: application/json" \
+  -d '{
+    "manuscript": "This mathematics lesson covers advanced calculus concepts including derivatives, integrals, and their real-world applications. We will work through step-by-step examples and solve practical problems from physics and engineering."
+  }'
+```
+
+### 7. Editing Aspects Management
 
 #### Get Editing Aspects Overview (Basic)
 ```bash
@@ -978,7 +1206,7 @@ Expected response (405 Method Not Allowed):
 - **Help Text**: Display field-specific guidance to users
 - **Workflow Ordering**: Present editing phases in the correct sequence (1-6)
 
-### 7. Error Testing Scenarios
+### 8. Error Testing Scenarios
 
 #### Test Invalid Phase Parameter
 ```bash
@@ -1027,15 +1255,16 @@ Follow these steps to test a complete video workflow:
 3. **Update Initial Details**: Add project information and publish date
 4. **Update Work Progress**: Mark content creation tasks as complete
 5. **Update Definition**: Add title, description, and metadata
-6. **Update Post-Production**: Add thumbnail and editing information
-7. **Update Publishing**: Simulate video upload and Hugo post creation
-8. **Update Post-Publish**: Mark social media and follow-up tasks as complete
-9. **Verify Phase Progression**: Check that the video has moved through phases
-10. **Move Video**: Test moving the video to a different category
-11. **Delete Video**: Clean up by deleting the test video
+6. **Test AI Content Generation**: Use AI endpoints to generate titles, descriptions, tags, tweets, and highlights
+7. **Update Post-Production**: Add thumbnail and editing information
+8. **Update Publishing**: Simulate video upload and Hugo post creation
+9. **Update Post-Publish**: Mark social media and follow-up tasks as complete
+10. **Verify Phase Progression**: Check that the video has moved through phases
+11. **Move Video**: Test moving the video to a different category
+12. **Delete Video**: Clean up by deleting the test video
 
 **NEW**: Test the enhanced editing aspects endpoint during the workflow:
-12. **Check Progress**: Use `GET /api/editing/aspects?videoName=test-api-video&category=test-category` after each phase update to verify completion counts
+13. **Check Progress**: Use `GET /api/editing/aspects?videoName=test-api-video&category=test-category` after each phase update to verify completion counts
 
 ## Notes
 

@@ -11,6 +11,7 @@ This project automates various aspects of managing a YouTube channel with both C
 *   **Video Lifecycle Management**: Complete workflow from ideas to publishing and post-publish activities
 *   **CLI Interface**: Interactive command-line interface for video management
 *   **REST API**: Comprehensive REST API for programmatic access
+*   **AI Content Generation**: AI-powered generation of titles, descriptions, tags, tweets, and highlights
 *   **Video Uploads**: Automated YouTube video uploads
 *   **Thumbnail Management**: Thumbnail creation and upload workflow  
 *   **Metadata Handling**: Video titles, descriptions, tags, and metadata
@@ -65,6 +66,14 @@ Starts the REST API server. See [docs/api-manual-testing.md](docs/api-manual-tes
 - `PUT /api/videos/{name}` - Update video
 - `DELETE /api/videos/{name}?category={cat}` - Delete video
 - `PUT /api/videos/{name}/{phase}` - Update specific phase
+
+**AI Content Generation:**
+- `POST /api/ai/titles` - Generate video titles from manuscript
+- `POST /api/ai/description` - Generate video description from manuscript
+- `POST /api/ai/tags` - Generate video tags from manuscript
+- `POST /api/ai/tweets` - Generate social media tweets from manuscript
+- `POST /api/ai/highlights` - Generate video highlights from manuscript
+- `POST /api/ai/description-tags` - Generate description with hashtags from manuscript
 
 **Editing aspects metadata:**
 - `GET /api/editing/aspects` - **NEW**: Get editing aspects overview (lightweight, ~1KB)
@@ -167,6 +176,51 @@ function mapFieldValues(fieldMetadata, videoData) {
 }
 ```
 
+### AI Content Generation Integration
+
+```javascript
+// Generate video titles from manuscript content
+async function generateTitles(manuscript) {
+  const response = await fetch('/api/ai/titles', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ manuscript })
+  });
+  const { titles } = await response.json();
+  return titles; // Array of 3 title suggestions
+}
+
+// Generate complete video metadata
+async function generateVideoMetadata(manuscript) {
+  const [titles, description, tags, tweets, highlights] = await Promise.all([
+    fetch('/api/ai/titles', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ manuscript }) }),
+    fetch('/api/ai/description', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ manuscript }) }),
+    fetch('/api/ai/tags', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ manuscript }) }),
+    fetch('/api/ai/tweets', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ manuscript }) }),
+    fetch('/api/ai/highlights', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ manuscript }) })
+  ]);
+
+  return {
+    titles: (await titles.json()).titles,
+    description: (await description.json()).description,
+    tags: (await tags.json()).tags,
+    tweets: (await tweets.json()).tweets,
+    highlights: (await highlights.json()).highlights
+  };
+}
+
+// Generate description with hashtags (combined endpoint)
+async function generateDescriptionWithTags(manuscript) {
+  const response = await fetch('/api/ai/description-tags', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ manuscript })
+  });
+  const { description, tags } = await response.json();
+  return { description, tags }; // Description text + hashtag string
+}
+```
+
 ### Error Handling
 
 ```javascript
@@ -187,6 +241,21 @@ try {
   // Gracefully handles non-existent videos with 0 completion counts
 } catch (error) {
   console.error('Progress tracking error:', error);
+}
+
+// AI API error handling
+try {
+  const response = await fetch('/api/ai/titles', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ manuscript: '' }) // Empty manuscript
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    console.error('AI API Error:', error.error); // "manuscript field is required and cannot be empty"
+  }
+} catch (error) {
+  console.error('AI Generation Error:', error);
 }
 ```
 

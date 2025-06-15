@@ -62,3 +62,7 @@ scripts/prd_*.txt
 
 # Taskmaster workflow artifacts
 .taskmaster/docs/
+
+# Taskmaster generated files
+.taskmaster/state.json
+.taskmaster/reports/
