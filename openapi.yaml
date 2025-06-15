@@ -1397,9 +1397,136 @@ components:
         - order
         - fieldCount
         - completedFieldCount
-      description: |
-        Summary information for an editing aspect. Includes field counts and completion
-        tracking when video context is available.
+
+    # AI Content Generation Schemas
+    AIRequest:
+      type: object
+      required:
+        - manuscript
+      properties:
+        manuscript:
+          type: string
+          description: |
+            The video manuscript content to analyze for AI content generation.
+            Can be any length from a few sentences to full video scripts.
+          example: "In this tutorial, we'll explore advanced Kubernetes deployment strategies including blue-green deployments, canary releases, and rolling updates. We'll cover best practices for production environments and demonstrate how to implement these patterns using kubectl and Helm."
+          minLength: 1
+          maxLength: 500000
+      description: Request payload for all AI content generation endpoints
+
+    AITitlesResponse:
+      type: object
+      properties:
+        titles:
+          type: array
+          items:
+            type: string
+          description: Array of 5 AI-generated video titles optimized for YouTube
+          example:
+            - "Advanced Kubernetes Deployment Strategies: Blue-Green, Canary & Rolling Updates"
+            - "Master Production Kubernetes: Deployment Patterns That Actually Work"
+            - "Kubernetes Deployment Strategies Explained: From Zero to Production Hero"
+            - "The Complete Guide to Kubernetes Deployment Patterns in 2024"
+            - "Production-Ready Kubernetes: Advanced Deployment Techniques"
+          minItems: 5
+          maxItems: 5
+      required:
+        - titles
+      description: Response containing AI-generated video titles
+
+    AIDescriptionResponse:
+      type: object
+      properties:
+        description:
+          type: string
+          description: AI-generated comprehensive video description optimized for YouTube SEO
+          example: "🚀 Ready to master advanced Kubernetes deployment strategies? In this comprehensive tutorial, we dive deep into production-ready deployment patterns that every DevOps engineer should know.\n\n📋 What You'll Learn:\n• Blue-green deployment implementation\n• Canary release strategies\n• Rolling update best practices\n• Production environment considerations\n• kubectl and Helm integration\n\n⚡ Perfect for intermediate to advanced Kubernetes users looking to level up their deployment game!\n\n🔗 Resources mentioned in this video:\n• Kubernetes documentation\n• Helm charts examples\n• Production deployment checklist\n\n👍 If this helped you, please like and subscribe for more DevOps content!"
+          minLength: 50
+          maxLength: 5000
+      required:
+        - description
+      description: Response containing AI-generated video description
+
+    AITagsResponse:
+      type: object
+      properties:
+        tags:
+          type: array
+          items:
+            type: string
+          description: Array of relevant SEO-optimized tags for YouTube discoverability
+          example:
+            - "kubernetes"
+            - "devops"
+            - "deployment"
+            - "blue-green deployment"
+            - "canary release"
+            - "rolling updates"
+            - "kubectl"
+            - "helm"
+            - "production"
+            - "container orchestration"
+          minItems: 5
+          maxItems: 15
+      required:
+        - tags
+      description: Response containing AI-generated video tags
+
+    AITweetsResponse:
+      type: object
+      properties:
+        tweets:
+          type: array
+          items:
+            type: string
+          description: Array of engaging promotional tweets for social media marketing
+          example:
+            - "🚀 New video is live! Master advanced Kubernetes deployment strategies with blue-green, canary, and rolling updates. Perfect for production environments! #Kubernetes #DevOps #CloudNative"
+            - "⚡ Struggling with Kubernetes deployments in production? This tutorial covers the deployment patterns that actually work in real-world scenarios. Check it out! #K8s #DevOps"
+            - "📚 Deep dive into Kubernetes deployment strategies! Learn blue-green deployments, canary releases, and rolling updates with practical examples. Link in bio! #Kubernetes #Tutorial"
+          minItems: 3
+          maxItems: 5
+      required:
+        - tweets
+      description: Response containing AI-generated promotional tweets
+
+    AIHighlightsResponse:
+      type: object
+      properties:
+        highlights:
+          type: array
+          items:
+            type: string
+          description: Array of key content highlights extracted from the manuscript
+          example:
+            - "Blue-green deployment eliminates downtime by maintaining two identical production environments"
+            - "Canary releases allow testing new versions with a small subset of users before full rollout"
+            - "Rolling updates provide gradual deployment with automatic rollback capabilities"
+            - "kubectl and Helm integration streamlines deployment automation and management"
+            - "Production considerations include monitoring, logging, and disaster recovery planning"
+          minItems: 3
+          maxItems: 10
+      required:
+        - highlights
+      description: Response containing AI-generated content highlights
+
+    AIDescriptionTagsResponse:
+      type: object
+      properties:
+        description_tags:
+          type: array
+          items:
+            type: string
+          description: Array of description segments with embedded hashtags for social media optimization
+          example:
+            - "🚀 Master advanced #Kubernetes deployment strategies in this comprehensive tutorial! Learn #BlueGreenDeployment, #CanaryRelease, and #RollingUpdates for production environments."
+            - "Perfect for #DevOps engineers looking to level up their #ContainerOrchestration skills with #kubectl and #Helm integration."
+            - "📋 Topics covered: #ProductionDeployment best practices, monitoring strategies, and automated rollback procedures."
+          minItems: 2
+          maxItems: 5
+      required:
+        - description_tags
+      description: Response containing AI-generated description with embedded tags
 
     AspectField:
       type: object
@@ -1625,6 +1752,292 @@ components:
         - value
       description: An option for select-type fields
 
+  /api/ai/titles:
+    post:
+      summary: Generate AI-powered video titles
+      description: |
+        Generates multiple creative and engaging video titles based on the provided manuscript content.
+        Uses Azure OpenAI to analyze the content and suggest 5 optimized titles for YouTube.
+      operationId: generateTitles
+      tags:
+        - AI Content Generation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AIRequest'
+            example:
+              manuscript: "In this tutorial, we'll explore advanced Kubernetes deployment strategies including blue-green deployments, canary releases, and rolling updates. We'll cover best practices for production environments and demonstrate how to implement these patterns using kubectl and Helm."
+      responses:
+        '200':
+          description: Titles generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AITitlesResponse'
+              example:
+                titles:
+                  - "Advanced Kubernetes Deployment Strategies: Blue-Green, Canary & Rolling Updates"
+                  - "Master Production Kubernetes: Deployment Patterns That Actually Work"
+                  - "Kubernetes Deployment Strategies Explained: From Zero to Production Hero"
+                  - "The Complete Guide to Kubernetes Deployment Patterns in 2024"
+                  - "Production-Ready Kubernetes: Advanced Deployment Techniques"
+        '400':
+          description: Invalid request - manuscript is required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method not allowed - only POST is supported
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: AI service error or internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/ai/description:
+    post:
+      summary: Generate AI-powered video description
+      description: |
+        Generates a comprehensive and engaging video description based on the provided manuscript content.
+        The description is optimized for YouTube SEO and viewer engagement.
+      operationId: generateDescription
+      tags:
+        - AI Content Generation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AIRequest'
+      responses:
+        '200':
+          description: Description generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AIDescriptionResponse'
+              example:
+                description: "🚀 Ready to master advanced Kubernetes deployment strategies? In this comprehensive tutorial, we dive deep into production-ready deployment patterns that every DevOps engineer should know.\n\n📋 What You'll Learn:\n• Blue-green deployment implementation\n• Canary release strategies\n• Rolling update best practices\n• Production environment considerations\n• kubectl and Helm integration\n\n⚡ Perfect for intermediate to advanced Kubernetes users looking to level up their deployment game!\n\n🔗 Resources mentioned in this video:\n• Kubernetes documentation\n• Helm charts examples\n• Production deployment checklist\n\n👍 If this helped you, please like and subscribe for more DevOps content!"
+        '400':
+          description: Invalid request - manuscript is required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method not allowed - only POST is supported
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: AI service error or internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/ai/tags:
+    post:
+      summary: Generate AI-powered video tags
+      description: |
+        Generates relevant and SEO-optimized tags based on the provided manuscript content.
+        Returns an array of tags that help with YouTube discoverability.
+      operationId: generateTags
+      tags:
+        - AI Content Generation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AIRequest'
+      responses:
+        '200':
+          description: Tags generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AITagsResponse'
+              example:
+                tags:
+                  - "kubernetes"
+                  - "devops"
+                  - "deployment"
+                  - "blue-green deployment"
+                  - "canary release"
+                  - "rolling updates"
+                  - "kubectl"
+                  - "helm"
+                  - "production"
+                  - "container orchestration"
+        '400':
+          description: Invalid request - manuscript is required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method not allowed - only POST is supported
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: AI service error or internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/ai/tweets:
+    post:
+      summary: Generate AI-powered promotional tweets
+      description: |
+        Generates engaging promotional tweets based on the provided manuscript content.
+        Perfect for social media marketing of your video content.
+      operationId: generateTweets
+      tags:
+        - AI Content Generation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AIRequest'
+      responses:
+        '200':
+          description: Tweets generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AITweetsResponse'
+              example:
+                tweets:
+                  - "🚀 New video is live! Master advanced Kubernetes deployment strategies with blue-green, canary, and rolling updates. Perfect for production environments! #Kubernetes #DevOps #CloudNative"
+                  - "⚡ Struggling with Kubernetes deployments in production? This tutorial covers the deployment patterns that actually work in real-world scenarios. Check it out! #K8s #DevOps"
+                  - "📚 Deep dive into Kubernetes deployment strategies! Learn blue-green deployments, canary releases, and rolling updates with practical examples. Link in bio! #Kubernetes #Tutorial"
+        '400':
+          description: Invalid request - manuscript is required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method not allowed - only POST is supported
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: AI service error or internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/ai/highlights:
+    post:
+      summary: Generate AI-powered content highlights
+      description: |
+        Extracts and generates key highlights from the provided manuscript content.
+        Useful for creating video chapters, key takeaways, or summary points.
+      operationId: generateHighlights
+      tags:
+        - AI Content Generation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AIRequest'
+      responses:
+        '200':
+          description: Highlights generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AIHighlightsResponse'
+              example:
+                highlights:
+                  - "Blue-green deployment eliminates downtime by maintaining two identical production environments"
+                  - "Canary releases allow testing new versions with a small subset of users before full rollout"
+                  - "Rolling updates provide gradual deployment with automatic rollback capabilities"
+                  - "kubectl and Helm integration streamlines deployment automation and management"
+                  - "Production considerations include monitoring, logging, and disaster recovery planning"
+        '400':
+          description: Invalid request - manuscript is required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method not allowed - only POST is supported
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: AI service error or internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/ai/description-tags:
+    post:
+      summary: Generate AI-powered description with embedded tags
+      description: |
+        Generates a comprehensive video description that includes relevant tags embedded naturally within the content.
+        Combines the benefits of both description and tags generation in a single optimized response.
+      operationId: generateDescriptionTags
+      tags:
+        - AI Content Generation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AIRequest'
+      responses:
+        '200':
+          description: Description with tags generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AIDescriptionTagsResponse'
+              example:
+                description_tags:
+                  - "🚀 Master advanced #Kubernetes deployment strategies in this comprehensive tutorial! Learn #BlueGreenDeployment, #CanaryRelease, and #RollingUpdates for production environments."
+                  - "Perfect for #DevOps engineers looking to level up their #ContainerOrchestration skills with #kubectl and #Helm integration."
+                  - "📋 Topics covered: #ProductionDeployment best practices, monitoring strategies, and automated rollback procedures."
+        '400':
+          description: Invalid request - manuscript is required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method not allowed - only POST is supported
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: AI service error or internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
 tags:
   - name: Health
     description: Health check operations
@@ -1636,3 +2049,5 @@ tags:
     description: Category management operations
   - name: Editing
     description: Video editing aspects metadata and field definitions
+  - name: AI Content Generation
+    description: AI-powered content generation for video titles, descriptions, tags, tweets, and highlights

@@ -103,6 +103,16 @@ func (s *Server) setupRoutes() {
 
 		// Categories endpoint
 		r.Get("/categories", s.getCategories)
+
+		// AI endpoints
+		r.Route("/ai", func(r chi.Router) {
+			r.Post("/titles", s.aiTitles)
+			r.Post("/description", s.aiDescription)
+			r.Post("/tags", s.aiTags)
+			r.Post("/tweets", s.aiTweets)
+			r.Post("/highlights", s.aiHighlights)
+			r.Post("/description-tags", s.aiDescriptionTags)
+		})
 	})
 
 	// Health check
