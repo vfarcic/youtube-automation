@@ -107,11 +107,17 @@ func (s *Server) setupRoutes() {
 		// AI endpoints
 		r.Route("/ai", func(r chi.Router) {
 			r.Post("/titles", s.aiTitles)
+			r.Post("/titles/{videoName}", s.aiTitlesWithVideo)
 			r.Post("/description", s.aiDescription)
+			r.Post("/description/{videoName}", s.aiDescriptionWithVideo)
 			r.Post("/tags", s.aiTags)
+			r.Post("/tags/{videoName}", s.aiTagsWithVideo)
 			r.Post("/tweets", s.aiTweets)
+			r.Post("/tweets/{videoName}", s.aiTweetsWithVideo)
 			r.Post("/highlights", s.aiHighlights)
+			r.Post("/highlights/{videoName}", s.aiHighlightsWithVideo)
 			r.Post("/description-tags", s.aiDescriptionTags)
+			r.Post("/description-tags/{videoName}", s.aiDescriptionTagsWithVideo)
 		})
 	})
 

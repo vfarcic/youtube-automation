@@ -1360,12 +1360,11 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 						if cfgErr != nil {
 							fmt.Fprintf(os.Stderr, "Error getting AI config: %v\n", cfgErr)
 						} else {
-							manuscriptPath := videoToEdit.Gist
-							manuscriptContent, readErr := os.ReadFile(manuscriptPath)
+							manuscriptContent, readErr := m.videoService.GetVideoManuscript(videoToEdit.Name, videoToEdit.Category)
 							if readErr != nil {
-								fmt.Fprintf(os.Stderr, "Error reading manuscript file %s: %v\n", manuscriptPath, readErr)
+								fmt.Fprintf(os.Stderr, "Error reading manuscript: %v\n", readErr)
 							} else {
-								suggestedTitles, suggErr := ai.SuggestTitles(context.Background(), string(manuscriptContent), aiConfig)
+								suggestedTitles, suggErr := ai.SuggestTitles(context.Background(), manuscriptContent, aiConfig)
 								if suggErr != nil {
 									fmt.Fprintf(os.Stderr, "Error suggesting titles: %v\n", suggErr)
 								} else if len(suggestedTitles) > 0 {
@@ -1444,12 +1443,11 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 						if cfgErr != nil {
 							fmt.Fprintf(os.Stderr, "Error getting AI config: %v\n", cfgErr)
 						} else {
-							manuscriptPath := videoToEdit.Gist
-							manuscriptContent, readErr := os.ReadFile(manuscriptPath)
+							manuscriptContent, readErr := m.videoService.GetVideoManuscript(videoToEdit.Name, videoToEdit.Category)
 							if readErr != nil {
-								fmt.Fprintf(os.Stderr, "Error reading manuscript file %s: %v\n", manuscriptPath, readErr)
+								fmt.Fprintf(os.Stderr, "Error reading manuscript: %v\n", readErr)
 							} else {
-								suggestedDescription, suggErr := ai.SuggestDescription(context.Background(), string(manuscriptContent), aiConfig)
+								suggestedDescription, suggErr := ai.SuggestDescription(context.Background(), manuscriptContent, aiConfig)
 								if suggErr != nil {
 									fmt.Fprintf(os.Stderr, "Error suggesting description: %v\n", suggErr)
 								} else if suggestedDescription != "" {
@@ -1524,12 +1522,12 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 						if cfgErr != nil {
 							fmt.Fprintf(os.Stderr, "Error getting AI config: %v\\n", cfgErr)
 						} else {
-							manuscriptPath := videoToEdit.Gist
-							manuscriptContent, readErr := os.ReadFile(manuscriptPath)
+							manuscriptContent, readErr := m.videoService.GetVideoManuscript(videoToEdit.Name, videoToEdit.Category)
 							if readErr != nil {
-								fmt.Fprintf(os.Stderr, "Error reading manuscript file %s: %v\\n", manuscriptPath, readErr)
+								fmt.Fprintf(os.Stderr, "Error reading manuscript: %v\\n", readErr)
 							} else {
-								suggestedGistHighlights, suggErr := ai.SuggestHighlights(context.Background(), string(manuscriptContent), aiConfig)
+								manuscriptPath := videoToEdit.Gist // Still needed for ApplyHighlightsInGist
+								suggestedGistHighlights, suggErr := ai.SuggestHighlights(context.Background(), manuscriptContent, aiConfig)
 								if suggErr != nil {
 									fmt.Fprintf(os.Stderr, "Error suggesting Gist highlights: %v\\n", suggErr)
 								} else if len(suggestedGistHighlights) > 0 {

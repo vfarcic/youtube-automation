@@ -68,12 +68,22 @@ Starts the REST API server. See [docs/api-manual-testing.md](docs/api-manual-tes
 - `PUT /api/videos/{name}/{phase}` - Update specific phase
 
 **AI Content Generation:**
+
+*Traditional endpoints (JSON payload):*
 - `POST /api/ai/titles` - Generate video titles from manuscript
 - `POST /api/ai/description` - Generate video description from manuscript
 - `POST /api/ai/tags` - Generate video tags from manuscript
 - `POST /api/ai/tweets` - Generate social media tweets from manuscript
 - `POST /api/ai/highlights` - Generate video highlights from manuscript
 - `POST /api/ai/description-tags` - Generate description with hashtags from manuscript
+
+*Optimized endpoints (URL parameters - recommended for existing videos):*
+- `POST /api/ai/titles/{videoName}?category={cat}` - Generate titles for specific video
+- `POST /api/ai/description/{videoName}?category={cat}` - Generate description for specific video
+- `POST /api/ai/tags/{videoName}?category={cat}` - Generate tags for specific video
+- `POST /api/ai/tweets/{videoName}?category={cat}` - Generate tweets for specific video
+- `POST /api/ai/highlights/{videoName}?category={cat}` - Generate highlights for specific video
+- `POST /api/ai/description-tags/{videoName}?category={cat}` - Generate description with hashtags for specific video
 
 **Editing aspects metadata:**
 - `GET /api/editing/aspects` - **NEW**: Get editing aspects overview (lightweight, ~1KB)
@@ -178,6 +188,11 @@ function mapFieldValues(fieldMetadata, videoData) {
 
 ### AI Content Generation Integration
 
+The API provides two approaches for AI content generation:
+
+#### Traditional Approach (JSON Payload)
+Use when you have manuscript content from external sources or arbitrary text:
+
 ```javascript
 // Generate video titles from manuscript content
 async function generateTitles(manuscript) {
@@ -189,8 +204,22 @@ async function generateTitles(manuscript) {
   const { titles } = await response.json();
   return titles; // Array of 3 title suggestions
 }
+```
 
-// Generate complete video metadata
+#### Optimized Approach (URL Parameters - Recommended)
+Use when working with existing videos in your system:
+
+```javascript
+// Generate video titles for existing video (optimized)
+async function generateTitlesOptimized(videoName, category) {
+  const response = await fetch(`/api/ai/titles/${videoName}?category=${category}`, {
+    method: 'POST'
+  });
+  const { titles } = await response.json();
+  return titles; // Array of 3 title suggestions
+}
+
+// Generate complete video metadata (traditional approach)
 async function generateVideoMetadata(manuscript) {
   const [titles, description, tags, tweets, highlights] = await Promise.all([
     fetch('/api/ai/titles', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ manuscript }) }),
@@ -209,12 +238,40 @@ async function generateVideoMetadata(manuscript) {
   };
 }
 
-// Generate description with hashtags (combined endpoint)
+// Generate complete video metadata (optimized approach - recommended)
+async function generateVideoMetadataOptimized(videoName, category) {
+  const [titles, description, tags, tweets, highlights] = await Promise.all([
+    fetch(`/api/ai/titles/${videoName}?category=${category}`, { method: 'POST' }),
+    fetch(`/api/ai/description/${videoName}?category=${category}`, { method: 'POST' }),
+    fetch(`/api/ai/tags/${videoName}?category=${category}`, { method: 'POST' }),
+    fetch(`/api/ai/tweets/${videoName}?category=${category}`, { method: 'POST' }),
+    fetch(`/api/ai/highlights/${videoName}?category=${category}`, { method: 'POST' })
+  ]);
+
+  return {
+    titles: (await titles.json()).titles,
+    description: (await description.json()).description,
+    tags: (await tags.json()).tags,
+    tweets: (await tweets.json()).tweets,
+    highlights: (await highlights.json()).highlights
+  };
+}
+
+// Generate description with hashtags (traditional approach)
 async function generateDescriptionWithTags(manuscript) {
   const response = await fetch('/api/ai/description-tags', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ manuscript })
+  });
+  const { description, tags } = await response.json();
+  return { description, tags }; // Description text + hashtag string
+}
+
+// Generate description with hashtags (optimized approach - recommended)
+async function generateDescriptionWithTagsOptimized(videoName, category) {
+  const response = await fetch(`/api/ai/description-tags/${videoName}?category=${category}`, {
+    method: 'POST'
   });
   const { description, tags } = await response.json();
   return { description, tags }; // Description text + hashtag string

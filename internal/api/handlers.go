@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 
@@ -610,6 +611,58 @@ func (s *Server) aiTitles(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, AITitlesResponse{Titles: titles})
 }
 
+// aiTitlesWithVideo handles POST /api/ai/titles/{videoName}?category={category}
+// This new endpoint uses URL parameters instead of JSON payload and reads manuscript from video files
+func (s *Server) aiTitlesWithVideo(w http.ResponseWriter, r *http.Request) {
+	// Extract video name from URL path
+	videoName := chi.URLParam(r, "videoName")
+	if videoName == "" {
+		writeError(w, http.StatusBadRequest, "videoName is required")
+		return
+	}
+
+	// Extract category from query parameter
+	category := r.URL.Query().Get("category")
+	if category == "" {
+		writeError(w, http.StatusBadRequest, "category query parameter is required")
+		return
+	}
+
+	// Get manuscript content using our new VideoService method
+	manuscriptContent, err := s.videoService.GetVideoManuscript(videoName, category)
+	if err != nil {
+		// Check if it's a "video not found" error vs other errors
+		if strings.Contains(err.Error(), "failed to get video") {
+			writeError(w, http.StatusNotFound, "Video not found", err.Error())
+			return
+		}
+		// Check if it's a "gist field empty" error (user error)
+		if strings.Contains(err.Error(), "gist field is empty") {
+			writeError(w, http.StatusBadRequest, "Video manuscript not configured", err.Error())
+			return
+		}
+		// Other errors (file read errors, etc.) are server errors
+		writeError(w, http.StatusInternalServerError, "Failed to read manuscript", err.Error())
+		return
+	}
+
+	// Get AI configuration
+	config, err := ai.GetAIConfig()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Failed to get AI configuration", err.Error())
+		return
+	}
+
+	// Generate titles using AI
+	titles, err := ai.SuggestTitles(r.Context(), manuscriptContent, config)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Failed to generate titles", err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, AITitlesResponse{Titles: titles})
+}
+
 // aiDescription handles POST /api/ai/description
 func (s *Server) aiDescription(w http.ResponseWriter, r *http.Request) {
 	var req AIRequest
@@ -742,6 +795,266 @@ func (s *Server) aiDescriptionTags(w http.ResponseWriter, r *http.Request) {
 	}
 
 	descriptionTags, err := ai.SuggestDescriptionTags(r.Context(), req.Manuscript, config)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Failed to generate description tags", err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, AIDescriptionTagsResponse{DescriptionTags: []string{descriptionTags}})
+}
+
+// aiDescriptionWithVideo handles POST /api/ai/description/{videoName}?category={category}
+// This new endpoint uses URL parameters instead of JSON payload and reads manuscript from video files
+func (s *Server) aiDescriptionWithVideo(w http.ResponseWriter, r *http.Request) {
+	// Extract video name from URL path
+	videoName := chi.URLParam(r, "videoName")
+	if videoName == "" {
+		writeError(w, http.StatusBadRequest, "videoName is required")
+		return
+	}
+
+	// Extract category from query parameter
+	category := r.URL.Query().Get("category")
+	if category == "" {
+		writeError(w, http.StatusBadRequest, "category query parameter is required")
+		return
+	}
+
+	// Get manuscript content using our VideoService method
+	manuscriptContent, err := s.videoService.GetVideoManuscript(videoName, category)
+	if err != nil {
+		// Check if it's a "video not found" error vs other errors
+		if strings.Contains(err.Error(), "failed to get video") {
+			writeError(w, http.StatusNotFound, "Video not found", err.Error())
+			return
+		}
+		// Check if it's a "gist field empty" error (user error)
+		if strings.Contains(err.Error(), "gist field is empty") {
+			writeError(w, http.StatusBadRequest, "Video manuscript not configured", err.Error())
+			return
+		}
+		// Other errors (file read errors, etc.) are server errors
+		writeError(w, http.StatusInternalServerError, "Failed to read manuscript", err.Error())
+		return
+	}
+
+	// Get AI configuration
+	config, err := ai.GetAIConfig()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Failed to get AI configuration", err.Error())
+		return
+	}
+
+	// Generate description using AI
+	description, err := ai.SuggestDescription(r.Context(), manuscriptContent, config)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Failed to generate description", err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, AIDescriptionResponse{Description: description})
+}
+
+// aiTagsWithVideo handles POST /api/ai/tags/{videoName}?category={category}
+// This new endpoint uses URL parameters instead of JSON payload and reads manuscript from video files
+func (s *Server) aiTagsWithVideo(w http.ResponseWriter, r *http.Request) {
+	// Extract video name from URL path
+	videoName := chi.URLParam(r, "videoName")
+	if videoName == "" {
+		writeError(w, http.StatusBadRequest, "videoName is required")
+		return
+	}
+
+	// Extract category from query parameter
+	category := r.URL.Query().Get("category")
+	if category == "" {
+		writeError(w, http.StatusBadRequest, "category query parameter is required")
+		return
+	}
+
+	// Get manuscript content using our VideoService method
+	manuscriptContent, err := s.videoService.GetVideoManuscript(videoName, category)
+	if err != nil {
+		// Check if it's a "video not found" error vs other errors
+		if strings.Contains(err.Error(), "failed to get video") {
+			writeError(w, http.StatusNotFound, "Video not found", err.Error())
+			return
+		}
+		// Check if it's a "gist field empty" error (user error)
+		if strings.Contains(err.Error(), "gist field is empty") {
+			writeError(w, http.StatusBadRequest, "Video manuscript not configured", err.Error())
+			return
+		}
+		// Other errors (file read errors, etc.) are server errors
+		writeError(w, http.StatusInternalServerError, "Failed to read manuscript", err.Error())
+		return
+	}
+
+	// Get AI configuration
+	config, err := ai.GetAIConfig()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Failed to get AI configuration", err.Error())
+		return
+	}
+
+	// Generate tags using AI
+	tags, err := ai.SuggestTags(r.Context(), manuscriptContent, config)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Failed to generate tags", err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, AITagsResponse{Tags: []string{tags}})
+}
+
+// aiTweetsWithVideo handles POST /api/ai/tweets/{videoName}?category={category}
+// This new endpoint uses URL parameters instead of JSON payload and reads manuscript from video files
+func (s *Server) aiTweetsWithVideo(w http.ResponseWriter, r *http.Request) {
+	// Extract video name from URL path
+	videoName := chi.URLParam(r, "videoName")
+	if videoName == "" {
+		writeError(w, http.StatusBadRequest, "videoName is required")
+		return
+	}
+
+	// Extract category from query parameter
+	category := r.URL.Query().Get("category")
+	if category == "" {
+		writeError(w, http.StatusBadRequest, "category query parameter is required")
+		return
+	}
+
+	// Get manuscript content using our VideoService method
+	manuscriptContent, err := s.videoService.GetVideoManuscript(videoName, category)
+	if err != nil {
+		// Check if it's a "video not found" error vs other errors
+		if strings.Contains(err.Error(), "failed to get video") {
+			writeError(w, http.StatusNotFound, "Video not found", err.Error())
+			return
+		}
+		// Check if it's a "gist field empty" error (user error)
+		if strings.Contains(err.Error(), "gist field is empty") {
+			writeError(w, http.StatusBadRequest, "Video manuscript not configured", err.Error())
+			return
+		}
+		// Other errors (file read errors, etc.) are server errors
+		writeError(w, http.StatusInternalServerError, "Failed to read manuscript", err.Error())
+		return
+	}
+
+	// Get AI configuration
+	config, err := ai.GetAIConfig()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Failed to get AI configuration", err.Error())
+		return
+	}
+
+	// Generate tweets using AI
+	tweets, err := ai.SuggestTweets(r.Context(), manuscriptContent, config)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Failed to generate tweets", err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, AITweetsResponse{Tweets: tweets})
+}
+
+// aiHighlightsWithVideo handles POST /api/ai/highlights/{videoName}?category={category}
+// This new endpoint uses URL parameters instead of JSON payload and reads manuscript from video files
+func (s *Server) aiHighlightsWithVideo(w http.ResponseWriter, r *http.Request) {
+	// Extract video name from URL path
+	videoName := chi.URLParam(r, "videoName")
+	if videoName == "" {
+		writeError(w, http.StatusBadRequest, "videoName is required")
+		return
+	}
+
+	// Extract category from query parameter
+	category := r.URL.Query().Get("category")
+	if category == "" {
+		writeError(w, http.StatusBadRequest, "category query parameter is required")
+		return
+	}
+
+	// Get manuscript content using our VideoService method
+	manuscriptContent, err := s.videoService.GetVideoManuscript(videoName, category)
+	if err != nil {
+		// Check if it's a "video not found" error vs other errors
+		if strings.Contains(err.Error(), "failed to get video") {
+			writeError(w, http.StatusNotFound, "Video not found", err.Error())
+			return
+		}
+		// Check if it's a "gist field empty" error (user error)
+		if strings.Contains(err.Error(), "gist field is empty") {
+			writeError(w, http.StatusBadRequest, "Video manuscript not configured", err.Error())
+			return
+		}
+		// Other errors (file read errors, etc.) are server errors
+		writeError(w, http.StatusInternalServerError, "Failed to read manuscript", err.Error())
+		return
+	}
+
+	// Get AI configuration
+	config, err := ai.GetAIConfig()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Failed to get AI configuration", err.Error())
+		return
+	}
+
+	// Generate highlights using AI
+	highlights, err := ai.SuggestHighlights(r.Context(), manuscriptContent, config)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Failed to generate highlights", err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, AIHighlightsResponse{Highlights: highlights})
+}
+
+// aiDescriptionTagsWithVideo handles POST /api/ai/description-tags/{videoName}?category={category}
+// This new endpoint uses URL parameters instead of JSON payload and reads manuscript from video files
+func (s *Server) aiDescriptionTagsWithVideo(w http.ResponseWriter, r *http.Request) {
+	// Extract video name from URL path
+	videoName := chi.URLParam(r, "videoName")
+	if videoName == "" {
+		writeError(w, http.StatusBadRequest, "videoName is required")
+		return
+	}
+
+	// Extract category from query parameter
+	category := r.URL.Query().Get("category")
+	if category == "" {
+		writeError(w, http.StatusBadRequest, "category query parameter is required")
+		return
+	}
+
+	// Get manuscript content using our VideoService method
+	manuscriptContent, err := s.videoService.GetVideoManuscript(videoName, category)
+	if err != nil {
+		// Check if it's a "video not found" error vs other errors
+		if strings.Contains(err.Error(), "failed to get video") {
+			writeError(w, http.StatusNotFound, "Video not found", err.Error())
+			return
+		}
+		// Check if it's a "gist field empty" error (user error)
+		if strings.Contains(err.Error(), "gist field is empty") {
+			writeError(w, http.StatusBadRequest, "Video manuscript not configured", err.Error())
+			return
+		}
+		// Other errors (file read errors, etc.) are server errors
+		writeError(w, http.StatusInternalServerError, "Failed to read manuscript", err.Error())
+		return
+	}
+
+	// Get AI configuration
+	config, err := ai.GetAIConfig()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Failed to get AI configuration", err.Error())
+		return
+	}
+
+	// Generate description tags using AI
+	descriptionTags, err := ai.SuggestDescriptionTags(r.Context(), manuscriptContent, config)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Failed to generate description tags", err.Error())
 		return

@@ -986,3 +986,122 @@ func TestVideoService_FieldNameConsistency_GistPath(t *testing.T) {
 	assert.Equal(t, "path/to/correct/gist.md", videoAfterIncorrectUpdate.Gist,
 		"Using incorrect field name 'gistPath' should not update the Gist field")
 }
+
+func TestVideoService_GetVideoManuscript(t *testing.T) {
+	service, tempDir, cleanup := setupTestVideoService(t)
+	defer cleanup()
+
+	// Create a test video first
+	_, err := service.CreateVideo("test-video", "test-category")
+	require.NoError(t, err)
+
+	// Create a test manuscript file
+	manuscriptDir := filepath.Join(tempDir, "manuscript", "test-category")
+	err = os.MkdirAll(manuscriptDir, 0755)
+	require.NoError(t, err)
+
+	manuscriptPath := filepath.Join(manuscriptDir, "test-video.md")
+	testManuscriptContent := "# Test Video\n\nThis is a test manuscript content for AI processing."
+	err = os.WriteFile(manuscriptPath, []byte(testManuscriptContent), 0644)
+	require.NoError(t, err)
+
+	// Get the video and set its Gist field to point to the manuscript file
+	video, err := service.GetVideo("test-video", "test-category")
+	require.NoError(t, err)
+
+	video.Gist = manuscriptPath
+	err = service.UpdateVideo(video)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name            string
+		videoName       string
+		category        string
+		expectError     bool
+		errorMsg        string
+		expectedContent string
+	}{
+		{
+			name:            "Valid manuscript retrieval",
+			videoName:       "test-video",
+			category:        "test-category",
+			expectError:     false,
+			expectedContent: testManuscriptContent,
+		},
+		{
+			name:        "Non-existent video",
+			videoName:   "non-existent",
+			category:    "test-category",
+			expectError: true,
+			errorMsg:    "failed to get video non-existent",
+		},
+		{
+			name:        "Empty name",
+			videoName:   "",
+			category:    "test-category",
+			expectError: true,
+			errorMsg:    "name and category are required",
+		},
+		{
+			name:        "Empty category",
+			videoName:   "test-video",
+			category:    "",
+			expectError: true,
+			errorMsg:    "name and category are required",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			content, err := service.GetVideoManuscript(tt.videoName, tt.category)
+
+			if tt.expectError {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tt.errorMsg)
+				assert.Empty(t, content)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.expectedContent, content)
+			}
+		})
+	}
+}
+
+func TestVideoService_GetVideoManuscript_EmptyGistField(t *testing.T) {
+	service, _, cleanup := setupTestVideoService(t)
+	defer cleanup()
+
+	// Create a test video with empty Gist field
+	_, err := service.CreateVideo("test-video-no-gist", "test-category")
+	require.NoError(t, err)
+
+	// The Gist field should be empty by default
+	content, err := service.GetVideoManuscript("test-video-no-gist", "test-category")
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "gist field is empty")
+	assert.Empty(t, content)
+}
+
+func TestVideoService_GetVideoManuscript_NonExistentFile(t *testing.T) {
+	service, _, cleanup := setupTestVideoService(t)
+	defer cleanup()
+
+	// Create a test video with invalid Gist path
+	_, err := service.CreateVideo("test-video-bad-gist", "test-category")
+	require.NoError(t, err)
+
+	// Get the video and set a non-existent Gist path
+	video, err := service.GetVideo("test-video-bad-gist", "test-category")
+	require.NoError(t, err)
+
+	video.Gist = "/non/existent/path/to/manuscript.md"
+	err = service.UpdateVideo(video)
+	require.NoError(t, err)
+
+	content, err := service.GetVideoManuscript("test-video-bad-gist", "test-category")
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to read manuscript file")
+	assert.Empty(t, content)
+}
