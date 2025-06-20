@@ -721,3 +721,33 @@ func (s *VideoService) setFieldValue(fieldValue reflect.Value, newValue interfac
 
 	return nil
 }
+
+// GetVideoManuscript retrieves and reads the manuscript content for a video
+// This extracts the common pattern used throughout the CLI for reading manuscript files
+func (s *VideoService) GetVideoManuscript(name, category string) (string, error) {
+	// First get the video to access its Gist field
+	video, err := s.GetVideo(name, category)
+	if err != nil {
+		return "", err
+	}
+
+	// Check if Gist field is empty
+	if video.Gist == "" {
+		return "", fmt.Errorf("gist field is empty for video %s in category %s", name, category)
+	}
+
+	// Read the manuscript file
+	manuscriptContent, readErr := os.ReadFile(video.Gist)
+	if readErr != nil {
+		return "", fmt.Errorf("failed to read manuscript file %s: %w", video.Gist, readErr)
+	}
+
+	return string(manuscriptContent), nil
+}
+
+// GetManuscriptPath returns the expected path for a video's manuscript file
+// This is useful for tests and other scenarios where you need to know the path without reading the content
+func (s *VideoService) GetManuscriptPath(name, category string) string {
+	sanitizedName := s.filesystem.SanitizeName(name)
+	return s.filesystem.GetFilePath(category, sanitizedName, "md")
+}

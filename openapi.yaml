@@ -1802,6 +1802,70 @@ components:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /api/ai/titles/{videoName}:
+    post:
+      summary: Generate AI-powered video titles (optimized)
+      description: |
+        Generates multiple creative and engaging video titles for a specific video by name and category.
+        This optimized endpoint uses URL parameters instead of JSON payload, reducing request size and 
+        centralizing manuscript file management on the server side.
+      operationId: generateTitlesOptimized
+      tags:
+        - AI Content Generation
+      parameters:
+        - name: videoName
+          in: path
+          required: true
+          description: The name of the video to generate titles for
+          schema:
+            type: string
+            example: "ai-kills-iac"
+        - name: category
+          in: query
+          required: true
+          description: The category of the video
+          schema:
+            type: string
+            example: "ai"
+      responses:
+        '200':
+          description: Titles generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AITitlesResponse'
+              example:
+                titles:
+                  - "AI Kills Infrastructure as Code: The Future of DevOps Automation"
+                  - "How AI is Revolutionizing Infrastructure Management: Beyond IaC"
+                  - "The End of Traditional IaC? AI-Powered Infrastructure Revolution"
+                  - "AI vs Infrastructure as Code: Which Will Dominate DevOps?"
+                  - "Breaking: AI Makes Infrastructure as Code Obsolete"
+        '400':
+          description: Invalid request - videoName and category are required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Video not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method not allowed - only POST is supported
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: AI service error or internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /api/ai/description:
     post:
       summary: Generate AI-powered video description
@@ -1828,6 +1892,65 @@ components:
                 description: "🚀 Ready to master advanced Kubernetes deployment strategies? In this comprehensive tutorial, we dive deep into production-ready deployment patterns that every DevOps engineer should know.\n\n📋 What You'll Learn:\n• Blue-green deployment implementation\n• Canary release strategies\n• Rolling update best practices\n• Production environment considerations\n• kubectl and Helm integration\n\n⚡ Perfect for intermediate to advanced Kubernetes users looking to level up their deployment game!\n\n🔗 Resources mentioned in this video:\n• Kubernetes documentation\n• Helm charts examples\n• Production deployment checklist\n\n👍 If this helped you, please like and subscribe for more DevOps content!"
         '400':
           description: Invalid request - manuscript is required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method not allowed - only POST is supported
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: AI service error or internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/ai/description/{videoName}:
+    post:
+      summary: Generate AI-powered video description (optimized)
+      description: |
+        Generates a comprehensive and engaging video description for a specific video by name and category.
+        This optimized endpoint uses URL parameters instead of JSON payload, reducing request size and 
+        centralizing manuscript file management on the server side.
+      operationId: generateDescriptionOptimized
+      tags:
+        - AI Content Generation
+      parameters:
+        - name: videoName
+          in: path
+          required: true
+          description: The name of the video to generate description for
+          schema:
+            type: string
+            example: "ai-kills-iac"
+        - name: category
+          in: query
+          required: true
+          description: The category of the video
+          schema:
+            type: string
+            example: "ai"
+      responses:
+        '200':
+          description: Description generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AIDescriptionResponse'
+              example:
+                description: "🤖 Is AI really killing Infrastructure as Code? In this deep-dive analysis, we explore how artificial intelligence is transforming DevOps practices and what it means for the future of infrastructure management.\n\n📋 What You'll Discover:\n• How AI is changing infrastructure automation\n• The evolution beyond traditional IaC tools\n• Real-world examples of AI-driven infrastructure\n• What this means for DevOps engineers\n• Future predictions and career implications\n\n⚡ Perfect for DevOps professionals, infrastructure engineers, and anyone interested in the intersection of AI and infrastructure!\n\n🔗 Resources mentioned:\n• AI infrastructure tools comparison\n• Traditional vs AI-driven approaches\n• Career transition strategies\n\n👍 If this analysis helped clarify the AI vs IaC debate, please like and subscribe for more tech insights!"
+        '400':
+          description: Invalid request - videoName and category are required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Video not found
           content:
             application/json:
               schema:
@@ -1898,6 +2021,75 @@ components:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /api/ai/tags/{videoName}:
+    post:
+      summary: Generate AI-powered video tags (optimized)
+      description: |
+        Generates relevant and SEO-optimized tags for a specific video by name and category.
+        This optimized endpoint uses URL parameters instead of JSON payload, reducing request size and 
+        centralizing manuscript file management on the server side.
+      operationId: generateTagsOptimized
+      tags:
+        - AI Content Generation
+      parameters:
+        - name: videoName
+          in: path
+          required: true
+          description: The name of the video to generate tags for
+          schema:
+            type: string
+            example: "ai-kills-iac"
+        - name: category
+          in: query
+          required: true
+          description: The category of the video
+          schema:
+            type: string
+            example: "ai"
+      responses:
+        '200':
+          description: Tags generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AITagsResponse'
+              example:
+                tags:
+                  - "artificial intelligence"
+                  - "infrastructure as code"
+                  - "devops"
+                  - "automation"
+                  - "cloud computing"
+                  - "terraform"
+                  - "ansible"
+                  - "kubernetes"
+                  - "ai revolution"
+                  - "future of devops"
+        '400':
+          description: Invalid request - videoName and category are required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Video not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method not allowed - only POST is supported
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: AI service error or internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /api/ai/tweets:
     post:
       summary: Generate AI-powered promotional tweets
@@ -1927,6 +2119,68 @@ components:
                   - "📚 Deep dive into Kubernetes deployment strategies! Learn blue-green deployments, canary releases, and rolling updates with practical examples. Link in bio! #Kubernetes #Tutorial"
         '400':
           description: Invalid request - manuscript is required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method not allowed - only POST is supported
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: AI service error or internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/ai/tweets/{videoName}:
+    post:
+      summary: Generate AI-powered promotional tweets (optimized)
+      description: |
+        Generates engaging promotional tweets for a specific video by name and category.
+        This optimized endpoint uses URL parameters instead of JSON payload, reducing request size and 
+        centralizing manuscript file management on the server side.
+      operationId: generateTweetsOptimized
+      tags:
+        - AI Content Generation
+      parameters:
+        - name: videoName
+          in: path
+          required: true
+          description: The name of the video to generate tweets for
+          schema:
+            type: string
+            example: "ai-kills-iac"
+        - name: category
+          in: query
+          required: true
+          description: The category of the video
+          schema:
+            type: string
+            example: "ai"
+      responses:
+        '200':
+          description: Tweets generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AITweetsResponse'
+              example:
+                tweets:
+                  - "🤖 New video: Is AI really killing Infrastructure as Code? Deep dive into how AI is transforming DevOps and what it means for the future! #AI #DevOps #InfrastructureAsCode #TechTrends"
+                  - "⚡ The great debate: AI vs Infrastructure as Code! Watch my latest analysis on how artificial intelligence is reshaping infrastructure management. Link in bio! #AIRevolution #DevOps"
+                  - "🚀 Breaking down the AI vs IaC debate in my newest video! Essential viewing for DevOps engineers navigating the future of infrastructure automation. #AI #DevOps #CloudComputing"
+        '400':
+          description: Invalid request - videoName and category are required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Video not found
           content:
             application/json:
               schema:
@@ -1992,6 +2246,70 @@ components:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /api/ai/highlights/{videoName}:
+    post:
+      summary: Generate AI-powered content highlights (optimized)
+      description: |
+        Extracts and generates key highlights for a specific video by name and category.
+        This optimized endpoint uses URL parameters instead of JSON payload, reducing request size and 
+        centralizing manuscript file management on the server side.
+      operationId: generateHighlightsOptimized
+      tags:
+        - AI Content Generation
+      parameters:
+        - name: videoName
+          in: path
+          required: true
+          description: The name of the video to generate highlights for
+          schema:
+            type: string
+            example: "ai-kills-iac"
+        - name: category
+          in: query
+          required: true
+          description: The category of the video
+          schema:
+            type: string
+            example: "ai"
+      responses:
+        '200':
+          description: Highlights generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AIHighlightsResponse'
+              example:
+                highlights:
+                  - "AI is fundamentally changing how we approach infrastructure automation"
+                  - "Traditional IaC tools like Terraform may become obsolete as AI takes over"
+                  - "Machine learning algorithms can now predict and prevent infrastructure failures"
+                  - "The DevOps role is evolving from manual scripting to AI orchestration"
+                  - "Organizations must adapt their infrastructure strategies to remain competitive"
+        '400':
+          description: Invalid request - videoName and category are required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Video not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method not allowed - only POST is supported
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: AI service error or internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /api/ai/description-tags:
     post:
       summary: Generate AI-powered description with embedded tags
@@ -2021,6 +2339,68 @@ components:
                   - "📋 Topics covered: #ProductionDeployment best practices, monitoring strategies, and automated rollback procedures."
         '400':
           description: Invalid request - manuscript is required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method not allowed - only POST is supported
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: AI service error or internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/ai/description-tags/{videoName}:
+    post:
+      summary: Generate AI-powered description with embedded tags (optimized)
+      description: |
+        Generates a comprehensive video description that includes relevant tags embedded naturally within the content
+        for a specific video by name and category. This optimized endpoint uses URL parameters instead of JSON payload, 
+        reducing request size and centralizing manuscript file management on the server side.
+      operationId: generateDescriptionTagsOptimized
+      tags:
+        - AI Content Generation
+      parameters:
+        - name: videoName
+          in: path
+          required: true
+          description: The name of the video to generate description with tags for
+          schema:
+            type: string
+            example: "ai-kills-iac"
+        - name: category
+          in: query
+          required: true
+          description: The category of the video
+          schema:
+            type: string
+            example: "ai"
+      responses:
+        '200':
+          description: Description with tags generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AIDescriptionTagsResponse'
+              example:
+                description_tags:
+                  - "🤖 Is #AI really killing #InfrastructureAsCode? Explore how #ArtificialIntelligence is transforming #DevOps practices and reshaping the future of infrastructure management."
+                  - "Perfect for #DevOpsEngineers, #CloudArchitects, and #TechProfessionals looking to understand the intersection of #AI and #InfrastructureAutomation."
+                  - "📋 Topics: #MachineLearning in infrastructure, #AutomationEvolution, and career implications for #DevOps professionals in the #AIRevolution era."
+        '400':
+          description: Invalid request - videoName and category are required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Video not found
           content:
             application/json:
               schema:

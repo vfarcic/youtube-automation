@@ -399,6 +399,15 @@ Expected response: 204 No Content (empty body)
 
 ### 6. AI Content Generation
 
+The AI Content Generation API provides two approaches for generating content:
+
+1. **Traditional endpoints** - Accept manuscript content directly in JSON payload
+2. **Optimized endpoints** - Use video name and category parameters (recommended for existing videos)
+
+#### Traditional Endpoints (JSON Payload)
+
+These endpoints accept manuscript content directly and are useful for generating content from arbitrary text or external sources.
+
 #### Generate Video Titles
 ```bash
 curl -X POST http://localhost:8080/api/ai/titles \
@@ -595,6 +604,170 @@ Expected response (400 Bad Request):
 **Rate Limiting:**
 - No built-in rate limiting (depends on AI provider limits)
 - Recommended: Max 10 requests per minute per client
+
+#### Optimized Endpoints (URL Parameters)
+
+These endpoints are optimized for existing videos in your system. They use URL parameters instead of JSON payload, reducing request size and centralizing manuscript file management on the server.
+
+##### Generate Video Titles (Optimized)
+```bash
+curl -X POST "http://localhost:8080/api/ai/titles/ai-kills-iac?category=ai"
+```
+Expected response:
+```json
+{
+  "titles": [
+    "AI Kills Infrastructure as Code: The Future of DevOps Automation",
+    "How AI is Revolutionizing Infrastructure Management: Beyond IaC",
+    "The End of Traditional IaC? AI-Powered Infrastructure Revolution",
+    "AI vs Infrastructure as Code: Which Will Dominate DevOps?",
+    "Breaking: AI Makes Infrastructure as Code Obsolete"
+  ]
+}
+```
+
+##### Generate Video Description (Optimized)
+```bash
+curl -X POST "http://localhost:8080/api/ai/description/ai-kills-iac?category=ai"
+```
+Expected response:
+```json
+{
+  "description": "🤖 Is AI really killing Infrastructure as Code? In this deep-dive analysis, we explore how artificial intelligence is transforming DevOps practices and what it means for the future of infrastructure management.\n\n📋 What You'll Discover:\n• How AI is changing infrastructure automation\n• The evolution beyond traditional IaC tools\n• Real-world examples of AI-driven infrastructure\n• What this means for DevOps engineers\n• Future predictions and career implications\n\n⚡ Perfect for DevOps professionals, infrastructure engineers, and anyone interested in the intersection of AI and infrastructure!\n\n🔗 Resources mentioned:\n• AI infrastructure tools comparison\n• Traditional vs AI-driven approaches\n• Career transition strategies\n\n👍 If this analysis helped clarify the AI vs IaC debate, please like and subscribe for more tech insights!"
+}
+```
+
+##### Generate Video Tags (Optimized)
+```bash
+curl -X POST "http://localhost:8080/api/ai/tags/ai-kills-iac?category=ai"
+```
+Expected response:
+```json
+{
+  "tags": [
+    "artificial intelligence",
+    "infrastructure as code",
+    "devops",
+    "automation",
+    "cloud computing",
+    "terraform",
+    "ansible",
+    "kubernetes",
+    "ai revolution",
+    "future of devops"
+  ]
+}
+```
+
+##### Generate Social Media Tweets (Optimized)
+```bash
+curl -X POST "http://localhost:8080/api/ai/tweets/ai-kills-iac?category=ai"
+```
+Expected response:
+```json
+{
+  "tweets": [
+    "🤖 New video: Is AI really killing Infrastructure as Code? Deep dive into how AI is transforming DevOps and what it means for the future! #AI #DevOps #InfrastructureAsCode #TechTrends",
+    "⚡ The great debate: AI vs Infrastructure as Code! Watch my latest analysis on how artificial intelligence is reshaping infrastructure management. Link in bio! #AIRevolution #DevOps",
+    "🚀 Breaking down the AI vs IaC debate in my newest video! Essential viewing for DevOps engineers navigating the future of infrastructure automation. #AI #DevOps #CloudComputing"
+  ]
+}
+```
+
+##### Generate Video Highlights (Optimized)
+```bash
+curl -X POST "http://localhost:8080/api/ai/highlights/ai-kills-iac?category=ai"
+```
+Expected response:
+```json
+{
+  "highlights": [
+    "AI is fundamentally changing how we approach infrastructure automation",
+    "Traditional IaC tools like Terraform may become obsolete as AI takes over",
+    "Machine learning algorithms can now predict and prevent infrastructure failures",
+    "The DevOps role is evolving from manual scripting to AI orchestration",
+    "Organizations must adapt their infrastructure strategies to remain competitive"
+  ]
+}
+```
+
+##### Generate Description with Tags (Optimized)
+```bash
+curl -X POST "http://localhost:8080/api/ai/description-tags/ai-kills-iac?category=ai"
+```
+Expected response:
+```json
+{
+  "description_tags": [
+    "🤖 Is #AI really killing #InfrastructureAsCode? Explore how #ArtificialIntelligence is transforming #DevOps practices and reshaping the future of infrastructure management.",
+    "Perfect for #DevOpsEngineers, #CloudArchitects, and #TechProfessionals looking to understand the intersection of #AI and #InfrastructureAutomation.",
+    "📋 Topics: #MachineLearning in infrastructure, #AutomationEvolution, and career implications for #DevOps professionals in the #AIRevolution era."
+  ]
+}
+```
+
+##### Optimized Endpoints Error Cases
+
+###### Video Not Found
+```bash
+curl -X POST "http://localhost:8080/api/ai/titles/nonexistent-video?category=ai"
+```
+Expected response (404 Not Found):
+```json
+{
+  "error": "Video not found"
+}
+```
+
+###### Missing Category Parameter
+```bash
+curl -X POST "http://localhost:8080/api/ai/titles/ai-kills-iac"
+```
+Expected response (400 Bad Request):
+```json
+{
+  "error": "category query parameter is required"
+}
+```
+
+###### Empty Video Name
+```bash
+curl -X POST "http://localhost:8080/api/ai/titles/?category=ai"
+```
+Expected response (400 Bad Request):
+```json
+{
+  "error": "videoName is required"
+}
+```
+
+###### Video Manuscript Not Configured
+```bash
+curl -X POST "http://localhost:8080/api/ai/titles/video-without-gist?category=ai"
+```
+Expected response (400 Bad Request):
+```json
+{
+  "error": "Video manuscript not configured"
+}
+```
+
+#### Benefits of Optimized Endpoints
+
+**Performance:**
+- **Reduced payload size** - No need to send entire manuscript content
+- **Faster requests** - URL parameters vs JSON parsing
+- **Server-side caching** - Manuscript content can be cached
+
+**Maintainability:**
+- **Centralized file management** - Server handles manuscript reading
+- **Consistent file paths** - No client-side path construction
+- **Error handling** - Server validates video existence and configuration
+
+**Security:**
+- **No content exposure** - Manuscript content stays on server
+- **Path validation** - Server ensures valid video references
+- **Access control** - Can add authentication/authorization per video
 
 #### Test AI API with Different Content Types
 

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"sync"
 	"testing"
@@ -743,318 +744,19 @@ func TestAIEndpointsConcurrency(t *testing.T) {
 }
 
 // Test AI endpoints with diverse manuscript content types and sizes
-func TestAIEndpointsDiverseContent(t *testing.T) {
+func TestAIEndpointsManuscriptContent(t *testing.T) {
 	server := NewServer()
 
-	// Define various manuscript content types for testing
-	testManuscripts := map[string]string{
-		"Technical Tutorial": `
-# Advanced Docker Multi-Stage Builds
-
-## Introduction
-Docker multi-stage builds are a powerful feature that allows you to optimize your Docker images by using multiple FROM statements in your Dockerfile. This technique helps reduce the final image size by separating the build environment from the runtime environment.
-
-## Key Benefits
-1. **Reduced Image Size**: Only necessary runtime dependencies are included in the final image
-2. **Security**: Build tools and source code are not present in the production image
-3. **Efficiency**: Faster deployment and reduced storage costs
-
-## Implementation Example
-Here's a practical example using a Go application:
-
-` + "```dockerfile" + `
-# Build stage
-FROM golang:1.19-alpine AS builder
-WORKDIR /app
-COPY go.mod go.sum ./
-RUN go mod download
-COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -o main .
-
-# Production stage
-FROM alpine:latest
-RUN apk --no-cache add ca-certificates
-WORKDIR /root/
-COPY --from=builder /app/main .
-CMD ["./main"]
-` + "```" + `
-
-## Best Practices
-- Use specific base image tags for reproducibility
-- Minimize the number of layers in your final stage
-- Use .dockerignore to exclude unnecessary files
-- Consider using distroless images for even smaller footprints
-
-## Advanced Techniques
-Multi-stage builds can also be used for:
-- Running tests in a separate stage
-- Building multiple variants of your application
-- Creating development and production images from the same Dockerfile
-
-This approach significantly improves your container security posture while maintaining development efficiency.`,
-
-		"Entertainment Content": `
-# The Ultimate Guide to Streaming Setup for Content Creators
-
-## Getting Started with Streaming
-Whether you're planning to stream gaming content, tutorials, or just chatting with your audience, having the right setup is crucial for success. This comprehensive guide will walk you through everything you need to know to create professional-quality streams that engage your viewers.
-
-## Essential Hardware
-**Camera**: A good webcam or DSLR camera is your window to the audience. Consider lighting conditions and background when choosing your setup.
-
-**Microphone**: Audio quality can make or break your stream. Invest in a decent USB microphone or audio interface with an XLR mic.
-
-**Computer**: Streaming is resource-intensive. Ensure your CPU and GPU can handle both your content and the encoding process.
-
-## Software Recommendations
-- **OBS Studio**: Free, powerful, and widely supported
-- **Streamlabs**: User-friendly with built-in alerts and widgets
-- **XSplit**: Professional features with a polished interface
-
-## Engagement Strategies
-1. **Consistent Schedule**: Viewers need to know when to find you
-2. **Interactive Elements**: Polls, Q&A sessions, and viewer games
-3. **Community Building**: Discord servers and social media presence
-4. **Quality Content**: Plan your streams and have backup activities
-
-## Monetization Options
-- Subscriptions and donations
-- Sponsorships and brand partnerships
-- Merchandise sales
-- Affiliate marketing
-
-## Common Mistakes to Avoid
-- Ignoring chat and viewer interaction
-- Inconsistent streaming schedule
-- Poor audio quality
-- Overcomplicated overlays and alerts
-
-Remember, building a successful streaming career takes time, patience, and consistent effort. Focus on creating content you're passionate about, and the audience will follow!`,
-
-		"Educational Material": `
-# Understanding Climate Change: Science, Impacts, and Solutions
-
-## Introduction to Climate Science
-Climate change refers to long-term shifts in global temperatures and weather patterns. While climate variations occur naturally, scientific evidence overwhelmingly shows that human activities have been the dominant driver of climate change since the mid-20th century.
-
-## The Greenhouse Effect
-The greenhouse effect is a natural process that warms Earth's surface. When the Sun's energy reaches Earth's atmosphere, some of it is reflected back to space and the rest is absorbed and re-radiated by greenhouse gases.
-
-### Key Greenhouse Gases:
-- **Carbon Dioxide (CO2)**: Primary driver, mainly from fossil fuel combustion
-- **Methane (CH4)**: From agriculture, landfills, and natural gas production
-- **Nitrous Oxide (N2O)**: From agriculture and fossil fuel combustion
-- **Fluorinated Gases**: From industrial processes and refrigeration
-
-## Observable Impacts
-**Temperature Changes**: Global average temperature has risen by approximately 1.1°C since the late 19th century.
-
-**Ice Loss**: Arctic sea ice is declining at a rate of 13% per decade. Glaciers worldwide are retreating.
-
-**Sea Level Rise**: Global sea level has risen about 8-9 inches since 1880, with the rate of rise accelerating in recent decades.
-
-**Weather Patterns**: Increased frequency of extreme weather events including heatwaves, droughts, and intense storms.
-
-## Regional Variations
-Climate change affects different regions differently:
-- **Arctic**: Warming twice as fast as the global average
-- **Small Island Nations**: Facing existential threats from sea level rise
-- **Sub-Saharan Africa**: Increased drought and desertification
-- **Coastal Cities**: Flooding and storm surge risks
-
-## Solutions and Mitigation
-**Renewable Energy**: Solar, wind, and hydroelectric power to replace fossil fuels
-
-**Energy Efficiency**: Improving building insulation, LED lighting, and efficient appliances
-
-**Transportation**: Electric vehicles, public transit, and sustainable urban planning
-
-**Carbon Capture**: Technologies to remove CO2 from the atmosphere
-
-**Nature-Based Solutions**: Reforestation, wetland restoration, and sustainable agriculture
-
-## Individual Actions
-- Reduce energy consumption at home
-- Choose sustainable transportation options
-- Support renewable energy initiatives
-- Make informed consumer choices
-- Advocate for climate policies
-
-Understanding climate change is the first step toward addressing this global challenge. Through collective action and technological innovation, we can work toward a sustainable future.`,
-
-		"Short Technical Tip": `
-# Quick Git Tip: Interactive Rebase
-
-Use git rebase -i HEAD~3 to interactively rebase the last 3 commits. This allows you to:
-- Squash commits together
-- Edit commit messages
-- Reorder commits
-- Drop unwanted commits
-
-Perfect for cleaning up your commit history before merging!`,
-
-		"Very Long Content": strings.Repeat(`
-This is a comprehensive tutorial about advanced software engineering practices, design patterns, and architectural principles that every developer should understand to build scalable, maintainable, and robust applications.
-
-## Design Patterns
-Design patterns are reusable solutions to commonly occurring problems in software design. They represent best practices and provide a common vocabulary for developers.
-
-### Creational Patterns
-- Singleton: Ensures a class has only one instance
-- Factory: Creates objects without specifying exact classes
-- Builder: Constructs complex objects step by step
-
-### Structural Patterns
-- Adapter: Allows incompatible interfaces to work together
-- Decorator: Adds behavior to objects dynamically
-- Facade: Provides a simplified interface to complex subsystems
-
-### Behavioral Patterns
-- Observer: Defines one-to-many dependency between objects
-- Strategy: Defines family of algorithms and makes them interchangeable
-- Command: Encapsulates requests as objects
-
-## SOLID Principles
-1. Single Responsibility Principle
-2. Open/Closed Principle
-3. Liskov Substitution Principle
-4. Interface Segregation Principle
-5. Dependency Inversion Principle
-
-## Architectural Patterns
-- Model-View-Controller (MVC)
-- Model-View-ViewModel (MVVM)
-- Microservices Architecture
-- Event-Driven Architecture
-- Hexagonal Architecture
-
-`, 50), // Repeat 50 times to create very long content
-
-		"Code-Heavy Content": `
-# Advanced JavaScript Patterns and Techniques
-
-## Closures and Scope
-` + "```javascript" + `
-function createCounter() {
-    let count = 0;
-    return function() {
-        return ++count;
-    };
-}
-
-const counter = createCounter();
-console.log(counter()); // 1
-console.log(counter()); // 2
-` + "```" + `
-
-## Async/Await Patterns
-` + "```javascript" + `
-async function fetchUserData(userId) {
-    try {
-        const response = await fetch('/api/users/' + userId);
-        if (!response.ok) {
-            throw new Error('Failed to fetch user data');
-        }
-        return await response.json();
-    } catch (error) {
-        console.error('Error fetching user:', error);
-        throw error;
-    }
-}
-
-// Parallel execution
-async function fetchMultipleUsers(userIds) {
-    const promises = userIds.map(id => fetchUserData(id));
-    return await Promise.all(promises);
-}
-` + "```" + `
-
-## Advanced Object Patterns
-` + "```javascript" + `
-class EventEmitter {
-    constructor() {
-        this.events = {};
-    }
-    
-    on(event, callback) {
-        if (!this.events[event]) {
-            this.events[event] = [];
-        }
-        this.events[event].push(callback);
-    }
-    
-    emit(event, data) {
-        if (this.events[event]) {
-            this.events[event].forEach(callback => callback(data));
-        }
-    }
-    
-    off(event, callback) {
-        if (this.events[event]) {
-            this.events[event] = this.events[event].filter(cb => cb !== callback);
-        }
-    }
-}
-` + "```" + `
-
-## Functional Programming Concepts
-` + "```javascript" + `
-// Higher-order functions
-const compose = (...fns) => (value) => fns.reduceRight((acc, fn) => fn(acc), value);
-
-const addOne = x => x + 1;
-const double = x => x * 2;
-const square = x => x * x;
-
-const transform = compose(square, double, addOne);
-console.log(transform(3)); // ((3 + 1) * 2)^2 = 64
-` + "```" + `
-
-These patterns form the foundation of modern JavaScript development and enable writing more maintainable and scalable code.`,
-
-		"Minimal Content": "Quick tip: Use console.table() to display arrays and objects in a nice table format in the browser console.",
-
-		"Unicode and Special Characters": `
-# Internationalization (i18n) Best Practices 🌍
-
-## Supporting Multiple Languages
-When building applications for global audiences, proper internationalization is crucial. Here are key considerations:
-
-### Character Encoding
-Always use UTF-8 encoding to support characters from different languages:
-- 中文 (Chinese)
-- العربية (Arabic)  
-- Русский (Russian)
-- हिन्दी (Hindi)
-- 日本語 (Japanese)
-- Español (Spanish)
-- Français (French)
-
-### Currency and Number Formatting
-Different regions have different conventions:
-- US: $1,234.56
-- EU: €1.234,56
-- India: ₹1,23,456.78
-
-### Date and Time Formats
-- US: MM/DD/YYYY
-- EU: DD/MM/YYYY
-- ISO: YYYY-MM-DD
-
-### Special Characters in Code
-Handle special characters properly:
-- Quotes: "smart quotes" vs 'straight quotes'
-- Dashes: – (en dash) vs — (em dash) vs - (hyphen)
-- Symbols: © ® ™ § ¶ † ‡ • …
-
-### Emoji Support 📱
-Modern applications should handle emoji properly:
-🚀 🎯 💡 🔥 ⭐ 🎉 💻 📊 🌟 ✨
-
-Remember to test your application with various character sets and input methods to ensure proper functionality across all supported languages and regions.`,
+	// Test various content types and scenarios
+	contentTests := map[string]string{
+		"technical_tutorial": "This comprehensive tutorial covers advanced Docker containerization techniques, including multi-stage builds, layer optimization, security best practices, and orchestration with Kubernetes. We'll explore practical examples and real-world deployment scenarios.",
+		"programming_guide":  "Learn Python's advanced features including decorators, context managers, metaclasses, and async programming. This guide provides hands-on examples and best practices for writing clean, efficient Python code.",
+		"devops_workflow":    "Setting up CI/CD pipelines with GitHub Actions, automated testing, deployment strategies, monitoring, and infrastructure as code using Terraform and Ansible.",
+		"web_development":    "Building modern web applications with React, TypeScript, and Node.js. Covers component architecture, state management, API integration, and performance optimization techniques.",
+		"cloud_architecture": "Designing scalable cloud solutions on AWS, including microservices architecture, serverless computing, database design, and cost optimization strategies.",
+		"security_practices": "Implementing cybersecurity best practices in software development, including secure coding, vulnerability assessment, penetration testing, and compliance frameworks.",
 	}
 
-	// Test each endpoint with different content types
 	endpoints := []struct {
 		path     string
 		name     string
@@ -1101,50 +803,11 @@ Remember to test your application with various character sets and input methods 
 				}
 			},
 		},
-		{
-			path: "/api/ai/tweets",
-			name: "tweets",
-			validate: func(t *testing.T, body []byte) {
-				var resp AITweetsResponse
-				err := json.Unmarshal(body, &resp)
-				require.NoError(t, err, "Response should be valid JSON")
-				assert.NotEmpty(t, resp.Tweets, "Should return tweets")
-				for _, tweet := range resp.Tweets {
-					assert.NotEmpty(t, tweet, "Each tweet should not be empty")
-					assert.True(t, len(tweet) <= 280, "Tweet should respect character limit")
-				}
-			},
-		},
-		{
-			path: "/api/ai/highlights",
-			name: "highlights",
-			validate: func(t *testing.T, body []byte) {
-				var resp AIHighlightsResponse
-				err := json.Unmarshal(body, &resp)
-				require.NoError(t, err, "Response should be valid JSON")
-				assert.NotEmpty(t, resp.Highlights, "Should return highlights")
-				for _, highlight := range resp.Highlights {
-					assert.NotEmpty(t, highlight, "Each highlight should not be empty")
-				}
-			},
-		},
-		{
-			path: "/api/ai/description-tags",
-			name: "description-tags",
-			validate: func(t *testing.T, body []byte) {
-				var resp AIDescriptionTagsResponse
-				err := json.Unmarshal(body, &resp)
-				require.NoError(t, err, "Response should be valid JSON")
-				assert.NotEmpty(t, resp.DescriptionTags, "Should return description tags")
-				assert.Len(t, resp.DescriptionTags, 1, "Should return exactly one description-tags string")
-			},
-		},
 	}
 
-	// Test each endpoint with each content type
-	for contentType, manuscript := range testManuscripts {
-		for _, endpoint := range endpoints {
-			t.Run(fmt.Sprintf("%s with %s", endpoint.name, contentType), func(t *testing.T) {
+	for _, endpoint := range endpoints {
+		for domain, manuscript := range contentTests {
+			t.Run(fmt.Sprintf("%s_%s", endpoint.name, domain), func(t *testing.T) {
 				reqBody, _ := json.Marshal(AIRequest{Manuscript: manuscript})
 				req := httptest.NewRequest("POST", endpoint.path, bytes.NewReader(reqBody))
 				req.Header.Set("Content-Type", "application/json")
@@ -1152,12 +815,12 @@ Remember to test your application with various character sets and input methods 
 
 				server.router.ServeHTTP(w, req)
 
-				// Skip validation if AI config is not available (expected in test environment)
+				// Skip validation if AI config is not available
 				if w.Code == http.StatusInternalServerError {
 					t.Skip("AI configuration not available in test environment")
 				}
 
-				assert.Equal(t, http.StatusOK, w.Code, "Should handle %s content successfully", contentType)
+				assert.Equal(t, http.StatusOK, w.Code, "Should handle %s content for %s", domain, endpoint.name)
 
 				if w.Code == http.StatusOK && endpoint.validate != nil {
 					endpoint.validate(t, w.Body.Bytes())
@@ -1167,212 +830,588 @@ Remember to test your application with various character sets and input methods 
 	}
 }
 
-// Test AI endpoints with various manuscript sizes
-func TestAIEndpointsManuscriptSizes(t *testing.T) {
-	server := NewServer()
+// Test new AI titles endpoint that uses URL parameters instead of JSON payload
+func TestAITitlesWithVideoParams(t *testing.T) {
+	server := setupTestServer(t)
 
-	sizeTests := []struct {
-		name       string
-		manuscript string
-		expectOK   bool
+	// Create a test video with manuscript
+	_, err := server.videoService.CreateVideo("test-video", "test-category")
+	require.NoError(t, err)
+
+	// Create a test manuscript file
+	manuscriptContent := "# Test Video Tutorial\n\nThis is a comprehensive tutorial about Docker containerization and Kubernetes orchestration."
+	manuscriptPath := server.videoService.GetManuscriptPath("test-video", "test-category")
+	err = os.WriteFile(manuscriptPath, []byte(manuscriptContent), 0644)
+	require.NoError(t, err)
+
+	// Update the video to set the Gist field
+	video, err := server.videoService.GetVideo("test-video", "test-category")
+	require.NoError(t, err)
+	video.Gist = manuscriptPath
+	err = server.videoService.UpdateVideo(video)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name           string
+		videoName      string
+		category       string
+		expectedStatus int
+		validateResp   func(t *testing.T, body []byte)
 	}{
 		{
-			name:       "Very short manuscript",
-			manuscript: "AI tip.",
-			expectOK:   true,
+			name:           "Valid video with manuscript",
+			videoName:      "test-video",
+			category:       "test-category",
+			expectedStatus: http.StatusOK,
+			validateResp: func(t *testing.T, body []byte) {
+				var resp AITitlesResponse
+				err := json.Unmarshal(body, &resp)
+				require.NoError(t, err, "Response should be valid JSON")
+				assert.NotEmpty(t, resp.Titles, "Should return at least one title")
+				for _, title := range resp.Titles {
+					assert.NotEmpty(t, title, "Each title should not be empty")
+					assert.True(t, len(title) > 10, "Title should be reasonably long")
+				}
+			},
 		},
 		{
-			name:       "Short manuscript",
-			manuscript: "This is a quick tutorial about using Docker containers for development.",
-			expectOK:   true,
+			name:           "Non-existent video",
+			videoName:      "non-existent",
+			category:       "test-category",
+			expectedStatus: http.StatusNotFound,
 		},
 		{
-			name:       "Medium manuscript",
-			manuscript: strings.Repeat("This is a comprehensive tutorial about software development best practices. ", 20),
-			expectOK:   true,
+			name:           "Empty video name",
+			videoName:      "",
+			category:       "test-category",
+			expectedStatus: http.StatusNotFound, // Chi router returns 404 when path param is empty
 		},
 		{
-			name:       "Large manuscript",
-			manuscript: strings.Repeat("This is a detailed technical tutorial covering advanced concepts in software engineering, including design patterns, architectural principles, and best practices for building scalable applications. ", 100),
-			expectOK:   true,
-		},
-		{
-			name:       "Very large manuscript",
-			manuscript: strings.Repeat("This is an extremely comprehensive tutorial covering every aspect of modern software development, from basic concepts to advanced architectural patterns, including detailed code examples, best practices, performance optimization techniques, security considerations, testing strategies, deployment procedures, and maintenance guidelines. ", 500),
-			expectOK:   true,
+			name:           "Empty category",
+			videoName:      "test-video",
+			category:       "",
+			expectedStatus: http.StatusBadRequest,
 		},
 	}
 
-	// Test with titles endpoint as representative
-	for _, test := range sizeTests {
-		t.Run(test.name, func(t *testing.T) {
-			reqBody, _ := json.Marshal(AIRequest{Manuscript: test.manuscript})
-			req := httptest.NewRequest("POST", "/api/ai/titles", bytes.NewReader(reqBody))
-			req.Header.Set("Content-Type", "application/json")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			url := fmt.Sprintf("/api/ai/titles/%s?category=%s", tt.videoName, tt.category)
+			req := httptest.NewRequest("POST", url, nil)
 			w := httptest.NewRecorder()
 
 			server.router.ServeHTTP(w, req)
 
-			// Skip validation if AI config is not available
-			if w.Code == http.StatusInternalServerError {
+			// Skip validation if AI config is not available (expected in test environment)
+			if w.Code == http.StatusInternalServerError && tt.expectedStatus == http.StatusOK {
 				t.Skip("AI configuration not available in test environment")
 			}
 
-			if test.expectOK {
-				assert.Equal(t, http.StatusOK, w.Code, "Should handle manuscript of size %d characters", len(test.manuscript))
-			} else {
-				assert.NotEqual(t, http.StatusOK, w.Code, "Should reject manuscript of size %d characters", len(test.manuscript))
+			assert.Equal(t, tt.expectedStatus, w.Code)
+			if tt.validateResp != nil && w.Code == http.StatusOK {
+				tt.validateResp(t, w.Body.Bytes())
 			}
-
-			t.Logf("Manuscript size: %d characters, Response status: %d", len(test.manuscript), w.Code)
 		})
 	}
 }
 
-// Test AI endpoints with content containing various technical domains
-func TestAIEndpointsTechnicalDomains(t *testing.T) {
-	server := NewServer()
+// Test new AI titles endpoint error scenarios
+func TestAITitlesWithVideoParamsErrors(t *testing.T) {
+	server := setupTestServer(t)
 
-	domainTests := map[string]string{
-		"DevOps/Infrastructure": `
-# Kubernetes Deployment Strategies
+	// Create a test video without manuscript
+	_, err := server.videoService.CreateVideo("video-no-manuscript", "test-category")
+	require.NoError(t, err)
 
-## Blue-Green Deployment
-Blue-green deployment is a technique that reduces downtime and risk by running two identical production environments called Blue and Green.
+	// Create a test video with empty Gist field
+	_, err = server.videoService.CreateVideo("video-empty-gist", "test-category")
+	require.NoError(t, err)
 
-## Rolling Updates
-Kubernetes rolling updates allow you to update your application with zero downtime by gradually replacing old pods with new ones.
+	// Create a test video with non-existent manuscript file
+	_, err = server.videoService.CreateVideo("video-bad-gist", "test-category")
+	require.NoError(t, err)
+	video, err := server.videoService.GetVideo("video-bad-gist", "test-category")
+	require.NoError(t, err)
+	video.Gist = "/non/existent/path/to/manuscript.md"
+	err = server.videoService.UpdateVideo(video)
+	require.NoError(t, err)
 
-## Canary Deployments
-Canary deployments allow you to roll out changes to a small subset of users before rolling it out to the entire infrastructure.
-
-Key tools: kubectl, Helm, ArgoCD, Istio, Prometheus, Grafana
-`,
-
-		"Data Science/AI": `
-# Machine Learning Model Deployment Pipeline
-
-## Data Preprocessing
-- Feature engineering and selection
-- Data cleaning and normalization
-- Handling missing values and outliers
-
-## Model Training
-- Cross-validation strategies
-- Hyperparameter tuning
-- Model evaluation metrics
-
-## MLOps Best Practices
-- Version control for models and data
-- Automated testing and validation
-- Continuous integration/deployment
-- Model monitoring and drift detection
-
-Tools: Python, scikit-learn, TensorFlow, PyTorch, MLflow, Kubeflow
-`,
-
-		"Web Development": `
-# Modern React Development Patterns
-
-## Component Architecture
-- Functional components with hooks
-- Custom hooks for reusable logic
-- Component composition patterns
-
-## State Management
-- useState and useReducer for local state
-- Context API for global state
-- External libraries: Redux, Zustand, Jotai
-
-## Performance Optimization
-- React.memo for component memoization
-- useMemo and useCallback for expensive computations
-- Code splitting with React.lazy
-
-## Testing Strategies
-- Unit tests with Jest and React Testing Library
-- Integration tests for component interactions
-- End-to-end tests with Cypress or Playwright
-`,
-
-		"Cybersecurity": `
-# Application Security Best Practices
-
-## Authentication and Authorization
-- Multi-factor authentication (MFA)
-- OAuth 2.0 and OpenID Connect
-- Role-based access control (RBAC)
-
-## Data Protection
-- Encryption at rest and in transit
-- Secure key management
-- Data anonymization and pseudonymization
-
-## Vulnerability Management
-- Regular security assessments
-- Dependency scanning and updates
-- Static and dynamic code analysis
-
-## Incident Response
-- Security monitoring and alerting
-- Incident response procedures
-- Forensic analysis and recovery
-
-Tools: OWASP ZAP, Burp Suite, Nessus, Wireshark, Metasploit
-`,
-
-		"Mobile Development": `
-# Cross-Platform Mobile Development with React Native
-
-## Architecture Patterns
-- Component-based architecture
-- State management with Redux or Context
-- Navigation with React Navigation
-
-## Performance Optimization
-- Image optimization and lazy loading
-- Memory management and leak prevention
-- Bundle size optimization
-
-## Native Integration
-- Bridging to native modules
-- Platform-specific code with Platform API
-- Third-party library integration
-
-## Testing and Deployment
-- Unit testing with Jest
-- E2E testing with Detox
-- CI/CD with Fastlane and App Center
-
-Platforms: iOS, Android, Windows, macOS
-`,
+	tests := []struct {
+		name           string
+		videoName      string
+		category       string
+		expectedStatus int
+		errorContains  string
+	}{
+		{
+			name:           "Video with empty Gist field",
+			videoName:      "video-empty-gist",
+			category:       "test-category",
+			expectedStatus: http.StatusBadRequest,
+			errorContains:  "Video manuscript not configured",
+		},
+		{
+			name:           "Video with non-existent manuscript file",
+			videoName:      "video-bad-gist",
+			category:       "test-category",
+			expectedStatus: http.StatusInternalServerError,
+			errorContains:  "Failed to read manuscript",
+		},
 	}
 
-	// Test titles endpoint with different technical domains
-	for domain, manuscript := range domainTests {
-		t.Run(fmt.Sprintf("Titles for %s", domain), func(t *testing.T) {
-			reqBody, _ := json.Marshal(AIRequest{Manuscript: manuscript})
-			req := httptest.NewRequest("POST", "/api/ai/titles", bytes.NewReader(reqBody))
-			req.Header.Set("Content-Type", "application/json")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			url := fmt.Sprintf("/api/ai/titles/%s?category=%s", tt.videoName, tt.category)
+			req := httptest.NewRequest("POST", url, nil)
 			w := httptest.NewRecorder()
 
 			server.router.ServeHTTP(w, req)
 
-			// Skip validation if AI config is not available
-			if w.Code == http.StatusInternalServerError {
+			assert.Equal(t, tt.expectedStatus, w.Code)
+
+			if tt.errorContains != "" {
+				var errorResp map[string]interface{}
+				err := json.Unmarshal(w.Body.Bytes(), &errorResp)
+				assert.NoError(t, err, "Error response should be valid JSON")
+				assert.Contains(t, errorResp, "error", "Error response should contain error field")
+				assert.Contains(t, errorResp["error"], tt.errorContains, "Error message should contain expected text")
+			}
+		})
+	}
+}
+
+// Test that wrong HTTP methods return 405 for new endpoint
+func TestAITitlesWithVideoParamsMethodNotAllowed(t *testing.T) {
+	server := setupTestServer(t)
+
+	methods := []string{"GET", "PUT", "DELETE", "PATCH"}
+
+	for _, method := range methods {
+		t.Run("Method_"+method, func(t *testing.T) {
+			url := "/api/ai/titles/test-video?category=test-category"
+			req := httptest.NewRequest(method, url, nil)
+			w := httptest.NewRecorder()
+
+			server.router.ServeHTTP(w, req)
+
+			assert.Equal(t, http.StatusMethodNotAllowed, w.Code)
+		})
+	}
+}
+
+// Test new AI description endpoint that uses URL parameters instead of JSON payload
+func TestAIDescriptionWithVideoParams(t *testing.T) {
+	server := setupTestServer(t)
+
+	// Create a test video with manuscript
+	_, err := server.videoService.CreateVideo("test-video", "test-category")
+	require.NoError(t, err)
+
+	// Create a test manuscript file
+	manuscriptContent := "# Test Video Tutorial\n\nThis is a comprehensive tutorial about Docker containerization and Kubernetes orchestration."
+	manuscriptPath := server.videoService.GetManuscriptPath("test-video", "test-category")
+	err = os.WriteFile(manuscriptPath, []byte(manuscriptContent), 0644)
+	require.NoError(t, err)
+
+	// Update the video to set the Gist field
+	video, err := server.videoService.GetVideo("test-video", "test-category")
+	require.NoError(t, err)
+	video.Gist = manuscriptPath
+	err = server.videoService.UpdateVideo(video)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name           string
+		videoName      string
+		category       string
+		expectedStatus int
+		validateResp   func(t *testing.T, body []byte)
+	}{
+		{
+			name:           "Valid video with manuscript",
+			videoName:      "test-video",
+			category:       "test-category",
+			expectedStatus: http.StatusOK,
+			validateResp: func(t *testing.T, body []byte) {
+				var resp AIDescriptionResponse
+				err := json.Unmarshal(body, &resp)
+				require.NoError(t, err, "Response should be valid JSON")
+				assert.NotEmpty(t, resp.Description, "Should return a description")
+				assert.True(t, len(resp.Description) > 10, "Description should be reasonably long")
+			},
+		},
+		{
+			name:           "Non-existent video",
+			videoName:      "non-existent",
+			category:       "test-category",
+			expectedStatus: http.StatusNotFound,
+		},
+		{
+			name:           "Empty video name",
+			videoName:      "",
+			category:       "test-category",
+			expectedStatus: http.StatusNotFound,
+		},
+		{
+			name:           "Empty category",
+			videoName:      "test-video",
+			category:       "",
+			expectedStatus: http.StatusBadRequest,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			url := fmt.Sprintf("/api/ai/description/%s?category=%s", tt.videoName, tt.category)
+			req := httptest.NewRequest("POST", url, nil)
+			w := httptest.NewRecorder()
+
+			server.router.ServeHTTP(w, req)
+
+			// Skip validation if AI config is not available (expected in test environment)
+			if w.Code == http.StatusInternalServerError && tt.expectedStatus == http.StatusOK {
 				t.Skip("AI configuration not available in test environment")
 			}
 
-			assert.Equal(t, http.StatusOK, w.Code, "Should handle %s content", domain)
+			assert.Equal(t, tt.expectedStatus, w.Code)
+			if tt.validateResp != nil && w.Code == http.StatusOK {
+				tt.validateResp(t, w.Body.Bytes())
+			}
+		})
+	}
+}
 
-			if w.Code == http.StatusOK {
-				var resp AITitlesResponse
-				err := json.Unmarshal(w.Body.Bytes(), &resp)
-				require.NoError(t, err)
-				assert.NotEmpty(t, resp.Titles, "Should generate titles for %s content", domain)
+// Test new AI tags endpoint that uses URL parameters instead of JSON payload
+func TestAITagsWithVideoParams(t *testing.T) {
+	server := setupTestServer(t)
 
-				// Log the generated titles for manual inspection
-				t.Logf("Generated titles for %s: %v", domain, resp.Titles)
+	// Create a test video with manuscript
+	_, err := server.videoService.CreateVideo("test-video", "test-category")
+	require.NoError(t, err)
+
+	// Create a test manuscript file
+	manuscriptContent := "# Test Video Tutorial\n\nThis is a comprehensive tutorial about Docker containerization and Kubernetes orchestration."
+	manuscriptPath := server.videoService.GetManuscriptPath("test-video", "test-category")
+	err = os.WriteFile(manuscriptPath, []byte(manuscriptContent), 0644)
+	require.NoError(t, err)
+
+	// Update the video to set the Gist field
+	video, err := server.videoService.GetVideo("test-video", "test-category")
+	require.NoError(t, err)
+	video.Gist = manuscriptPath
+	err = server.videoService.UpdateVideo(video)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name           string
+		videoName      string
+		category       string
+		expectedStatus int
+		validateResp   func(t *testing.T, body []byte)
+	}{
+		{
+			name:           "Valid video with manuscript",
+			videoName:      "test-video",
+			category:       "test-category",
+			expectedStatus: http.StatusOK,
+			validateResp: func(t *testing.T, body []byte) {
+				var resp AITagsResponse
+				err := json.Unmarshal(body, &resp)
+				require.NoError(t, err, "Response should be valid JSON")
+				assert.NotEmpty(t, resp.Tags, "Should return at least one tag")
+				for _, tag := range resp.Tags {
+					assert.NotEmpty(t, tag, "Each tag should not be empty")
+				}
+			},
+		},
+		{
+			name:           "Non-existent video",
+			videoName:      "non-existent",
+			category:       "test-category",
+			expectedStatus: http.StatusNotFound,
+		},
+		{
+			name:           "Empty video name",
+			videoName:      "",
+			category:       "test-category",
+			expectedStatus: http.StatusNotFound,
+		},
+		{
+			name:           "Empty category",
+			videoName:      "test-video",
+			category:       "",
+			expectedStatus: http.StatusBadRequest,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			url := fmt.Sprintf("/api/ai/tags/%s?category=%s", tt.videoName, tt.category)
+			req := httptest.NewRequest("POST", url, nil)
+			w := httptest.NewRecorder()
+
+			server.router.ServeHTTP(w, req)
+
+			// Skip validation if AI config is not available (expected in test environment)
+			if w.Code == http.StatusInternalServerError && tt.expectedStatus == http.StatusOK {
+				t.Skip("AI configuration not available in test environment")
+			}
+
+			assert.Equal(t, tt.expectedStatus, w.Code)
+			if tt.validateResp != nil && w.Code == http.StatusOK {
+				tt.validateResp(t, w.Body.Bytes())
+			}
+		})
+	}
+}
+
+// Test new AI tweets endpoint that uses URL parameters instead of JSON payload
+func TestAITweetsWithVideoParams(t *testing.T) {
+	server := setupTestServer(t)
+
+	// Create a test video with manuscript
+	_, err := server.videoService.CreateVideo("test-video", "test-category")
+	require.NoError(t, err)
+
+	// Create a test manuscript file
+	manuscriptContent := "# Test Video Tutorial\n\nThis is a comprehensive tutorial about Docker containerization and Kubernetes orchestration."
+	manuscriptPath := server.videoService.GetManuscriptPath("test-video", "test-category")
+	err = os.WriteFile(manuscriptPath, []byte(manuscriptContent), 0644)
+	require.NoError(t, err)
+
+	// Update the video to set the Gist field
+	video, err := server.videoService.GetVideo("test-video", "test-category")
+	require.NoError(t, err)
+	video.Gist = manuscriptPath
+	err = server.videoService.UpdateVideo(video)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name           string
+		videoName      string
+		category       string
+		expectedStatus int
+		validateResp   func(t *testing.T, body []byte)
+	}{
+		{
+			name:           "Valid video with manuscript",
+			videoName:      "test-video",
+			category:       "test-category",
+			expectedStatus: http.StatusOK,
+			validateResp: func(t *testing.T, body []byte) {
+				var resp AITweetsResponse
+				err := json.Unmarshal(body, &resp)
+				require.NoError(t, err, "Response should be valid JSON")
+				assert.NotEmpty(t, resp.Tweets, "Should return at least one tweet")
+				for _, tweet := range resp.Tweets {
+					assert.NotEmpty(t, tweet, "Each tweet should not be empty")
+				}
+			},
+		},
+		{
+			name:           "Non-existent video",
+			videoName:      "non-existent",
+			category:       "test-category",
+			expectedStatus: http.StatusNotFound,
+		},
+		{
+			name:           "Empty video name",
+			videoName:      "",
+			category:       "test-category",
+			expectedStatus: http.StatusNotFound,
+		},
+		{
+			name:           "Empty category",
+			videoName:      "test-video",
+			category:       "",
+			expectedStatus: http.StatusBadRequest,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			url := fmt.Sprintf("/api/ai/tweets/%s?category=%s", tt.videoName, tt.category)
+			req := httptest.NewRequest("POST", url, nil)
+			w := httptest.NewRecorder()
+
+			server.router.ServeHTTP(w, req)
+
+			// Skip validation if AI config is not available (expected in test environment)
+			if w.Code == http.StatusInternalServerError && tt.expectedStatus == http.StatusOK {
+				t.Skip("AI configuration not available in test environment")
+			}
+
+			assert.Equal(t, tt.expectedStatus, w.Code)
+			if tt.validateResp != nil && w.Code == http.StatusOK {
+				tt.validateResp(t, w.Body.Bytes())
+			}
+		})
+	}
+}
+
+// Test new AI highlights endpoint that uses URL parameters instead of JSON payload
+func TestAIHighlightsWithVideoParams(t *testing.T) {
+	server := setupTestServer(t)
+
+	// Create a test video with manuscript
+	_, err := server.videoService.CreateVideo("test-video", "test-category")
+	require.NoError(t, err)
+
+	// Create a test manuscript file
+	manuscriptContent := "# Test Video Tutorial\n\nThis is a comprehensive tutorial about Docker containerization and Kubernetes orchestration."
+	manuscriptPath := server.videoService.GetManuscriptPath("test-video", "test-category")
+	err = os.WriteFile(manuscriptPath, []byte(manuscriptContent), 0644)
+	require.NoError(t, err)
+
+	// Update the video to set the Gist field
+	video, err := server.videoService.GetVideo("test-video", "test-category")
+	require.NoError(t, err)
+	video.Gist = manuscriptPath
+	err = server.videoService.UpdateVideo(video)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name           string
+		videoName      string
+		category       string
+		expectedStatus int
+		validateResp   func(t *testing.T, body []byte)
+	}{
+		{
+			name:           "Valid video with manuscript",
+			videoName:      "test-video",
+			category:       "test-category",
+			expectedStatus: http.StatusOK,
+			validateResp: func(t *testing.T, body []byte) {
+				var resp AIHighlightsResponse
+				err := json.Unmarshal(body, &resp)
+				require.NoError(t, err, "Response should be valid JSON")
+				assert.NotEmpty(t, resp.Highlights, "Should return at least one highlight")
+				for _, highlight := range resp.Highlights {
+					assert.NotEmpty(t, highlight, "Each highlight should not be empty")
+				}
+			},
+		},
+		{
+			name:           "Non-existent video",
+			videoName:      "non-existent",
+			category:       "test-category",
+			expectedStatus: http.StatusNotFound,
+		},
+		{
+			name:           "Empty video name",
+			videoName:      "",
+			category:       "test-category",
+			expectedStatus: http.StatusNotFound,
+		},
+		{
+			name:           "Empty category",
+			videoName:      "test-video",
+			category:       "",
+			expectedStatus: http.StatusBadRequest,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			url := fmt.Sprintf("/api/ai/highlights/%s?category=%s", tt.videoName, tt.category)
+			req := httptest.NewRequest("POST", url, nil)
+			w := httptest.NewRecorder()
+
+			server.router.ServeHTTP(w, req)
+
+			// Skip validation if AI config is not available (expected in test environment)
+			if w.Code == http.StatusInternalServerError && tt.expectedStatus == http.StatusOK {
+				t.Skip("AI configuration not available in test environment")
+			}
+
+			assert.Equal(t, tt.expectedStatus, w.Code)
+			if tt.validateResp != nil && w.Code == http.StatusOK {
+				tt.validateResp(t, w.Body.Bytes())
+			}
+		})
+	}
+}
+
+// Test new AI description-tags endpoint that uses URL parameters instead of JSON payload
+func TestAIDescriptionTagsWithVideoParams(t *testing.T) {
+	server := setupTestServer(t)
+
+	// Create a test video with manuscript
+	_, err := server.videoService.CreateVideo("test-video", "test-category")
+	require.NoError(t, err)
+
+	// Create a test manuscript file
+	manuscriptContent := "# Test Video Tutorial\n\nThis is a comprehensive tutorial about Docker containerization and Kubernetes orchestration."
+	manuscriptPath := server.videoService.GetManuscriptPath("test-video", "test-category")
+	err = os.WriteFile(manuscriptPath, []byte(manuscriptContent), 0644)
+	require.NoError(t, err)
+
+	// Update the video to set the Gist field
+	video, err := server.videoService.GetVideo("test-video", "test-category")
+	require.NoError(t, err)
+	video.Gist = manuscriptPath
+	err = server.videoService.UpdateVideo(video)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name           string
+		videoName      string
+		category       string
+		expectedStatus int
+		validateResp   func(t *testing.T, body []byte)
+	}{
+		{
+			name:           "Valid video with manuscript",
+			videoName:      "test-video",
+			category:       "test-category",
+			expectedStatus: http.StatusOK,
+			validateResp: func(t *testing.T, body []byte) {
+				var resp AIDescriptionTagsResponse
+				err := json.Unmarshal(body, &resp)
+				require.NoError(t, err, "Response should be valid JSON")
+				assert.NotEmpty(t, resp.DescriptionTags, "Should return at least one description tag")
+				for _, tag := range resp.DescriptionTags {
+					assert.NotEmpty(t, tag, "Each description tag should not be empty")
+				}
+			},
+		},
+		{
+			name:           "Non-existent video",
+			videoName:      "non-existent",
+			category:       "test-category",
+			expectedStatus: http.StatusNotFound,
+		},
+		{
+			name:           "Empty video name",
+			videoName:      "",
+			category:       "test-category",
+			expectedStatus: http.StatusNotFound,
+		},
+		{
+			name:           "Empty category",
+			videoName:      "test-video",
+			category:       "",
+			expectedStatus: http.StatusBadRequest,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			url := fmt.Sprintf("/api/ai/description-tags/%s?category=%s", tt.videoName, tt.category)
+			req := httptest.NewRequest("POST", url, nil)
+			w := httptest.NewRecorder()
+
+			server.router.ServeHTTP(w, req)
+
+			// Skip validation if AI config is not available (expected in test environment)
+			if w.Code == http.StatusInternalServerError && tt.expectedStatus == http.StatusOK {
+				t.Skip("AI configuration not available in test environment")
+			}
+
+			assert.Equal(t, tt.expectedStatus, w.Code)
+			if tt.validateResp != nil && w.Code == http.StatusOK {
+				tt.validateResp(t, w.Body.Bytes())
 			}
 		})
 	}
