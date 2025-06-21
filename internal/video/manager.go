@@ -101,7 +101,7 @@ func (m *Manager) CalculateDefinePhaseCompletion(video storage.Video) (completed
 		video.Tweet,
 		video.Animations,
 		video.RequestThumbnail, // This is a bool
-		video.Gist,             // Added Gist back
+		// Gist removed - it belongs to InitialDetails phase, not Definition phase
 	}
 	total = len(fieldsToCount)
 

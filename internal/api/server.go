@@ -104,6 +104,9 @@ func (s *Server) setupRoutes() {
 		// Categories endpoint
 		r.Get("/categories", s.getCategories)
 
+		// Animations endpoint (non-AI, manuscript parsing only)
+		r.Get("/animations/{videoName}", s.animations)
+
 		// AI endpoints
 		r.Route("/ai", func(r chi.Router) {
 			r.Post("/titles", s.aiTitles)
