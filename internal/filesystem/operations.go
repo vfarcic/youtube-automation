@@ -96,7 +96,7 @@ func (o *Operations) GetAnimations(filePath string) (animations, sections []stri
 			animations = append(animations, line)
 		} else if strings.HasPrefix(line, "## ") {
 			containsAny := false
-			for _, value := range []string{"## Intro", "## Setup", "## Destroy"} {
+			for _, value := range []string{"## Intro", "## Introduction", "## Setup", "## Destroy"} {
 				if line == value {
 					containsAny = true
 					break

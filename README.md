@@ -85,6 +85,9 @@ Starts the REST API server. See [docs/api-manual-testing.md](docs/api-manual-tes
 - `POST /api/ai/highlights/{videoName}?category={cat}` - Generate highlights for specific video
 - `POST /api/ai/description-tags/{videoName}?category={cat}` - Generate description with hashtags for specific video
 
+**Animations endpoint:**
+- `GET /api/animations/{videoName}?category={cat}` - **NEW**: Get animation cues from video manuscript (non-AI parsing)
+
 **Editing aspects metadata:**
 - `GET /api/editing/aspects` - **NEW**: Get editing aspects overview (lightweight, ~1KB)
   - **NEW**: Optional query parameters: `?videoName={name}&category={cat}` for progress tracking

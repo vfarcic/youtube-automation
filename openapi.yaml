@@ -652,6 +652,103 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /api/animations/{videoName}:
+    get:
+      summary: Get animations from video manuscript
+      description: |
+        Extracts animation cues and instructions from a video's manuscript file.
+        This endpoint parses the manuscript content to identify animation requirements,
+        sections, and visual cues for video production.
+        
+        **Features:**
+        - Manuscript parsing using existing filesystem operations (same as CLI)
+        - No AI processing - direct file parsing for fast response
+        - Section detection and animation extraction
+        - Comprehensive error handling for all failure scenarios
+        
+        **Performance:** Fast response times using direct file parsing without AI overhead.
+      operationId: getAnimations
+      tags:
+        - Animations
+      parameters:
+        - name: videoName
+          in: path
+          required: true
+          description: The name of the video file (without extension)
+          schema:
+            type: string
+            example: "kubernetes-tutorial"
+        - name: category
+          in: query
+          required: true
+          description: The category/directory containing the video
+          schema:
+            type: string
+            example: "tutorials"
+      responses:
+        '200':
+          description: Animations extracted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnimationsResponse'
+              examples:
+                with_animations:
+                  summary: Video with animation cues
+                  description: Successful response when manuscript contains animation instructions
+                  value:
+                    animations:
+                      - "Add animation for concept explanation"
+                      - "Show diagram of system architecture"
+                      - "Highlight code changes in the editor"
+                      - "Zoom into terminal commands"
+                empty_animations:
+                  summary: Video without animations
+                  description: Successful response when no animations are found in manuscript
+                  value:
+                    animations: []
+        '400':
+          description: Bad request - invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                missing_video_name:
+                  summary: Missing video name
+                  value:
+                    error: "videoName is required"
+                missing_category:
+                  summary: Missing category parameter
+                  value:
+                    error: "category query parameter is required"
+                manuscript_not_configured:
+                  summary: Video manuscript not configured
+                  value:
+                    error: "Video manuscript not configured"
+        '404':
+          description: Video not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                video_not_found:
+                  summary: Video does not exist
+                  value:
+                    error: "Video not found"
+        '500':
+          description: Internal server error - processing failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                processing_error:
+                  summary: Failed to process animations
+                  value:
+                    error: "Failed to process animations"
+
   /api/editing/aspects:
     get:
       summary: Get editing aspects overview
@@ -1752,6 +1849,27 @@ components:
         - value
       description: An option for select-type fields
 
+    AnimationsResponse:
+      type: object
+      properties:
+        animations:
+          type: array
+          items:
+            type: string
+          description: Array of animation cues and instructions extracted from the video manuscript
+          example:
+            - "Add animation for concept explanation"
+            - "Show diagram of system architecture"
+            - "Highlight code changes in the editor"
+            - "Zoom into terminal commands"
+          minItems: 0
+          maxItems: 50
+      required:
+        - animations
+      description: |
+        Response containing animations extracted from video manuscript.
+        The animations array may be empty if no animation cues are found in the manuscript.
+
   /api/ai/titles:
     post:
       summary: Generate AI-powered video titles
@@ -2427,6 +2545,8 @@ tags:
     description: Phase-specific video updates
   - name: Categories
     description: Category management operations
+  - name: Animations
+    description: Animation extraction from video manuscripts (non-AI parsing)
   - name: Editing
     description: Video editing aspects metadata and field definitions
   - name: AI Content Generation

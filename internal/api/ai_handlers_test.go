@@ -1416,3 +1416,257 @@ func TestAIDescriptionTagsWithVideoParams(t *testing.T) {
 		})
 	}
 }
+
+// Test new animations endpoint that uses URL parameters and manuscript parsing (no AI)
+func TestAnimationsWithVideoParams(t *testing.T) {
+	server := setupTestServer(t)
+
+	// Create a test video with manuscript
+	_, err := server.videoService.CreateVideo("test-video", "test-category")
+	require.NoError(t, err)
+
+	// Create a test manuscript file with TODO comments and sections
+	manuscriptContent := `# Test Video Tutorial
+
+This is a comprehensive tutorial about Docker containerization.
+
+## Introduction
+
+Welcome to this tutorial.
+
+TODO: Show Docker logo animation
+TODO: Display terminal with typing effect
+
+## Docker Basics
+
+Let's start with the basics.
+
+TODO: Animate container creation process
+TODO: Show port mapping visualization
+
+## Setup
+
+Installation steps here.
+
+## Conclusion
+
+That's all for today.
+
+TODO: Show subscribe button animation
+
+## Destroy
+
+Cleanup steps.
+`
+	manuscriptPath := server.videoService.GetManuscriptPath("test-video", "test-category")
+	err = os.WriteFile(manuscriptPath, []byte(manuscriptContent), 0644)
+	require.NoError(t, err)
+
+	// Update the video to set the Gist field
+	video, err := server.videoService.GetVideo("test-video", "test-category")
+	require.NoError(t, err)
+	video.Gist = manuscriptPath
+	err = server.videoService.UpdateVideo(video)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name           string
+		videoName      string
+		category       string
+		expectedStatus int
+		validateResp   func(t *testing.T, body []byte)
+	}{
+		{
+			name:           "Valid video with manuscript containing TODO comments",
+			videoName:      "test-video",
+			category:       "test-category",
+			expectedStatus: http.StatusOK,
+			validateResp: func(t *testing.T, body []byte) {
+				var resp AnimationsResponse
+				err := json.Unmarshal(body, &resp)
+				require.NoError(t, err, "Response should be valid JSON")
+
+				// Should contain the parsed animations
+				assert.NotEmpty(t, resp.Animations, "Should return animations")
+
+				// Check that TODO comments are parsed correctly
+				animationsText := strings.Join(resp.Animations, "\n")
+				assert.Contains(t, animationsText, "Show Docker logo animation", "Should contain TODO comment")
+				assert.Contains(t, animationsText, "Display terminal with typing effect", "Should contain TODO comment")
+				assert.Contains(t, animationsText, "Animate container creation process", "Should contain TODO comment")
+				assert.Contains(t, animationsText, "Show port mapping visualization", "Should contain TODO comment")
+				assert.Contains(t, animationsText, "Show subscribe button animation", "Should contain TODO comment")
+
+				// Check that sections are parsed correctly (excluding Setup, Intro, Destroy)
+				assert.Contains(t, animationsText, "Docker Basics", "Should contain section header")
+				assert.Contains(t, animationsText, "Conclusion", "Should contain section header")
+
+				// Should NOT contain excluded sections
+				assert.NotContains(t, animationsText, "Introduction", "Should exclude Introduction section")
+				assert.NotContains(t, animationsText, "Setup", "Should exclude Setup section")
+				assert.NotContains(t, animationsText, "Destroy", "Should exclude Destroy section")
+			},
+		},
+		{
+			name:           "Non-existent video",
+			videoName:      "non-existent",
+			category:       "test-category",
+			expectedStatus: http.StatusNotFound,
+		},
+		{
+			name:           "Empty video name",
+			videoName:      "",
+			category:       "test-category",
+			expectedStatus: http.StatusNotFound, // Chi router returns 404 when path param is empty
+		},
+		{
+			name:           "Empty category",
+			videoName:      "test-video",
+			category:       "",
+			expectedStatus: http.StatusBadRequest,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			url := fmt.Sprintf("/api/animations/%s?category=%s", tt.videoName, tt.category)
+			req := httptest.NewRequest("GET", url, nil)
+			w := httptest.NewRecorder()
+
+			server.router.ServeHTTP(w, req)
+
+			assert.Equal(t, tt.expectedStatus, w.Code)
+			if tt.validateResp != nil && w.Code == http.StatusOK {
+				tt.validateResp(t, w.Body.Bytes())
+			}
+		})
+	}
+}
+
+// Test animations endpoint error scenarios
+func TestAnimationsWithVideoParamsErrors(t *testing.T) {
+	server := setupTestServer(t)
+
+	// Create a test video without manuscript
+	_, err := server.videoService.CreateVideo("video-no-manuscript", "test-category")
+	require.NoError(t, err)
+
+	// Create a test video with empty Gist field
+	_, err = server.videoService.CreateVideo("video-empty-gist", "test-category")
+	require.NoError(t, err)
+
+	// Create a test video with non-existent manuscript file
+	_, err = server.videoService.CreateVideo("video-bad-gist", "test-category")
+	require.NoError(t, err)
+	video, err := server.videoService.GetVideo("video-bad-gist", "test-category")
+	require.NoError(t, err)
+	video.Gist = "/non/existent/path/to/manuscript.md"
+	err = server.videoService.UpdateVideo(video)
+	require.NoError(t, err)
+
+	// Create a test video with manuscript but no TODO comments or sections
+	_, err = server.videoService.CreateVideo("video-no-animations", "test-category")
+	require.NoError(t, err)
+	manuscriptPath := server.videoService.GetManuscriptPath("video-no-animations", "test-category")
+	err = os.WriteFile(manuscriptPath, []byte("Just plain content without TODO or sections"), 0644)
+	require.NoError(t, err)
+	video, err = server.videoService.GetVideo("video-no-animations", "test-category")
+	require.NoError(t, err)
+	video.Gist = manuscriptPath
+	err = server.videoService.UpdateVideo(video)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name           string
+		videoName      string
+		category       string
+		expectedStatus int
+		errorContains  string
+		validateResp   func(t *testing.T, body []byte)
+	}{
+		{
+			name:           "Video with empty Gist field",
+			videoName:      "video-empty-gist",
+			category:       "test-category",
+			expectedStatus: http.StatusBadRequest,
+			errorContains:  "Video manuscript not configured",
+		},
+		{
+			name:           "Video with non-existent manuscript file",
+			videoName:      "video-bad-gist",
+			category:       "test-category",
+			expectedStatus: http.StatusInternalServerError,
+			errorContains:  "Failed to read manuscript",
+		},
+		{
+			name:           "Video with manuscript but no animations content",
+			videoName:      "video-no-animations",
+			category:       "test-category",
+			expectedStatus: http.StatusOK,
+			validateResp: func(t *testing.T, body []byte) {
+				var resp AnimationsResponse
+				err := json.Unmarshal(body, &resp)
+				require.NoError(t, err)
+				// Should return empty array, not error
+				assert.Empty(t, resp.Animations, "Should return empty animations array")
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			url := fmt.Sprintf("/api/animations/%s?category=%s", tt.videoName, tt.category)
+			req := httptest.NewRequest("GET", url, nil)
+			w := httptest.NewRecorder()
+
+			server.router.ServeHTTP(w, req)
+
+			assert.Equal(t, tt.expectedStatus, w.Code)
+
+			if tt.errorContains != "" {
+				var errorResp map[string]interface{}
+				err := json.Unmarshal(w.Body.Bytes(), &errorResp)
+				assert.NoError(t, err, "Error response should be valid JSON")
+				assert.Contains(t, errorResp, "error", "Error response should contain error field")
+				assert.Contains(t, errorResp["error"], tt.errorContains, "Error message should contain expected text")
+			}
+
+			if tt.validateResp != nil && w.Code == http.StatusOK {
+				tt.validateResp(t, w.Body.Bytes())
+			}
+		})
+	}
+}
+
+// Test that wrong HTTP methods return 405 for animations endpoint
+func TestAnimationsWithVideoParamsMethodNotAllowed(t *testing.T) {
+	server := setupTestServer(t)
+
+	methods := []string{"POST", "PUT", "DELETE", "PATCH"}
+
+	for _, method := range methods {
+		t.Run("Method_"+method, func(t *testing.T) {
+			url := "/api/animations/test-video?category=test-category"
+			req := httptest.NewRequest(method, url, nil)
+			w := httptest.NewRecorder()
+
+			server.router.ServeHTTP(w, req)
+
+			assert.Equal(t, http.StatusMethodNotAllowed, w.Code)
+		})
+	}
+}
+
+// Test animations endpoint routing
+func TestAnimationsEndpointRouting(t *testing.T) {
+	server := NewServer()
+
+	// Test that animations endpoint is properly registered (should return 400 for missing category, not 404)
+	req := httptest.NewRequest("GET", "/api/animations/test-video", nil)
+	w := httptest.NewRecorder()
+
+	server.router.ServeHTTP(w, req)
+
+	// Should return 400 (bad request for missing category), not 404 (route not found)
+	assert.Equal(t, http.StatusBadRequest, w.Code, "Route should exist and return 400 for missing category")
+}

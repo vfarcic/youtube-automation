@@ -144,7 +144,7 @@ func TestCalculateDefinePhaseCompletion(t *testing.T) {
 			name:              "All tasks incomplete",
 			video:             storage.Video{},
 			expectedCompleted: 0,
-			expectedTotal:     9, // Title, Description, Highlight, Tags, DescriptionTags, Tweet, Animations, RequestThumbnail, Gist
+			expectedTotal:     8, // Title, Description, Highlight, Tags, DescriptionTags, Tweet, Animations, RequestThumbnail (Gist removed - belongs to InitialDetails)
 		},
 		{
 			name: "Some tasks complete",
@@ -155,10 +155,10 @@ func TestCalculateDefinePhaseCompletion(t *testing.T) {
 				RequestThumbnail: true,
 			},
 			expectedCompleted: 4,
-			expectedTotal:     9,
+			expectedTotal:     8,
 		},
 		{
-			name: "All tasks (excluding Gist for this case) complete", // Updated name for clarity
+			name: "All Definition tasks complete", // Updated name - Gist is not part of Definition
 			video: storage.Video{
 				Title:            "Complete Title",
 				Description:      "Complete Description",
@@ -168,12 +168,13 @@ func TestCalculateDefinePhaseCompletion(t *testing.T) {
 				Tweet:            "Final Tweet",
 				Animations:       "Script for animations",
 				RequestThumbnail: true,
+				// Gist is NOT part of Definition phase - it belongs to InitialDetails
 			},
-			expectedCompleted: 8, // Gist is not set here
-			expectedTotal:     9,
+			expectedCompleted: 8, // All 8 Definition fields complete
+			expectedTotal:     8,
 		},
 		{
-			name: "All 9 tasks complete (including Gist)",
+			name: "All Definition tasks complete with Gist (Gist should not affect Definition count)", // Updated test
 			video: storage.Video{
 				Title:            "Complete Title",
 				Description:      "Complete Description",
@@ -183,10 +184,10 @@ func TestCalculateDefinePhaseCompletion(t *testing.T) {
 				Tweet:            "Final Tweet",
 				Animations:       "Script for animations",
 				RequestThumbnail: true,
-				Gist:             "path/to/my/gist.md",
+				Gist:             "path/to/my/gist.md", // This should NOT affect Definition phase count
 			},
-			expectedCompleted: 9,
-			expectedTotal:     9,
+			expectedCompleted: 8, // Still 8 - Gist doesn't count for Definition
+			expectedTotal:     8,
 		},
 		{
 			name: "Edge case - empty strings not counted",
@@ -199,21 +200,21 @@ func TestCalculateDefinePhaseCompletion(t *testing.T) {
 				Tweet:            "",
 				Animations:       "",
 				RequestThumbnail: false, // Boolean false
-				Gist:             "",    // Empty Gist
+				Gist:             "",    // Empty Gist (but doesn't matter for Definition phase)
 			},
 			expectedCompleted: 1, // Only Highlight
-			expectedTotal:     9,
+			expectedTotal:     8,
 		},
 		{
-			name: "Edge case - string with only spaces not counted, Gist complete",
+			name: "Edge case - string with only spaces not counted",
 			video: storage.Video{
 				Title:            "   ", // Spaces only
 				Description:      "Valid Description",
 				RequestThumbnail: true,
-				Gist:             "  valid/gist/path.md  ", // Will be trimmed and counted
+				Gist:             "  valid/gist/path.md  ", // Gist doesn't affect Definition phase count
 			},
-			expectedCompleted: 3, // Description, RequestThumbnail, Gist
-			expectedTotal:     9,
+			expectedCompleted: 2, // Description, RequestThumbnail (Gist not counted for Definition)
+			expectedTotal:     8,
 		},
 	}
 

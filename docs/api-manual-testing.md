@@ -798,7 +798,106 @@ curl -X POST http://localhost:8080/api/ai/tags \
   }'
 ```
 
-### 7. Editing Aspects Management
+### 7. Animations Endpoint
+
+#### Get Animations from Video Manuscript
+```bash
+curl -X GET "http://localhost:8080/api/animations/sample-video?category=tutorials"
+```
+Expected response:
+```json
+{
+  "animations": [
+    "Add animation for concept explanation",
+    "Show diagram of system architecture", 
+    "Highlight code changes in the editor",
+    "Zoom into terminal commands"
+  ]
+}
+```
+
+#### Test with Real Video
+```bash
+# Test with an actual video that has animations in the manuscript
+curl -X GET "http://localhost:8080/api/animations/ai-kills-iac?category=category-01"
+```
+Expected response (based on manuscript content):
+```json
+{
+  "animations": [
+    "Show terminal with kubectl commands",
+    "Display infrastructure diagram",
+    "Highlight code differences"
+  ]
+}
+```
+
+#### Error Cases for Animations Endpoint
+
+##### Missing Video Name
+```bash
+curl -X GET "http://localhost:8080/api/animations/?category=tutorials"
+```
+Expected response (400 Bad Request):
+```json
+{
+  "error": "videoName is required"
+}
+```
+
+##### Missing Category Parameter  
+```bash
+curl -X GET "http://localhost:8080/api/animations/sample-video"
+```
+Expected response (400 Bad Request):
+```json
+{
+  "error": "category query parameter is required"
+}
+```
+
+##### Video Not Found
+```bash
+curl -X GET "http://localhost:8080/api/animations/nonexistent-video?category=tutorials"
+```
+Expected response (404 Not Found):
+```json
+{
+  "error": "Video not found"
+}
+```
+
+##### Video Manuscript Not Configured
+```bash
+curl -X GET "http://localhost:8080/api/animations/video-without-gist?category=tutorials"
+```
+Expected response (400 Bad Request):
+```json
+{
+  "error": "Video manuscript not configured"
+}
+```
+
+##### Processing Error
+```bash
+# This would occur if the manuscript file exists but cannot be processed
+curl -X GET "http://localhost:8080/api/animations/corrupted-manuscript?category=tutorials"
+```
+Expected response (500 Internal Server Error):
+```json
+{
+  "error": "Failed to process animations"
+}
+```
+
+**Animations Endpoint Features:**
+- **Manuscript Parsing**: Extracts animation cues from video manuscript files
+- **Section Detection**: Identifies sections and animation requirements
+- **No AI Processing**: Uses existing filesystem parsing (same as CLI)
+- **Error Handling**: Comprehensive error responses for all failure scenarios
+- **Performance**: Fast response times using direct file parsing
+
+### 8. Editing Aspects Management
 
 #### Get Editing Aspects Overview (Basic)
 ```bash
@@ -835,7 +934,7 @@ Expected response:
       "endpoint": "/api/videos/{videoName}/definition",
       "icon": "definition",
       "order": 3,
-      "fieldCount": 9,
+      "fieldCount": 8,
       "completedFieldCount": 0
     },
     {
@@ -908,7 +1007,7 @@ Expected response with completion tracking:
       "endpoint": "/api/videos/{videoName}/definition", 
       "icon": "definition",
       "order": 3,
-      "fieldCount": 9,
+      "fieldCount": 8,
       "completedFieldCount": 3
     },
     {
@@ -1083,6 +1182,191 @@ Expected response:
 - **Ordered by workflow sequence** (1-6)
 
 #### Get Detailed Fields for Specific Aspect
+
+##### Definition Phase Fields (Updated with RequestThumbnail)
+```bash
+# Get detailed field information for definition phase (now 8 fields)
+curl -X GET http://localhost:8080/api/editing/aspects/definition/fields
+```
+Expected response:
+```json
+{
+  "aspect": {
+    "key": "definition",
+    "title": "Definition",
+    "description": "Video content definition and metadata",
+    "order": 3,
+    "endpoint": "/api/videos/{videoName}/definition"
+  },
+  "fields": [
+    {
+      "name": "Title",
+      "fieldName": "title",
+      "type": "string",
+      "required": false,
+      "order": 1,
+      "description": "Video title",
+      "uiHints": {
+        "inputType": "text",
+        "placeholder": "",
+        "helpText": "",
+        "multiline": false
+      },
+      "validationHints": {
+        "required": false
+      },
+      "defaultValue": "",
+      "completionCriteria": "filled_only"
+    },
+    {
+      "name": "Description",
+      "fieldName": "description",
+      "type": "text",
+      "required": false,
+      "order": 2,
+      "description": "Video description text",
+      "uiHints": {
+        "inputType": "textarea",
+        "placeholder": "",
+        "helpText": "",
+        "rows": 3,
+        "multiline": true
+      },
+      "validationHints": {
+        "required": false
+      },
+      "defaultValue": "",
+      "completionCriteria": "filled_only"
+    },
+    {
+      "name": "Highlight",
+      "fieldName": "highlight",
+      "type": "text",
+      "required": false,
+      "order": 3,
+      "description": "Video highlight or summary",
+      "uiHints": {
+        "inputType": "textarea",
+        "placeholder": "",
+        "helpText": "",
+        "rows": 3,
+        "multiline": true
+      },
+      "validationHints": {
+        "required": false
+      },
+      "defaultValue": "",
+      "completionCriteria": "filled_only"
+    },
+    {
+      "name": "Tags",
+      "fieldName": "tags",
+      "type": "text",
+      "required": false,
+      "order": 4,
+      "description": "Video tags for categorization",
+      "uiHints": {
+        "inputType": "textarea",
+        "placeholder": "",
+        "helpText": "",
+        "rows": 3,
+        "multiline": true
+      },
+      "validationHints": {
+        "required": false
+      },
+      "defaultValue": "",
+      "completionCriteria": "filled_only"
+    },
+    {
+      "name": "Description Tags",
+      "fieldName": "descriptionTags",
+      "type": "string",
+      "required": false,
+      "order": 5,
+      "description": "Hashtags for video description",
+      "uiHints": {
+        "inputType": "text",
+        "placeholder": "",
+        "helpText": "",
+        "multiline": false
+      },
+      "validationHints": {
+        "required": false
+      },
+      "defaultValue": "",
+      "completionCriteria": "filled_only"
+    },
+    {
+      "name": "Tweet",
+      "fieldName": "tweet",
+      "type": "text",
+      "required": false,
+      "order": 6,
+      "description": "Social media tweet content",
+      "uiHints": {
+        "inputType": "textarea",
+        "placeholder": "",
+        "helpText": "",
+        "rows": 3,
+        "multiline": true
+      },
+      "validationHints": {
+        "required": false
+      },
+      "defaultValue": "",
+      "completionCriteria": "filled_only"
+    },
+    {
+      "name": "Animations",
+      "fieldName": "animations",
+      "type": "text",
+      "required": false,
+      "order": 7,
+      "description": "Animation instructions and cues",
+      "uiHints": {
+        "inputType": "textarea",
+        "placeholder": "",
+        "helpText": "",
+        "rows": 3,
+        "multiline": true
+      },
+      "validationHints": {
+        "required": false
+      },
+      "defaultValue": "",
+      "completionCriteria": "filled_only"
+    },
+    {
+      "name": "Request Thumbnail",
+      "fieldName": "requestThumbnail",
+      "type": "boolean",
+      "required": false,
+      "order": 8,
+      "description": "Request custom thumbnail creation",
+      "uiHints": {
+        "inputType": "checkbox",
+        "placeholder": "",
+        "helpText": "",
+        "multiline": false
+      },
+      "validationHints": {
+        "required": false
+      },
+      "defaultValue": false,
+      "completionCriteria": "true_only"
+    }
+  ]
+}
+```
+
+**Definition Phase Updates (PRD #250):**
+- **Field Count**: Now correctly shows **8 fields** (was incorrectly showing 9)
+- **NEW Field**: `RequestThumbnail` (boolean) - Request custom thumbnail creation  
+- **Field Correction**: Removed `Gist` field (belongs to InitialDetails, not Definition)
+- **Backend Alignment**: Field count now matches backend calculation logic
+
+##### Work Progress Phase Fields
 ```bash
 # Get detailed field information for work-progress phase
 curl -X GET http://localhost:8080/api/editing/aspects/work-progress/fields
@@ -1379,7 +1663,7 @@ Expected response (405 Method Not Allowed):
 - **Help Text**: Display field-specific guidance to users
 - **Workflow Ordering**: Present editing phases in the correct sequence (1-6)
 
-### 8. Error Testing Scenarios
+### 9. Error Testing Scenarios
 
 #### Test Invalid Phase Parameter
 ```bash

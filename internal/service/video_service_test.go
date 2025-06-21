@@ -539,7 +539,7 @@ func TestVideoService_UpdateVideoPhase_Definition(t *testing.T) {
 	localVideoManager := video.NewManager(fsOps.GetFilePath)
 	defineCompleted, defineTotal := localVideoManager.CalculateDefinePhaseCompletion(*videoAfterUpdate)
 	assert.Greater(t, defineTotal, 0)
-	assert.Equal(t, 9, defineCompleted)
+	assert.Equal(t, 8, defineCompleted)
 }
 
 func TestVideoService_UpdateVideoPhase_PostProduction(t *testing.T) {

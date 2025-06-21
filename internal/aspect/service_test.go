@@ -343,7 +343,7 @@ func TestGetAspectsOverview(t *testing.T) {
 		expectedFieldCounts := map[string]int{
 			AspectKeyInitialDetails: 8,  // actual count from mapping
 			AspectKeyWorkProgress:   11, // actual count from mapping
-			AspectKeyDefinition:     7,  // actual count from mapping
+			AspectKeyDefinition:     8,  // actual count from mapping
 			AspectKeyPostProduction: 6,  // actual count from mapping
 			AspectKeyPublishing:     3,  // actual count from mapping
 			AspectKeyPostPublish:    10, // actual count from mapping

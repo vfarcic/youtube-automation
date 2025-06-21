@@ -44,7 +44,7 @@ func GetVideoAspectMappings() []AspectMapping {
 			"Screenshots", "Location", "Tagline", "TaglineIdeas", "OtherLogos",
 		},
 		AspectKeyDefinition: {
-			"Title", "Description", "Highlight", "Tags", "DescriptionTags", "Tweet", "Animations",
+			"Title", "Description", "Highlight", "Tags", "DescriptionTags", "Tweet", "Animations", "RequestThumbnail",
 		},
 		AspectKeyPostProduction: {
 			"Thumbnail", "Members", "RequestEdit", "Timecodes", "Movie", "Slides",

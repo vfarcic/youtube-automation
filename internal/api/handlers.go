@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 
@@ -10,6 +11,7 @@ import (
 
 	"devopstoolkit/youtube-automation/internal/ai"
 	"devopstoolkit/youtube-automation/internal/aspect"
+	"devopstoolkit/youtube-automation/internal/filesystem"
 	"devopstoolkit/youtube-automation/internal/storage"
 	video2 "devopstoolkit/youtube-automation/internal/video"
 	"devopstoolkit/youtube-automation/internal/workflow"
@@ -129,6 +131,10 @@ type AIHighlightsResponse struct {
 
 type AIDescriptionTagsResponse struct {
 	DescriptionTags []string `json:"description_tags"`
+}
+
+type AnimationsResponse struct {
+	Animations []string `json:"animations"`
 }
 
 // createVideo handles POST /api/videos
@@ -800,7 +806,12 @@ func (s *Server) aiDescriptionTags(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, AIDescriptionTagsResponse{DescriptionTags: []string{descriptionTags}})
+	// Split the space-separated tags into a slice
+	var descriptionTagsSlice []string
+	if descriptionTags != "" {
+		descriptionTagsSlice = strings.Fields(descriptionTags)
+	}
+	writeJSON(w, http.StatusOK, AIDescriptionTagsResponse{DescriptionTags: descriptionTagsSlice})
 }
 
 // aiDescriptionWithVideo handles POST /api/ai/description/{videoName}?category={category}
@@ -1060,5 +1071,76 @@ func (s *Server) aiDescriptionTagsWithVideo(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	writeJSON(w, http.StatusOK, AIDescriptionTagsResponse{DescriptionTags: []string{descriptionTags}})
+	// Split the space-separated tags into a slice
+	var descriptionTagsSlice []string
+	if descriptionTags != "" {
+		descriptionTagsSlice = strings.Fields(descriptionTags)
+	}
+	writeJSON(w, http.StatusOK, AIDescriptionTagsResponse{DescriptionTags: descriptionTagsSlice})
+}
+
+// animations handles GET /api/animations/{videoName}?category={category}
+// This endpoint parses manuscript files to extract animations (no AI involved)
+func (s *Server) animations(w http.ResponseWriter, r *http.Request) {
+	// Extract video name from URL path
+	videoName := chi.URLParam(r, "videoName")
+	if videoName == "" {
+		writeError(w, http.StatusBadRequest, "videoName is required")
+		return
+	}
+
+	// Extract category from query parameter
+	category := r.URL.Query().Get("category")
+	if category == "" {
+		writeError(w, http.StatusBadRequest, "category query parameter is required")
+		return
+	}
+
+	// Get manuscript content using our VideoService method
+	manuscriptContent, err := s.videoService.GetVideoManuscript(videoName, category)
+	if err != nil {
+		// Check if it's a "video not found" error vs other errors
+		if strings.Contains(err.Error(), "failed to get video") {
+			writeError(w, http.StatusNotFound, "Video not found", err.Error())
+			return
+		}
+		// Check if it's a "gist field empty" error (user error)
+		if strings.Contains(err.Error(), "gist field is empty") {
+			writeError(w, http.StatusBadRequest, "Video manuscript not configured", err.Error())
+			return
+		}
+		// Other errors (file read errors, etc.) are server errors
+		writeError(w, http.StatusInternalServerError, "Failed to read manuscript", err.Error())
+		return
+	}
+
+	// Create temporary file for manuscript content
+	tempFile, err := os.CreateTemp("", "manuscript-*.md")
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Failed to create temporary file", err.Error())
+		return
+	}
+	defer os.Remove(tempFile.Name())
+
+	if _, err := tempFile.WriteString(manuscriptContent); err != nil {
+		writeError(w, http.StatusInternalServerError, "Failed to write manuscript content", err.Error())
+		return
+	}
+	tempFile.Close()
+
+	// Use existing filesystem.Operations.GetAnimations() function
+	fsOps := &filesystem.Operations{}
+	animations, _, err := fsOps.GetAnimations(tempFile.Name())
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Failed to process animations", err.Error())
+		return
+	}
+
+	// Convert the result to the expected format
+	// The GetAnimations function returns []string directly, so we can use it as-is
+	if animations == nil {
+		animations = []string{}
+	}
+
+	writeJSON(w, http.StatusOK, AnimationsResponse{Animations: animations})
 }

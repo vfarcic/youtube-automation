@@ -157,7 +157,7 @@ func TestGetVideoAspectMappings(t *testing.T) {
 		expectedCounts := map[string]int{
 			AspectKeyInitialDetails: 8,  // ProjectName, ProjectURL, Amount, Emails, Blocked, Date, Delayed, Gist
 			AspectKeyWorkProgress:   11, // Code, Head, Screen, RelatedVideos, Thumbnails, Diagrams, Screenshots, Location, Tagline, TaglineIdeas, OtherLogos
-			AspectKeyDefinition:     7,  // Title, Description, Highlight, Tags, DescriptionTags, Tweet, Animations
+			AspectKeyDefinition:     8,  // Title, Description, Highlight, Tags, DescriptionTags, Tweet, Animations, RequestThumbnail
 			AspectKeyPostProduction: 6,  // Thumbnail, Members, RequestEdit, Timecodes, Movie, Slides
 			AspectKeyPublishing:     3,  // UploadVideo, VideoId, HugoPath
 			AspectKeyPostPublish:    10, // DOT, BlueSky, LinkedIn, Slack, YouTube Highlight/Comment/Reply, GDE, Repo, NotifySponsors
