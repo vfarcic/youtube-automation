@@ -4,6 +4,7 @@ This project automates various aspects of managing a YouTube channel with both C
 
 ## Demo Manifests and Code Used in DevOps Toolkit Videos
 
+[![My Workflow With AI: How I Code, Test, and Deploy Faster Than Ever](https://img.youtube.com/vi/2E610yzqQwg/0.jpg)](https://youtu.be/2E610yzqQwg)
 [![How I Fixed My Lazy Vibe Coding Habits with Taskmaster](https://img.youtube.com/vi/0WtCBbIHoKE/0.jpg)](https://youtu.be/0WtCBbIHoKE)
 
 ## Features
