@@ -8,7 +8,7 @@ require (
 	github.com/atotto/clipboard v0.1.4
 	github.com/charmbracelet/huh v0.7.0
 	github.com/charmbracelet/lipgloss v1.1.0
-	github.com/emersion/go-smtp v0.22.0
+	github.com/emersion/go-smtp v0.23.0
 	github.com/go-chi/chi/v5 v5.2.2
 	github.com/sirupsen/logrus v1.9.3
 	github.com/slack-go/slack v0.17.2
