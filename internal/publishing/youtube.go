@@ -355,7 +355,11 @@ func GetAdditionalInfo(hugoPath, projectName, projectURL, relatedVideosRaw strin
 		hugoUrl := fmt.Sprintf("https://devopstoolkit.live/%s", hugoPage)
 		gist = fmt.Sprintf("➡ Transcript and commands: %s\n", hugoUrl)
 	}
-	return fmt.Sprintf("%s🔗 %s: %s\n%s", gist, projectName, projectURL, relatedVideos)
+	projectInfo := ""
+	if projectName != "N/A" && projectURL != "N/A" {
+		projectInfo = fmt.Sprintf("🔗 %s: %s\n", projectName, projectURL)
+	}
+	return fmt.Sprintf("%s%s%s", gist, projectInfo, relatedVideos)
 }
 
 func UploadThumbnail(video storage.Video) error {
