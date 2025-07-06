@@ -22,18 +22,8 @@ func (r *Hugo) Post(gist, title, date, videoId string) (string, error) {
 	return r.hugoFromMarkdown(gist, title, post)
 }
 
-func (r *Hugo) hugoFromMarkdown(filePath, title, post string) (string, error) {
-	// Convert the manuscript path to a content path
-	relPath, err := filepath.Rel(filepath.Join(configuration.GlobalSettings.Hugo.Path, "manuscript"), filepath.Dir(filePath))
-	if err != nil {
-		// If we can't make a relative path, try to extract the category from the path structure
-		relPath = filepath.Base(filepath.Dir(filePath))
-	}
-
-	// Use filepath.Join for proper path construction
-	categoryDir := filepath.Join(configuration.GlobalSettings.Hugo.Path, "content", relPath)
-
-	// Sanitize the title for use as a directory name
+// SanitizeTitle sanitizes a title for use as a directory name in Hugo
+func SanitizeTitle(title string) string {
 	postDir := title
 	postDir = strings.ReplaceAll(postDir, " ", "-")
 	postDir = strings.ReplaceAll(postDir, "(", "")
@@ -45,6 +35,34 @@ func (r *Hugo) hugoFromMarkdown(filePath, title, post string) (string, error) {
 	postDir = strings.ReplaceAll(postDir, "!", "")
 	postDir = strings.ReplaceAll(postDir, "?", "")
 	postDir = strings.ToLower(postDir)
+	return postDir
+}
+
+// GetCategoryFromFilePath extracts the category from a manuscript file path
+func GetCategoryFromFilePath(filePath string) string {
+	relPath, err := filepath.Rel(filepath.Join(configuration.GlobalSettings.Hugo.Path, "manuscript"), filepath.Dir(filePath))
+	if err != nil {
+		// If we can't make a relative path, try to extract the category from the path structure
+		relPath = filepath.Base(filepath.Dir(filePath))
+	}
+	return relPath
+}
+
+// ConstructHugoURL constructs the Hugo URL based on title and category without creating the post
+func ConstructHugoURL(title, category string) string {
+	sanitizedTitle := SanitizeTitle(title)
+	return fmt.Sprintf("https://devopstoolkit.live/%s/%s", category, sanitizedTitle)
+}
+
+func (r *Hugo) hugoFromMarkdown(filePath, title, post string) (string, error) {
+	// Convert the manuscript path to a content path
+	relPath := GetCategoryFromFilePath(filePath)
+
+	// Use filepath.Join for proper path construction
+	categoryDir := filepath.Join(configuration.GlobalSettings.Hugo.Path, "content", relPath)
+
+	// Sanitize the title for use as a directory name
+	postDir := SanitizeTitle(title)
 
 	// Create the full directory path using filepath.Join
 	fullDir := filepath.Join(categoryDir, postDir)

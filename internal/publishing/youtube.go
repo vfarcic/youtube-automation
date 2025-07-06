@@ -257,6 +257,14 @@ func UploadVideo(video *storage.Video) string {
 	if len(video.Timecodes) > 0 && video.Timecodes != "N/A" {
 		timecodes = fmt.Sprintf("▬▬▬▬▬▬ ⏱ Timecodes ⏱ ▬▬▬▬▬▬\n%s", video.Timecodes)
 	}
+	
+	// Construct Hugo URL from title and category for video description
+	hugoURL := ""
+	if video.Title != "" && video.Gist != "" {
+		category := GetCategoryFromFilePath(video.Gist)
+		hugoURL = ConstructHugoURL(video.Title, category)
+	}
+	
 	description := fmt.Sprintf(`%s
 
 %s
@@ -277,7 +285,7 @@ If you are interested in sponsoring this channel, please visit https://devopstoo
 💬 Live streams: https://www.youtube.com/c/DevOpsParadox
 
 %s
-`, video.Description, video.DescriptionTags, GetAdditionalInfo(video.HugoPath, video.ProjectName, video.ProjectURL, video.RelatedVideos), timecodes)
+`, video.Description, video.DescriptionTags, GetAdditionalInfo(hugoURL, video.ProjectName, video.ProjectURL, video.RelatedVideos), timecodes)
 
 	upload := &youtube.Video{
 		Snippet: &youtube.VideoSnippet{
@@ -336,7 +344,20 @@ If you are interested in sponsoring this channel, please visit https://devopstoo
 	return response.Id
 }
 
-func GetAdditionalInfo(hugoPath, projectName, projectURL, relatedVideosRaw string) string {
+// GetAdditionalInfoFromPath converts a Hugo path to URL and calls GetAdditionalInfo
+// This maintains backward compatibility for existing callers that pass Hugo paths
+func GetAdditionalInfoFromPath(hugoPath, projectName, projectURL, relatedVideosRaw string) string {
+	hugoURL := ""
+	if len(hugoPath) > 0 {
+		hugoPage := strings.ReplaceAll(hugoPath, "../", "")
+		hugoPage = strings.ReplaceAll(hugoPage, "devopstoolkit-live/content/", "")
+		hugoPage = strings.ReplaceAll(hugoPage, "/_index.md", "")
+		hugoURL = fmt.Sprintf("https://devopstoolkit.live/%s", hugoPage)
+	}
+	return GetAdditionalInfo(hugoURL, projectName, projectURL, relatedVideosRaw)
+}
+
+func GetAdditionalInfo(hugoURL, projectName, projectURL, relatedVideosRaw string) string {
 	relatedVideos := ""
 	relatedVideosArray := strings.Split(relatedVideosRaw, "\n")
 	for i := range relatedVideosArray {
@@ -348,12 +369,8 @@ func GetAdditionalInfo(hugoPath, projectName, projectURL, relatedVideosRaw strin
 		}
 	}
 	gist := ""
-	if len(hugoPath) > 0 {
-		hugoPage := strings.ReplaceAll(hugoPath, "../", "")
-		hugoPage = strings.ReplaceAll(hugoPage, "devopstoolkit-live/content/", "")
-		hugoPage = strings.ReplaceAll(hugoPage, "/_index.md", "")
-		hugoUrl := fmt.Sprintf("https://devopstoolkit.live/%s", hugoPage)
-		gist = fmt.Sprintf("➡ Transcript and commands: %s\n", hugoUrl)
+	if len(hugoURL) > 0 {
+		gist = fmt.Sprintf("➡ Transcript and commands: %s\n", hugoURL)
 	}
 	projectInfo := ""
 	if projectName != "N/A" && projectURL != "N/A" {
@@ -361,6 +378,7 @@ func GetAdditionalInfo(hugoPath, projectName, projectURL, relatedVideosRaw strin
 	}
 	return fmt.Sprintf("%s%s%s", gist, projectInfo, relatedVideos)
 }
+
 
 func UploadThumbnail(video storage.Video) error {
 	client := getClient(context.Background(), &oauth2.Config{Scopes: []string{youtube.YoutubeUploadScope}})
