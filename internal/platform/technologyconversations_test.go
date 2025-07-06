@@ -31,7 +31,7 @@ func TestPostTechnologyConversations(t *testing.T) {
 	relatedVideos := "TestRelatedVideos"
 
 	additionalInfoResult := "Mocked Additional Info"
-	mockGetAdditionalInfo := func(g, pn, pu, rv string) string {
+	mockGetAdditionalInfoFromPath := func(g, pn, pu, rv string) string {
 		assert.Equal(t, gist, g, "getAdditionalInfo called with wrong gist")
 		assert.Equal(t, projectName, pn, "getAdditionalInfo called with wrong projectName")
 		assert.Equal(t, projectURL, pu, "getAdditionalInfo called with wrong projectURL")
@@ -43,7 +43,7 @@ func TestPostTechnologyConversations(t *testing.T) {
 
 	// As PostTechnologyConversations uses `println`, we can't directly assert its output easily.
 	// We will assert that the mocks were called correctly and that the message passed to Render is correct.
-	PostTechnologyConversations(title, description, videoId, gist, projectName, projectURL, relatedVideos, mockGetAdditionalInfo, mockStyle)
+	PostTechnologyConversations(title, description, videoId, gist, projectName, projectURL, relatedVideos, mockGetAdditionalInfoFromPath, mockStyle)
 
 	assert.True(t, mockStyle.Called, "confirmationStyle.Render should have been called")
 	assert.Len(t, mockStyle.ReceivedArgs, 1, "Render should be called with one argument")
