@@ -1168,13 +1168,7 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 							Password:   configuration.GlobalSettings.Bluesky.Password,
 							URL:        configuration.GlobalSettings.Bluesky.URL,
 						}
-						bsPost := bluesky.Post{
-							Text:          updatedVideo.Tweet,
-							YouTubeURL:    publishing.GetYouTubeURL(updatedVideo.VideoId),
-							VideoID:       updatedVideo.VideoId,
-							ThumbnailPath: updatedVideo.Thumbnail,
-						}
-						if _, bsErr := bluesky.CreatePost(bsConfig, bsPost); bsErr != nil {
+						if bsErr := bluesky.SendPost(bsConfig, updatedVideo.Tweet, updatedVideo.VideoId, updatedVideo.Thumbnail); bsErr != nil {
 							log.Printf(m.errorStyle.Render(fmt.Sprintf("Failed to post to BlueSky: %v", bsErr)))
 							updatedVideo.BlueSkyPosted = false // Revert intent
 						} else {
