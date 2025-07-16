@@ -2,7 +2,7 @@
   "packages": [
     "teller@2.0.7",
     "just@1.40.0",
-    "git@2.49.0",
+    "git@2.50.0",
     "nushell@0.105.1"
   ],
   "shell": {
