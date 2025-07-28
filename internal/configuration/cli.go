@@ -41,10 +41,21 @@ type SettingsHugo struct {
 }
 
 type SettingsAI struct {
+	Provider  string              `yaml:"provider"`
+	Azure     SettingsAzureAI     `yaml:"azure"`
+	Anthropic SettingsAnthropicAI `yaml:"anthropic"`
+}
+
+type SettingsAzureAI struct {
 	Key        string `yaml:"key"`
 	Endpoint   string `yaml:"endpoint"`
 	Deployment string `yaml:"deployment"`
 	APIVersion string `yaml:"apiVersion,omitempty"`
+}
+
+type SettingsAnthropicAI struct {
+	Key   string `yaml:"key"`
+	Model string `yaml:"model"`
 }
 
 type SettingsYouTube struct {
@@ -89,10 +100,13 @@ func init() {
 	RootCmd.Flags().StringVar(&GlobalSettings.Email.EditTo, "email-edit-to", GlobalSettings.Email.EditTo, "To which email to send requests for edits. (required)")
 	RootCmd.Flags().StringVar(&GlobalSettings.Email.FinanceTo, "email-finance-to", GlobalSettings.Email.FinanceTo, "To which email to send emails related to finances. (required)")
 	RootCmd.Flags().StringVar(&GlobalSettings.Email.Password, "email-password", GlobalSettings.Email.Password, "Email server password. Environment variable `EMAIL_PASSWORD` is supported as well. (required)")
-	RootCmd.Flags().StringVar(&GlobalSettings.AI.Endpoint, "ai-endpoint", GlobalSettings.AI.Endpoint, "AI endpoint. Only Azure OpenAI is currently supported. (required)")
-	RootCmd.Flags().StringVar(&GlobalSettings.AI.Key, "ai-key", GlobalSettings.AI.Key, "AI key. Only Azure OpenAI is currently supported. Environment variable `AI_KEY` is supported as well. (required)")
-	RootCmd.Flags().StringVar(&GlobalSettings.AI.Deployment, "ai-deployment", GlobalSettings.AI.Deployment, "AI Deployment. Only Azure OpenAI is currently supported. (required)")
-	RootCmd.Flags().StringVar(&GlobalSettings.AI.APIVersion, "ai-api-version", GlobalSettings.AI.APIVersion, "Azure OpenAI API Version (e.g., 2023-05-15). Defaults to a common version if not set.")
+	RootCmd.Flags().StringVar(&GlobalSettings.AI.Provider, "ai-provider", GlobalSettings.AI.Provider, "AI provider (azure or anthropic). Defaults to azure for backward compatibility.")
+	RootCmd.Flags().StringVar(&GlobalSettings.AI.Azure.Endpoint, "ai-endpoint", GlobalSettings.AI.Azure.Endpoint, "AI endpoint. For Azure OpenAI. (required for azure)")
+	RootCmd.Flags().StringVar(&GlobalSettings.AI.Azure.Key, "ai-key", GlobalSettings.AI.Azure.Key, "AI key. Environment variable `AI_KEY` is supported as well. (required)")
+	RootCmd.Flags().StringVar(&GlobalSettings.AI.Azure.Deployment, "ai-deployment", GlobalSettings.AI.Azure.Deployment, "AI Deployment. For Azure OpenAI. (required for azure)")
+	RootCmd.Flags().StringVar(&GlobalSettings.AI.Azure.APIVersion, "ai-api-version", GlobalSettings.AI.Azure.APIVersion, "Azure OpenAI API Version (e.g., 2023-05-15). Defaults to a common version if not set.")
+	RootCmd.Flags().StringVar(&GlobalSettings.AI.Anthropic.Key, "anthropic-key", GlobalSettings.AI.Anthropic.Key, "Anthropic API key. Environment variable `ANTHROPIC_API_KEY` is supported as well. (required for anthropic)")
+	RootCmd.Flags().StringVar(&GlobalSettings.AI.Anthropic.Model, "anthropic-model", GlobalSettings.AI.Anthropic.Model, "Anthropic model (e.g., claude-3-sonnet-20240229). (required for anthropic)")
 	RootCmd.Flags().StringVar(&GlobalSettings.YouTube.APIKey, "youtube-api-key", GlobalSettings.YouTube.APIKey, "YouTube API key. Environment variable `YOUTUBE_API_KEY` is supported as well. (required)")
 	RootCmd.Flags().StringVar(&GlobalSettings.Hugo.Path, "hugo-path", GlobalSettings.Hugo.Path, "Path to the repo with Hugo posts. (required)")
 	RootCmd.Flags().StringVar(&GlobalSettings.Bluesky.Identifier, "bluesky-identifier", GlobalSettings.Bluesky.Identifier, "Bluesky username/identifier (e.g., username.bsky.social)")
@@ -143,23 +157,47 @@ func init() {
 		RootCmd.MarkFlagRequired("email-password")
 	}
 
-	if GlobalSettings.AI.Endpoint == "" {
-		RootCmd.MarkFlagRequired("ai-endpoint")
+	// Default to azure provider for backward compatibility
+	if GlobalSettings.AI.Provider == "" {
+		GlobalSettings.AI.Provider = "azure"
 	}
 
-	if envAIKey := os.Getenv("AI_KEY"); envAIKey != "" {
-		GlobalSettings.AI.Key = envAIKey
-	} else if GlobalSettings.AI.Key == "" {
-		RootCmd.MarkFlagRequired("ai-key")
-	}
+	// Provider-specific validation
+	switch GlobalSettings.AI.Provider {
+	case "azure":
+		if GlobalSettings.AI.Azure.Endpoint == "" {
+			RootCmd.MarkFlagRequired("ai-endpoint")
+		}
 
-	if GlobalSettings.AI.Deployment == "" {
-		RootCmd.MarkFlagRequired("ai-deployment")
-	}
+		if envAIKey := os.Getenv("AI_KEY"); envAIKey != "" {
+			GlobalSettings.AI.Azure.Key = envAIKey
+		} else if GlobalSettings.AI.Azure.Key == "" {
+			RootCmd.MarkFlagRequired("ai-key")
+		}
 
-	// Default API version if not set
-	if GlobalSettings.AI.APIVersion == "" {
-		GlobalSettings.AI.APIVersion = "2023-05-15" // Defaulting to a common version
+		if GlobalSettings.AI.Azure.Deployment == "" {
+			RootCmd.MarkFlagRequired("ai-deployment")
+		}
+
+		// Default API version if not set
+		if GlobalSettings.AI.Azure.APIVersion == "" {
+			GlobalSettings.AI.Azure.APIVersion = "2023-05-15" // Defaulting to a common version
+		}
+
+	case "anthropic":
+		if envAnthropicKey := os.Getenv("ANTHROPIC_API_KEY"); envAnthropicKey != "" {
+			GlobalSettings.AI.Anthropic.Key = envAnthropicKey
+		} else if GlobalSettings.AI.Anthropic.Key == "" {
+			RootCmd.MarkFlagRequired("anthropic-key")
+		}
+
+		if GlobalSettings.AI.Anthropic.Model == "" {
+			GlobalSettings.AI.Anthropic.Model = "claude-3-sonnet-20240229" // Default model
+		}
+
+	default:
+		fmt.Printf("Unsupported AI provider: %s. Supported providers: azure, anthropic\n", GlobalSettings.AI.Provider)
+		osExit(1)
 	}
 
 	if envYouTubeKey := os.Getenv("YOUTUBE_API_KEY"); envYouTubeKey != "" {

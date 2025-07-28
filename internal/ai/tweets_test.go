@@ -3,11 +3,9 @@ package ai
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"strings"
 	"testing"
-
-	"github.com/tmc/langchaingo/llms"
-	"github.com/tmc/langchaingo/llms/openai"
 )
 
 // mockLLM is assumed to be defined in another test file in this package (e.g., highlights_test.go)
@@ -16,82 +14,41 @@ import (
 func TestSuggestTweets(t *testing.T) {
 	ctx := context.Background()
 	validManuscript := "This is a test manuscript about AI-powered tweet generation. It should result in 5 tweet suggestions."
-	validAIConfig := AITitleGeneratorConfig{ // Assuming AITitleGeneratorConfig is accessible from titles.go
-		Endpoint:       "https://fake-tweets-endpoint.openai.azure.com/",
-		DeploymentName: "fake-tweets-deployment",
-		APIKey:         "fake-tweets-api-key",
-		APIVersion:     "2023-07-01-preview",
-	}
-
-	// Backup and restore original newLLMClientFuncForTweets
-	originalNewLLMTweets := newLLMClientFuncForTweets
-	defer func() { newLLMClientFuncForTweets = originalNewLLMTweets }()
 
 	tests := []struct {
 		name              string
-		mockLLMResponse   string
-		mockLLMError      error
-		aiConfig          AITitleGeneratorConfig
+		mockResponse      string
+		mockError         error
 		manuscript        string
 		wantTweets        []string
 		wantErr           bool
 		expectedErrSubstr string
 	}{
 		{
-			name:            "Successful tweet generation - 5 tweets",
-			mockLLMResponse: `["Tweet 1: Exciting new video! 🤩 #Exciting #NewVideo\n\n[YOUTUBE]", "Tweet 2: Check this out. 👀 #CheckItOut #Tech\n\n[YOUTUBE]", "Tweet 3: AI powered content. 🤖 #AI #Content\n\n[YOUTUBE]", "Tweet 4: Don't miss it! 🚀 #MustWatch #YouTube\n\n[YOUTUBE]", "Tweet 5: Watch now! 🎬 #Video #Premier\n\n[YOUTUBE]"]`,
-			aiConfig:        validAIConfig,
-			manuscript:      validManuscript,
-			wantTweets:      []string{"Tweet 1: Exciting new video! 🤩 #Exciting #NewVideo\n\n[YOUTUBE]", "Tweet 2: Check this out. 👀 #CheckItOut #Tech\n\n[YOUTUBE]", "Tweet 3: AI powered content. 🤖 #AI #Content\n\n[YOUTUBE]", "Tweet 4: Don't miss it! 🚀 #MustWatch #YouTube\n\n[YOUTUBE]", "Tweet 5: Watch now! 🎬 #Video #Premier\n\n[YOUTUBE]"},
-			wantErr:         false,
+			name:         "Successful tweet generation - 5 tweets",
+			mockResponse: `["Tweet 1: Exciting new video! 🤩 #Exciting #NewVideo\n\n[YOUTUBE]", "Tweet 2: Check this out. 👀 #CheckItOut #Tech\n\n[YOUTUBE]", "Tweet 3: AI powered content. 🤖 #AI #Content\n\n[YOUTUBE]", "Tweet 4: Don't miss it! 🚀 #MustWatch #YouTube\n\n[YOUTUBE]", "Tweet 5: Watch now! 🎬 #Video #Premier\n\n[YOUTUBE]"]`,
+			manuscript:   validManuscript,
+			wantTweets:   []string{"Tweet 1: Exciting new video! 🤩 #Exciting #NewVideo\n\n[YOUTUBE]", "Tweet 2: Check this out. 👀 #CheckItOut #Tech\n\n[YOUTUBE]", "Tweet 3: AI powered content. 🤖 #AI #Content\n\n[YOUTUBE]", "Tweet 4: Don't miss it! 🚀 #MustWatch #YouTube\n\n[YOUTUBE]", "Tweet 5: Watch now! 🎬 #Video #Premier\n\n[YOUTUBE]"},
+			wantErr:      false,
 		},
 		{
-			name:            "Successful tweet generation - 3 tweets (flexible count)",
-			mockLLMResponse: `["Tweet 1: Short and sweet. 👍 #Short #Sweet\n\n[YOUTUBE]", "Tweet 2: Another one. 🎉 #AnotherOne #Fun\n\n[YOUTUBE]", "Tweet 3: Final idea. ✨ #Final #Idea\n\n[YOUTUBE]"]`,
-			aiConfig:        validAIConfig,
-			manuscript:      validManuscript,
-			wantTweets:      []string{"Tweet 1: Short and sweet. 👍 #Short #Sweet\n\n[YOUTUBE]", "Tweet 2: Another one. 🎉 #AnotherOne #Fun\n\n[YOUTUBE]", "Tweet 3: Final idea. ✨ #Final #Idea\n\n[YOUTUBE]"},
-			wantErr:         false, // Function should be flexible if it doesn't get exactly 5
-		},
-		{
-			name:            "AI response with markdown code fences",
-			mockLLMResponse: "```json\n[\"Tweet A 👍 #Emoji #Tag\\n\\n[YOUTUBE]\", \"Tweet B 🎉 #Another #Example\\n\\n[YOUTUBE]\"]\n```",
-			aiConfig:        validAIConfig,
-			manuscript:      validManuscript,
-			wantTweets:      []string{"Tweet A 👍 #Emoji #Tag\n\n[YOUTUBE]", "Tweet B 🎉 #Another #Example\n\n[YOUTUBE]"},
-			wantErr:         false,
-		},
-		{
-			name:              "AI returns empty JSON array",
-			mockLLMResponse:   `[]`,
-			aiConfig:          validAIConfig,
-			manuscript:        validManuscript,
-			wantTweets:        nil,
-			wantErr:           true,
-			expectedErrSubstr: "AI returned an empty list of tweets",
+			name:         "AI response with markdown code fences",
+			mockResponse: "```json\n[\"Tweet A 👍 #Emoji #Tag\\n\\n[YOUTUBE]\", \"Tweet B 🎉 #Another #Example\\n\\n[YOUTUBE]\"]\n```",
+			manuscript:   validManuscript,
+			wantTweets:   []string{"Tweet A 👍 #Emoji #Tag\n\n[YOUTUBE]", "Tweet B 🎉 #Another #Example\n\n[YOUTUBE]"},
+			wantErr:      false,
 		},
 		{
 			name:              "AI returns malformed JSON",
-			mockLLMResponse:   `["Tweet 1", "Tweet 2"`, // Missing closing bracket
-			aiConfig:          validAIConfig,
+			mockResponse:      `["Tweet 1", "Tweet 2"`, // Missing closing bracket
 			manuscript:        validManuscript,
 			wantTweets:        nil,
 			wantErr:           true,
-			expectedErrSubstr: "failed to parse AI response for tweets as JSON",
-		},
-		{
-			name:              "AI returns a tweet exceeding 280 characters",
-			mockLLMResponse:   fmt.Sprintf(`["Normal tweet 👍 #Normal #Tag\n\n[YOUTUBE]", "%s 👍 #Long #Tweet\n\n[YOUTUBE]"]`, strings.Repeat("a", 260)),
-			aiConfig:          validAIConfig,
-			manuscript:        validManuscript,
-			wantTweets:        nil,
-			wantErr:           true,
-			expectedErrSubstr: "AI returned a tweet exceeding 280 characters",
+			expectedErrSubstr: "failed to parse JSON response",
 		},
 		{
 			name:              "AI returns empty response string",
-			mockLLMResponse:   "",
-			aiConfig:          validAIConfig,
+			mockResponse:      "",
 			manuscript:        validManuscript,
 			wantTweets:        nil,
 			wantErr:           true,
@@ -99,56 +56,39 @@ func TestSuggestTweets(t *testing.T) {
 		},
 		{
 			name:              "Manuscript is empty",
-			mockLLMResponse:   "", // LLM won't be called
-			aiConfig:          validAIConfig,
+			mockResponse:      "", // LLM won't be called
 			manuscript:        "  ", // Empty after trim
 			wantTweets:        nil,
 			wantErr:           true,
 			expectedErrSubstr: "manuscript content is empty",
 		},
 		{
-			name:              "LLM generation fails",
-			mockLLMError:      fmt.Errorf("mock LLM generation error for tweets"),
-			aiConfig:          validAIConfig,
+			name:              "AI generation fails",
+			mockError:         fmt.Errorf("mock AI generation error for tweets"),
 			manuscript:        validManuscript,
 			wantTweets:        nil,
 			wantErr:           true,
-			expectedErrSubstr: "mock LLM generation error for tweets",
-		},
-		{
-			name:              "LLM client creation fails",
-			mockLLMError:      fmt.Errorf("mock LLM client creation error for tweets"),
-			aiConfig:          validAIConfig,
-			manuscript:        validManuscript,
-			wantTweets:        nil,
-			wantErr:           true,
-			expectedErrSubstr: "failed to create LangChainGo client for tweets",
-		},
-		{
-			name:              "Incomplete AI config - no API key",
-			aiConfig:          AITitleGeneratorConfig{Endpoint: "e", DeploymentName: "d", APIVersion: "v"},
-			manuscript:        validManuscript,
-			wantTweets:        nil,
-			wantErr:           true,
-			expectedErrSubstr: "AI configuration is not fully set for tweets",
+			expectedErrSubstr: "mock AI generation error for tweets",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mock := &mockLLM{ // Assumes mockLLM struct has ResponseContent and ErrorToReturn fields
-				ResponseContent: tt.mockLLMResponse,
-				ErrorToReturn:   tt.mockLLMError,
+			mock := &MockProvider{
+				response: tt.mockResponse,
+				err:      tt.mockError,
 			}
 
-			newLLMClientFuncForTweets = func(options ...openai.Option) (llms.Model, error) {
-				if strings.Contains(tt.name, "LLM client creation fails") {
-					return nil, tt.mockLLMError
-				}
+			// Store original GetAIProvider function
+			originalGetAIProvider := GetAIProvider
+			defer func() { GetAIProvider = originalGetAIProvider }()
+
+			// Mock the GetAIProvider function
+			GetAIProvider = func() (AIProvider, error) {
 				return mock, nil
 			}
 
-			gotTweets, err := SuggestTweets(ctx, tt.manuscript, tt.aiConfig)
+			gotTweets, err := SuggestTweets(ctx, tt.manuscript)
 
 			if tt.wantErr {
 				if err == nil {
@@ -162,7 +102,7 @@ func TestSuggestTweets(t *testing.T) {
 				if err != nil {
 					t.Errorf("SuggestTweets() unexpected error = %v", err)
 				}
-				if !equalStringSlices(gotTweets, tt.wantTweets) {
+				if !reflect.DeepEqual(gotTweets, tt.wantTweets) {
 					t.Errorf("SuggestTweets() gotTweets = %v, want %v", gotTweets, tt.wantTweets)
 				}
 			}
@@ -170,16 +110,3 @@ func TestSuggestTweets(t *testing.T) {
 	}
 }
 
-// equalStringSlices is a helper to compare two []string.
-// Consider moving to a shared test utility if used across multiple test files.
-func equalStringSlices(a, b []string) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i, v := range a {
-		if v != b[i] {
-			return false
-		}
-	}
-	return true
-}

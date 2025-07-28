@@ -4,13 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 	"strings"
-
-	"github.com/tmc/langchaingo/llms"
-	"github.com/tmc/langchaingo/llms/openai" // Using LangChainGo's OpenAI client for Azure
-
-	"devopstoolkit/youtube-automation/internal/configuration"
 )
 
 // SuggestedTitle is no longer a struct, AI will return a simple list of strings.
@@ -19,75 +13,26 @@ import (
 // 	Explanation string `json:"explanation"` // This will be removed
 // }
 
-// AITitleGeneratorConfig holds the necessary configuration.
-// For LangChainGo, APIKey, Endpoint, and DeploymentName (as Model) are key.
-type AITitleGeneratorConfig struct {
-	Endpoint       string
-	DeploymentName string // This will be used as the Model name for LangChainGo
-	APIKey         string
-	APIVersion     string
-}
-
-//nolint:lll
-var newLLMClientFuncForTitles = func(options ...openai.Option) (llms.Model, error) {
-	return openai.New(options...)
-}
-
-// SuggestTitles contacts Azure OpenAI via LangChainGo to get title suggestions.
-// It now expects the AI to return a simple JSON array of strings.
-func SuggestTitles(ctx context.Context, manuscriptContent string, aiConfig AITitleGeneratorConfig) ([]string, error) { // Return type changed to []string
-	if aiConfig.APIKey == "" {
-		return nil, fmt.Errorf("Azure OpenAI API key is not configured")
-	}
-	if aiConfig.Endpoint == "" {
-		return nil, fmt.Errorf("Azure OpenAI Endpoint is not configured")
-	}
-	if aiConfig.DeploymentName == "" {
-		return nil, fmt.Errorf("Azure OpenAI DeploymentName (model) is not configured")
-	}
-	if aiConfig.APIVersion == "" {
-		// Default to a known working version if not set, but prefer explicit configuration
-		aiConfig.APIVersion = "2023-07-01-preview" // Defaulting based on curl tests
-		fmt.Fprintf(os.Stderr, "Warning: Azure OpenAI APIVersion not set in config, defaulting to %s\n", aiConfig.APIVersion)
-	}
-
-	baseURL := strings.TrimSuffix(aiConfig.Endpoint, "/")
-
-	llm, err := newLLMClientFuncForTitles(
-		openai.WithToken(aiConfig.APIKey),
-		openai.WithBaseURL(baseURL),
-		openai.WithModel(aiConfig.DeploymentName),
-		openai.WithAPIVersion(aiConfig.APIVersion),
-		openai.WithAPIType(openai.APITypeAzure),
-	)
+// SuggestTitles generates video title suggestions using the configured AI provider.
+// It returns a simple JSON array of strings.
+func SuggestTitles(ctx context.Context, manuscriptContent string, optionalConfig ...interface{}) ([]string, error) {
+	provider, err := GetAIProvider()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create LangChainGo client: %w", err)
+		return nil, fmt.Errorf("failed to create AI provider: %w", err)
 	}
 
-	// Updated prompt to request only a JSON array of strings (titles)
-	systemMessage := fmt.Sprintf(`You are an expert YouTube title generator. Your task is to generate 5 compelling and SEO-friendly titles for a video based on the provided manuscript. Each title MUST be 70 characters or less. Return the output as a simple JSON array of strings. For example: ["Example Title 1 (Max 70 Chars)", "Example Title 2 (Max 70 Chars)", ...]
+	// Create prompt for title generation
+	prompt := fmt.Sprintf(`You are an expert YouTube title generator. Your task is to generate 5 compelling and SEO-friendly titles for a video based on the provided manuscript. Each title MUST be 70 characters or less. Return the output as a simple JSON array of strings. For example: ["Example Title 1 (Max 70 Chars)", "Example Title 2 (Max 70 Chars)", ...]
 
 Video Manuscript:
 %s`, manuscriptContent)
 
-	// Using GenerateFromSinglePrompt for simplicity, assuming the model understands the JSON instruction well.
-	// For more complex chat interactions or explicit message roles, llm.Call or llm.Generate could be used.
-	// We need to ensure the model correctly returns JSON in the content of its response.
-	responseContent, err := llms.GenerateFromSinglePrompt(
-		ctx,
-		llm,
-		systemMessage,
-		llms.WithTemperature(0.7), // Adjust creativity
-		llms.WithMaxTokens(512),   // Reduced max tokens as we only need titles
-		// It's crucial the LLM is prompted to return JSON. LangchainGo doesn't have a direct 'ResponseFormat: JSON' like the raw SDK for all models.
-		// The instruction to return JSON is in the systemMessage.
-	)
-
+	// Generate content using the provider
+	responseContent, err := provider.GenerateContent(ctx, prompt, 512)
 	if err != nil {
-		return nil, fmt.Errorf("LangChainGo title generation failed: %w", err)
+		return nil, fmt.Errorf("AI title generation failed: %w", err)
 	}
 
-	// NEW: Check for empty response before attempting to parse or clean
 	if strings.TrimSpace(responseContent) == "" {
 		return nil, fmt.Errorf("AI returned an empty response for titles")
 	}
@@ -102,36 +47,16 @@ Video Manuscript:
 		cleanedResponse = strings.TrimSuffix(cleanedResponse, "```")
 	}
 
-	var titles []string // Changed from []SuggestedTitle to []string
+	var titles []string
 	if err := json.Unmarshal([]byte(cleanedResponse), &titles); err != nil {
-		// Log the raw response for debugging if JSON parsing fails
-		fmt.Fprintf(os.Stderr, "Failed to parse JSON response (expected array of strings) from AI. Cleaned response attempt: %s\nRaw response: %s\n", cleanedResponse, responseContent)
-		return nil, fmt.Errorf("failed to parse JSON response from AI (expected array of strings): %w. Cleaned response attempt: %s", err, cleanedResponse)
+		return nil, fmt.Errorf("failed to parse JSON response from AI (expected array of strings): %w. Response: %s", err, cleanedResponse)
 	}
 
-	return titles, nil // Return []string
+	return titles, nil
 }
 
-// GetAIConfig retrieves AI configuration from global settings.
-func GetAIConfig() (AITitleGeneratorConfig, error) {
-	apiKey := os.Getenv("AI_KEY") // Or your specific env var name
-	if apiKey == "" {
-		// Fallback or error if not in env, though settings should provide it
-		if configuration.GlobalSettings.AI.Key != "" {
-			apiKey = configuration.GlobalSettings.AI.Key
-		} else {
-			return AITitleGeneratorConfig{}, fmt.Errorf("AI_KEY environment variable not set and no key in settings")
-		}
-	}
-
-	if configuration.GlobalSettings.AI.Endpoint == "" || configuration.GlobalSettings.AI.Deployment == "" {
-		return AITitleGeneratorConfig{}, fmt.Errorf("AI endpoint or deployment not configured in settings.yaml")
-	}
-
-	return AITitleGeneratorConfig{
-		Endpoint:       configuration.GlobalSettings.AI.Endpoint,
-		DeploymentName: configuration.GlobalSettings.AI.Deployment,
-		APIKey:         apiKey,
-		APIVersion:     configuration.GlobalSettings.AI.APIVersion,
-	}, nil
+// TEMPORARY: Compatibility function for old app module - returns empty struct
+func GetAIConfig() (interface{}, error) {
+	return struct{}{}, nil
 }
+

@@ -5,73 +5,54 @@ import (
 	"fmt"
 	"strings"
 	"testing"
-
-	"github.com/tmc/langchaingo/llms"
-	"github.com/tmc/langchaingo/llms/openai"
-	// schema is imported by other test files in this package, like highlights_test.go, which defines mockLLM
 )
 
 func TestSuggestTags(t *testing.T) {
 	ctx := context.Background()
 	validManuscript := "This is a test manuscript about AI-powered video tag generation. It needs a good comma-separated list of tags under 450 characters."
 	longManuscript := strings.Repeat("This is a very long manuscript. ", 50) // To test truncation indirectly if AI over-generates
-	validAIConfig := AITitleGeneratorConfig{
-		Endpoint:       "https://fake-tags-endpoint.openai.azure.com/",
-		DeploymentName: "fake-tags-deployment",
-		APIKey:         "fake-tags-api-key",
-		APIVersion:     "2023-07-01-preview",
-	}
-
-	originalNewLLMTags := newLLMClientFuncForTags
-	defer func() { newLLMClientFuncForTags = originalNewLLMTags }()
 
 	tests := []struct {
 		name              string
-		mockLLMResponse   string // This will be assigned to mockLLM.response
-		mockLLMError      error  // This will be assigned to mockLLM.err
-		aiConfig          AITitleGeneratorConfig
+		mockResponse      string
+		mockError         error
 		manuscript        string
 		wantTags          string
 		wantErr           bool
 		expectedErrSubstr string
 	}{
 		{
-			name:            "Successful tag generation",
-			mockLLMResponse: "go, programming, ai, video, testing",
-			aiConfig:        validAIConfig,
-			manuscript:      validManuscript,
-			wantTags:        "go, programming, ai, video, testing",
-			wantErr:         false,
+			name:         "Successful tag generation",
+			mockResponse: "go, programming, ai, video, testing",
+			manuscript:   validManuscript,
+			wantTags:     "go, programming, ai, video, testing",
+			wantErr:      false,
 		},
 		{
-			name:            "AI response with leading/trailing spaces",
-			mockLLMResponse: "  go, programming, ai  ",
-			aiConfig:        validAIConfig,
-			manuscript:      validManuscript,
-			wantTags:        "go, programming, ai",
-			wantErr:         false,
+			name:         "AI response with leading/trailing spaces",
+			mockResponse: "  go, programming, ai  ",
+			manuscript:   validManuscript,
+			wantTags:     "go, programming, ai",
+			wantErr:      false,
 		},
 		{
-			name:            "AI response exceeds 450 characters - intelligent truncation",
-			mockLLMResponse: strings.Repeat("tag,", 100) + "longtagthatwillbecutoff", // 423 chars
-			aiConfig:        validAIConfig,
-			manuscript:      longManuscript,
+			name:         "AI response exceeds 450 characters - intelligent truncation",
+			mockResponse: strings.Repeat("tag,", 100) + "longtagthatwillbecutoff", // 423 chars
+			manuscript:   longManuscript,
 			// Expected: the original response, as it's < 450 chars, so truncation logic is skipped.
 			wantTags: strings.TrimSpace(strings.Repeat("tag,", 100) + "longtagthatwillbecutoff"),
 			wantErr:  false,
 		},
 		{
-			name:            "AI response exceeds 450 characters - hard truncation (no comma before limit)",
-			mockLLMResponse: strings.Repeat("a", 500),
-			aiConfig:        validAIConfig,
-			manuscript:      longManuscript,
-			wantTags:        strings.Repeat("a", 450),
-			wantErr:         false,
+			name:         "AI response exceeds 450 characters - hard truncation (no comma before limit)",
+			mockResponse: strings.Repeat("a", 500),
+			manuscript:   longManuscript,
+			wantTags:     strings.Repeat("a", 450),
+			wantErr:      false,
 		},
 		{
 			name:              "AI returns empty response for tags",
-			mockLLMResponse:   "",
-			aiConfig:          validAIConfig,
+			mockResponse:      "",
 			manuscript:        validManuscript,
 			wantTags:          "",
 			wantErr:           true,
@@ -79,67 +60,46 @@ func TestSuggestTags(t *testing.T) {
 		},
 		{
 			name:              "Manuscript is empty",
-			mockLLMResponse:   "", // LLM won't be called
-			aiConfig:          validAIConfig,
+			mockResponse:      "", // LLM won't be called
 			manuscript:        "  ", // Empty after trim
 			wantTags:          "",
 			wantErr:           true,
 			expectedErrSubstr: "manuscript content is empty",
 		},
 		{
-			name:              "LLM generation fails",
-			mockLLMError:      fmt.Errorf("mock LLM generation error"),
-			aiConfig:          validAIConfig,
+			name:              "AI generation fails",
+			mockError:         fmt.Errorf("mock AI generation error"),
 			manuscript:        validManuscript,
 			wantTags:          "",
 			wantErr:           true,
-			expectedErrSubstr: "mock LLM generation error", // This will be wrapped by the retry logic
-		},
-		{
-			name:              "LLM creation fails",
-			mockLLMError:      fmt.Errorf("mock LLM creation error"), // This error is used by the mock newLLMClientFunc
-			aiConfig:          validAIConfig,
-			manuscript:        validManuscript,
-			wantTags:          "",
-			wantErr:           true,
-			expectedErrSubstr: "failed to create LangChainGo client for tags",
-		},
-		{
-			name:              "Incomplete AI config - no API key",
-			aiConfig:          AITitleGeneratorConfig{Endpoint: "e", DeploymentName: "d", APIVersion: "v"},
-			manuscript:        validManuscript,
-			wantTags:          "",
-			wantErr:           true,
-			expectedErrSubstr: "AI configuration (Endpoint, DeploymentName, APIKey, APIVersion) is not fully set",
+			expectedErrSubstr: "mock AI generation error",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mock := &mockLLM{
-				ResponseContent: tt.mockLLMResponse,
-				ErrorToReturn:   tt.mockLLMError,
+			mock := &MockProvider{
+				response: tt.mockResponse,
+				err:      tt.mockError,
 			}
 
-			newLLMClientFuncForTags = func(options ...openai.Option) (llms.Model, error) {
-				if strings.Contains(tt.name, "LLM creation fails") {
-					return nil, tt.mockLLMError
-				}
+			// Store original GetAIProvider function
+			originalGetAIProvider := GetAIProvider
+			defer func() { GetAIProvider = originalGetAIProvider }()
+
+			// Mock the GetAIProvider function
+			GetAIProvider = func() (AIProvider, error) {
 				return mock, nil
 			}
 
-			gotTags, err := SuggestTags(ctx, tt.manuscript, tt.aiConfig)
+			gotTags, err := SuggestTags(ctx, tt.manuscript)
 
 			if tt.wantErr {
 				if err == nil {
 					t.Errorf("SuggestTags() error = %v, wantErr %v", err, tt.wantErr)
 					return
 				}
-				if tt.mockLLMError != nil && (strings.Contains(tt.name, "LLM generation fails") || strings.Contains(tt.name, "LLM creation fails")) {
-					if !strings.Contains(err.Error(), tt.mockLLMError.Error()) {
-						t.Errorf("SuggestTags() error = %q, want to contain underlying LLM error %q", err.Error(), tt.mockLLMError.Error())
-					}
-				} else if tt.expectedErrSubstr != "" && !strings.Contains(err.Error(), tt.expectedErrSubstr) {
+				if tt.expectedErrSubstr != "" && !strings.Contains(err.Error(), tt.expectedErrSubstr) {
 					t.Errorf("SuggestTags() error = %q, want substring %q", err.Error(), tt.expectedErrSubstr)
 				}
 			} else {

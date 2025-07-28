@@ -3,41 +3,19 @@ package ai
 import (
 	"context"
 	"fmt"
-	"os"
 	"strings"
-	"time"
-
-	"github.com/tmc/langchaingo/llms"
-	"github.com/tmc/langchaingo/llms/openai"
 )
 
-//nolint:lll
-var newLLMClientFuncForTags = func(options ...openai.Option) (llms.Model, error) {
-	return openai.New(options...)
-}
-
-// SuggestTags contacts Azure OpenAI via LangChainGo to get tag suggestions.
+// SuggestTags generates comma-separated tags using the configured AI provider.
 // It expects the AI to return a single comma-separated string of tags,
 // with a total character limit of 450.
-func SuggestTags(ctx context.Context, manuscriptContent string, aiConfig AITitleGeneratorConfig) (string, error) {
-	if aiConfig.Endpoint == "" || aiConfig.DeploymentName == "" || aiConfig.APIKey == "" || aiConfig.APIVersion == "" {
-		return "", fmt.Errorf("AI configuration (Endpoint, DeploymentName, APIKey, APIVersion) is not fully set. Please check your settings.yaml or environment variables (AI_KEY)")
+func SuggestTags(ctx context.Context, manuscriptContent string, optionalConfig ...interface{}) (string, error) {
+	provider, err := GetAIProvider()
+	if err != nil {
+		return "", fmt.Errorf("failed to create AI provider: %w", err)
 	}
 	if strings.TrimSpace(manuscriptContent) == "" {
 		return "", fmt.Errorf("manuscript content is empty, cannot generate tags")
-	}
-
-	baseURL := strings.TrimSuffix(aiConfig.Endpoint, "/")
-
-	llm, err := newLLMClientFuncForTags(
-		openai.WithAPIType(openai.APITypeAzure),
-		openai.WithToken(aiConfig.APIKey),
-		openai.WithBaseURL(baseURL),
-		openai.WithAPIVersion(aiConfig.APIVersion),
-		openai.WithModel(aiConfig.DeploymentName), // In Azure, Deployment Name often serves as the model identifier for the endpoint
-	)
-	if err != nil {
-		return "", fmt.Errorf("failed to create LangChainGo client for tags: %w", err)
 	}
 
 	prompt := fmt.Sprintf(
@@ -54,25 +32,9 @@ Tags (comma-separated, max 450 chars):`,
 		manuscriptContent,
 	)
 
-	var responseContent string
-	maxRetries := 3
-	retryDelay := 2 * time.Second
-
-	for i := 0; i < maxRetries; i++ {
-		if i > 0 {
-			time.Sleep(retryDelay)
-			fmt.Fprintf(os.Stderr, "Retrying AI call for tags (%d/%d)...\n", i, maxRetries-1)
-		}
-
-		responseContent, err = llms.GenerateFromSinglePrompt(ctx, llm, prompt, llms.WithTemperature(0.7))
-		if err == nil {
-			break // Success
-		}
-		fmt.Fprintf(os.Stderr, "Attempt %d for tags failed: %v\n", i, err)
-	}
-
+	responseContent, err := provider.GenerateContent(ctx, prompt, 200)
 	if err != nil {
-		return "", fmt.Errorf("LangChainGo tag generation failed after %d retries: %w", maxRetries, err)
+		return "", fmt.Errorf("AI tag generation failed: %w", err)
 	}
 
 	if strings.TrimSpace(responseContent) == "" {

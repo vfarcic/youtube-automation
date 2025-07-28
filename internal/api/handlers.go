@@ -602,13 +602,8 @@ func (s *Server) aiTitles(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	config, err := ai.GetAIConfig()
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to get AI configuration", err.Error())
-		return
-	}
 
-	titles, err := ai.SuggestTitles(r.Context(), req.Manuscript, config)
+	titles, err := ai.SuggestTitles(r.Context(), req.Manuscript)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Failed to generate titles", err.Error())
 		return
@@ -653,14 +648,9 @@ func (s *Server) aiTitlesWithVideo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get AI configuration
-	config, err := ai.GetAIConfig()
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to get AI configuration", err.Error())
-		return
-	}
 
 	// Generate titles using AI
-	titles, err := ai.SuggestTitles(r.Context(), manuscriptContent, config)
+	titles, err := ai.SuggestTitles(r.Context(), manuscriptContent)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Failed to generate titles", err.Error())
 		return
@@ -682,13 +672,8 @@ func (s *Server) aiDescription(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	config, err := ai.GetAIConfig()
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to get AI configuration", err.Error())
-		return
-	}
 
-	description, err := ai.SuggestDescription(r.Context(), req.Manuscript, config)
+	description, err := ai.SuggestDescription(r.Context(), req.Manuscript)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Failed to generate description", err.Error())
 		return
@@ -710,13 +695,8 @@ func (s *Server) aiTags(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	config, err := ai.GetAIConfig()
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to get AI configuration", err.Error())
-		return
-	}
 
-	tags, err := ai.SuggestTags(r.Context(), req.Manuscript, config)
+	tags, err := ai.SuggestTags(r.Context(), req.Manuscript)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Failed to generate tags", err.Error())
 		return
@@ -738,13 +718,8 @@ func (s *Server) aiTweets(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	config, err := ai.GetAIConfig()
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to get AI configuration", err.Error())
-		return
-	}
 
-	tweets, err := ai.SuggestTweets(r.Context(), req.Manuscript, config)
+	tweets, err := ai.SuggestTweets(r.Context(), req.Manuscript)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Failed to generate tweets", err.Error())
 		return
@@ -766,13 +741,8 @@ func (s *Server) aiHighlights(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	config, err := ai.GetAIConfig()
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to get AI configuration", err.Error())
-		return
-	}
 
-	highlights, err := ai.SuggestHighlights(r.Context(), req.Manuscript, config)
+	highlights, err := ai.SuggestHighlights(r.Context(), req.Manuscript)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Failed to generate highlights", err.Error())
 		return
@@ -794,13 +764,8 @@ func (s *Server) aiDescriptionTags(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	config, err := ai.GetAIConfig()
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to get AI configuration", err.Error())
-		return
-	}
 
-	descriptionTags, err := ai.SuggestDescriptionTags(r.Context(), req.Manuscript, config)
+	descriptionTags, err := ai.SuggestDescriptionTags(r.Context(), req.Manuscript)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Failed to generate description tags", err.Error())
 		return
@@ -850,14 +815,9 @@ func (s *Server) aiDescriptionWithVideo(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Get AI configuration
-	config, err := ai.GetAIConfig()
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to get AI configuration", err.Error())
-		return
-	}
 
 	// Generate description using AI
-	description, err := ai.SuggestDescription(r.Context(), manuscriptContent, config)
+	description, err := ai.SuggestDescription(r.Context(), manuscriptContent)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Failed to generate description", err.Error())
 		return
@@ -902,14 +862,9 @@ func (s *Server) aiTagsWithVideo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get AI configuration
-	config, err := ai.GetAIConfig()
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to get AI configuration", err.Error())
-		return
-	}
 
 	// Generate tags using AI
-	tags, err := ai.SuggestTags(r.Context(), manuscriptContent, config)
+	tags, err := ai.SuggestTags(r.Context(), manuscriptContent)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Failed to generate tags", err.Error())
 		return
@@ -954,14 +909,9 @@ func (s *Server) aiTweetsWithVideo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get AI configuration
-	config, err := ai.GetAIConfig()
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to get AI configuration", err.Error())
-		return
-	}
 
 	// Generate tweets using AI
-	tweets, err := ai.SuggestTweets(r.Context(), manuscriptContent, config)
+	tweets, err := ai.SuggestTweets(r.Context(), manuscriptContent)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Failed to generate tweets", err.Error())
 		return
@@ -1006,14 +956,9 @@ func (s *Server) aiHighlightsWithVideo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get AI configuration
-	config, err := ai.GetAIConfig()
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to get AI configuration", err.Error())
-		return
-	}
 
 	// Generate highlights using AI
-	highlights, err := ai.SuggestHighlights(r.Context(), manuscriptContent, config)
+	highlights, err := ai.SuggestHighlights(r.Context(), manuscriptContent)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Failed to generate highlights", err.Error())
 		return
@@ -1058,14 +1003,9 @@ func (s *Server) aiDescriptionTagsWithVideo(w http.ResponseWriter, r *http.Reque
 	}
 
 	// Get AI configuration
-	config, err := ai.GetAIConfig()
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to get AI configuration", err.Error())
-		return
-	}
 
 	// Generate description tags using AI
-	descriptionTags, err := ai.SuggestDescriptionTags(r.Context(), manuscriptContent, config)
+	descriptionTags, err := ai.SuggestDescriptionTags(r.Context(), manuscriptContent)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Failed to generate description tags", err.Error())
 		return

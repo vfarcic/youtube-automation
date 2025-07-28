@@ -94,9 +94,12 @@ func TestFlagParsing(t *testing.T) {
 					Password:    "password123",
 				},
 				AI: SettingsAI{
-					Endpoint:   "https://api.openai.com",
-					Key:        "ai-key-123",
-					Deployment: "gpt-4",
+					Provider: "azure",
+					Azure: SettingsAzureAI{
+						Endpoint:   "https://api.openai.com",
+						Key:        "ai-key-123",
+						Deployment: "gpt-4",
+					},
 				},
 				YouTube: SettingsYouTube{
 					APIKey: "yt-api-key-123",
@@ -136,9 +139,12 @@ func TestFlagParsing(t *testing.T) {
 					Password:    "password123",
 				},
 				AI: SettingsAI{
-					Endpoint:   "https://api.openai.com",
-					Key:        "ai-key-123",
-					Deployment: "gpt-4",
+					Provider: "azure",
+					Azure: SettingsAzureAI{
+						Endpoint:   "https://api.openai.com",
+						Key:        "ai-key-123",
+						Deployment: "gpt-4",
+					},
 				},
 				YouTube: SettingsYouTube{
 					APIKey: "yt-api-key-123",
@@ -178,9 +184,9 @@ func TestFlagParsing(t *testing.T) {
 			testCmd.Flags().StringVar(&testSettings.Email.EditTo, "email-edit-to", testSettings.Email.EditTo, "")
 			testCmd.Flags().StringVar(&testSettings.Email.FinanceTo, "email-finance-to", testSettings.Email.FinanceTo, "")
 			testCmd.Flags().StringVar(&testSettings.Email.Password, "email-password", testSettings.Email.Password, "")
-			testCmd.Flags().StringVar(&testSettings.AI.Endpoint, "ai-endpoint", testSettings.AI.Endpoint, "")
-			testCmd.Flags().StringVar(&testSettings.AI.Key, "ai-key", testSettings.AI.Key, "")
-			testCmd.Flags().StringVar(&testSettings.AI.Deployment, "ai-deployment", testSettings.AI.Deployment, "")
+			testCmd.Flags().StringVar(&testSettings.AI.Azure.Endpoint, "ai-endpoint", testSettings.AI.Azure.Endpoint, "")
+			testCmd.Flags().StringVar(&testSettings.AI.Azure.Key, "ai-key", testSettings.AI.Azure.Key, "")
+			testCmd.Flags().StringVar(&testSettings.AI.Azure.Deployment, "ai-deployment", testSettings.AI.Azure.Deployment, "")
 			testCmd.Flags().StringVar(&testSettings.YouTube.APIKey, "youtube-api-key", testSettings.YouTube.APIKey, "")
 			testCmd.Flags().StringVar(&testSettings.Hugo.Path, "hugo-path", testSettings.Hugo.Path, "")
 			testCmd.Flags().StringVar(&testSettings.Bluesky.Identifier, "bluesky-identifier", testSettings.Bluesky.Identifier, "")
@@ -213,14 +219,14 @@ func TestFlagParsing(t *testing.T) {
 			if testSettings.Email.Password != tt.expected.Email.Password {
 				t.Errorf("Email.Password = %v, want %v", testSettings.Email.Password, tt.expected.Email.Password)
 			}
-			if testSettings.AI.Endpoint != tt.expected.AI.Endpoint {
-				t.Errorf("AI.Endpoint = %v, want %v", testSettings.AI.Endpoint, tt.expected.AI.Endpoint)
+			if testSettings.AI.Azure.Endpoint != tt.expected.AI.Azure.Endpoint {
+				t.Errorf("AI.Azure.Endpoint = %v, want %v", testSettings.AI.Azure.Endpoint, tt.expected.AI.Azure.Endpoint)
 			}
-			if testSettings.AI.Key != tt.expected.AI.Key {
-				t.Errorf("AI.Key = %v, want %v", testSettings.AI.Key, tt.expected.AI.Key)
+			if testSettings.AI.Azure.Key != tt.expected.AI.Azure.Key {
+				t.Errorf("AI.Azure.Key = %v, want %v", testSettings.AI.Azure.Key, tt.expected.AI.Azure.Key)
 			}
-			if testSettings.AI.Deployment != tt.expected.AI.Deployment {
-				t.Errorf("AI.Deployment = %v, want %v", testSettings.AI.Deployment, tt.expected.AI.Deployment)
+			if testSettings.AI.Azure.Deployment != tt.expected.AI.Azure.Deployment {
+				t.Errorf("AI.Azure.Deployment = %v, want %v", testSettings.AI.Azure.Deployment, tt.expected.AI.Azure.Deployment)
 			}
 			if testSettings.YouTube.APIKey != tt.expected.YouTube.APIKey {
 				t.Errorf("YouTube.APIKey = %v, want %v", testSettings.YouTube.APIKey, tt.expected.YouTube.APIKey)
@@ -263,8 +269,10 @@ email:
   editTo: "default-edit@example.com"
   financeTo: "default-finance@example.com"
 ai:
-  endpoint: "https://default-endpoint.com"
-  deployment: "default-deployment"
+  provider: "azure"
+  azure:
+    endpoint: "https://default-endpoint.com"
+    deployment: "default-deployment"
 hugo:
   path: "/default/hugo/path"
 `
@@ -297,9 +305,9 @@ hugo:
 	testCmd.Flags().StringVar(&testSettings.Email.EditTo, "email-edit-to", testSettings.Email.EditTo, "")
 	testCmd.Flags().StringVar(&testSettings.Email.FinanceTo, "email-finance-to", testSettings.Email.FinanceTo, "")
 	testCmd.Flags().StringVar(&testSettings.Email.Password, "email-password", testSettings.Email.Password, "")
-	testCmd.Flags().StringVar(&testSettings.AI.Endpoint, "ai-endpoint", testSettings.AI.Endpoint, "")
-	testCmd.Flags().StringVar(&testSettings.AI.Key, "ai-key", testSettings.AI.Key, "")
-	testCmd.Flags().StringVar(&testSettings.AI.Deployment, "ai-deployment", testSettings.AI.Deployment, "")
+	testCmd.Flags().StringVar(&testSettings.AI.Azure.Endpoint, "ai-endpoint", testSettings.AI.Azure.Endpoint, "")
+	testCmd.Flags().StringVar(&testSettings.AI.Azure.Key, "ai-key", testSettings.AI.Azure.Key, "")
+	testCmd.Flags().StringVar(&testSettings.AI.Azure.Deployment, "ai-deployment", testSettings.AI.Azure.Deployment, "")
 	testCmd.Flags().StringVar(&testSettings.YouTube.APIKey, "youtube-api-key", testSettings.YouTube.APIKey, "")
 	testCmd.Flags().StringVar(&testSettings.Hugo.Path, "hugo-path", testSettings.Hugo.Path, "")
 	testCmd.Flags().StringVar(&testSettings.Bluesky.Identifier, "bluesky-identifier", testSettings.Bluesky.Identifier, "")
@@ -312,7 +320,7 @@ hugo:
 	}
 
 	if envAIKey := os.Getenv("AI_KEY"); envAIKey != "" {
-		testSettings.AI.Key = envAIKey
+		testSettings.AI.Azure.Key = envAIKey
 	}
 
 	if envYouTubeKey := os.Getenv("YOUTUBE_API_KEY"); envYouTubeKey != "" {
@@ -328,8 +336,8 @@ hugo:
 		t.Errorf("Email.Password = %s, want env-email-password", testSettings.Email.Password)
 	}
 
-	if testSettings.AI.Key != "env-ai-key" {
-		t.Errorf("AI.Key = %s, want env-ai-key", testSettings.AI.Key)
+	if testSettings.AI.Azure.Key != "env-ai-key" {
+		t.Errorf("AI.Azure.Key = %s, want env-ai-key", testSettings.AI.Azure.Key)
 	}
 
 	if testSettings.YouTube.APIKey != "env-youtube-key" {
@@ -345,8 +353,8 @@ hugo:
 		t.Errorf("Email.From = %s, want default@example.com", testSettings.Email.From)
 	}
 
-	if testSettings.AI.Endpoint != "https://default-endpoint.com" {
-		t.Errorf("AI.Endpoint = %s, want https://default-endpoint.com", testSettings.AI.Endpoint)
+	if testSettings.AI.Azure.Endpoint != "https://default-endpoint.com" {
+		t.Errorf("AI.Azure.Endpoint = %s, want https://default-endpoint.com", testSettings.AI.Azure.Endpoint)
 	}
 
 	if testSettings.Hugo.Path != "/default/hugo/path" {
@@ -427,9 +435,9 @@ bluesky:
 	testCmd.Flags().StringVar(&mergedSettings.Email.EditTo, "email-edit-to", mergedSettings.Email.EditTo, "")
 	testCmd.Flags().StringVar(&mergedSettings.Email.FinanceTo, "email-finance-to", mergedSettings.Email.FinanceTo, "")
 	testCmd.Flags().StringVar(&mergedSettings.Email.Password, "email-password", mergedSettings.Email.Password, "")
-	testCmd.Flags().StringVar(&mergedSettings.AI.Endpoint, "ai-endpoint", mergedSettings.AI.Endpoint, "")
-	testCmd.Flags().StringVar(&mergedSettings.AI.Key, "ai-key", mergedSettings.AI.Key, "")
-	testCmd.Flags().StringVar(&mergedSettings.AI.Deployment, "ai-deployment", mergedSettings.AI.Deployment, "")
+	testCmd.Flags().StringVar(&mergedSettings.AI.Azure.Endpoint, "ai-endpoint", mergedSettings.AI.Azure.Endpoint, "")
+	testCmd.Flags().StringVar(&mergedSettings.AI.Azure.Key, "ai-key", mergedSettings.AI.Azure.Key, "")
+	testCmd.Flags().StringVar(&mergedSettings.AI.Azure.Deployment, "ai-deployment", mergedSettings.AI.Azure.Deployment, "")
 	testCmd.Flags().StringVar(&mergedSettings.YouTube.APIKey, "youtube-api-key", mergedSettings.YouTube.APIKey, "")
 	testCmd.Flags().StringVar(&mergedSettings.Hugo.Path, "hugo-path", mergedSettings.Hugo.Path, "")
 	testCmd.Flags().StringVar(&mergedSettings.Bluesky.Identifier, "bluesky-identifier", mergedSettings.Bluesky.Identifier, "")
@@ -457,8 +465,8 @@ bluesky:
 		t.Errorf("Email.From = %s, want flag@example.com", mergedSettings.Email.From)
 	}
 
-	if mergedSettings.AI.Key != "flag-ai-key" {
-		t.Errorf("AI.Key = %s, want flag-ai-key", mergedSettings.AI.Key)
+	if mergedSettings.AI.Azure.Key != "flag-ai-key" {
+		t.Errorf("AI.Azure.Key = %s, want flag-ai-key", mergedSettings.AI.Azure.Key)
 	}
 
 	if mergedSettings.Hugo.Path != "/flag/hugo/path" {
