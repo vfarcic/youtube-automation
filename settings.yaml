@@ -7,8 +7,14 @@ email:
   editTo: viktor@farcic.com
   financeTo: devopstoolkit@acme.com
 ai:
-  endpoint: https://dotaisweden.openai.azure.com
-  deployment: gpt-4-1106-preview
+  provider: anthropic  # Options: azure, anthropic
+  azure:
+    endpoint: https://dotaisweden.openai.azure.com
+    deployment: gpt-4-1106-preview
+    # apiVersion: 2023-05-15  # Optional, defaults to 2023-05-15
+  anthropic:
+    model: claude-sonnet-4-20250514  # Latest Claude Sonnet 4 model
+    # key: set via ANTHROPIC_API_KEY environment variable
 hugo:
   path: ../devopstoolkit-live/
 youtube:
