@@ -9,11 +9,14 @@ import (
 // ModelNonStreamingTokens defines the maximum tokens for models that should limit
 // non-streaming requests.
 var ModelNonStreamingTokens = map[string]int{
-	"claude-opus-4-20250514":                8192,
-	"claude-4-opus-20250514":                8192,
-	"claude-opus-4-0":                       8192,
-	"anthropic.claude-opus-4-20250514-v1:0": 8192,
-	"claude-opus-4@20250514":                8192,
+	"claude-opus-4-20250514":                  8192,
+	"claude-4-opus-20250514":                  8192,
+	"claude-opus-4-0":                         8192,
+	"anthropic.claude-opus-4-20250514-v1:0":   8192,
+	"claude-opus-4@20250514":                  8192,
+	"claude-opus-4-1-20250805":                8192,
+	"anthropic.claude-opus-4-1-20250805-v1:0": 8192,
+	"claude-opus-4-1@20250805":                8192,
 }
 
 type Constant[T any] interface {
@@ -99,6 +102,7 @@ type TextDelta string                    // Always "text_delta"
 type TextEditor20241022 string           // Always "text_editor_20241022"
 type TextEditor20250124 string           // Always "text_editor_20250124"
 type TextEditor20250429 string           // Always "text_editor_20250429"
+type TextEditor20250728 string           // Always "text_editor_20250728"
 type TextPlain string                    // Always "text/plain"
 type Thinking string                     // Always "thinking"
 type ThinkingDelta string                // Always "thinking_delta"
@@ -191,6 +195,7 @@ func (c TextDelta) Default() TextDelta                   { return "text_delta" }
 func (c TextEditor20241022) Default() TextEditor20241022 { return "text_editor_20241022" }
 func (c TextEditor20250124) Default() TextEditor20250124 { return "text_editor_20250124" }
 func (c TextEditor20250429) Default() TextEditor20250429 { return "text_editor_20250429" }
+func (c TextEditor20250728) Default() TextEditor20250728 { return "text_editor_20250728" }
 func (c TextPlain) Default() TextPlain                   { return "text/plain" }
 func (c Thinking) Default() Thinking                     { return "thinking" }
 func (c ThinkingDelta) Default() ThinkingDelta           { return "thinking_delta" }
@@ -281,6 +286,7 @@ func (c TextDelta) MarshalJSON() ([]byte, error)                    { return mar
 func (c TextEditor20241022) MarshalJSON() ([]byte, error)           { return marshalString(c) }
 func (c TextEditor20250124) MarshalJSON() ([]byte, error)           { return marshalString(c) }
 func (c TextEditor20250429) MarshalJSON() ([]byte, error)           { return marshalString(c) }
+func (c TextEditor20250728) MarshalJSON() ([]byte, error)           { return marshalString(c) }
 func (c TextPlain) MarshalJSON() ([]byte, error)                    { return marshalString(c) }
 func (c Thinking) MarshalJSON() ([]byte, error)                     { return marshalString(c) }
 func (c ThinkingDelta) MarshalJSON() ([]byte, error)                { return marshalString(c) }
