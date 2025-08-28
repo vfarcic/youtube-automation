@@ -144,7 +144,7 @@ func TestCalculateDefinePhaseCompletion(t *testing.T) {
 			name:              "All tasks incomplete",
 			video:             storage.Video{},
 			expectedCompleted: 0,
-			expectedTotal:     8, // Title, Description, Highlight, Tags, DescriptionTags, Tweet, Animations, RequestThumbnail (Gist removed - belongs to InitialDetails)
+			expectedTotal:     7, // Title, Description, Tags, DescriptionTags, Tweet, Animations, RequestThumbnail (Highlight and Gist removed)
 		},
 		{
 			name: "Some tasks complete",
@@ -155,14 +155,13 @@ func TestCalculateDefinePhaseCompletion(t *testing.T) {
 				RequestThumbnail: true,
 			},
 			expectedCompleted: 4,
-			expectedTotal:     8,
+			expectedTotal:     7,
 		},
 		{
 			name: "All Definition tasks complete", // Updated name - Gist is not part of Definition
 			video: storage.Video{
 				Title:            "Complete Title",
 				Description:      "Complete Description",
-				Highlight:        "Complete Highlight",
 				Tags:             "tag1,tag2",
 				DescriptionTags:  "desc_tag1",
 				Tweet:            "Final Tweet",
@@ -170,15 +169,14 @@ func TestCalculateDefinePhaseCompletion(t *testing.T) {
 				RequestThumbnail: true,
 				// Gist is NOT part of Definition phase - it belongs to InitialDetails
 			},
-			expectedCompleted: 8, // All 8 Definition fields complete
-			expectedTotal:     8,
+			expectedCompleted: 7, // All 7 Definition fields complete
+			expectedTotal:     7,
 		},
 		{
 			name: "All Definition tasks complete with Gist (Gist should not affect Definition count)", // Updated test
 			video: storage.Video{
 				Title:            "Complete Title",
 				Description:      "Complete Description",
-				Highlight:        "Complete Highlight",
 				Tags:             "tag1,tag2",
 				DescriptionTags:  "desc_tag1",
 				Tweet:            "Final Tweet",
@@ -186,15 +184,14 @@ func TestCalculateDefinePhaseCompletion(t *testing.T) {
 				RequestThumbnail: true,
 				Gist:             "path/to/my/gist.md", // This should NOT affect Definition phase count
 			},
-			expectedCompleted: 8, // Still 8 - Gist doesn't count for Definition
-			expectedTotal:     8,
+			expectedCompleted: 7, // Now 7 - Highlight removed, Gist doesn't count for Definition
+			expectedTotal:     7,
 		},
 		{
 			name: "Edge case - empty strings not counted",
 			video: storage.Video{
 				Title:            "",  // Empty
 				Description:      "-", // Dash, not counted
-				Highlight:        "Real Highlight",
 				Tags:             "",
 				DescriptionTags:  "",
 				Tweet:            "",
@@ -202,8 +199,8 @@ func TestCalculateDefinePhaseCompletion(t *testing.T) {
 				RequestThumbnail: false, // Boolean false
 				Gist:             "",    // Empty Gist (but doesn't matter for Definition phase)
 			},
-			expectedCompleted: 1, // Only Highlight
-			expectedTotal:     8,
+			expectedCompleted: 0, // No filled fields (Highlight removed)
+			expectedTotal:     7,
 		},
 		{
 			name: "Edge case - string with only spaces not counted",
@@ -214,7 +211,7 @@ func TestCalculateDefinePhaseCompletion(t *testing.T) {
 				Gist:             "  valid/gist/path.md  ", // Gist doesn't affect Definition phase count
 			},
 			expectedCompleted: 2, // Description, RequestThumbnail (Gist not counted for Definition)
-			expectedTotal:     8,
+			expectedTotal:     7,
 		},
 	}
 
@@ -481,7 +478,6 @@ func TestCalculateOverallProgress(t *testing.T) {
 				// Definition
 				Title:            "Complete Title",
 				Description:      "Complete Description",
-				Highlight:        "Complete Highlight",
 				Tags:             "tag1,tag2",
 				DescriptionTags:  "desc_tag1",
 				Tweet:            "Final Tweet",
@@ -581,7 +577,7 @@ func TestCalculateInitialDetailsProgress(t *testing.T) {
 				Sponsorship: storage.Sponsorship{Amount: "1000"},
 			},
 			expectedCompleted: 3, // Sponsorship amount + emails condition + blocked condition, delayed=false
-			expectedTotal:     8,
+			expectedTotal:     8, // ProjectName, ProjectURL, Sponsorship.Amount, Sponsorship.Emails, Sponsorship.Blocked, Date, Delayed, Gist
 			description:       "Sponsorship amount should be counted",
 		},
 		{
@@ -593,7 +589,7 @@ func TestCalculateInitialDetailsProgress(t *testing.T) {
 				},
 			},
 			expectedCompleted: 4, // Amount + emails + blocked + delayed
-			expectedTotal:     8,
+			expectedTotal:     8, // ProjectName, ProjectURL, Sponsorship.Amount, Sponsorship.Emails, Sponsorship.Blocked, Date, Delayed, Gist
 			description:       "Sponsorship emails should be counted when amount is set",
 		},
 		{
@@ -602,7 +598,7 @@ func TestCalculateInitialDetailsProgress(t *testing.T) {
 				Sponsorship: storage.Sponsorship{Blocked: "Some reason"},
 			},
 			expectedCompleted: 2, // Emails condition (amount is empty) + delayed condition, blocked fails
-			expectedTotal:     8,
+			expectedTotal:     8, // ProjectName, ProjectURL, Sponsorship.Amount, Sponsorship.Emails, Sponsorship.Blocked, Date, Delayed, Gist
 			description:       "Sponsorship blocked should fail the blocked condition",
 		},
 		{
@@ -611,7 +607,7 @@ func TestCalculateInitialDetailsProgress(t *testing.T) {
 				Delayed: true,
 			},
 			expectedCompleted: 2, // Emails condition + blocked condition, delayed fails
-			expectedTotal:     8,
+			expectedTotal:     8, // ProjectName, ProjectURL, Sponsorship.Amount, Sponsorship.Emails, Sponsorship.Blocked, Date, Delayed, Gist
 			description:       "Delayed video should fail the delayed condition",
 		},
 		{
@@ -620,7 +616,7 @@ func TestCalculateInitialDetailsProgress(t *testing.T) {
 				Sponsorship: storage.Sponsorship{Amount: "N/A"},
 			},
 			expectedCompleted: 4, // Amount + emails passes (N/A), blocked passes, delayed passes
-			expectedTotal:     8,
+			expectedTotal:     8, // ProjectName, ProjectURL, Sponsorship.Amount, Sponsorship.Emails, Sponsorship.Blocked, Date, Delayed, Gist
 			description:       "N/A sponsorship amount should pass emails condition",
 		},
 		{
@@ -629,7 +625,7 @@ func TestCalculateInitialDetailsProgress(t *testing.T) {
 				Sponsorship: storage.Sponsorship{Amount: "-"},
 			},
 			expectedCompleted: 4, // Amount + emails passes (-), blocked passes, delayed passes
-			expectedTotal:     8,
+			expectedTotal:     8, // ProjectName, ProjectURL, Sponsorship.Amount, Sponsorship.Emails, Sponsorship.Blocked, Date, Delayed, Gist
 			description:       "Dash sponsorship amount should pass emails condition",
 		},
 	}

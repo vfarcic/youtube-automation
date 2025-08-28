@@ -125,9 +125,6 @@ type AITweetsResponse struct {
 	Tweets []string `json:"tweets"`
 }
 
-type AIHighlightsResponse struct {
-	Highlights []string `json:"highlights"`
-}
 
 type AIDescriptionTagsResponse struct {
 	DescriptionTags []string `json:"description_tags"`
@@ -728,28 +725,6 @@ func (s *Server) aiTweets(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, AITweetsResponse{Tweets: tweets})
 }
 
-// aiHighlights handles POST /api/ai/highlights
-func (s *Server) aiHighlights(w http.ResponseWriter, r *http.Request) {
-	var req AIRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "Invalid JSON")
-		return
-	}
-
-	if req.Manuscript == "" {
-		writeError(w, http.StatusBadRequest, "manuscript is required")
-		return
-	}
-
-
-	highlights, err := ai.SuggestHighlights(r.Context(), req.Manuscript)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to generate highlights", err.Error())
-		return
-	}
-
-	writeJSON(w, http.StatusOK, AIHighlightsResponse{Highlights: highlights})
-}
 
 // aiDescriptionTags handles POST /api/ai/description-tags
 func (s *Server) aiDescriptionTags(w http.ResponseWriter, r *http.Request) {
@@ -920,52 +895,6 @@ func (s *Server) aiTweetsWithVideo(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, AITweetsResponse{Tweets: tweets})
 }
 
-// aiHighlightsWithVideo handles POST /api/ai/highlights/{videoName}?category={category}
-// This new endpoint uses URL parameters instead of JSON payload and reads manuscript from video files
-func (s *Server) aiHighlightsWithVideo(w http.ResponseWriter, r *http.Request) {
-	// Extract video name from URL path
-	videoName := chi.URLParam(r, "videoName")
-	if videoName == "" {
-		writeError(w, http.StatusBadRequest, "videoName is required")
-		return
-	}
-
-	// Extract category from query parameter
-	category := r.URL.Query().Get("category")
-	if category == "" {
-		writeError(w, http.StatusBadRequest, "category query parameter is required")
-		return
-	}
-
-	// Get manuscript content using our VideoService method
-	manuscriptContent, err := s.videoService.GetVideoManuscript(videoName, category)
-	if err != nil {
-		// Check if it's a "video not found" error vs other errors
-		if strings.Contains(err.Error(), "failed to get video") {
-			writeError(w, http.StatusNotFound, "Video not found", err.Error())
-			return
-		}
-		// Check if it's a "gist field empty" error (user error)
-		if strings.Contains(err.Error(), "gist field is empty") {
-			writeError(w, http.StatusBadRequest, "Video manuscript not configured", err.Error())
-			return
-		}
-		// Other errors (file read errors, etc.) are server errors
-		writeError(w, http.StatusInternalServerError, "Failed to read manuscript", err.Error())
-		return
-	}
-
-	// Get AI configuration
-
-	// Generate highlights using AI
-	highlights, err := ai.SuggestHighlights(r.Context(), manuscriptContent)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to generate highlights", err.Error())
-		return
-	}
-
-	writeJSON(w, http.StatusOK, AIHighlightsResponse{Highlights: highlights})
-}
 
 // aiDescriptionTagsWithVideo handles POST /api/ai/description-tags/{videoName}?category={category}
 // This new endpoint uses URL parameters instead of JSON payload and reads manuscript from video files

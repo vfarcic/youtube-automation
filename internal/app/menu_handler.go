@@ -19,7 +19,6 @@ import (
 	"devopstoolkit/youtube-automation/internal/configuration"
 	"devopstoolkit/youtube-automation/internal/constants"
 	"devopstoolkit/youtube-automation/internal/filesystem"
-	"devopstoolkit/youtube-automation/internal/markdown"
 	"devopstoolkit/youtube-automation/internal/notification"
 	"devopstoolkit/youtube-automation/internal/platform"
 	"devopstoolkit/youtube-automation/internal/platform/bluesky"
@@ -213,7 +212,6 @@ func (m *MenuHandler) getFieldKeyFromTitle(fieldTitle string) string {
 		// Definition
 		constants.FieldTitleTitle:            "title",
 		constants.FieldTitleDescription:      "description",
-		constants.FieldTitleHighlight:        "highlight",
 		constants.FieldTitleTags:             "tags",
 		constants.FieldTitleDescriptionTags:  "descriptionTags",
 		constants.FieldTitleTweet:            "tweet",
@@ -1226,7 +1224,6 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 		description            string
 		isTitleField           bool
 		isDescriptionField     bool
-		isHighlightField       bool
 		isThumbnailField       bool
 		isTagsField            bool
 		isDescriptionTagsField bool
@@ -1247,12 +1244,6 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 			getValue:     func() interface{} { return videoToEdit.Description },
 			updateAction: func(newValue interface{}) { videoToEdit.Description = newValue.(string) },
 			revertField:  func(originalValue interface{}) { videoToEdit.Description = originalValue.(string) },
-		},
-		{
-			name: "Highlight", description: "Video highlight summary/timestamp (e.g., 01:23). Gist highlighting is a separate AI action.", isHighlightField: true,
-			getValue:     func() interface{} { return videoToEdit.Highlight },
-			updateAction: func(newValue interface{}) { videoToEdit.Highlight = newValue.(string) },
-			revertField:  func(originalValue interface{}) { videoToEdit.Highlight = originalValue.(string) },
 		},
 		{
 			name: "Tags", description: "Comma-separated tags (max 15 tags, 50 chars/tag, 450 total). e.g., golang,devops,tutorial.", isTagsField: true,
@@ -1459,126 +1450,6 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 					fieldSavedOrSkipped = true
 				default:
 					fmt.Println(m.errorStyle.Render(fmt.Sprintf("Unknown action for description field: %d", selectedAction)))
-					fieldSavedOrSkipped = true
-				}
-			}
-		} else if df.isHighlightField {
-			tempHighlightValue := originalFieldValue.(string)
-			fieldSavedOrSkipped := false
-
-			for !fieldSavedOrSkipped {
-				var selectedAction int = generalActionUnknown
-
-				highlightFieldItself := huh.NewInput().Title(m.colorTitleString(constants.FieldTitleHighlight, tempHighlightValue)).Description(df.description).Value(&tempHighlightValue)
-				// No .Lines() for Input field
-
-				actionSelect := huh.NewSelect[int]().Title("Action for Highlight").Options(
-					huh.NewOption("Save Manual Highlight & Continue", generalActionSave),
-					huh.NewOption("Suggest & Apply Gist Highlights (AI)", generalActionAskAI),
-					huh.NewOption("Skip Manual Highlight & Continue", generalActionSkip),
-				).Value(&selectedAction)
-
-				highlightGroup := huh.NewGroup(highlightFieldItself, actionSelect)
-				highlightForm := huh.NewForm(highlightGroup)
-				formError = highlightForm.Run()
-
-				if formError != nil {
-					if formError == huh.ErrUserAborted {
-						fmt.Println(m.orangeStyle.Render(fmt.Sprintf("Action for '%s' aborted by user.", df.name)))
-						df.revertField(originalFieldValue)
-						if fieldIdx == 0 {
-							fmt.Println(m.normalStyle.Render(MessageDefinitionPhaseAborted))
-							return originalVideoForThisCall, nil
-						}
-						fieldSavedOrSkipped = true
-						continue
-					}
-					fmt.Println(m.errorStyle.Render(fmt.Sprintf("Error in highlight form: %v", formError)))
-					return videoToEdit, formError
-				}
-
-				switch selectedAction {
-				case generalActionSave:
-					df.updateAction(tempHighlightValue)
-					saveErr := yamlHelper.WriteVideo(videoToEdit, videoToEdit.Path) // Renamed err to saveErr
-					if saveErr != nil {
-						fmt.Println(m.errorStyle.Render(fmt.Sprintf("Error saving manual highlight for '%s': %v", df.name, saveErr)))
-						df.revertField(originalFieldValue)
-						return videoToEdit, saveErr
-					}
-					fieldSavedOrSkipped = true
-				case generalActionAskAI: // AI for Gist highlights
-					fmt.Println(m.normalStyle.Render("Attempting to get AI Gist highlight suggestions..."))
-					if videoToEdit.Gist == "" {
-						fmt.Fprintf(os.Stderr, "Manuscript/Gist path is not defined. Cannot fetch content for AI Gist highlights.\\n")
-					} else {
-						aiConfig, cfgErr := ai.GetAIConfig()
-						if cfgErr != nil {
-							fmt.Fprintf(os.Stderr, "Error getting AI config: %v\\n", cfgErr)
-						} else {
-							manuscriptContent, readErr := m.videoService.GetVideoManuscript(videoToEdit.Name, videoToEdit.Category)
-							if readErr != nil {
-								fmt.Fprintf(os.Stderr, "Error reading manuscript: %v\\n", readErr)
-							} else {
-								manuscriptPath := videoToEdit.Gist // Still needed for ApplyHighlightsInGist
-								suggestedGistHighlights, suggErr := ai.SuggestHighlights(context.Background(), manuscriptContent, aiConfig)
-								if suggErr != nil {
-									fmt.Fprintf(os.Stderr, "Error suggesting Gist highlights: %v\\n", suggErr)
-								} else if len(suggestedGistHighlights) > 0 {
-									var confirmedGistHighlights []string
-									options := []huh.Option[string]{}
-									for _, phrase := range suggestedGistHighlights {
-										options = append(options, huh.NewOption(phrase, phrase))
-									}
-									multiSelectForm := huh.NewForm(huh.NewGroup(
-										huh.NewMultiSelect[string]().
-											Title("Select Gist phrases to highlight (bold)").
-											Options(options...).
-											Value(&confirmedGistHighlights),
-									))
-									multiSelectErr := multiSelectForm.Run()
-									if multiSelectErr != nil && multiSelectErr != huh.ErrUserAborted {
-										fmt.Fprintf(os.Stderr, "Error during Gist highlight selection: %v\\n", multiSelectErr)
-									} else if multiSelectErr == nil && len(confirmedGistHighlights) > 0 {
-										// Apply the selected highlights to the Gist file
-										applyErr := markdown.ApplyHighlightsInGist(manuscriptPath, confirmedGistHighlights) // Correct direct package call
-										if applyErr != nil {
-											fmt.Fprintf(os.Stderr, "Error applying Gist highlights: %v\n", applyErr)
-										} else {
-											fmt.Println(m.normalStyle.Render(fmt.Sprintf("%d Gist highlights applied to %s.", len(confirmedGistHighlights), manuscriptPath)))
-
-											// Create the summary string
-											currentHighlightSummary := strings.Join(confirmedGistHighlights, "; ")
-											// Update videoToEdit.Highlight in memory
-											df.updateAction(currentHighlightSummary)
-
-											// Save the updated videoToEdit to YAML
-											if errSave := yamlHelper.WriteVideo(videoToEdit, videoToEdit.Path); errSave != nil {
-												fmt.Println(m.errorStyle.Render(fmt.Sprintf("Error saving video after AI Gist highlight update: %v", errSave)))
-												// Optionally revert videoToEdit.Highlight if save fails, though df.updateAction was already called
-											} else {
-												fmt.Println(m.confirmationStyle.Render("Video YAML updated with Gist highlight summary."))
-												// CRUCIAL FIX: Update tempHighlightValue so the input field reflects the AI change
-												tempHighlightValue = currentHighlightSummary
-											}
-										}
-									} else if multiSelectErr == huh.ErrUserAborted {
-										fmt.Println(m.orangeStyle.Render("Gist highlight selection aborted."))
-									} else {
-										fmt.Println(m.normalStyle.Render("No Gist highlights selected to apply."))
-									}
-								} else {
-									fmt.Println(m.normalStyle.Render("AI did not return any Gist highlight suggestions."))
-								}
-							}
-						}
-					}
-				case generalActionSkip:
-					df.revertField(originalFieldValue)
-					fmt.Println(m.normalStyle.Render(fmt.Sprintf("Skipped changes for manual '%s'.", df.name)))
-					fieldSavedOrSkipped = true
-				default:
-					fmt.Println(m.errorStyle.Render(fmt.Sprintf("Unknown action for highlight field: %d", selectedAction)))
 					fieldSavedOrSkipped = true
 				}
 			}

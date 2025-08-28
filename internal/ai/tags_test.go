@@ -124,5 +124,5 @@ func TestSuggestTags(t *testing.T) {
 	}
 }
 
-// The mockLLM struct and its methods are expected to be defined in another test file within this package (e.g., highlights_test.go or titles_test.go)
+// The mockLLM struct and its methods are expected to be defined in another test file within this package (e.g., titles_test.go)
 // and will be available at compile time.

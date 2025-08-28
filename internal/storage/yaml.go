@@ -44,7 +44,6 @@ type Video struct {
 	Diagrams             bool        `json:"diagrams" completion:"true_only"`
 	Title                string      `json:"title" completion:"filled_only"`
 	Description          string      `json:"description" completion:"filled_only"`
-	Highlight            string      `json:"highlight" completion:"filled_only"`
 	Tags                 string      `json:"tags" completion:"filled_only"`
 	DescriptionTags      string      `json:"descriptionTags" completion:"filled_only"`
 	Location             string      `json:"location" completion:"filled_only"`

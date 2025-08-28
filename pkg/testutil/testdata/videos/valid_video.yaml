@@ -32,7 +32,6 @@ Thumbnails: true
 Diagrams: true
 Title: "How to Implement Kubernetes Operators with Go"
 Description: "Learn how to build, deploy, and manage Kubernetes Operators using the Operator SDK with Go."
-Highlight: "Building custom controllers for automating complex applications"
 Tags: "kubernetes,operators,golang,cloud-native"
 DescriptionTags: "#kubernetes #operators #golang #cloudnative"
 Location: "Remote"

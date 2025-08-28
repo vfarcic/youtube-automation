@@ -38,7 +38,6 @@ const (
 	// Definition fields
 	FieldTitleTitle            = "Title"
 	FieldTitleDescription      = "Description"
-	FieldTitleHighlight        = "Highlight"
 	FieldTitleTags             = "Tags"
 	FieldTitleDescriptionTags  = "Description Tags"
 	FieldTitleTweet            = "Tweet"

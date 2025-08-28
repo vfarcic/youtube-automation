@@ -95,7 +95,6 @@ func (m *Manager) CalculateDefinePhaseCompletion(video storage.Video) (completed
 	fieldsToCount := []interface{}{
 		video.Title,
 		video.Description,
-		video.Highlight,
 		video.Tags,
 		video.DescriptionTags,
 		video.Tweet,

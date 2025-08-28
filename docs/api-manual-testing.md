@@ -323,7 +323,6 @@ curl -X PUT "http://localhost:8080/api/videos/test-api-video/definition?category
   -d '{
     "title": "Complete Guide to REST API Testing",
     "description": "In this comprehensive video, we explore the fundamentals of REST API testing...",
-    "highlight": "Master API testing in 30 minutes",
     "tags": "api, testing, rest, development, tutorial",
     "descriptionTags": "#API #Testing #REST #Development",
     "tweet": "Just released a comprehensive guide to REST API testing! Perfect for developers looking to improve their testing skills. 🚀 #API #Testing",
@@ -488,25 +487,6 @@ Expected response:
 }
 ```
 
-#### Generate Video Highlights
-```bash
-curl -X POST http://localhost:8080/api/ai/highlights \
-  -H "Content-Type: application/json" \
-  -d '{
-    "manuscript": "This tutorial covers advanced Kubernetes deployment strategies including blue-green deployments, canary releases, and rolling updates. We will explore how to implement these patterns using kubectl and Helm charts."
-  }'
-```
-Expected response:
-```json
-{
-  "highlights": [
-    "Master zero-downtime deployments with blue-green strategies",
-    "Implement safe feature rollouts using canary releases",
-    "Optimize rolling updates for production workloads",
-    "Practical kubectl and Helm chart examples included"
-  ]
-}
-```
 
 #### Generate Description with Tags
 ```bash
@@ -674,22 +654,6 @@ Expected response:
 }
 ```
 
-##### Generate Video Highlights (Optimized)
-```bash
-curl -X POST "http://localhost:8080/api/ai/highlights/ai-kills-iac?category=ai"
-```
-Expected response:
-```json
-{
-  "highlights": [
-    "AI is fundamentally changing how we approach infrastructure automation",
-    "Traditional IaC tools like Terraform may become obsolete as AI takes over",
-    "Machine learning algorithms can now predict and prevent infrastructure failures",
-    "The DevOps role is evolving from manual scripting to AI orchestration",
-    "Organizations must adapt their infrastructure strategies to remain competitive"
-  ]
-}
-```
 
 ##### Generate Description with Tags (Optimized)
 ```bash
@@ -1239,26 +1203,6 @@ Expected response:
       "completionCriteria": "filled_only"
     },
     {
-      "name": "Highlight",
-      "fieldName": "highlight",
-      "type": "text",
-      "required": false,
-      "order": 3,
-      "description": "Video highlight or summary",
-      "uiHints": {
-        "inputType": "textarea",
-        "placeholder": "",
-        "helpText": "",
-        "rows": 3,
-        "multiline": true
-      },
-      "validationHints": {
-        "required": false
-      },
-      "defaultValue": "",
-      "completionCriteria": "filled_only"
-    },
-    {
       "name": "Tags",
       "fieldName": "tags",
       "type": "text",
@@ -1712,7 +1656,7 @@ Follow these steps to test a complete video workflow:
 3. **Update Initial Details**: Add project information and publish date
 4. **Update Work Progress**: Mark content creation tasks as complete
 5. **Update Definition**: Add title, description, and metadata
-6. **Test AI Content Generation**: Use AI endpoints to generate titles, descriptions, tags, tweets, and highlights
+6. **Test AI Content Generation**: Use AI endpoints to generate titles, descriptions, tags, and tweets
 7. **Update Post-Production**: Add thumbnail and editing information
 8. **Update Publishing**: Simulate video upload and Hugo post creation
 9. **Update Post-Publish**: Mark social media and follow-up tasks as complete
