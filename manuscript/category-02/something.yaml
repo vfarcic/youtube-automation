@@ -16,7 +16,6 @@ thumbnails: true
 diagrams: true
 title: 'APIs vs. Scripts: The Battle for the Soul of Platform Engineering!'
 description: "Dive into the fascinating world of platform engineering with our latest video, where we draw a unique parallel between the efficiency of restaurants and the principles of platform engineering. Discover why offering complete solutions, not just the raw \"ingredients,\" is crucial for developers to focus on their core tasks. Learn about the importance of a well-structured service catalog, akin to a restaurant's menu, and how APIs serve as the diligent waiters of the digital realm. Understand the significance of customizable services, just enough information, and observability—elements that ensure a seamless experience for developers, much like diners in a restaurant. Whether you're a developer, a platform engineer, or simply curious about efficient systems, this video serves up a feast of insights. Bon Appétit to learning! 🍽️👨‍💻🚀\n"
-highlight: ""
 tags: '#KubernetesTutorial #DevOpsTraining #ContainerManagementes, just enough    information,'
 descriptiontags: '#CI/CD #ContinuousIntegration #ContinuousDelivery'
 location: google drive

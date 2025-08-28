@@ -227,7 +227,6 @@ func getFieldDescription(fieldKey string) string {
 		// Definition
 		"title":            "Video title",
 		"description":      "Video description text",
-		"highlight":        "Key highlight or main point",
 		"tags":             "Video tags for categorization",
 		"descriptionTags":  "Tags for video description",
 		"tweet":            "Social media tweet text",

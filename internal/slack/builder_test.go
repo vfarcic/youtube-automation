@@ -194,19 +194,18 @@ func TestBuildSectionBlockWithThumbnail(t *testing.T) {
 		errorContains        string
 	}{
 		{
-			name: "Valid video with Highlight, Description, and VideoId",
+			name: "Valid video with Description and VideoId",
 			videoDetails: storage.Video{
 				Title:       "Awesome Title",
-				Highlight:   "This is the highlight.",
 				Description: "This is the full description.",
 				VideoId:     "vid123",
 			},
-			expectedText:         "This is the highlight.",
+			expectedText:         "This is the full description.",
 			expectedThumbnailURL: fmt.Sprintf(thumbnailURLFormat, "vid123"),
 			expectError:          false,
 		},
 		{
-			name: "Valid video with Description (no Highlight) and VideoId",
+			name: "Valid video with Description and VideoId",
 			videoDetails: storage.Video{
 				Title:       "Another Title",
 				Description: "Only description here.",
@@ -217,7 +216,7 @@ func TestBuildSectionBlockWithThumbnail(t *testing.T) {
 			expectError:          false,
 		},
 		{
-			name: "Valid video with no Highlight or Description, but with VideoId",
+			name: "Valid video with no Description, but with VideoId",
 			videoDetails: storage.Video{
 				Title:   "Minimal Video",
 				VideoId: "vid789",
@@ -229,9 +228,9 @@ func TestBuildSectionBlockWithThumbnail(t *testing.T) {
 		{
 			name: "Video with text fields but empty VideoId",
 			videoDetails: storage.Video{
-				Title:     "Text Only",
-				Highlight: "Some highlight.",
-				VideoId:   "", // Empty VideoId
+				Title:       "Text Only",
+				Description: "Some description.",
+				VideoId:     "", // Empty VideoId
 			},
 			expectError:   true,
 			errorContains: "VideoId cannot be empty",
@@ -251,7 +250,6 @@ func TestBuildSectionBlockWithThumbnail(t *testing.T) {
 			name: "Empty video details (should error due to empty VideoId)",
 			videoDetails: storage.Video{
 				Title:       "",
-				Highlight:   "",
 				Description: "",
 				VideoId:     "",
 			},
@@ -401,7 +399,6 @@ func TestBuildMessage(t *testing.T) {
 			videoDetails: storage.Video{
 				Title:      "Full Video",
 				VideoId:    "full123",
-				Highlight:  "Highlight here.",
 				Date:       "2023-01-01T10:00",
 				Category:   "Test Category",
 				Tags:       "tagA,tagB",

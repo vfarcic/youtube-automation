@@ -89,7 +89,7 @@ type Video struct {
 Completion criteria: `filled_only`, `true_only`, `false_only`, `conditional_sponsorship`, `conditional_sponsors`, `empty_or_filled`, `no_fixme`
 
 #### 4. AI Content Generation
-- Integrated Azure OpenAI for titles, descriptions, tags, tweets, highlights
+- Integrated Azure OpenAI for titles, descriptions, tags, and tweets
 - Two API approaches: traditional (JSON payload) and optimized (URL parameters)
 - Located in `internal/ai/` with individual modules per content type
 

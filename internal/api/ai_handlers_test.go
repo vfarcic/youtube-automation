@@ -27,7 +27,6 @@ func TestAIEndpointsRouting(t *testing.T) {
 		"/api/ai/description",
 		"/api/ai/tags",
 		"/api/ai/tweets",
-		"/api/ai/highlights",
 		"/api/ai/description-tags",
 	}
 
@@ -54,7 +53,6 @@ func TestAIEndpointsValidation(t *testing.T) {
 		"/api/ai/description",
 		"/api/ai/tags",
 		"/api/ai/tweets",
-		"/api/ai/highlights",
 		"/api/ai/description-tags",
 	}
 
@@ -100,7 +98,6 @@ func TestAIEndpointsMethodNotAllowed(t *testing.T) {
 		"/api/ai/description",
 		"/api/ai/tags",
 		"/api/ai/tweets",
-		"/api/ai/highlights",
 		"/api/ai/description-tags",
 	}
 
@@ -356,52 +353,6 @@ func TestAITweetsEndpoint(t *testing.T) {
 	}
 }
 
-// Test highlights endpoint
-func TestAIHighlightsEndpoint(t *testing.T) {
-	server := NewServer()
-
-	tests := []struct {
-		name           string
-		manuscript     string
-		expectedStatus int
-		validateResp   func(t *testing.T, body []byte)
-	}{
-		{
-			name:           "Valid manuscript",
-			manuscript:     "This comprehensive guide covers advanced Python concepts including decorators, context managers, and metaclasses for professional development.",
-			expectedStatus: http.StatusOK,
-			validateResp: func(t *testing.T, body []byte) {
-				var resp AIHighlightsResponse
-				err := json.Unmarshal(body, &resp)
-				require.NoError(t, err, "Response should be valid JSON")
-				assert.NotEmpty(t, resp.Highlights, "Should return highlights")
-				for _, highlight := range resp.Highlights {
-					assert.NotEmpty(t, highlight, "Each highlight should not be empty")
-				}
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			reqBody, _ := json.Marshal(AIRequest{Manuscript: tt.manuscript})
-			req := httptest.NewRequest("POST", "/api/ai/highlights", bytes.NewReader(reqBody))
-			req.Header.Set("Content-Type", "application/json")
-			w := httptest.NewRecorder()
-
-			server.router.ServeHTTP(w, req)
-
-			if w.Code == http.StatusInternalServerError {
-				t.Skip("AI configuration not available in test environment")
-			}
-
-			assert.Equal(t, tt.expectedStatus, w.Code)
-			if tt.validateResp != nil {
-				tt.validateResp(t, w.Body.Bytes())
-			}
-		})
-	}
-}
 
 // Test description-tags endpoint
 func TestAIDescriptionTagsEndpoint(t *testing.T) {
@@ -595,7 +546,7 @@ func TestAIEndpointsAdvancedErrorHandling(t *testing.T) {
 		},
 		{
 			name:           "Very large request body",
-			endpoint:       "/api/ai/highlights",
+			endpoint:       "/api/ai/titles",
 			requestBody:    `{"manuscript": "` + strings.Repeat("Very long content. ", 10000) + `"}`,
 			contentType:    "application/json",
 			expectedStatus: http.StatusOK, // Should handle large content
@@ -704,8 +655,7 @@ func TestAIEndpointsConcurrency(t *testing.T) {
 			"/api/ai/description",
 			"/api/ai/tags",
 			"/api/ai/tweets",
-			"/api/ai/highlights",
-			"/api/ai/description-tags",
+				"/api/ai/description-tags",
 		}
 
 		var wg sync.WaitGroup
@@ -1249,89 +1199,6 @@ func TestAITweetsWithVideoParams(t *testing.T) {
 	}
 }
 
-// Test new AI highlights endpoint that uses URL parameters instead of JSON payload
-func TestAIHighlightsWithVideoParams(t *testing.T) {
-	server := setupTestServer(t)
-
-	// Create a test video with manuscript
-	_, err := server.videoService.CreateVideo("test-video", "test-category")
-	require.NoError(t, err)
-
-	// Create a test manuscript file
-	manuscriptContent := "# Test Video Tutorial\n\nThis is a comprehensive tutorial about Docker containerization and Kubernetes orchestration."
-	manuscriptPath := server.videoService.GetManuscriptPath("test-video", "test-category")
-	err = os.WriteFile(manuscriptPath, []byte(manuscriptContent), 0644)
-	require.NoError(t, err)
-
-	// Update the video to set the Gist field
-	video, err := server.videoService.GetVideo("test-video", "test-category")
-	require.NoError(t, err)
-	video.Gist = manuscriptPath
-	err = server.videoService.UpdateVideo(video)
-	require.NoError(t, err)
-
-	tests := []struct {
-		name           string
-		videoName      string
-		category       string
-		expectedStatus int
-		validateResp   func(t *testing.T, body []byte)
-	}{
-		{
-			name:           "Valid video with manuscript",
-			videoName:      "test-video",
-			category:       "test-category",
-			expectedStatus: http.StatusOK,
-			validateResp: func(t *testing.T, body []byte) {
-				var resp AIHighlightsResponse
-				err := json.Unmarshal(body, &resp)
-				require.NoError(t, err, "Response should be valid JSON")
-				assert.NotEmpty(t, resp.Highlights, "Should return at least one highlight")
-				for _, highlight := range resp.Highlights {
-					assert.NotEmpty(t, highlight, "Each highlight should not be empty")
-				}
-			},
-		},
-		{
-			name:           "Non-existent video",
-			videoName:      "non-existent",
-			category:       "test-category",
-			expectedStatus: http.StatusNotFound,
-		},
-		{
-			name:           "Empty video name",
-			videoName:      "",
-			category:       "test-category",
-			expectedStatus: http.StatusNotFound,
-		},
-		{
-			name:           "Empty category",
-			videoName:      "test-video",
-			category:       "",
-			expectedStatus: http.StatusBadRequest,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			url := fmt.Sprintf("/api/ai/highlights/%s?category=%s", tt.videoName, tt.category)
-			req := httptest.NewRequest("POST", url, nil)
-			w := httptest.NewRecorder()
-
-			server.router.ServeHTTP(w, req)
-
-			// Skip validation if AI config is not available (expected in test environment)
-			if w.Code == http.StatusInternalServerError && tt.expectedStatus == http.StatusOK {
-				t.Skip("AI configuration not available in test environment")
-			}
-
-			assert.Equal(t, tt.expectedStatus, w.Code)
-			if tt.validateResp != nil && w.Code == http.StatusOK {
-				tt.validateResp(t, w.Body.Bytes())
-			}
-		})
-	}
-}
 
 // Test new AI description-tags endpoint that uses URL parameters instead of JSON payload
 func TestAIDescriptionTagsWithVideoParams(t *testing.T) {

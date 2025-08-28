@@ -12,7 +12,7 @@ This project automates various aspects of managing a YouTube channel with both C
 *   **Video Lifecycle Management**: Complete workflow from ideas to publishing and post-publish activities
 *   **CLI Interface**: Interactive command-line interface for video management
 *   **REST API**: Comprehensive REST API for programmatic access
-*   **AI Content Generation**: AI-powered generation of titles, descriptions, tags, tweets, and highlights
+*   **AI Content Generation**: AI-powered generation of titles, descriptions, tags, and tweets
 *   **Video Uploads**: Automated YouTube video uploads
 *   **Thumbnail Management**: Thumbnail creation and upload workflow  
 *   **Metadata Handling**: Video titles, descriptions, tags, and metadata
@@ -75,7 +75,6 @@ Starts the REST API server. See [docs/api-manual-testing.md](docs/api-manual-tes
 - `POST /api/ai/description` - Generate video description from manuscript
 - `POST /api/ai/tags` - Generate video tags from manuscript
 - `POST /api/ai/tweets` - Generate social media tweets from manuscript
-- `POST /api/ai/highlights` - Generate video highlights from manuscript
 - `POST /api/ai/description-tags` - Generate description with hashtags from manuscript
 
 *Optimized endpoints (URL parameters - recommended for existing videos):*
@@ -83,7 +82,6 @@ Starts the REST API server. See [docs/api-manual-testing.md](docs/api-manual-tes
 - `POST /api/ai/description/{videoName}?category={cat}` - Generate description for specific video
 - `POST /api/ai/tags/{videoName}?category={cat}` - Generate tags for specific video
 - `POST /api/ai/tweets/{videoName}?category={cat}` - Generate tweets for specific video
-- `POST /api/ai/highlights/{videoName}?category={cat}` - Generate highlights for specific video
 - `POST /api/ai/description-tags/{videoName}?category={cat}` - Generate description with hashtags for specific video
 
 **Animations endpoint:**
@@ -225,39 +223,35 @@ async function generateTitlesOptimized(videoName, category) {
 
 // Generate complete video metadata (traditional approach)
 async function generateVideoMetadata(manuscript) {
-  const [titles, description, tags, tweets, highlights] = await Promise.all([
+  const [titles, description, tags, tweets] = await Promise.all([
     fetch('/api/ai/titles', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ manuscript }) }),
     fetch('/api/ai/description', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ manuscript }) }),
     fetch('/api/ai/tags', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ manuscript }) }),
-    fetch('/api/ai/tweets', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ manuscript }) }),
-    fetch('/api/ai/highlights', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ manuscript }) })
+    fetch('/api/ai/tweets', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ manuscript }) })
   ]);
 
   return {
     titles: (await titles.json()).titles,
     description: (await description.json()).description,
     tags: (await tags.json()).tags,
-    tweets: (await tweets.json()).tweets,
-    highlights: (await highlights.json()).highlights
+    tweets: (await tweets.json()).tweets
   };
 }
 
 // Generate complete video metadata (optimized approach - recommended)
 async function generateVideoMetadataOptimized(videoName, category) {
-  const [titles, description, tags, tweets, highlights] = await Promise.all([
+  const [titles, description, tags, tweets] = await Promise.all([
     fetch(`/api/ai/titles/${videoName}?category=${category}`, { method: 'POST' }),
     fetch(`/api/ai/description/${videoName}?category=${category}`, { method: 'POST' }),
     fetch(`/api/ai/tags/${videoName}?category=${category}`, { method: 'POST' }),
-    fetch(`/api/ai/tweets/${videoName}?category=${category}`, { method: 'POST' }),
-    fetch(`/api/ai/highlights/${videoName}?category=${category}`, { method: 'POST' })
+    fetch(`/api/ai/tweets/${videoName}?category=${category}`, { method: 'POST' })
   ]);
 
   return {
     titles: (await titles.json()).titles,
     description: (await description.json()).description,
     tags: (await tags.json()).tags,
-    tweets: (await tweets.json()).tweets,
-    highlights: (await highlights.json()).highlights
+    tweets: (await tweets.json()).tweets
   };
 }
 

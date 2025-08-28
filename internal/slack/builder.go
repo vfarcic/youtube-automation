@@ -41,9 +41,7 @@ func BuildSectionBlockWithThumbnail(videoDetails storage.Video) (*slack.SectionB
 	}
 
 	var textContent string
-	if videoDetails.Highlight != "" {
-		textContent = videoDetails.Highlight
-	} else if videoDetails.Description != "" {
+	if videoDetails.Description != "" {
 		textContent = videoDetails.Description
 	} else {
 		textContent = defaultSummary

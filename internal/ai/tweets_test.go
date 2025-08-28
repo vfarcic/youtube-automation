@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-// mockLLM is assumed to be defined in another test file in this package (e.g., highlights_test.go)
+// mockLLM is assumed to be defined in another test file in this package (e.g., titles_test.go)
 // and accessible here. If not, it would need to be defined or imported.
 
 func TestSuggestTweets(t *testing.T) {

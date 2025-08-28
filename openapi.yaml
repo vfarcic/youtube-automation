@@ -1157,9 +1157,6 @@ components:
           type: string
           description: The description of the video
           example: "In this video, we'll explore..."
-        highlight:
-          type: string
-          description: The highlight text for the video
         tags:
           type: string
           description: Tags for the video
@@ -1587,25 +1584,6 @@ components:
         - tweets
       description: Response containing AI-generated promotional tweets
 
-    AIHighlightsResponse:
-      type: object
-      properties:
-        highlights:
-          type: array
-          items:
-            type: string
-          description: Array of key content highlights extracted from the manuscript
-          example:
-            - "Blue-green deployment eliminates downtime by maintaining two identical production environments"
-            - "Canary releases allow testing new versions with a small subset of users before full rollout"
-            - "Rolling updates provide gradual deployment with automatic rollback capabilities"
-            - "kubectl and Helm integration streamlines deployment automation and management"
-            - "Production considerations include monitoring, logging, and disaster recovery planning"
-          minItems: 3
-          maxItems: 10
-      required:
-        - highlights
-      description: Response containing AI-generated content highlights
 
     AIDescriptionTagsResponse:
       type: object
@@ -2316,117 +2294,7 @@ components:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /api/ai/highlights:
-    post:
-      summary: Generate AI-powered content highlights
-      description: |
-        Extracts and generates key highlights from the provided manuscript content.
-        Useful for creating video chapters, key takeaways, or summary points.
-      operationId: generateHighlights
-      tags:
-        - AI Content Generation
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/AIRequest'
-      responses:
-        '200':
-          description: Highlights generated successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AIHighlightsResponse'
-              example:
-                highlights:
-                  - "Blue-green deployment eliminates downtime by maintaining two identical production environments"
-                  - "Canary releases allow testing new versions with a small subset of users before full rollout"
-                  - "Rolling updates provide gradual deployment with automatic rollback capabilities"
-                  - "kubectl and Helm integration streamlines deployment automation and management"
-                  - "Production considerations include monitoring, logging, and disaster recovery planning"
-        '400':
-          description: Invalid request - manuscript is required
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '405':
-          description: Method not allowed - only POST is supported
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: AI service error or internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
 
-  /api/ai/highlights/{videoName}:
-    post:
-      summary: Generate AI-powered content highlights (optimized)
-      description: |
-        Extracts and generates key highlights for a specific video by name and category.
-        This optimized endpoint uses URL parameters instead of JSON payload, reducing request size and 
-        centralizing manuscript file management on the server side.
-      operationId: generateHighlightsOptimized
-      tags:
-        - AI Content Generation
-      parameters:
-        - name: videoName
-          in: path
-          required: true
-          description: The name of the video to generate highlights for
-          schema:
-            type: string
-            example: "ai-kills-iac"
-        - name: category
-          in: query
-          required: true
-          description: The category of the video
-          schema:
-            type: string
-            example: "ai"
-      responses:
-        '200':
-          description: Highlights generated successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AIHighlightsResponse'
-              example:
-                highlights:
-                  - "AI is fundamentally changing how we approach infrastructure automation"
-                  - "Traditional IaC tools like Terraform may become obsolete as AI takes over"
-                  - "Machine learning algorithms can now predict and prevent infrastructure failures"
-                  - "The DevOps role is evolving from manual scripting to AI orchestration"
-                  - "Organizations must adapt their infrastructure strategies to remain competitive"
-        '400':
-          description: Invalid request - videoName and category are required
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: Video not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '405':
-          description: Method not allowed - only POST is supported
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: AI service error or internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
 
   /api/ai/description-tags:
     post:
@@ -2550,4 +2418,4 @@ tags:
   - name: Editing
     description: Video editing aspects metadata and field definitions
   - name: AI Content Generation
-    description: AI-powered content generation for video titles, descriptions, tags, tweets, and highlights
+    description: AI-powered content generation for video titles, descriptions, tags, and tweets

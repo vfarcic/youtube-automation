@@ -512,7 +512,6 @@ func TestVideoService_UpdateVideoPhase_Definition(t *testing.T) {
 	updateData := map[string]interface{}{
 		"title":                      "New Title",
 		"description":                "New Description",
-		"highlight":                  "New Highlight",
 		"tags":                       "new,tags",
 		"descriptionTags":            "#new #description #tags",
 		"tweetText":                  "New Tweet Text",
@@ -527,7 +526,6 @@ func TestVideoService_UpdateVideoPhase_Definition(t *testing.T) {
 
 	assert.Equal(t, "New Title", videoAfterUpdate.Title)
 	assert.Equal(t, "New Description", videoAfterUpdate.Description)
-	assert.Equal(t, "New Highlight", videoAfterUpdate.Highlight)
 	assert.Equal(t, "new,tags", videoAfterUpdate.Tags)
 	assert.Equal(t, "#new #description #tags", videoAfterUpdate.DescriptionTags)
 	assert.Equal(t, "New Tweet Text", videoAfterUpdate.Tweet)
@@ -539,7 +537,7 @@ func TestVideoService_UpdateVideoPhase_Definition(t *testing.T) {
 	localVideoManager := video.NewManager(fsOps.GetFilePath)
 	defineCompleted, defineTotal := localVideoManager.CalculateDefinePhaseCompletion(*videoAfterUpdate)
 	assert.Greater(t, defineTotal, 0)
-	assert.Equal(t, 8, defineCompleted)
+	assert.Equal(t, 7, defineCompleted)
 }
 
 func TestVideoService_UpdateVideoPhase_PostProduction(t *testing.T) {
