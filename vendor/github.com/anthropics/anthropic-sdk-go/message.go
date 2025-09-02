@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"reflect"
 	"time"
 
 	"github.com/anthropics/anthropic-sdk-go/internal/apijson"
@@ -17,6 +18,7 @@ import (
 	"github.com/anthropics/anthropic-sdk-go/packages/respjson"
 	"github.com/anthropics/anthropic-sdk-go/packages/ssestream"
 	"github.com/anthropics/anthropic-sdk-go/shared/constant"
+	"github.com/tidwall/gjson"
 )
 
 // MessageService contains methods and other services that help with interacting
@@ -154,7 +156,18 @@ func NewCacheControlEphemeralParam() CacheControlEphemeralParam {
 // This struct has a constant value, construct it with
 // [NewCacheControlEphemeralParam].
 type CacheControlEphemeralParam struct {
-	Type constant.Ephemeral `json:"type,required"`
+	// The time-to-live for the cache control breakpoint.
+	//
+	// This may be one the following values:
+	//
+	// - `5m`: 5 minutes
+	// - `1h`: 1 hour
+	//
+	// Defaults to `5m`.
+	//
+	// Any of "5m", "1h".
+	TTL  CacheControlEphemeralTTL `json:"ttl,omitzero"`
+	Type constant.Ephemeral       `json:"type,required"`
 	paramObj
 }
 
@@ -163,6 +176,41 @@ func (r CacheControlEphemeralParam) MarshalJSON() (data []byte, err error) {
 	return param.MarshalObject(r, (*shadow)(&r))
 }
 func (r *CacheControlEphemeralParam) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// The time-to-live for the cache control breakpoint.
+//
+// This may be one the following values:
+//
+// - `5m`: 5 minutes
+// - `1h`: 1 hour
+//
+// Defaults to `5m`.
+type CacheControlEphemeralTTL string
+
+const (
+	CacheControlEphemeralTTLTTL5m CacheControlEphemeralTTL = "5m"
+	CacheControlEphemeralTTLTTL1h CacheControlEphemeralTTL = "1h"
+)
+
+type CacheCreation struct {
+	// The number of input tokens used to create the 1 hour cache entry.
+	Ephemeral1hInputTokens int64 `json:"ephemeral_1h_input_tokens,required"`
+	// The number of input tokens used to create the 5 minute cache entry.
+	Ephemeral5mInputTokens int64 `json:"ephemeral_5m_input_tokens,required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Ephemeral1hInputTokens respjson.Field
+		Ephemeral5mInputTokens respjson.Field
+		ExtraFields            map[string]respjson.Field
+		raw                    string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r CacheCreation) RawJSON() string { return r.JSON.raw }
+func (r *CacheCreation) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
@@ -1188,6 +1236,26 @@ func init() {
 		apijson.Discriminator[ServerToolUseBlockParam]("server_tool_use"),
 		apijson.Discriminator[WebSearchToolResultBlockParam]("web_search_tool_result"),
 	)
+
+	// Register custom decoder for []ContentBlockParamUnion to handle string content
+	apijson.RegisterCustomDecoder[[]ContentBlockParamUnion](func(node gjson.Result, value reflect.Value, defaultDecoder func(gjson.Result, reflect.Value) error) error {
+		// If it's a string, convert it to a TextBlock automatically
+		if node.Type == gjson.String {
+			textBlock := TextBlockParam{
+				Text: node.String(),
+				Type: "text",
+			}
+			contentUnion := ContentBlockParamUnion{
+				OfText: &textBlock,
+			}
+			arrayValue := reflect.MakeSlice(value.Type(), 1, 1)
+			arrayValue.Index(0).Set(reflect.ValueOf(contentUnion))
+			value.Set(arrayValue)
+			return nil
+		}
+
+		return defaultDecoder(node, value)
+	})
 }
 
 // The properties Content, Type are required.
@@ -1856,15 +1924,23 @@ func (r *MetadataParam) UnmarshalJSON(data []byte) error {
 type Model string
 
 const (
-	ModelClaude3_7SonnetLatest      Model = "claude-3-7-sonnet-latest"
-	ModelClaude3_7Sonnet20250219    Model = "claude-3-7-sonnet-20250219"
-	ModelClaude3_5HaikuLatest       Model = "claude-3-5-haiku-latest"
-	ModelClaude3_5Haiku20241022     Model = "claude-3-5-haiku-20241022"
-	ModelClaudeSonnet4_20250514     Model = "claude-sonnet-4-20250514"
-	ModelClaudeSonnet4_0            Model = "claude-sonnet-4-0"
-	ModelClaude4Sonnet20250514      Model = "claude-4-sonnet-20250514"
-	ModelClaude3_5SonnetLatest      Model = "claude-3-5-sonnet-latest"
-	ModelClaude3_5Sonnet20241022    Model = "claude-3-5-sonnet-20241022"
+	ModelClaude3_7SonnetLatest   Model = "claude-3-7-sonnet-latest"
+	ModelClaude3_7Sonnet20250219 Model = "claude-3-7-sonnet-20250219"
+	ModelClaude3_5HaikuLatest    Model = "claude-3-5-haiku-latest"
+	ModelClaude3_5Haiku20241022  Model = "claude-3-5-haiku-20241022"
+	ModelClaudeSonnet4_20250514  Model = "claude-sonnet-4-20250514"
+	ModelClaudeSonnet4_0         Model = "claude-sonnet-4-0"
+	ModelClaude4Sonnet20250514   Model = "claude-4-sonnet-20250514"
+	ModelClaude3_5SonnetLatest   Model = "claude-3-5-sonnet-latest"
+	// Deprecated: Will reach end-of-life on October 22nd, 2025. Please migrate to a
+	// newer model. Visit
+	// https://docs.anthropic.com/en/docs/resources/model-deprecations for more
+	// information.
+	ModelClaude3_5Sonnet20241022 Model = "claude-3-5-sonnet-20241022"
+	// Deprecated: Will reach end-of-life on October 22nd, 2025. Please migrate to a
+	// newer model. Visit
+	// https://docs.anthropic.com/en/docs/resources/model-deprecations for more
+	// information.
 	ModelClaude_3_5_Sonnet_20240620 Model = "claude-3-5-sonnet-20240620"
 	ModelClaudeOpus4_0              Model = "claude-opus-4-0"
 	ModelClaudeOpus4_20250514       Model = "claude-opus-4-20250514"
@@ -3701,6 +3777,27 @@ func init() {
 		apijson.Discriminator[ImageBlockParam]("image"),
 		apijson.Discriminator[SearchResultBlockParam]("search_result"),
 	)
+
+	// Register custom decoder for []ToolResultBlockParamContentUnion to handle string content
+	apijson.RegisterCustomDecoder[[]ToolResultBlockParamContentUnion](func(node gjson.Result, value reflect.Value, defaultDecoder func(gjson.Result, reflect.Value) error) error {
+		// If it's a string, convert it to a TextBlock automatically
+		if node.Type == gjson.String {
+			textBlock := TextBlockParam{
+				Text: node.String(),
+				Type: "text",
+			}
+			contentUnion := ToolResultBlockParamContentUnion{
+				OfText: &textBlock,
+			}
+			arrayValue := reflect.MakeSlice(value.Type(), 1, 1)
+			arrayValue.Index(0).Set(reflect.ValueOf(contentUnion))
+			value.Set(arrayValue)
+			return nil
+		}
+
+		// If it's already an array, use the default decoder
+		return defaultDecoder(node, value)
+	})
 }
 
 // The properties Name, Type are required.
@@ -4025,6 +4122,8 @@ func (r *URLPDFSourceParam) UnmarshalJSON(data []byte) error {
 }
 
 type Usage struct {
+	// Breakdown of cached tokens by TTL
+	CacheCreation CacheCreation `json:"cache_creation,required"`
 	// The number of input tokens used to create the cache entry.
 	CacheCreationInputTokens int64 `json:"cache_creation_input_tokens,required"`
 	// The number of input tokens read from the cache.
@@ -4041,6 +4140,7 @@ type Usage struct {
 	ServiceTier UsageServiceTier `json:"service_tier,required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
+		CacheCreation            respjson.Field
 		CacheCreationInputTokens respjson.Field
 		CacheReadInputTokens     respjson.Field
 		InputTokens              respjson.Field
@@ -4414,32 +4514,7 @@ type MessageNewParams struct {
 	// { "role": "user", "content": [{ "type": "text", "text": "Hello, Claude" }] }
 	// ```
 	//
-	// Starting with Claude 3 models, you can also send image content blocks:
-	//
-	// ```json
-	//
-	//	{
-	//	  "role": "user",
-	//	  "content": [
-	//	    {
-	//	      "type": "image",
-	//	      "source": {
-	//	        "type": "base64",
-	//	        "media_type": "image/jpeg",
-	//	        "data": "/9j/4AAQSkZJRg..."
-	//	      }
-	//	    },
-	//	    { "type": "text", "text": "What is in this image?" }
-	//	  ]
-	//	}
-	//
-	// ```
-	//
-	// We currently support the `base64` source type for images, and the `image/jpeg`,
-	// `image/png`, `image/gif`, and `image/webp` media types.
-	//
-	// See [examples](https://docs.anthropic.com/en/api/messages-examples#vision) for
-	// more input examples.
+	// See [input examples](https://docs.anthropic.com/en/api/messages-examples).
 	//
 	// Note that if you want to include a
 	// [system prompt](https://docs.anthropic.com/en/docs/system-prompts), you can use
@@ -4685,32 +4760,7 @@ type MessageCountTokensParams struct {
 	// { "role": "user", "content": [{ "type": "text", "text": "Hello, Claude" }] }
 	// ```
 	//
-	// Starting with Claude 3 models, you can also send image content blocks:
-	//
-	// ```json
-	//
-	//	{
-	//	  "role": "user",
-	//	  "content": [
-	//	    {
-	//	      "type": "image",
-	//	      "source": {
-	//	        "type": "base64",
-	//	        "media_type": "image/jpeg",
-	//	        "data": "/9j/4AAQSkZJRg..."
-	//	      }
-	//	    },
-	//	    { "type": "text", "text": "What is in this image?" }
-	//	  ]
-	//	}
-	//
-	// ```
-	//
-	// We currently support the `base64` source type for images, and the `image/jpeg`,
-	// `image/png`, `image/gif`, and `image/webp` media types.
-	//
-	// See [examples](https://docs.anthropic.com/en/api/messages-examples#vision) for
-	// more input examples.
+	// See [input examples](https://docs.anthropic.com/en/api/messages-examples).
 	//
 	// Note that if you want to include a
 	// [system prompt](https://docs.anthropic.com/en/docs/system-prompts), you can use
