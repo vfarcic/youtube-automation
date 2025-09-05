@@ -1278,8 +1278,8 @@ func (r *ContentBlockSourceParam) UnmarshalJSON(data []byte) error {
 //
 // Use [param.IsOmitted] to confirm if a field is set.
 type ContentBlockSourceContentUnionParam struct {
-	OfString                    param.Opt[string]                     `json:",omitzero,inline"`
-	OfContentBlockSourceContent []ContentBlockSourceContentUnionParam `json:",omitzero,inline"`
+	OfString                    param.Opt[string]                         `json:",omitzero,inline"`
+	OfContentBlockSourceContent []ContentBlockSourceContentItemUnionParam `json:",omitzero,inline"`
 	paramUnion
 }
 
@@ -1297,6 +1297,100 @@ func (u *ContentBlockSourceContentUnionParam) asAny() any {
 		return &u.OfContentBlockSourceContent
 	}
 	return nil
+}
+
+func ContentBlockSourceContentItemParamOfText(text string) ContentBlockSourceContentItemUnionParam {
+	var variant TextBlockParam
+	variant.Text = text
+	return ContentBlockSourceContentItemUnionParam{OfText: &variant}
+}
+
+func ContentBlockSourceContentItemParamOfImage[T Base64ImageSourceParam | URLImageSourceParam](source T) ContentBlockSourceContentItemUnionParam {
+	var image ImageBlockParam
+	switch v := any(source).(type) {
+	case Base64ImageSourceParam:
+		image.Source.OfBase64 = &v
+	case URLImageSourceParam:
+		image.Source.OfURL = &v
+	}
+	return ContentBlockSourceContentItemUnionParam{OfImage: &image}
+}
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type ContentBlockSourceContentItemUnionParam struct {
+	OfText  *TextBlockParam  `json:",omitzero,inline"`
+	OfImage *ImageBlockParam `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u ContentBlockSourceContentItemUnionParam) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfText, u.OfImage)
+}
+func (u *ContentBlockSourceContentItemUnionParam) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+func (u *ContentBlockSourceContentItemUnionParam) asAny() any {
+	if !param.IsOmitted(u.OfText) {
+		return u.OfText
+	} else if !param.IsOmitted(u.OfImage) {
+		return u.OfImage
+	}
+	return nil
+}
+
+// Returns a pointer to the underlying variant's property, if present.
+func (u ContentBlockSourceContentItemUnionParam) GetText() *string {
+	if vt := u.OfText; vt != nil {
+		return &vt.Text
+	}
+	return nil
+}
+
+// Returns a pointer to the underlying variant's property, if present.
+func (u ContentBlockSourceContentItemUnionParam) GetCitations() []TextCitationParamUnion {
+	if vt := u.OfText; vt != nil {
+		return vt.Citations
+	}
+	return nil
+}
+
+// Returns a pointer to the underlying variant's property, if present.
+func (u ContentBlockSourceContentItemUnionParam) GetSource() *ImageBlockParamSourceUnion {
+	if vt := u.OfImage; vt != nil {
+		return &vt.Source
+	}
+	return nil
+}
+
+// Returns a pointer to the underlying variant's property, if present.
+func (u ContentBlockSourceContentItemUnionParam) GetType() *string {
+	if vt := u.OfText; vt != nil {
+		return (*string)(&vt.Type)
+	} else if vt := u.OfImage; vt != nil {
+		return (*string)(&vt.Type)
+	}
+	return nil
+}
+
+// Returns a pointer to the underlying variant's CacheControl property, if present.
+func (u ContentBlockSourceContentItemUnionParam) GetCacheControl() *CacheControlEphemeralParam {
+	if vt := u.OfText; vt != nil {
+		return &vt.CacheControl
+	} else if vt := u.OfImage; vt != nil {
+		return &vt.CacheControl
+	}
+	return nil
+}
+
+func init() {
+	apijson.RegisterUnion[ContentBlockSourceContentItemUnionParam](
+		"type",
+		apijson.Discriminator[TextBlockParam]("text"),
+		apijson.Discriminator[ImageBlockParam]("image"),
+	)
 }
 
 // The properties Source, Type are required.
@@ -3613,11 +3707,12 @@ type ToolResultBlockParamContentUnion struct {
 	OfText         *TextBlockParam         `json:",omitzero,inline"`
 	OfImage        *ImageBlockParam        `json:",omitzero,inline"`
 	OfSearchResult *SearchResultBlockParam `json:",omitzero,inline"`
+	OfDocument     *DocumentBlockParam     `json:",omitzero,inline"`
 	paramUnion
 }
 
 func (u ToolResultBlockParamContentUnion) MarshalJSON() ([]byte, error) {
-	return param.MarshalUnion(u, u.OfText, u.OfImage, u.OfSearchResult)
+	return param.MarshalUnion(u, u.OfText, u.OfImage, u.OfSearchResult, u.OfDocument)
 }
 func (u *ToolResultBlockParamContentUnion) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, u)
@@ -3630,6 +3725,8 @@ func (u *ToolResultBlockParamContentUnion) asAny() any {
 		return u.OfImage
 	} else if !param.IsOmitted(u.OfSearchResult) {
 		return u.OfSearchResult
+	} else if !param.IsOmitted(u.OfDocument) {
+		return u.OfDocument
 	}
 	return nil
 }
@@ -3651,9 +3748,9 @@ func (u ToolResultBlockParamContentUnion) GetContent() []TextBlockParam {
 }
 
 // Returns a pointer to the underlying variant's property, if present.
-func (u ToolResultBlockParamContentUnion) GetTitle() *string {
-	if vt := u.OfSearchResult; vt != nil {
-		return &vt.Title
+func (u ToolResultBlockParamContentUnion) GetContext() *string {
+	if vt := u.OfDocument; vt != nil && vt.Context.Valid() {
+		return &vt.Context.Value
 	}
 	return nil
 }
@@ -3666,6 +3763,18 @@ func (u ToolResultBlockParamContentUnion) GetType() *string {
 		return (*string)(&vt.Type)
 	} else if vt := u.OfSearchResult; vt != nil {
 		return (*string)(&vt.Type)
+	} else if vt := u.OfDocument; vt != nil {
+		return (*string)(&vt.Type)
+	}
+	return nil
+}
+
+// Returns a pointer to the underlying variant's property, if present.
+func (u ToolResultBlockParamContentUnion) GetTitle() *string {
+	if vt := u.OfSearchResult; vt != nil {
+		return (*string)(&vt.Title)
+	} else if vt := u.OfDocument; vt != nil && vt.Title.Valid() {
+		return &vt.Title.Value
 	}
 	return nil
 }
@@ -3678,6 +3787,8 @@ func (u ToolResultBlockParamContentUnion) GetCacheControl() *CacheControlEphemer
 		return &vt.CacheControl
 	} else if vt := u.OfSearchResult; vt != nil {
 		return &vt.CacheControl
+	} else if vt := u.OfDocument; vt != nil {
+		return &vt.CacheControl
 	}
 	return nil
 }
@@ -3689,6 +3800,8 @@ func (u ToolResultBlockParamContentUnion) GetCitations() (res toolResultBlockPar
 	if vt := u.OfText; vt != nil {
 		res.any = &vt.Citations
 	} else if vt := u.OfSearchResult; vt != nil {
+		res.any = &vt.Citations
+	} else if vt := u.OfDocument; vt != nil {
 		res.any = &vt.Citations
 	}
 	return
@@ -3707,6 +3820,15 @@ type toolResultBlockParamContentUnionCitations struct{ any }
 //	}
 func (u toolResultBlockParamContentUnionCitations) AsAny() any { return u.any }
 
+// Returns a pointer to the underlying variant's property, if present.
+func (u toolResultBlockParamContentUnionCitations) GetEnabled() *bool {
+	switch vt := u.any.(type) {
+	case *CitationsConfigParam:
+		return paramutil.AddrIfPresent(vt.Enabled)
+	}
+	return nil
+}
+
 // Returns a subunion which exports methods to access subproperties
 //
 // Or use AsAny() to get the underlying value
@@ -3715,12 +3837,15 @@ func (u ToolResultBlockParamContentUnion) GetSource() (res toolResultBlockParamC
 		res.any = vt.Source.asAny()
 	} else if vt := u.OfSearchResult; vt != nil {
 		res.any = &vt.Source
+	} else if vt := u.OfDocument; vt != nil {
+		res.any = vt.Source.asAny()
 	}
 	return
 }
 
 // Can have the runtime types [*Base64ImageSourceParam], [*URLImageSourceParam],
-// [*string]
+// [*string], [*Base64PDFSourceParam], [*PlainTextSourceParam],
+// [*ContentBlockSourceParam], [*URLPDFSourceParam]
 type toolResultBlockParamContentUnionSource struct{ any }
 
 // Use the following switch statement to get the type of the union:
@@ -3729,15 +3854,30 @@ type toolResultBlockParamContentUnionSource struct{ any }
 //	case *anthropic.Base64ImageSourceParam:
 //	case *anthropic.URLImageSourceParam:
 //	case *string:
+//	case *anthropic.Base64PDFSourceParam:
+//	case *anthropic.PlainTextSourceParam:
+//	case *anthropic.ContentBlockSourceParam:
+//	case *anthropic.URLPDFSourceParam:
 //	default:
 //	    fmt.Errorf("not present")
 //	}
 func (u toolResultBlockParamContentUnionSource) AsAny() any { return u.any }
 
 // Returns a pointer to the underlying variant's property, if present.
+func (u toolResultBlockParamContentUnionSource) GetContent() *ContentBlockSourceContentUnionParam {
+	switch vt := u.any.(type) {
+	case *DocumentBlockParamSourceUnion:
+		return vt.GetContent()
+	}
+	return nil
+}
+
+// Returns a pointer to the underlying variant's property, if present.
 func (u toolResultBlockParamContentUnionSource) GetData() *string {
 	switch vt := u.any.(type) {
 	case *ImageBlockParamSourceUnion:
+		return vt.GetData()
+	case *DocumentBlockParamSourceUnion:
 		return vt.GetData()
 	}
 	return nil
@@ -3748,15 +3888,8 @@ func (u toolResultBlockParamContentUnionSource) GetMediaType() *string {
 	switch vt := u.any.(type) {
 	case *ImageBlockParamSourceUnion:
 		return vt.GetMediaType()
-	}
-	return nil
-}
-
-// Returns a pointer to the underlying variant's property, if present.
-func (u toolResultBlockParamContentUnionSource) GetURL() *string {
-	switch vt := u.any.(type) {
-	case *ImageBlockParamSourceUnion:
-		return vt.GetURL()
+	case *DocumentBlockParamSourceUnion:
+		return vt.GetMediaType()
 	}
 	return nil
 }
@@ -3766,6 +3899,19 @@ func (u toolResultBlockParamContentUnionSource) GetType() *string {
 	switch vt := u.any.(type) {
 	case *ImageBlockParamSourceUnion:
 		return vt.GetType()
+	case *DocumentBlockParamSourceUnion:
+		return vt.GetType()
+	}
+	return nil
+}
+
+// Returns a pointer to the underlying variant's property, if present.
+func (u toolResultBlockParamContentUnionSource) GetURL() *string {
+	switch vt := u.any.(type) {
+	case *ImageBlockParamSourceUnion:
+		return vt.GetURL()
+	case *DocumentBlockParamSourceUnion:
+		return vt.GetURL()
 	}
 	return nil
 }
@@ -3776,6 +3922,7 @@ func init() {
 		apijson.Discriminator[TextBlockParam]("text"),
 		apijson.Discriminator[ImageBlockParam]("image"),
 		apijson.Discriminator[SearchResultBlockParam]("search_result"),
+		apijson.Discriminator[DocumentBlockParam]("document"),
 	)
 
 	// Register custom decoder for []ToolResultBlockParamContentUnion to handle string content
