@@ -414,6 +414,7 @@ func TestEmailFunctionality(t *testing.T) {
 			video.Sponsorship.Emails,
 			video.VideoId,
 			video.Sponsorship.Amount,
+			video.Title,
 		)
 		if err != nil {
 			t.Fatalf("SendSponsors failed: %v", err)
@@ -427,8 +428,9 @@ func TestEmailFunctionality(t *testing.T) {
 
 		// Verify message contents
 		msg := messages[0]
-		if !strings.Contains(msg.Subject, "DevOps Toolkit Video Sponsorship") {
-			t.Errorf("Expected subject to contain 'DevOps Toolkit Video Sponsorship', got '%s'", msg.Subject)
+		expectedSubject := fmt.Sprintf("DevOps Toolkit Video Sponsorship - %s", video.Title)
+		if !strings.Contains(msg.Subject, expectedSubject) {
+			t.Errorf("Expected subject to contain '%s', got '%s'", expectedSubject, msg.Subject)
 		}
 
 		if !strings.Contains(msg.Body, video.VideoId) {
@@ -702,6 +704,7 @@ func TestGenerateSponsorsEmailContent(t *testing.T) {
 		name             string
 		videoID          string
 		sponsorshipPrice string
+		videoTitle       string
 		expectSubject    string
 		expectBody       string
 	}{
@@ -709,21 +712,23 @@ func TestGenerateSponsorsEmailContent(t *testing.T) {
 			name:             "Basic sponsor email",
 			videoID:          "dQw4w9WgXcQ",
 			sponsorshipPrice: "$1000",
-			expectSubject:    "DevOps Toolkit Video Sponsorship",
+			videoTitle:       "How to Deploy Kubernetes Apps",
+			expectSubject:    "DevOps Toolkit Video Sponsorship - How to Deploy Kubernetes Apps",
 			expectBody:       "Hi,\n<br><br>The video has just been released and is available at https://youtu.be/dQw4w9WgXcQ. Please let me know what you think or if you have any questions.\n<br><br>I'll send the invoice for $1000 in a separate message.\n",
 		},
 		{
 			name:             "Sponsor email with different price",
 			videoID:          "abcdef12345",
 			sponsorshipPrice: "€500 (EUR)",
-			expectSubject:    "DevOps Toolkit Video Sponsorship",
+			videoTitle:       "Docker Containers Explained",
+			expectSubject:    "DevOps Toolkit Video Sponsorship - Docker Containers Explained",
 			expectBody:       "Hi,\n<br><br>The video has just been released and is available at https://youtu.be/abcdef12345. Please let me know what you think or if you have any questions.\n<br><br>I'll send the invoice for €500 (EUR) in a separate message.\n",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			subject, body := generateSponsorsEmailContent(tt.videoID, tt.sponsorshipPrice)
+			subject, body := generateSponsorsEmailContent(tt.videoID, tt.sponsorshipPrice, tt.videoTitle)
 			assert.Equal(t, tt.expectSubject, subject)
 			// Direct comparison for body as it's simpler and less prone to formatting issues here
 			assert.Equal(t, tt.expectBody, body)

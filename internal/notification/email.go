@@ -141,14 +141,14 @@ func (e *Email) SendEdit(from, to string, video storage.Video) error {
 	return nil
 }
 
-func generateSponsorsEmailContent(videoID, sponsorshipPrice string) (subject, body string) {
-	subject = "DevOps Toolkit Video Sponsorship"
+func generateSponsorsEmailContent(videoID, sponsorshipPrice, videoTitle string) (subject, body string) {
+	subject = fmt.Sprintf("DevOps Toolkit Video Sponsorship - %s", videoTitle)
 	body = fmt.Sprintf("Hi,\n<br><br>The video has just been released and is available at https://youtu.be/%s. Please let me know what you think or if you have any questions.\n<br><br>I'll send the invoice for %s in a separate message.\n", videoID, sponsorshipPrice)
 	return subject, body
 }
 
-func (e *Email) SendSponsors(from, to string, videoID, sponsorshipPrice string) error {
-	subject, body := generateSponsorsEmailContent(videoID, sponsorshipPrice)
+func (e *Email) SendSponsors(from, to string, videoID, sponsorshipPrice, videoTitle string) error {
+	subject, body := generateSponsorsEmailContent(videoID, sponsorshipPrice, videoTitle)
 	toArray := strings.Split(to, ",")
 	toArray = append(toArray, configuration.GlobalSettings.Email.FinanceTo)
 	err := e.Send(from, toArray, subject, body, "")
