@@ -22,10 +22,16 @@ func SuggestTitles(ctx context.Context, manuscriptContent string, optionalConfig
 	}
 
 	// Create prompt for title generation
-	prompt := fmt.Sprintf(`You are an expert YouTube title generator. Your task is to generate 5 compelling and SEO-friendly titles for a video based on the provided manuscript. Each title MUST be 70 characters or less. Return the output as a simple JSON array of strings. For example: ["Example Title 1 (Max 70 Chars)", "Example Title 2 (Max 70 Chars)", ...]
+	prompt := fmt.Sprintf(`Generate 5 compelling and SEO-friendly YouTube video titles based on the provided manuscript. Each title must be 70 characters or less.
+
+IMPORTANT: You must respond with ONLY a valid JSON array of strings. No explanations, no markdown formatting, no additional text. Just the JSON array.
+
+Example format: ["Title 1", "Title 2", "Title 3", "Title 4", "Title 5"]
 
 Video Manuscript:
-%s`, manuscriptContent)
+%s
+
+Response (JSON array only):`, manuscriptContent)
 
 	// Generate content using the provider
 	responseContent, err := provider.GenerateContent(ctx, prompt, 512)
@@ -46,6 +52,7 @@ Video Manuscript:
 		cleanedResponse = strings.TrimPrefix(cleanedResponse, "```")
 		cleanedResponse = strings.TrimSuffix(cleanedResponse, "```")
 	}
+	cleanedResponse = strings.TrimSpace(cleanedResponse)
 
 	var titles []string
 	if err := json.Unmarshal([]byte(cleanedResponse), &titles); err != nil {
