@@ -17,7 +17,7 @@ require (
 	github.com/stretchr/testify v1.11.1
 	github.com/tmc/langchaingo v0.1.13
 	golang.org/x/oauth2 v0.32.0
-	golang.org/x/text v0.29.0
+	golang.org/x/text v0.30.0
 	google.golang.org/api v0.252.0
 	gopkg.in/gomail.v2 v2.0.0-20160411212932-81ebce5c23df
 	gopkg.in/yaml.v3 v3.0.1
