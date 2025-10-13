@@ -2,7 +2,7 @@ module devopstoolkit/youtube-automation
 
 go 1.24.0
 
-toolchain go1.25.2
+toolchain go1.25.3
 
 require (
 	github.com/anthropics/anthropic-sdk-go v1.13.0
