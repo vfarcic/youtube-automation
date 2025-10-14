@@ -151,7 +151,8 @@ type Field interface {
 	// Run runs the field individually.
 	Run() error
 
-	runAccessible(w io.Writer, r io.Reader) error
+	// RunAccessible runs the field in accessible mode with the given IO.
+	RunAccessible(w io.Writer, r io.Reader) error
 
 	// Skip returns whether this input should be skipped or not.
 	Skip() bool
@@ -167,6 +168,8 @@ type Field interface {
 	WithTheme(*Theme) Field
 
 	// WithAccessible sets whether the field should run in accessible mode.
+	//
+	// Deprecated: you may now call [Field.RunAccessible] directly to run the field in accessible mode.
 	WithAccessible(bool) Field
 
 	// WithKeyMap sets the keymap on a field.
@@ -540,9 +543,7 @@ func (f *Form) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// heightest group, accounting for the width, wraps, etc.
 			neededHeight := 0
 			f.selector.Range(func(_ int, group *Group) bool {
-				if h := group.rawHeight(); h > neededHeight {
-					neededHeight = h
-				}
+				neededHeight = max(neededHeight, group.rawHeight())
 				return true
 			})
 
@@ -709,7 +710,7 @@ func (f *Form) runAccessible(w io.Writer, r io.Reader) error {
 		group.selector.Range(func(_ int, field Field) bool {
 			field.Init()
 			field.Focus()
-			_ = field.WithAccessible(true).runAccessible(w, r)
+			_ = field.WithAccessible(true).RunAccessible(w, r)
 			_, _ = fmt.Fprintln(w)
 			return true
 		})
