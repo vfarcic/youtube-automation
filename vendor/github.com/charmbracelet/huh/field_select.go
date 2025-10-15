@@ -52,7 +52,7 @@ type Select[T comparable] struct {
 	inline     bool
 	width      int
 	height     int
-	accessible bool
+	accessible bool // Deprecated: use RunAccessible instead.
 	theme      *Theme
 	keymap     SelectKeyMap
 }
@@ -74,6 +74,7 @@ func NewSelect[T comparable]() *Select[T] {
 		validate:    func(T) error { return nil },
 		filtering:   false,
 		filter:      filter,
+		id:          nextID(),
 		options:     Eval[[]Option[T]]{cache: make(map[uint64][]Option[T])},
 		title:       Eval[string]{cache: make(map[uint64]string)},
 		description: Eval[string]{cache: make(map[uint64]string)},
@@ -539,6 +540,7 @@ func (s *Select[T]) updateViewportHeight() {
 	}
 
 	s.viewport.Height = max(minHeight, s.height-offset)
+	s.viewport.YOffset = s.selected
 }
 
 func (s *Select[T]) activeStyles() *FieldStyles {
@@ -561,7 +563,6 @@ func (s *Select[T]) titleView() string {
 	if s.filtering {
 		sb.WriteString(s.filter.View())
 	} else if s.filter.Value() != "" && !s.inline {
-		sb.WriteString(styles.Title.Render(wrap(s.title.val, maxWidth)))
 		sb.WriteString(styles.Description.Render("/" + s.filter.Value()))
 	} else {
 		sb.WriteString(styles.Title.Render(wrap(s.title.val, maxWidth)))
@@ -672,7 +673,7 @@ func (s *Select[T]) View() string {
 	}
 	parts = append(parts, s.viewport.View())
 	return styles.Base.Width(s.width).Height(s.height).
-		Render(lipgloss.JoinVertical(lipgloss.Top, parts...))
+		Render(strings.Join(parts, "\n"))
 }
 
 // clearFilter clears the value of the filter.
@@ -701,14 +702,14 @@ func (s *Select[T]) filterFunc(option string) bool {
 
 // Run runs the select field.
 func (s *Select[T]) Run() error {
-	if s.accessible {
-		return s.runAccessible(os.Stdout, os.Stdin)
+	if s.accessible { // TODO: remove in a future release.
+		return s.RunAccessible(os.Stdout, os.Stdin)
 	}
 	return Run(s)
 }
 
-// runAccessible runs an accessible select field.
-func (s *Select[T]) runAccessible(w io.Writer, r io.Reader) error {
+// RunAccessible runs an accessible select field.
+func (s *Select[T]) RunAccessible(w io.Writer, r io.Reader) error {
 	styles := s.activeStyles()
 	_, _ = fmt.Fprintln(w, styles.Title.
 		PaddingRight(1).
@@ -718,10 +719,19 @@ func (s *Select[T]) runAccessible(w io.Writer, r io.Reader) error {
 		_, _ = fmt.Fprintf(w, "%d. %s\n", i+1, option.Key)
 	}
 
-	prompt := fmt.Sprintf("Input a number between %d and %d: ", 1, len(s.options.val))
+	var defaultValue *int
+	switch s.accessor.(type) {
+	case *PointerAccessor[T]: // if its of this type, it means it has a default value
+		s.selectOption() // make sure s.selected is set
+		idx := s.selected + 1
+		defaultValue = &idx
+	}
+	prompt := fmt.Sprintf("Enter a number between %d and %d: ", 1, len(s.options.val))
+	if len(s.options.val) == 1 {
+		prompt = "There is only one option available; enter the number 1:"
+	}
 	for {
-		selected := s.selected + 1
-		choice := accessibility.PromptInt(w, r, prompt, 1, len(s.options.val), &selected)
+		choice := accessibility.PromptInt(w, r, prompt, 1, len(s.options.val), defaultValue)
 		option := s.options.val[choice-1]
 		if err := s.validate(option.Value); err != nil {
 			_, _ = fmt.Fprintln(w, err.Error())
@@ -759,6 +769,9 @@ func (s *Select[T]) WithKeyMap(k *KeyMap) Field {
 }
 
 // WithAccessible sets the accessible mode of the select field.
+//
+// Deprecated: you may now call [Select.RunAccessible] directly to run the
+// field in accessible mode.
 func (s *Select[T]) WithAccessible(accessible bool) Field {
 	s.accessible = accessible
 	return s
