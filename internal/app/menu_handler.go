@@ -1681,7 +1681,7 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 									aiSelectErr := aiSelectForm.Run()
 									if aiSelectErr == nil && selectedAITweet != "" {
 										fmt.Println(m.normalStyle.Render(fmt.Sprintf("AI Suggested tweet selected: %s", selectedAITweet)))
-										tempTweetValue = selectedAITweet
+										tempTweetValue = selectedAITweet + "\n\n[YOUTUBE]"
 									} else if aiSelectErr != nil && aiSelectErr != huh.ErrUserAborted {
 										fmt.Fprintf(os.Stderr, "Error during AI tweet selection: %v\n", aiSelectErr)
 									}
