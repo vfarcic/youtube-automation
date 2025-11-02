@@ -785,7 +785,7 @@ func TestAITitlesWithVideoParams(t *testing.T) {
 	server := setupTestServer(t)
 
 	// Create a test video with manuscript
-	_, err := server.videoService.CreateVideo("test-video", "test-category")
+	_, err := server.videoService.CreateVideo("test-video", "test-category", "")
 	require.NoError(t, err)
 
 	// Create a test manuscript file
@@ -870,15 +870,15 @@ func TestAITitlesWithVideoParamsErrors(t *testing.T) {
 	server := setupTestServer(t)
 
 	// Create a test video without manuscript
-	_, err := server.videoService.CreateVideo("video-no-manuscript", "test-category")
+	_, err := server.videoService.CreateVideo("video-no-manuscript", "test-category", "")
 	require.NoError(t, err)
 
 	// Create a test video with empty Gist field
-	_, err = server.videoService.CreateVideo("video-empty-gist", "test-category")
+	_, err = server.videoService.CreateVideo("video-empty-gist", "test-category", "")
 	require.NoError(t, err)
 
 	// Create a test video with non-existent manuscript file
-	_, err = server.videoService.CreateVideo("video-bad-gist", "test-category")
+	_, err = server.videoService.CreateVideo("video-bad-gist", "test-category", "")
 	require.NoError(t, err)
 	video, err := server.videoService.GetVideo("video-bad-gist", "test-category")
 	require.NoError(t, err)
@@ -954,7 +954,7 @@ func TestAIDescriptionWithVideoParams(t *testing.T) {
 	server := setupTestServer(t)
 
 	// Create a test video with manuscript
-	_, err := server.videoService.CreateVideo("test-video", "test-category")
+	_, err := server.videoService.CreateVideo("test-video", "test-category", "")
 	require.NoError(t, err)
 
 	// Create a test manuscript file
@@ -1036,7 +1036,7 @@ func TestAITagsWithVideoParams(t *testing.T) {
 	server := setupTestServer(t)
 
 	// Create a test video with manuscript
-	_, err := server.videoService.CreateVideo("test-video", "test-category")
+	_, err := server.videoService.CreateVideo("test-video", "test-category", "")
 	require.NoError(t, err)
 
 	// Create a test manuscript file
@@ -1120,7 +1120,7 @@ func TestAITweetsWithVideoParams(t *testing.T) {
 	server := setupTestServer(t)
 
 	// Create a test video with manuscript
-	_, err := server.videoService.CreateVideo("test-video", "test-category")
+	_, err := server.videoService.CreateVideo("test-video", "test-category", "")
 	require.NoError(t, err)
 
 	// Create a test manuscript file
@@ -1205,7 +1205,7 @@ func TestAIDescriptionTagsWithVideoParams(t *testing.T) {
 	server := setupTestServer(t)
 
 	// Create a test video with manuscript
-	_, err := server.videoService.CreateVideo("test-video", "test-category")
+	_, err := server.videoService.CreateVideo("test-video", "test-category", "")
 	require.NoError(t, err)
 
 	// Create a test manuscript file
@@ -1289,7 +1289,7 @@ func TestAnimationsWithVideoParams(t *testing.T) {
 	server := setupTestServer(t)
 
 	// Create a test video with manuscript
-	_, err := server.videoService.CreateVideo("test-video", "test-category")
+	_, err := server.videoService.CreateVideo("test-video", "test-category", "")
 	require.NoError(t, err)
 
 	// Create a test manuscript file with TODO comments and sections
@@ -1415,15 +1415,15 @@ func TestAnimationsWithVideoParamsErrors(t *testing.T) {
 	server := setupTestServer(t)
 
 	// Create a test video without manuscript
-	_, err := server.videoService.CreateVideo("video-no-manuscript", "test-category")
+	_, err := server.videoService.CreateVideo("video-no-manuscript", "test-category", "")
 	require.NoError(t, err)
 
 	// Create a test video with empty Gist field
-	_, err = server.videoService.CreateVideo("video-empty-gist", "test-category")
+	_, err = server.videoService.CreateVideo("video-empty-gist", "test-category", "")
 	require.NoError(t, err)
 
 	// Create a test video with non-existent manuscript file
-	_, err = server.videoService.CreateVideo("video-bad-gist", "test-category")
+	_, err = server.videoService.CreateVideo("video-bad-gist", "test-category", "")
 	require.NoError(t, err)
 	video, err := server.videoService.GetVideo("video-bad-gist", "test-category")
 	require.NoError(t, err)
@@ -1432,7 +1432,7 @@ func TestAnimationsWithVideoParamsErrors(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create a test video with manuscript but no TODO comments or sections
-	_, err = server.videoService.CreateVideo("video-no-animations", "test-category")
+	_, err = server.videoService.CreateVideo("video-no-animations", "test-category", "")
 	require.NoError(t, err)
 	manuscriptPath := server.videoService.GetManuscriptPath("video-no-animations", "test-category")
 	err = os.WriteFile(manuscriptPath, []byte("Just plain content without TODO or sections"), 0644)

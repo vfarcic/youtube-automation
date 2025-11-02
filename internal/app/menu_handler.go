@@ -345,9 +345,9 @@ func (m *MenuHandler) GetPhaseText(text string, completed, total int) string {
 
 // ChooseCreateVideo handles video creation workflow
 func (m *MenuHandler) ChooseCreateVideoAndHandleError() (storage.VideoIndex, error) {
-	var name, category string
+	var name, category, date string
 	save := true
-	fields, err := cli.GetCreateVideoFields(&name, &category, &save)
+	fields, err := cli.GetCreateVideoFields(&name, &category, &date, &save)
 	if err != nil {
 		return storage.VideoIndex{}, fmt.Errorf("error getting video fields: %w", err)
 	}
@@ -365,7 +365,7 @@ func (m *MenuHandler) ChooseCreateVideoAndHandleError() (storage.VideoIndex, err
 	}
 
 	// Use the service to create the video with all the proper logic
-	return m.videoService.CreateVideo(name, category)
+	return m.videoService.CreateVideo(name, category, date)
 }
 
 // ChooseVideosPhase handles the video phase selection workflow

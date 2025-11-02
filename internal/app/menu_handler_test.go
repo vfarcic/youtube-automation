@@ -45,7 +45,7 @@ func TestChooseCreateVideoAndHandleError_GetFieldsError(t *testing.T) {
 	originalGetCreateVideoFields := cli.GetCreateVideoFields
 	defer func() { cli.GetCreateVideoFields = originalGetCreateVideoFields }() // Restore original func after test
 
-	cli.GetCreateVideoFields = func(name, category *string, save *bool) ([]huh.Field, error) {
+	cli.GetCreateVideoFields = func(name, category, date *string, save *bool) ([]huh.Field, error) {
 		return nil, errors.New("simulated GetCreateVideoFields error")
 	}
 

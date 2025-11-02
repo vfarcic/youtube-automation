@@ -39,7 +39,7 @@ func NewVideoService(indexPath string, filesystem *filesystem.Operations, videoM
 }
 
 // CreateVideo creates a new video entry
-func (s *VideoService) CreateVideo(name, category string) (storage.VideoIndex, error) {
+func (s *VideoService) CreateVideo(name, category, date string) (storage.VideoIndex, error) {
 	if name == "" || category == "" {
 		return storage.VideoIndex{}, fmt.Errorf("name and category are required")
 	}
@@ -101,6 +101,7 @@ FIXME:
 
 	// Create the default video YAML file
 	videoPath := s.filesystem.GetFilePath(vi.Category, vi.Name, "yaml")
+
 	defaultVideo := storage.Video{
 		Name:     sanitizedName,
 		Category: category,
@@ -112,7 +113,7 @@ FIXME:
 			Blocked: "",
 		},
 		// Initialize other fields with default values
-		Date:                "",
+		Date:                date,
 		Delayed:             false,
 		Screen:              false,
 		Head:                false,

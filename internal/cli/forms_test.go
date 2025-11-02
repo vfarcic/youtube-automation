@@ -49,16 +49,16 @@ func TestGetCreateVideoFields(t *testing.T) {
 		t.Fatalf("Failed to change to temp directory: %v", err)
 	}
 
-	var name, category string
+	var name, category, date string
 	save := true
 
-	fields, err := GetCreateVideoFields(&name, &category, &save)
+	fields, err := GetCreateVideoFields(&name, &category, &date, &save)
 	if err != nil {
 		t.Fatalf("GetCreateVideoFields failed: %v", err)
 	}
 
-	if len(fields) != 3 {
-		t.Errorf("Expected 3 fields, got %d", len(fields))
+	if len(fields) != 4 {
+		t.Errorf("Expected 4 fields, got %d", len(fields))
 	}
 
 	// Note: huh fields may not expose specific field type information easily

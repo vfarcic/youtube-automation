@@ -117,7 +117,7 @@ func TestServer_GetVideoPhases(t *testing.T) {
 	server := setupTestServer(t)
 
 	// Create test video
-	_, err := server.videoService.CreateVideo("test-video", "test-category")
+	_, err := server.videoService.CreateVideo("test-video", "test-category", "")
 	require.NoError(t, err)
 
 	req := httptest.NewRequest("GET", "/api/videos/phases", nil)
@@ -139,7 +139,7 @@ func TestServer_GetVideos(t *testing.T) {
 	server := setupTestServer(t)
 
 	// Create test video
-	_, err := server.videoService.CreateVideo("test-video", "test-category")
+	_, err := server.videoService.CreateVideo("test-video", "test-category", "")
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -192,7 +192,7 @@ func TestServer_GetVideo(t *testing.T) {
 	server := setupTestServer(t)
 
 	// Create test video
-	_, err := server.videoService.CreateVideo("test-video", "test-category")
+	_, err := server.videoService.CreateVideo("test-video", "test-category", "")
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -259,7 +259,7 @@ func TestServer_UpdateVideo(t *testing.T) {
 	server := setupTestServer(t)
 
 	// Create test video
-	_, err := server.videoService.CreateVideo("test-video", "test-category")
+	_, err := server.videoService.CreateVideo("test-video", "test-category", "")
 	require.NoError(t, err)
 
 	// Get the video to update
@@ -297,7 +297,7 @@ func TestServer_DeleteVideo(t *testing.T) {
 	server := setupTestServer(t)
 
 	// Create test video
-	_, err := server.videoService.CreateVideo("test-video", "test-category")
+	_, err := server.videoService.CreateVideo("test-video", "test-category", "")
 	require.NoError(t, err)
 
 	req := httptest.NewRequest("DELETE", "/api/videos/test-video?category=test-category", nil)
@@ -343,7 +343,7 @@ func TestServer_MoveVideo(t *testing.T) {
 	server := setupTestServer(t)
 
 	// Create test video and target directory
-	_, err := server.videoService.CreateVideo("test-video", "test-category")
+	_, err := server.videoService.CreateVideo("test-video", "test-category", "")
 	require.NoError(t, err)
 	os.Mkdir("manuscript/target-category", 0755)
 
@@ -393,7 +393,7 @@ func TestServer_UpdateVideoPhase(t *testing.T) {
 	server := setupTestServer(t)
 
 	// Create test video first
-	_, err := server.videoService.CreateVideo("test-video", "test-category")
+	_, err := server.videoService.CreateVideo("test-video", "test-category", "")
 	require.NoError(t, err)
 
 	updateData := map[string]interface{}{
@@ -720,9 +720,9 @@ func TestServer_GetVideosList(t *testing.T) {
 	server := setupTestServer(t)
 
 	// Create test videos
-	_, err := server.videoService.CreateVideo("test-video-1", "test-category")
+	_, err := server.videoService.CreateVideo("test-video-1", "test-category", "")
 	require.NoError(t, err)
-	_, err = server.videoService.CreateVideo("test-video-2", "test-category")
+	_, err = server.videoService.CreateVideo("test-video-2", "test-category", "")
 	require.NoError(t, err)
 
 	t.Run("valid request returns optimized response", func(t *testing.T) {
@@ -889,7 +889,7 @@ func setupBenchmarkServer(b *testing.B) *httptest.Server {
 
 	// Create some test videos for benchmarking
 	for i := 0; i < 10; i++ {
-		_, err := server.videoService.CreateVideo(fmt.Sprintf("bench-video-%d", i), "devops")
+		_, err := server.videoService.CreateVideo(fmt.Sprintf("bench-video-%d", i), "devops", "")
 		if err != nil {
 			b.Fatalf("Failed to create test video: %v", err)
 		}
@@ -908,7 +908,7 @@ func TestPerformanceComparison(t *testing.T) {
 
 	// Create test videos
 	for i := 0; i < 25; i++ {
-		_, err := server.videoService.CreateVideo(fmt.Sprintf("perf-video-%d", i), "devops")
+		_, err := server.videoService.CreateVideo(fmt.Sprintf("perf-video-%d", i), "devops", "")
 		require.NoError(t, err)
 	}
 
@@ -1052,7 +1052,7 @@ func TestVideoListItemPhaseField(t *testing.T) {
 			server := setupTestServer(t)
 
 			// Create test video with the appropriate setup
-			_, err := server.videoService.CreateVideo(tc.video.Name, tc.video.Category)
+			_, err := server.videoService.CreateVideo(tc.video.Name, tc.video.Category, "")
 			assert.NoError(t, err)
 
 			// Update the video file with our test data
@@ -1671,7 +1671,7 @@ func TestGetEditingAspectsWithCompletion(t *testing.T) {
 	server := setupTestServer(t)
 
 	// Create a test video with some completed fields
-	_, err := server.videoService.CreateVideo("test-video", "test-category")
+	_, err := server.videoService.CreateVideo("test-video", "test-category", "")
 	require.NoError(t, err)
 
 	// Get the video and update some fields to simulate completion
@@ -1943,7 +1943,7 @@ func TestServer_GetVideo_NameShouldBeFilename(t *testing.T) {
 
 	// Create test video with a name that will be sanitized
 	// Input: "Test Video" -> Expected filename: "test-video"
-	_, err := server.videoService.CreateVideo("Test Video", "test-category")
+	_, err := server.videoService.CreateVideo("Test Video", "test-category", "")
 	require.NoError(t, err)
 
 	url := "/api/videos/test-video?category=test-category"

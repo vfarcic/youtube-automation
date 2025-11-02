@@ -147,7 +147,8 @@ func (s *Server) createVideo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	video, err := s.videoService.CreateVideo(req.Name, req.Category)
+	// API creates videos with empty date by default
+	video, err := s.videoService.CreateVideo(req.Name, req.Category, "")
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Failed to create video")
 		return

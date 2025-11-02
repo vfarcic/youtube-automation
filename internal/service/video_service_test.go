@@ -82,7 +82,7 @@ func TestVideoService_CreateVideo(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			vi, err := service.CreateVideo(tt.videoName, tt.category)
+			vi, err := service.CreateVideo(tt.videoName, tt.category, "")
 
 			if tt.expectError {
 				assert.Error(t, err)
@@ -115,7 +115,7 @@ func TestVideoService_GetVideo(t *testing.T) {
 	defer cleanup()
 
 	// Create a test video first
-	_, err := service.CreateVideo("test-video", "test-category")
+	_, err := service.CreateVideo("test-video", "test-category", "")
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -207,7 +207,7 @@ func TestVideoService_UpdateVideo(t *testing.T) {
 	defer cleanup()
 
 	// Create a test video first
-	_, err := service.CreateVideo("test-video", "test-category")
+	_, err := service.CreateVideo("test-video", "test-category", "")
 	require.NoError(t, err)
 
 	// Get the video to update
@@ -241,9 +241,9 @@ func TestVideoService_DeleteVideo(t *testing.T) {
 	defer cleanup()
 
 	// Create test videos
-	_, err := service.CreateVideo("test-video-1", "test-category")
+	_, err := service.CreateVideo("test-video-1", "test-category", "")
 	require.NoError(t, err)
-	_, err = service.CreateVideo("test-video-2", "test-category")
+	_, err = service.CreateVideo("test-video-2", "test-category", "")
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -305,10 +305,10 @@ func TestVideoService_GetVideosByPhase(t *testing.T) {
 	defer cleanup()
 
 	// Create test videos with different characteristics
-	_, err := service.CreateVideo("delayed-video", "test-category")
+	_, err := service.CreateVideo("delayed-video", "test-category", "")
 	require.NoError(t, err)
 
-	_, err = service.CreateVideo("normal-video", "test-category")
+	_, err = service.CreateVideo("normal-video", "test-category", "")
 	require.NoError(t, err)
 
 	// Update one video to be delayed (phase 5)
@@ -369,10 +369,10 @@ func TestVideoService_GetVideoPhases(t *testing.T) {
 	defer cleanup()
 
 	// Create videos in different phases
-	_, err := service.CreateVideo("delayed-video", "test-category")
+	_, err := service.CreateVideo("delayed-video", "test-category", "")
 	require.NoError(t, err)
 
-	_, err = service.CreateVideo("normal-video", "test-category")
+	_, err = service.CreateVideo("normal-video", "test-category", "")
 	require.NoError(t, err)
 
 	// Update one video to be delayed (phase 5)
@@ -427,7 +427,7 @@ func TestVideoService_UpdateVideoPhase_InitialDetails(t *testing.T) {
 	service, _, cleanup := setupTestVideoService(t)
 	defer cleanup()
 
-	_, err := service.CreateVideo("test-initial", "test-category")
+	_, err := service.CreateVideo("test-initial", "test-category", "")
 	require.NoError(t, err)
 
 	videoToUpdate, err := service.GetVideo("test-initial", "test-category")
@@ -462,7 +462,7 @@ func TestVideoService_UpdateVideoPhase_WorkProgress(t *testing.T) {
 	service, _, cleanup := setupTestVideoService(t)
 	defer cleanup()
 
-	_, err := service.CreateVideo("test-work", "test-category")
+	_, err := service.CreateVideo("test-work", "test-category", "")
 	require.NoError(t, err)
 
 	videoToUpdate, err := service.GetVideo("test-work", "test-category")
@@ -503,7 +503,7 @@ func TestVideoService_UpdateVideoPhase_Definition(t *testing.T) {
 	service, _, cleanup := setupTestVideoService(t)
 	defer cleanup()
 
-	_, err := service.CreateVideo("test-define", "test-category")
+	_, err := service.CreateVideo("test-define", "test-category", "")
 	require.NoError(t, err)
 
 	videoToUpdate, err := service.GetVideo("test-define", "test-category")
@@ -544,7 +544,7 @@ func TestVideoService_UpdateVideoPhase_PostProduction(t *testing.T) {
 	service, _, cleanup := setupTestVideoService(t)
 	defer cleanup()
 
-	_, err := service.CreateVideo("test-postprod", "test-category")
+	_, err := service.CreateVideo("test-postprod", "test-category", "")
 	require.NoError(t, err)
 
 	videoToUpdate, err := service.GetVideo("test-postprod", "test-category")
@@ -575,7 +575,7 @@ func TestVideoService_UpdateVideoPhase_Publishing(t *testing.T) {
 	service, _, cleanup := setupTestVideoService(t)
 	defer cleanup()
 
-	_, err := service.CreateVideo("test-publishing", "test-category")
+	_, err := service.CreateVideo("test-publishing", "test-category", "")
 	require.NoError(t, err)
 
 	videoToUpdate, err := service.GetVideo("test-publishing", "test-category")
@@ -600,7 +600,7 @@ func TestVideoService_UpdateVideoPhase_PostPublish(t *testing.T) {
 	service, _, cleanup := setupTestVideoService(t)
 	defer cleanup()
 
-	_, err := service.CreateVideo("test-postpublish", "test-category")
+	_, err := service.CreateVideo("test-postpublish", "test-category", "")
 	require.NoError(t, err)
 
 	videoToUpdate, err := service.GetVideo("test-postpublish", "test-category")
@@ -639,7 +639,7 @@ func TestVideoService_UpdateVideoPhase_InvalidPhase(t *testing.T) {
 	service, _, cleanup := setupTestVideoService(t)
 	defer cleanup()
 
-	_, err := service.CreateVideo("test-invalid-phase", "test-category")
+	_, err := service.CreateVideo("test-invalid-phase", "test-category", "")
 	require.NoError(t, err)
 
 	videoToUpdate, err := service.GetVideo("test-invalid-phase", "test-category")
@@ -677,7 +677,7 @@ func TestVideoService_MoveVideo(t *testing.T) {
 	os.Mkdir("manuscript/target-category", 0755)
 
 	// Create a test video
-	_, err := service.CreateVideo("test-video", "test-category")
+	_, err := service.CreateVideo("test-video", "test-category", "")
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -749,7 +749,7 @@ func TestVideoService_GetVideosByPhase_IdeasRandomization(t *testing.T) {
 	// Create multiple test videos in Ideas phase (phase 7)
 	videoNames := []string{"video-01", "video-02", "video-03", "video-04", "video-05"}
 	for _, name := range videoNames {
-		_, err := service.CreateVideo(name, "test-category")
+		_, err := service.CreateVideo(name, "test-category", "")
 		require.NoError(t, err)
 	}
 
@@ -791,9 +791,9 @@ func TestVideoService_GetVideosByPhase_IdeasRandomization(t *testing.T) {
 
 	t.Run("Non-Ideas phases should maintain deterministic sorting", func(t *testing.T) {
 		// Create a delayed video (phase 5) with dates for comparison
-		_, err := service.CreateVideo("delayed-video-a", "test-category")
+		_, err := service.CreateVideo("delayed-video-a", "test-category", "")
 		require.NoError(t, err)
-		_, err = service.CreateVideo("delayed-video-b", "test-category")
+		_, err = service.CreateVideo("delayed-video-b", "test-category", "")
 		require.NoError(t, err)
 
 		// Update both to be delayed but with different dates
@@ -858,7 +858,7 @@ func TestVideoService_SanitizedNamesIntegration(t *testing.T) {
 	category := "test-category"
 
 	// Create video
-	videoIndex, err := service.CreateVideo(originalName, category)
+	videoIndex, err := service.CreateVideo(originalName, category, "")
 	require.NoError(t, err)
 
 	// Verify the stored name is sanitized
@@ -886,7 +886,7 @@ func TestVideoService_ReflectionBasedFieldMapping(t *testing.T) {
 	service, _, cleanup := setupTestVideoService(t)
 	defer cleanup()
 
-	_, err := service.CreateVideo("test-reflection", "test-category")
+	_, err := service.CreateVideo("test-reflection", "test-category", "")
 	require.NoError(t, err)
 
 	videoToUpdate, err := service.GetVideo("test-reflection", "test-category")
@@ -956,7 +956,7 @@ func TestVideoService_FieldNameConsistency_GistPath(t *testing.T) {
 	service, _, cleanup := setupTestVideoService(t)
 	defer cleanup()
 
-	_, err := service.CreateVideo("test-field-consistency", "test-category")
+	_, err := service.CreateVideo("test-field-consistency", "test-category", "")
 	require.NoError(t, err)
 
 	videoToUpdate, err := service.GetVideo("test-field-consistency", "test-category")
@@ -990,7 +990,7 @@ func TestVideoService_GetVideoManuscript(t *testing.T) {
 	defer cleanup()
 
 	// Create a test video first
-	_, err := service.CreateVideo("test-video", "test-category")
+	_, err := service.CreateVideo("test-video", "test-category", "")
 	require.NoError(t, err)
 
 	// Create a test manuscript file
@@ -1070,7 +1070,7 @@ func TestVideoService_GetVideoManuscript_EmptyGistField(t *testing.T) {
 	defer cleanup()
 
 	// Create a test video with empty Gist field
-	_, err := service.CreateVideo("test-video-no-gist", "test-category")
+	_, err := service.CreateVideo("test-video-no-gist", "test-category", "")
 	require.NoError(t, err)
 
 	// The Gist field should be empty by default
@@ -1086,7 +1086,7 @@ func TestVideoService_GetVideoManuscript_NonExistentFile(t *testing.T) {
 	defer cleanup()
 
 	// Create a test video with invalid Gist path
-	_, err := service.CreateVideo("test-video-bad-gist", "test-category")
+	_, err := service.CreateVideo("test-video-bad-gist", "test-category", "")
 	require.NoError(t, err)
 
 	// Get the video and set a non-existent Gist path
