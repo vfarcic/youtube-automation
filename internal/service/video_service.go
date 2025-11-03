@@ -529,6 +529,16 @@ func (s *VideoService) updateNestedField(video *storage.Video, fieldName string,
 			video.Sponsorship.Blocked = str
 			return nil
 		}
+	case "sponsorshipName":
+		if str, ok := newValue.(string); ok {
+			video.Sponsorship.Name = str
+			return nil
+		}
+	case "sponsorshipURL":
+		if str, ok := newValue.(string); ok {
+			video.Sponsorship.URL = str
+			return nil
+		}
 
 	// Handle field name mappings that don't match JSON tags
 	case "codeDone":

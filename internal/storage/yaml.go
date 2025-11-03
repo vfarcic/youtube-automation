@@ -86,15 +86,17 @@ type Video struct {
 // Sponsorship holds details about video sponsorship.
 // All fields are already exported.
 // Ensure all fields that need to be accessed from other packages are exported.
-// Already Exported: Amount, Emails, Blocked
+// Already Exported: Amount, Emails, Blocked, Name, URL
 // To be Exported: None needed beyond current
 // No changes to Sponsorship struct needed for exportability as fields are already capitalized.
 // Sponsorship holds details about video sponsorship.
-// Fields Amount, Emails, and Blocked are already exported.
+// Fields Amount, Emails, Blocked, Name, and URL are already exported.
 type Sponsorship struct {
 	Amount  string `json:"amount" completion:"filled_only"`
 	Emails  string `json:"emails" completion:"conditional_sponsorship"`
 	Blocked string `json:"blocked" completion:"empty_or_filled"`
+	Name    string `json:"name" completion:"empty_or_filled"`
+	URL     string `json:"url" completion:"empty_or_filled"`
 }
 
 // NewYAML creates a new YAML instance with default values

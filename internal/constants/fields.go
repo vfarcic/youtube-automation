@@ -18,6 +18,8 @@ const (
 	FieldTitleSponsorshipAmount  = "Sponsorship Amount"
 	FieldTitleSponsorshipEmails  = "Sponsorship Emails (comma separated)"
 	FieldTitleSponsorshipBlocked = "Sponsorship Blocked Reason"
+	FieldTitleSponsorshipName    = "Sponsorship Name"
+	FieldTitleSponsorshipURL     = "Sponsorship URL"
 	FieldTitlePublishDate        = "Publish Date (YYYY-MM-DDTHH:MM)"
 	FieldTitleDelayed            = "Delayed"
 	FieldTitleGistPath           = "Gist Path (.md file)"

@@ -155,7 +155,7 @@ func TestGetVideoAspectMappings(t *testing.T) {
 
 	t.Run("Should have expected field counts per aspect", func(t *testing.T) {
 		expectedCounts := map[string]int{
-			AspectKeyInitialDetails: 8,  // ProjectName, ProjectURL, Amount, Emails, Blocked, Date, Delayed, Gist
+			AspectKeyInitialDetails: 10, // ProjectName, ProjectURL, Amount, Emails, Blocked, Name, URL, Date, Delayed, Gist
 			AspectKeyWorkProgress:   11, // Code, Head, Screen, RelatedVideos, Thumbnails, Diagrams, Screenshots, Location, Tagline, TaglineIdeas, OtherLogos
 			AspectKeyDefinition:     7,  // Title, Description, Tags, DescriptionTags, Tweet, Animations, RequestThumbnail
 			AspectKeyPostProduction: 6,  // Thumbnail, Members, RequestEdit, Timecodes, Movie, Slides

@@ -257,26 +257,38 @@ func UploadVideo(video *storage.Video) string {
 	if len(video.Timecodes) > 0 && video.Timecodes != "N/A" {
 		timecodes = fmt.Sprintf("▬▬▬▬▬▬ ⏱ Timecodes ⏱ ▬▬▬▬▬▬\n%s", video.Timecodes)
 	}
-	
+
 	// Construct Hugo URL from title and category for video description
 	hugoURL := ""
 	if video.Title != "" && video.Gist != "" {
 		category := GetCategoryFromFilePath(video.Gist)
 		hugoURL = ConstructHugoURL(video.Title, category)
 	}
-	
+
+	// Build sponsor section if both name and URL are available and not "N/A"
+	sponsorSection := ""
+	if video.Sponsorship.Name != "" && video.Sponsorship.Name != "N/A" &&
+	   video.Sponsorship.URL != "" && video.Sponsorship.URL != "N/A" {
+		sponsorSection = fmt.Sprintf(`▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
+Sponsor: %s
+🔗 %s
+▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
+
+`, video.Sponsorship.Name, video.Sponsorship.URL)
+	}
+
 	description := fmt.Sprintf(`%s
 
-%s
+%s%s
 
 Consider joining the channel: https://www.youtube.com/c/devopstoolkit/join
 
-▬▬▬▬▬▬ 🔗 Additional Info 🔗 ▬▬▬▬▬▬ 
+▬▬▬▬▬▬ 🔗 Additional Info 🔗 ▬▬▬▬▬▬
 %s
-▬▬▬▬▬▬ 💰 Sponsorships 💰 ▬▬▬▬▬▬ 
+▬▬▬▬▬▬ 💰 Sponsorships 💰 ▬▬▬▬▬▬
 If you are interested in sponsoring this channel, please visit https://devopstoolkit.live/sponsor for more information. Alternatively, feel free to contact me over Twitter or LinkedIn (see below).
 
-▬▬▬▬▬▬ 👋 Contact me 👋 ▬▬▬▬▬▬ 
+▬▬▬▬▬▬ 👋 Contact me 👋 ▬▬▬▬▬▬
 ➡ BlueSky: https://vfarcic.bsky.social
 ➡ LinkedIn: https://www.linkedin.com/in/viktorfarcic/
 
@@ -285,7 +297,7 @@ If you are interested in sponsoring this channel, please visit https://devopstoo
 💬 Live streams: https://www.youtube.com/c/DevOpsParadox
 
 %s
-`, video.Description, video.DescriptionTags, GetAdditionalInfo(hugoURL, video.ProjectName, video.ProjectURL, video.RelatedVideos), timecodes)
+`, video.Description, sponsorSection, video.DescriptionTags, GetAdditionalInfo(hugoURL, video.ProjectName, video.ProjectURL, video.RelatedVideos), timecodes)
 
 	upload := &youtube.Video{
 		Snippet: &youtube.VideoSnippet{

@@ -140,6 +140,18 @@ func (m *Manager) CalculateInitialDetailsProgress(video storage.Video) (int, int
 		completedCount++
 	}
 
+	// Sponsorship.Name
+	totalCount++
+	if len(video.Sponsorship.Name) > 0 {
+		completedCount++
+	}
+
+	// Sponsorship.URL
+	totalCount++
+	if len(video.Sponsorship.URL) > 0 {
+		completedCount++
+	}
+
 	// Special conditions (3 additional tasks)
 	totalCount += 3
 

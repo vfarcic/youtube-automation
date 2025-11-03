@@ -192,6 +192,8 @@ func (m *MenuHandler) getFieldKeyFromTitle(fieldTitle string) string {
 		constants.FieldTitleSponsorshipAmount:  "sponsorshipAmount",
 		constants.FieldTitleSponsorshipEmails:  "sponsorshipEmails",
 		constants.FieldTitleSponsorshipBlocked: "sponsorshipBlockedReason",
+		constants.FieldTitleSponsorshipName:    "sponsorshipName",
+		constants.FieldTitleSponsorshipURL:     "sponsorshipURL",
 		constants.FieldTitlePublishDate:        "date",
 		constants.FieldTitleDelayed:            "delayed",
 		constants.FieldTitleGistPath:           "gist",
@@ -814,6 +816,8 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 			initialFormFields := []huh.Field{
 				huh.NewInput().Title(m.colorTitleString(constants.FieldTitleProjectName, updatedVideo.ProjectName)).Value(&updatedVideo.ProjectName),
 				huh.NewInput().Title(m.colorTitleString(constants.FieldTitleProjectURL, updatedVideo.ProjectURL)).Value(&updatedVideo.ProjectURL),
+				huh.NewInput().Title(m.colorTitleStringInverse(constants.FieldTitleSponsorshipName, updatedVideo.Sponsorship.Name)).Value(&updatedVideo.Sponsorship.Name),
+				huh.NewInput().Title(m.colorTitleStringInverse(constants.FieldTitleSponsorshipURL, updatedVideo.Sponsorship.URL)).Value(&updatedVideo.Sponsorship.URL),
 				huh.NewInput().Title(m.colorTitleSponsorshipAmount(constants.FieldTitleSponsorshipAmount, updatedVideo.Sponsorship.Amount)).Value(&updatedVideo.Sponsorship.Amount),
 				huh.NewInput().Title(m.colorTitleSponsoredEmails(constants.FieldTitleSponsorshipEmails, updatedVideo.Sponsorship.Amount, updatedVideo.Sponsorship.Emails)).Value(&updatedVideo.Sponsorship.Emails),
 				huh.NewInput().Title(m.colorTitleStringInverse(constants.FieldTitleSponsorshipBlocked, updatedVideo.Sponsorship.Blocked)).Value(&updatedVideo.Sponsorship.Blocked),

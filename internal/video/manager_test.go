@@ -556,7 +556,7 @@ func TestCalculateInitialDetailsProgress(t *testing.T) {
 			name:              "Empty_video",
 			video:             storage.Video{},
 			expectedCompleted: 3, // Three default conditions: sponsorship emails, blocked, delayed
-			expectedTotal:     8, // 4 general fields + 1 sponsorship amount + 3 conditions
+			expectedTotal:     10, // 4 general fields + 3 sponsorship fields (amount, name, url) + 3 conditions
 			description:       "Empty video should have 3 completed conditions",
 		},
 		{
@@ -568,7 +568,7 @@ func TestCalculateInitialDetailsProgress(t *testing.T) {
 				Date:        "2023-01-01",
 			},
 			expectedCompleted: 7, // 4 general + 3 default conditions
-			expectedTotal:     8,
+			expectedTotal:     10,
 			description:       "All general fields should be counted",
 		},
 		{
@@ -577,7 +577,7 @@ func TestCalculateInitialDetailsProgress(t *testing.T) {
 				Sponsorship: storage.Sponsorship{Amount: "1000"},
 			},
 			expectedCompleted: 3, // Sponsorship amount + emails condition + blocked condition, delayed=false
-			expectedTotal:     8, // ProjectName, ProjectURL, Sponsorship.Amount, Sponsorship.Emails, Sponsorship.Blocked, Date, Delayed, Gist
+			expectedTotal:     10, // ProjectName, ProjectURL, Sponsorship.Amount, Sponsorship.Name, Sponsorship.URL, Sponsorship.Emails, Sponsorship.Blocked, Date, Delayed, Gist
 			description:       "Sponsorship amount should be counted",
 		},
 		{
@@ -589,7 +589,7 @@ func TestCalculateInitialDetailsProgress(t *testing.T) {
 				},
 			},
 			expectedCompleted: 4, // Amount + emails + blocked + delayed
-			expectedTotal:     8, // ProjectName, ProjectURL, Sponsorship.Amount, Sponsorship.Emails, Sponsorship.Blocked, Date, Delayed, Gist
+			expectedTotal:     10, // ProjectName, ProjectURL, Sponsorship.Amount, Sponsorship.Name, Sponsorship.URL, Sponsorship.Emails, Sponsorship.Blocked, Date, Delayed, Gist
 			description:       "Sponsorship emails should be counted when amount is set",
 		},
 		{
@@ -598,7 +598,7 @@ func TestCalculateInitialDetailsProgress(t *testing.T) {
 				Sponsorship: storage.Sponsorship{Blocked: "Some reason"},
 			},
 			expectedCompleted: 2, // Emails condition (amount is empty) + delayed condition, blocked fails
-			expectedTotal:     8, // ProjectName, ProjectURL, Sponsorship.Amount, Sponsorship.Emails, Sponsorship.Blocked, Date, Delayed, Gist
+			expectedTotal:     10, // ProjectName, ProjectURL, Sponsorship.Amount, Sponsorship.Name, Sponsorship.URL, Sponsorship.Emails, Sponsorship.Blocked, Date, Delayed, Gist
 			description:       "Sponsorship blocked should fail the blocked condition",
 		},
 		{
@@ -607,7 +607,7 @@ func TestCalculateInitialDetailsProgress(t *testing.T) {
 				Delayed: true,
 			},
 			expectedCompleted: 2, // Emails condition + blocked condition, delayed fails
-			expectedTotal:     8, // ProjectName, ProjectURL, Sponsorship.Amount, Sponsorship.Emails, Sponsorship.Blocked, Date, Delayed, Gist
+			expectedTotal:     10, // ProjectName, ProjectURL, Sponsorship.Amount, Sponsorship.Name, Sponsorship.URL, Sponsorship.Emails, Sponsorship.Blocked, Date, Delayed, Gist
 			description:       "Delayed video should fail the delayed condition",
 		},
 		{
@@ -616,7 +616,7 @@ func TestCalculateInitialDetailsProgress(t *testing.T) {
 				Sponsorship: storage.Sponsorship{Amount: "N/A"},
 			},
 			expectedCompleted: 4, // Amount + emails passes (N/A), blocked passes, delayed passes
-			expectedTotal:     8, // ProjectName, ProjectURL, Sponsorship.Amount, Sponsorship.Emails, Sponsorship.Blocked, Date, Delayed, Gist
+			expectedTotal:     10, // ProjectName, ProjectURL, Sponsorship.Amount, Sponsorship.Name, Sponsorship.URL, Sponsorship.Emails, Sponsorship.Blocked, Date, Delayed, Gist
 			description:       "N/A sponsorship amount should pass emails condition",
 		},
 		{
@@ -625,7 +625,7 @@ func TestCalculateInitialDetailsProgress(t *testing.T) {
 				Sponsorship: storage.Sponsorship{Amount: "-"},
 			},
 			expectedCompleted: 4, // Amount + emails passes (-), blocked passes, delayed passes
-			expectedTotal:     8, // ProjectName, ProjectURL, Sponsorship.Amount, Sponsorship.Emails, Sponsorship.Blocked, Date, Delayed, Gist
+			expectedTotal:     10, // ProjectName, ProjectURL, Sponsorship.Amount, Sponsorship.Name, Sponsorship.URL, Sponsorship.Emails, Sponsorship.Blocked, Date, Delayed, Gist
 			description:       "Dash sponsorship amount should pass emails condition",
 		},
 	}

@@ -137,6 +137,8 @@ func mapFieldNameForCompletion(jsonFieldName string) string {
 		"sponsorship.amount":  "sponsorshipAmount",
 		"sponsorship.emails":  "sponsorshipEmails",
 		"sponsorship.blocked": "sponsorshipBlockedReason",
+		"sponsorship.name":    "sponsorshipName",
+		"sponsorship.url":     "sponsorshipURL",
 		"gist":                "gist",
 		"code":                "code",
 		"head":                "head",
@@ -209,6 +211,8 @@ func getFieldDescription(fieldKey string) string {
 		"sponsorshipAmount":        "Sponsorship amount if applicable",
 		"sponsorshipEmails":        "Sponsor contact emails",
 		"sponsorshipBlockedReason": "Reason for sponsorship blocking if applicable",
+		"sponsorshipName":          "Name of the sponsor",
+		"sponsorshipURL":           "Sponsor's website URL",
 		"delayed":                  "Whether the video is delayed",
 
 		// Work Progress
