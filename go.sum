@@ -40,6 +40,8 @@ github.com/anthropics/anthropic-sdk-go v1.15.0 h1:7jL9DKg59vnaISCQ+th3jSDpxiau8Q
 github.com/anthropics/anthropic-sdk-go v1.15.0/go.mod h1:WTz31rIUHUHqai2UslPpw5CwXrQP3geYBioRV4WOLvE=
 github.com/anthropics/anthropic-sdk-go v1.16.0 h1:nRkOFDqYXsHteoIhjdJr/5dsiKbFF3rflSv8ax50y8o=
 github.com/anthropics/anthropic-sdk-go v1.16.0/go.mod h1:WTz31rIUHUHqai2UslPpw5CwXrQP3geYBioRV4WOLvE=
+github.com/anthropics/anthropic-sdk-go v1.17.0 h1:BwK8ApcmaAUkvZTiQE0yi3R9XneEFskDIjLTmOAFZxQ=
+github.com/anthropics/anthropic-sdk-go v1.17.0/go.mod h1:WTz31rIUHUHqai2UslPpw5CwXrQP3geYBioRV4WOLvE=
 github.com/atotto/clipboard v0.1.4 h1:EH0zSVneZPSuFR11BlR9YppQTVDbh5+16AmcJi4g1z4=
 github.com/atotto/clipboard v0.1.4/go.mod h1:ZY9tmq7sm5xIbd9bOK4onWV4S6X0u6GY7Vn0Yu86PYI=
 github.com/aymanbagabas/go-osc52/v2 v2.0.1 h1:HwpRHbFMcZLEVr42D4p7XBqjyuxQH5SMiErDT4WkJ2k=
