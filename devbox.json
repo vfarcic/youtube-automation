@@ -6,6 +6,9 @@
     "nushell@0.108.0"
   ],
   "shell": {
+    "init_hook": [
+      "export PATH=$PATH:$HOME/.npm-global/bin"
+    ],
     "scripts": {
       "build": ["just build"],
       "run":   ["just run"]
