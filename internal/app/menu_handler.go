@@ -1949,9 +1949,27 @@ func (m *MenuHandler) HandleAnalyzeTitles() error {
 		return nil
 	}
 
-	// Simple success message
 	fmt.Println(m.greenStyle.Render(fmt.Sprintf("✓ Successfully fetched analytics for %d videos from the last 365 days", len(analytics))))
-	fmt.Println(m.normalStyle.Render("TODO: AI analysis and file saving will be implemented in next milestones"))
+
+	// Run AI analysis
+	fmt.Println(m.normalStyle.Render("Analyzing title patterns with AI..."))
+	fmt.Println(m.normalStyle.Render("This may take a moment."))
+
+	analysis, err := ai.AnalyzeTitles(ctx, analytics)
+	if err != nil {
+		fmt.Println(m.errorStyle.Render(fmt.Sprintf("Failed to analyze titles: %v", err)))
+		return err
+	}
+
+	fmt.Println(m.greenStyle.Render("✓ Analysis complete!"))
+	fmt.Println(m.normalStyle.Render(fmt.Sprintf("Analysis length: %d characters", len(analysis))))
+	fmt.Println("")
+	fmt.Println(m.normalStyle.Render("=== AI ANALYSIS OUTPUT (TEMPORARY) ==="))
+	fmt.Println("")
+	fmt.Println(analysis)
+	fmt.Println("")
+	fmt.Println(m.normalStyle.Render("=== END OF AI ANALYSIS ==="))
+	fmt.Println(m.normalStyle.Render("Note: This output will be saved to files in Milestone 4"))
 
 	return nil
 }

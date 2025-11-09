@@ -65,7 +65,7 @@ Add an analytics feature that:
 
 ### Must Have
 - [x] Successfully fetch video analytics from YouTube API (last 365 days)
-- [ ] AI generates actionable recommendations about title patterns
+- [x] AI generates actionable recommendations about title patterns
 - [ ] Raw data saved as JSON in `./tmp`
 - [ ] Analysis saved as Markdown in `./tmp`
 - [x] New "Analyze" menu option with "Titles" sub-menu works
@@ -380,6 +380,51 @@ Display Summary in Terminal
 #### Next Session Priorities:
 - **Milestone 2**: AI Title Analysis Engine - Send analytics data to AI, get recommendations
 - **Milestone 4**: File Output - Save JSON data and markdown analysis to `./tmp/`
+
+---
+
+### 2025-11-09 - Session 2: Milestone 2 Complete (AI Title Analysis Engine)
+**Duration**: ~2 hours
+**Status**: 3 of 7 milestones complete (43%)
+
+#### ✅ Milestone 2: AI Title Analysis Engine (100%)
+**Files Created:**
+- `internal/ai/analyze_titles.go` - Core analysis function with template support (85 lines)
+- `internal/ai/templates/analyze-titles.md` - Go template-based prompt for AI (96 lines)
+- `internal/ai/analyze_titles_test.go` - Comprehensive test coverage (228 lines, 7 test cases)
+
+**Implementation Details:**
+- `AnalyzeTitles(ctx, analytics)` function processes raw `[]VideoAnalytics` data
+- Template embedded in binary using `//go:embed` (no external file dependencies)
+- Go's `text/template` package for standard, maintainable templating
+- Raw data passed to AI (no pre-processing) for maximum pattern discovery capability
+- AI instructed to account for video age bias (older videos naturally accumulate more views)
+- Comprehensive error handling: empty data, AI failures, template execution errors
+
+**Testing & Validation:**
+- Unit tests cover: valid data, empty data, AI errors, single video, large datasets (100 videos)
+- Template execution validated with special characters and date formatting
+- All 52 AI package tests passing (including 7 new tests for analyze_titles)
+- Build succeeds with embedded template
+- Integration into menu handler tested
+
+**Technical Decisions Made:**
+1. **Go templates over string replacement**: Standard, well-understood approach preferred by user
+2. **Raw data to AI**: Let AI discover patterns without lossy summarization - no pre-calculation of statistics
+3. **Embedded templates**: Moved from `prompts/` to `internal/ai/templates/` and embedded in binary for distribution
+4. **Removed unused `prompts/` directory**: Cleaned up repository, all templates now embedded
+5. **Temporary output display**: Added console output for testing before file saving (Milestone 4)
+
+**Files Modified:**
+- `internal/app/menu_handler.go` - Updated `HandleAnalyzeTitles()` to call `ai.AnalyzeTitles()` with progress messages and temporary output display
+
+**Files Deleted:**
+- `prompts/` directory - No longer needed, templates embedded in packages
+
+#### Next Session Priorities:
+- **Milestone 4**: File Output & Persistence - Save JSON data and markdown analysis to `./tmp/`
+- Test with real YouTube channel data to validate analysis quality
+- Remove temporary console output once file saving is implemented
 
 ---
 
