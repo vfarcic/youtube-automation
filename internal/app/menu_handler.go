@@ -62,6 +62,7 @@ type MenuHandler struct {
 // Constants for menu indices
 const indexCreateVideo = 0
 const indexListVideos = 1
+const indexAnalyze = 2
 
 const (
 	actionEdit = iota
@@ -329,6 +330,11 @@ func (m *MenuHandler) ChooseIndex() error {
 			if returnVal {
 				break
 			}
+		}
+	case indexAnalyze:
+		err = m.HandleAnalyzeMenu()
+		if err != nil {
+			return fmt.Errorf("error in analyze menu: %w", err)
 		}
 	case actionReturn:
 		return ErrExitApplication
@@ -690,6 +696,7 @@ func (m *MenuHandler) getIndexOptions() []huh.Option[int] {
 	return []huh.Option[int]{
 		huh.NewOption("Create Video", indexCreateVideo),
 		huh.NewOption("List Videos", indexListVideos),
+		huh.NewOption("Analyze", indexAnalyze),
 		huh.NewOption("Exit", actionReturn),
 	}
 }
@@ -1893,4 +1900,58 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 
 	fmt.Println(m.normalStyle.Render(MessageDefinitionPhaseComplete))
 	return videoToEdit, nil
+}
+
+// HandleAnalyzeMenu displays the Analyze submenu with options
+func (m *MenuHandler) HandleAnalyzeMenu() error {
+	var selectedOption int
+	form := huh.NewForm(
+		huh.NewGroup(
+			huh.NewSelect[int]().
+				Title("What would you like to analyze?").
+				Options(
+					huh.NewOption("Titles (fetch video analytics)", 0),
+					huh.NewOption("Back", actionReturn),
+				).
+				Value(&selectedOption),
+		),
+	)
+
+	err := form.Run()
+	if err != nil {
+		return fmt.Errorf("failed to run analyze menu form: %w", err)
+	}
+
+	switch selectedOption {
+	case 0:
+		return m.HandleAnalyzeTitles()
+	case actionReturn:
+		return nil
+	}
+
+	return nil
+}
+
+// HandleAnalyzeTitles fetches video analytics and displays the results
+func (m *MenuHandler) HandleAnalyzeTitles() error {
+	fmt.Println(m.normalStyle.Render("Fetching video analytics from YouTube..."))
+	fmt.Println(m.normalStyle.Render("This may take a moment and might require re-authentication."))
+
+	ctx := context.Background()
+	analytics, err := publishing.GetVideoAnalyticsForLastYear(ctx)
+	if err != nil {
+		fmt.Println(m.errorStyle.Render(fmt.Sprintf("Failed to fetch analytics: %v", err)))
+		return err
+	}
+
+	if len(analytics) == 0 {
+		fmt.Println(m.orangeStyle.Render("No video analytics found for the last 365 days."))
+		return nil
+	}
+
+	// Simple success message
+	fmt.Println(m.greenStyle.Render(fmt.Sprintf("✓ Successfully fetched analytics for %d videos from the last 365 days", len(analytics))))
+	fmt.Println(m.normalStyle.Render("TODO: AI analysis and file saving will be implemented in next milestones"))
+
+	return nil
 }

@@ -64,12 +64,12 @@ Add an analytics feature that:
 ## Success Criteria
 
 ### Must Have
-- [ ] Successfully fetch video analytics from YouTube API (last 365 days)
+- [x] Successfully fetch video analytics from YouTube API (last 365 days)
 - [ ] AI generates actionable recommendations about title patterns
 - [ ] Raw data saved as JSON in `./tmp`
 - [ ] Analysis saved as Markdown in `./tmp`
-- [ ] New "Analyze" menu option with "Titles" sub-menu works
-- [ ] Graceful error handling for API failures/quota limits
+- [x] New "Analyze" menu option with "Titles" sub-menu works
+- [x] Graceful error handling for API failures/quota limits
 
 ### Nice to Have
 - [ ] Slash command to review and suggest prompt changes
@@ -319,11 +319,67 @@ Display Summary in Terminal
 
 ## Progress Log
 
-### 2025-11-09
-- PRD created
-- Architecture designed
-- Milestones defined
-- Ready for implementation
+### 2025-11-09 - Session 1: Milestones 1 & 3 Complete
+**Duration**: ~2 hours
+**Status**: 2 of 7 milestones complete (29%)
+
+#### ✅ Milestone 1: YouTube Analytics API Integration (100%)
+**Files Created:**
+- `internal/publishing/youtube_analytics.go` - Core analytics implementation
+- `internal/publishing/youtube_analytics_test.go` - Comprehensive test coverage
+
+**Implementation Details:**
+- `VideoAnalytics` struct with fields: VideoID, Title, Views, CTR, AverageViewDuration, Likes, Comments, PublishedAt
+- `GetVideoAnalytics(ctx, startDate, endDate)` - Fetches analytics for custom date ranges
+- `GetVideoAnalyticsForLastYear(ctx)` - Convenience wrapper for 365-day fetch
+- OAuth client extended with `yt-analytics.readonly` scope
+- Uses `configuration.GlobalSettings.YouTube.ChannelId` from settings.yaml (not hardcoded)
+- Fetches video metadata (titles, publish dates) from YouTube Data API
+- Handles up to 200 videos per request
+- Comprehensive error handling for API failures and quota limits
+
+**Dependencies Added:**
+- `google.golang.org/api/youtubeanalytics/v2`
+
+**Testing & Validation:**
+- Unit tests created with struct validation and edge case coverage
+- Manual testing successful with real YouTube channel (200+ videos)
+- OAuth flow validated with brand account authentication
+- All tests passing, build succeeds
+
+#### ✅ Milestone 3: Menu Integration & UX (100%)
+**Files Modified:**
+- `internal/app/menu_handler.go` - Added Analyze menu functionality
+
+**Implementation Details:**
+- Added "Analyze" as root menu option (index 2)
+- Created `HandleAnalyzeMenu()` - Sub-menu with "Titles" option
+- Created `HandleAnalyzeTitles()` - Fetches analytics and displays success message
+- Progress indicators: "Fetching video analytics from YouTube..."
+- Success message: "✓ Successfully fetched analytics for X videos from the last 365 days"
+- Simplified terminal output (removed detailed statistics - will be in files per Milestone 4)
+- OAuth re-authentication flow handled seamlessly
+
+**User Experience:**
+- User selects: Main Menu → Analyze → Titles
+- App fetches analytics (with progress messages)
+- Displays success with video count
+- Returns to menu (no manual "Press Enter" required)
+
+#### Technical Decisions Made:
+1. **Channel ID from settings**: Use `settings.yaml` instead of hardcoded constant for flexibility
+2. **Terminal output simplified**: Removed detailed statistics display in favor of file output (Milestone 4)
+3. **Menu structure**: Designed "Analyze" menu to be extensible for future analytics types (thumbnails, descriptions)
+4. **Brand account authentication**: User must authenticate as brand account, not personal account
+
+#### Issues Resolved:
+- **403 Forbidden error**: Resolved by enabling YouTube Analytics API in Google Cloud Console
+- **Wrong channel data**: Fixed by using brand account authentication instead of personal account
+- **Channel ID mismatch**: Updated code to read from `settings.yaml` instead of hardcoded value
+
+#### Next Session Priorities:
+- **Milestone 2**: AI Title Analysis Engine - Send analytics data to AI, get recommendations
+- **Milestone 4**: File Output - Save JSON data and markdown analysis to `./tmp/`
 
 ---
 
