@@ -72,7 +72,7 @@ Add an analytics feature that:
 - [x] Graceful error handling for API failures/quota limits
 
 ### Nice to Have
-- [ ] Slash command to review and suggest prompt changes
+- [x] Slash command to review and suggest prompt changes
 - [ ] Comparison over time (track how improvements affect performance)
 - [ ] Analysis of thumbnail/title combinations
 
@@ -480,6 +480,142 @@ Display Summary in Terminal
 - **Milestone 5**: Slash Command for Review - Create `.claude/commands/analyze-titles` command
 - Test file generation with real YouTube data (CTR now populated with actual values!)
 - Validate AI analysis quality with real channel data
+
+---
+
+### 2025-11-09 - Session 4: Milestone 5 Complete (Slash Command for Review)
+**Duration**: ~2 hours
+**Status**: 5 of 7 milestones complete (71%)
+
+#### Pre-Work: Template Refactoring
+**Files Created:**
+- `internal/ai/templates/titles.md` - Extracted prompt template from inline code
+
+**Files Modified:**
+- `internal/ai/titles.go` - Refactored to use `//go:embed` template pattern
+  - Added `titlesTemplateData` struct for template data
+  - Replaced `fmt.Sprintf` with `template.Parse()` and `Execute()`
+- `internal/ai/titles_test.go` - Added `TestTitlesTemplateExecution` (4 test cases)
+
+**Testing:**
+- All existing tests pass (5/5 for titles)
+- New template tests pass (4/4 covering normal, special chars, empty, and large manuscripts)
+- Full test suite passes (24 packages)
+- AI package coverage: 85.1%
+
+**Rationale**: Separating prompt from code enables:
+1. Easier iteration on prompt improvements
+2. Clearer git diffs for prompt changes
+3. Direct slash command editing of template files
+
+---
+
+#### ✅ Milestone 5: Slash Command for Review (100%)
+
+**Files Created:**
+- `.claude/commands/analyze-titles.md` - Comprehensive 7-step workflow specification (245 lines)
+
+**Command Design:**
+The command implements:
+1. Find latest analysis file in `./tmp/`
+2. Read AI recommendations about patterns, length, performance
+3. Review current template in `internal/ai/templates/titles.md`
+4. Suggest data-driven improvements with before/after examples
+5. Present structured recommendations by priority
+6. Guide implementation (4 options: apply all, selective, preview, manual)
+7. Validate applied changes
+
+**Key Features:**
+- **Data-Driven**: Every suggestion references specific analytics findings
+- **Actionable**: Concrete before/after examples, not generic advice
+- **Traceable**: Links recommendations to performance metrics
+- **Iterative**: Designed for periodic refinement (monthly/quarterly)
+
+---
+
+#### Validation: Slash Command Execution
+
+**Test Scenario**: User executed `/analyze-titles` in separate Claude Code session (no context)
+
+**Analysis File Used**: `./tmp/title-analysis-2025-11-09.md` (200 videos, last 365 days)
+
+**Results**: Command successfully transformed template with data-driven improvements:
+
+**Character Count Optimization:**
+- ❌ Before: "Each title must be 70 characters or less"
+- ✅ After: "Target 56-65 characters for optimal performance (acceptable range: 55-75 characters maximum)"
+- **Data source**: Analysis showed 56-65 char titles averaged 8,200 views vs 4,100 for under 50 chars
+
+**Front-Loading Strategy Added:**
+- ✅ New: "CRITICAL: Front-load the hook in the first 60 characters (mobile truncation point)"
+- **Data source**: Front-loaded hooks outperform by 23% when titles exceed 70 chars
+
+**5 High-Performing Patterns Added (with metrics):**
+1. **Provocative Opinion** (3-5x avg views)
+2. **Top N Lists** (highest view counts - 48,858 views example)
+3. **Direct Comparisons** (35% higher watch time)
+4. **Challenge/Disruptive** (2.8% engagement vs 1.9% avg)
+5. **Personal Workflow** (65% higher comment rate)
+
+**AVOID Section Added (anti-patterns with penalties):**
+- Generic "How To" openings (52% fewer likes per view)
+- "Explained" or "Tutorial" suffix (62% lower views)
+- Question-only without controversy (54% lower watch time)
+- Overly technical without context (80% lower comment rate)
+- Titles over 75 characters (8-12% CTR drop per 10 extra chars)
+
+**All recommendations traceable to analysis data** with specific examples from actual videos.
+
+---
+
+#### Technical Decisions Made
+
+1. **Template-First Design**: Refactored titles.go before implementing slash command (consistency, easier iteration)
+2. **Comprehensive Command Spec**: Detailed 7-step workflow ensures predictable, valuable guidance
+3. **Data Traceability**: Every recommendation links to specific analytics findings
+4. **User Options**: Command offers 4 implementation paths
+5. **Iterative Process**: Designed for periodic execution as more data accumulates
+
+---
+
+#### Impact Assessment
+
+**Before Template Update:**
+- Generic prompt with no specific guidance
+- 70-character max (not optimized)
+- No pattern recommendations
+- No anti-patterns identified
+
+**After Template Update:**
+- Data-driven character count (56-65 optimal)
+- 5 proven high-performing patterns with metrics
+- 5 anti-patterns to avoid with performance penalties
+- Front-loading strategy for mobile truncation
+- All guidance backed by real channel data
+
+**Expected Impact:**
+- Higher CTR from optimized title lengths
+- More engaging titles using proven patterns
+- Fewer low-performing "How To" and "Explained" titles
+- Better mobile visibility with front-loaded hooks
+
+**Validation Method**: Generate titles for next 5-10 videos, compare performance to historical averages after 30-60 days
+
+---
+
+#### Next Session Priorities
+
+**Milestone 6**: Documentation & Testing
+- Update `CLAUDE.md` with analytics workflow
+- Add example analysis output to docs
+- Document OAuth re-auth requirement
+- Add troubleshooting section
+
+**Milestone 7**: Production Ready
+- Error handling review
+- Performance optimization
+- Final end-to-end testing
+- Feature stability validation
 
 ---
 
