@@ -112,19 +112,19 @@ func (s *SlackService) PostVideo(video *storage.Video, videoPath string) error {
 
 		// RecordSuccessfulPost call removed as PostStatus struct is gone
 		successCount++
-		LogSlackInfo(fmt.Sprintf("Posted to Slack channel %s (msg ID: %s, link: %s) successfully", channelID, timestamp, messageLink))
+		LogSlackInfo("Posted to Slack channel %s (msg ID: %s, link: %s) successfully", channelID, timestamp, messageLink)
 	}
 
 	// Update video metadata using the existing function from status.go
 	// This requires videoPath to be passed to PostVideo.
 	if anyPostSucceeded { // Only update if at least one post was successful
 		if err := UpdateSlackPostStatus(video, true, videoPath); err != nil {
-			LogSlackWarn(fmt.Sprintf("Failed to update video metadata (SlackPosted=true) for %s: %s", videoPath, err.Error()))
+			LogSlackWarn("Failed to update video metadata (SlackPosted=true) for %s: %s", videoPath, err.Error())
 			// Decide if this should contribute to lastError or be returned differently
 		}
 	} else if lastError != nil { // If all posts failed (anyPostSucceeded is false and there was an error)
 		if err := UpdateSlackPostStatus(video, false, videoPath); err != nil {
-			LogSlackWarn(fmt.Sprintf("Failed to update video metadata (SlackPosted=false) for %s after all posts failed: %s", videoPath, err.Error()))
+			LogSlackWarn("Failed to update video metadata (SlackPosted=false) for %s after all posts failed: %s", videoPath, err.Error())
 		}
 	}
 

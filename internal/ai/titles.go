@@ -1,17 +1,28 @@
 package ai
 
 import (
+	"bytes"
 	"context"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"strings"
+	"text/template"
 )
+
+//go:embed templates/titles.md
+var titlesTemplate string
 
 // SuggestedTitle is no longer a struct, AI will return a simple list of strings.
 // type SuggestedTitle struct {
 // 	Title       string `json:"title"`
 // 	Explanation string `json:"explanation"` // This will be removed
 // }
+
+// titlesTemplateData holds the data for the titles template
+type titlesTemplateData struct {
+	ManuscriptContent string
+}
 
 // SuggestTitles generates video title suggestions using the configured AI provider.
 // It returns a simple JSON array of strings.
@@ -21,17 +32,22 @@ func SuggestTitles(ctx context.Context, manuscriptContent string, optionalConfig
 		return nil, fmt.Errorf("failed to create AI provider: %w", err)
 	}
 
-	// Create prompt for title generation
-	prompt := fmt.Sprintf(`Generate 5 compelling and SEO-friendly YouTube video titles based on the provided manuscript. Each title must be 70 characters or less.
+	// Parse and execute template for title generation prompt
+	tmpl, err := template.New("titles").Parse(titlesTemplate)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse titles template: %w", err)
+	}
 
-IMPORTANT: You must respond with ONLY a valid JSON array of strings. No explanations, no markdown formatting, no additional text. Just the JSON array.
+	data := titlesTemplateData{
+		ManuscriptContent: manuscriptContent,
+	}
 
-Example format: ["Title 1", "Title 2", "Title 3", "Title 4", "Title 5"]
+	var promptBuf bytes.Buffer
+	if err := tmpl.Execute(&promptBuf, data); err != nil {
+		return nil, fmt.Errorf("failed to execute titles template: %w", err)
+	}
 
-Video Manuscript:
-%s
-
-Response (JSON array only):`, manuscriptContent)
+	prompt := promptBuf.String()
 
 	// Generate content using the provider
 	responseContent, err := provider.GenerateContent(ctx, prompt, 512)

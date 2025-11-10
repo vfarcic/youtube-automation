@@ -350,6 +350,7 @@ google.golang.org/api/option
 google.golang.org/api/option/internaloption
 google.golang.org/api/transport/http
 google.golang.org/api/youtube/v3
+google.golang.org/api/youtubeanalytics/v2
 # google.golang.org/genproto/googleapis/rpc v0.0.0-20251029180050-ab9386a59fda
 ## explicit; go 1.24.0
 google.golang.org/genproto/googleapis/rpc/code

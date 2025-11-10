@@ -124,3 +124,63 @@ func TestGetAIConfig(t *testing.T) {
 		t.Errorf("GetAIConfig() returned nil config")
 	}
 }
+
+func TestTitlesTemplateExecution(t *testing.T) {
+	// Test that the template executes correctly with various manuscript inputs
+	ctx := context.Background()
+
+	tests := []struct {
+		name       string
+		manuscript string
+		wantErr    bool
+	}{
+		{
+			name:       "Normal manuscript",
+			manuscript: "This is a test manuscript",
+			wantErr:    false,
+		},
+		{
+			name:       "Manuscript with special characters",
+			manuscript: "Test <script>alert('xss')</script> & \"quotes\" 'single'",
+			wantErr:    false,
+		},
+		{
+			name:       "Empty manuscript",
+			manuscript: "",
+			wantErr:    false,
+		},
+		{
+			name:       "Very long manuscript",
+			manuscript: strings.Repeat("A", 10000),
+			wantErr:    false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mock := &MockProvider{
+				response: `["Test Title 1", "Test Title 2"]`,
+				err:      nil,
+			}
+
+			originalGetAIProvider := GetAIProvider
+			defer func() { GetAIProvider = originalGetAIProvider }()
+
+			GetAIProvider = func() (AIProvider, error) {
+				return mock, nil
+			}
+
+			titles, err := SuggestTitles(ctx, tt.manuscript)
+
+			if tt.wantErr && err == nil {
+				t.Errorf("Expected error but got none")
+			}
+			if !tt.wantErr && err != nil {
+				t.Errorf("Unexpected error: %v", err)
+			}
+			if !tt.wantErr && len(titles) != 2 {
+				t.Errorf("Expected 2 titles, got %d", len(titles))
+			}
+		})
+	}
+}

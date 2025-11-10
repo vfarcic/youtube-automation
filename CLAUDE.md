@@ -168,4 +168,65 @@ For any Hugo-related functionality, use the established pattern:
 - Sanitize titles using `SanitizeTitle()`
 - Construct URLs using `ConstructHugoURL()`
 
+#### 5. Test-First Development (MANDATORY)
+**⚠️ CRITICAL: Tests are NOT optional. Every code change MUST include tests.**
+
+When writing ANY new functionality or modifying existing code:
+1. **ALWAYS write tests** - No exceptions
+2. **Test BEFORE considering the work complete** - Untested code is incomplete code
+3. **Update existing tests** if behavior changes
+4. **Cover edge cases**: success paths, error paths, boundary conditions
+5. **Use table-driven tests** for multiple scenarios (Go best practice)
+
+**Test Checklist** (use this for every PR/feature):
+- [ ] New functions have corresponding test functions
+- [ ] Success cases are tested
+- [ ] Error cases are tested (nil checks, invalid inputs, file I/O errors, etc.)
+- [ ] Edge cases are covered (empty inputs, large inputs, etc.)
+- [ ] External dependencies are mocked (YouTube API, AI providers, file system when appropriate)
+- [ ] Tests run successfully with `go test ./...`
+- [ ] Coverage meets 80% threshold (verify with `./scripts/coverage.sh`)
+
+**Common Testing Patterns:**
+```go
+// Table-driven tests (preferred)
+func TestFunctionName(t *testing.T) {
+    tests := []struct {
+        name    string
+        input   InputType
+        want    OutputType
+        wantErr bool
+    }{
+        {name: "valid input", input: validInput, want: expectedOutput, wantErr: false},
+        {name: "empty input", input: emptyInput, want: nil, wantErr: true},
+        {name: "error case", input: badInput, want: nil, wantErr: true},
+    }
+
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            got, err := FunctionName(tt.input)
+            if (err != nil) != tt.wantErr {
+                t.Errorf("error = %v, wantErr %v", err, tt.wantErr)
+                return
+            }
+            if !reflect.DeepEqual(got, tt.want) {
+                t.Errorf("got %v, want %v", got, tt.want)
+            }
+        })
+    }
+}
+```
+
+**File I/O Testing:**
+- Use `t.TempDir()` for temporary directories
+- Clean up resources in tests
+- Test both successful file writes and error conditions
+
+**Why This Matters:**
+- Tests catch bugs before they reach users
+- Tests document expected behavior
+- Tests enable confident refactoring
+- 80% coverage goal maintains code quality
+- CI/CD pipeline depends on passing tests
+
 This architecture supports the tool's evolution from simple video management to comprehensive content creation workflow automation while maintaining clean separation of concerns and interface consistency.
