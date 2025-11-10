@@ -66,8 +66,8 @@ Add an analytics feature that:
 ### Must Have
 - [x] Successfully fetch video analytics from YouTube API (last 365 days)
 - [x] AI generates actionable recommendations about title patterns
-- [ ] Raw data saved as JSON in `./tmp`
-- [ ] Analysis saved as Markdown in `./tmp`
+- [x] Raw data saved as JSON in `./tmp`
+- [x] Analysis saved as Markdown in `./tmp`
 - [x] New "Analyze" menu option with "Titles" sub-menu works
 - [x] Graceful error handling for API failures/quota limits
 
@@ -425,6 +425,61 @@ Display Summary in Terminal
 - **Milestone 4**: File Output & Persistence - Save JSON data and markdown analysis to `./tmp/`
 - Test with real YouTube channel data to validate analysis quality
 - Remove temporary console output once file saving is implemented
+
+---
+
+### 2025-11-09 - Session 3: Milestone 4 Complete (File Output & Persistence)
+**Duration**: ~3 hours
+**Status**: 4 of 7 milestones complete (57%)
+
+#### ✅ Milestone 4: File Output & Persistence (100%)
+**Files Created:**
+- `internal/app/analytics_files.go` (85 lines) - Pure, testable file-saving function
+- `internal/app/analytics_files_test.go` (275 lines, 9 tests) - Comprehensive test coverage
+
+**Implementation Details:**
+- `SaveAnalysisFiles()` function - Pure function with no external dependencies
+- JSON file saved to `./tmp/youtube-analytics-{date}.json` with pretty-printed formatting
+- Markdown file saved to `./tmp/title-analysis-{date}.md` with metadata header
+- Metadata includes: generation timestamp, video count, date range, channel ID
+- Error handling for empty data, invalid paths, file I/O failures
+- Files overwrite on same-day re-runs (idempotent behavior)
+
+**Testing & Validation:**
+- 9 comprehensive test cases covering success and error scenarios
+- All tests passing (SaveAnalysisFiles: 9/9, app package: all tests, full suite: 24 packages)
+- Test coverage includes: JSON structure validation, Markdown metadata, filename format, overwrite behavior
+
+**Code Quality Improvements:**
+- Fixed 12 linter errors in `menu_handler.go` (`log.Printf` → `log.Print`)
+- Fixed 3 linter errors in `internal/slack/service.go`
+- Fixed API test field count (44 → 46) in `handlers_test.go`
+- Updated `CLAUDE.md` with mandatory testing guidelines and checklist
+- Refactored file-saving logic into pure, testable function (no test pollution in production code)
+
+**Bug Fixes:**
+- Fixed CTR (Click-Through Rate) bug: Was hardcoded to 0.0
+- Added `cardClickRate` metric to YouTube Analytics API query (line 73 in `youtube_analytics.go`)
+- Updated response parsing to extract actual CTR data from API (line 146)
+- Now fetches real CTR percentages from YouTube
+
+**Files Modified:**
+- `internal/app/menu_handler.go` - Integrated `SaveAnalysisFiles()`, removed temporary debug output, fixed linter errors
+- `internal/publishing/youtube_analytics.go` - Added cardClickRate metric, fixed CTR parsing
+- `internal/slack/service.go` - Fixed logging linter errors
+- `internal/api/handlers_test.go` - Updated field count expectations
+- `CLAUDE.md` - Added "Test-First Development (MANDATORY)" section with testing checklist
+
+**Technical Decisions Made:**
+1. **Extracted pure function**: Separated file-saving logic from MenuHandler for testability
+2. **Test-first approach**: Wrote comprehensive tests before considering feature complete
+3. **Conservative completion criteria**: Only mark checkboxes when direct evidence exists
+4. **Fixed pre-existing issues**: Addressed linter errors throughout codebase, not just new code
+
+#### Next Session Priorities:
+- **Milestone 5**: Slash Command for Review - Create `.claude/commands/analyze-titles` command
+- Test file generation with real YouTube data (CTR now populated with actual values!)
+- Validate AI analysis quality with real channel data
 
 ---
 

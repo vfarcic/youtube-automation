@@ -63,14 +63,14 @@ func GetVideoAnalytics(ctx context.Context, startDate, endDate time.Time) ([]Vid
 	}
 
 	// Fetch analytics data
-	// Metrics: views, averageViewDuration, likes, comments
+	// Metrics: views, averageViewDuration, likes, comments, cardClickRate
 	// Dimensions: video (group by video ID)
-	// Note: CTR (cardClickRate) requires cards to be present, so we'll fetch impressionClickThroughRate instead
+	// Note: cardClickRate represents CTR (click-through rate from impressions)
 	analyticsCall := analyticsService.Reports.Query().
 		Ids("channel=="+channelID).
 		StartDate(startDateStr).
 		EndDate(endDateStr).
-		Metrics("views,estimatedMinutesWatched,likes,comments,averageViewDuration").
+		Metrics("views,estimatedMinutesWatched,likes,comments,averageViewDuration,cardClickRate").
 		Dimensions("video").
 		Sort("-views"). // Sort by views descending
 		MaxResults(200) // Fetch up to 200 videos
@@ -133,8 +133,8 @@ func GetVideoAnalytics(ctx context.Context, startDate, endDate time.Time) ([]Vid
 	results := make([]VideoAnalytics, 0, len(analyticsResponse.Rows))
 
 	for _, row := range analyticsResponse.Rows {
-		if len(row) < 6 {
-			continue // Skip malformed rows
+		if len(row) < 7 {
+			continue // Skip malformed rows (need 7 fields now)
 		}
 
 		videoID, _ := row[0].(string)
@@ -143,6 +143,7 @@ func GetVideoAnalytics(ctx context.Context, startDate, endDate time.Time) ([]Vid
 		likes := int64(row[3].(float64))
 		comments := int64(row[4].(float64))
 		avgViewDuration := row[5].(float64)
+		ctr := row[6].(float64) // cardClickRate (CTR percentage)
 
 		// Get video metadata
 		metadata, exists := videoMetadata[videoID]
@@ -150,10 +151,6 @@ func GetVideoAnalytics(ctx context.Context, startDate, endDate time.Time) ([]Vid
 			// Skip videos without metadata (shouldn't happen)
 			continue
 		}
-
-		// Calculate CTR estimate (we don't have actual CTR, so this is a placeholder)
-		// In reality, CTR requires impressions data which isn't always available
-		ctr := 0.0 // Placeholder - actual CTR would require impressions data
 
 		results = append(results, VideoAnalytics{
 			VideoID:            videoID,

@@ -517,7 +517,7 @@ func (m *MenuHandler) ChooseVideosAndHandleError(vi []storage.VideoIndex, phase 
 		// Call the new phase selection handler
 		if err := m.handleEditVideoPhases(selectedVideo); err != nil {
 			// Log or display error, then return to allow ChooseVideosAndHandleError to go back to phase list
-			log.Printf(m.errorStyle.Render(fmt.Sprintf("Error during video edit phases: %v", err)))
+			log.Print(m.errorStyle.Render(fmt.Sprintf("Error during video edit phases: %v", err)))
 		}
 		// After returning from handleEditVideoPhases, the current switch case ends,
 		// and ChooseVideosAndHandleError will return nil, which causes ChooseVideosPhaseAndHandleError
@@ -537,7 +537,7 @@ func (m *MenuHandler) ChooseVideosAndHandleError(vi []storage.VideoIndex, phase 
 			if errors.Is(selErr, huh.ErrUserAborted) {
 				fmt.Println(m.orangeStyle.Render("Move video action cancelled."))
 			} else {
-				log.Printf(m.errorStyle.Render("Error selecting target directory: %v"), selErr)
+				log.Print(m.errorStyle.Render(fmt.Sprintf("Error selecting target directory: %v", selErr)))
 			}
 			return nil
 		}
@@ -545,7 +545,7 @@ func (m *MenuHandler) ChooseVideosAndHandleError(vi []storage.VideoIndex, phase 
 		// Use the service to move the video
 		moveErr := m.videoService.MoveVideo(selectedVideo.Name, selectedVideo.Category, targetDir.Path)
 		if moveErr != nil {
-			log.Printf(m.errorStyle.Render(fmt.Sprintf("Error moving video files for '%s': %v", selectedVideo.Name, moveErr)))
+			log.Print(m.errorStyle.Render(fmt.Sprintf("Error moving video files for '%s': %v", selectedVideo.Name, moveErr)))
 		} else {
 			fmt.Println(m.confirmationStyle.Render(fmt.Sprintf("Video '%s' files moved to %s", selectedVideo.Name, targetDir.Path)))
 		}
@@ -949,7 +949,7 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 					} else {
 						emailService := notification.NewEmail(configuration.GlobalSettings.Email.Password)
 						if emailErr := emailService.SendEdit(configuration.GlobalSettings.Email.From, configuration.GlobalSettings.Email.EditTo, updatedVideo); emailErr != nil {
-							log.Printf(m.errorStyle.Render(fmt.Sprintf("Failed to send edit request email: %v", emailErr)))
+							log.Print(m.errorStyle.Render(fmt.Sprintf("Failed to send edit request email: %v", emailErr)))
 						} else {
 							fmt.Println(m.confirmationStyle.Render("Edit request email sent."))
 						}
@@ -1007,7 +1007,7 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 					hugoPublisher := publishing.Hugo{}
 					createdPath, hugoErr := hugoPublisher.Post(updatedVideo.Gist, updatedVideo.Title, updatedVideo.Date, updatedVideo.VideoId)
 					if hugoErr != nil {
-						log.Printf(m.errorStyle.Render(fmt.Sprintf("Failed to create Hugo post: %v", hugoErr)))
+						log.Print(m.errorStyle.Render(fmt.Sprintf("Failed to create Hugo post: %v", hugoErr)))
 						updatedVideo.HugoPath = originalHugoPath // Revert intent
 						// No return here yet, we'll save the reverted state and then let the outer error handling catch it if needed
 						// or decide later if this specific error should halt everything before save.
@@ -1026,7 +1026,7 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 					fmt.Println(m.orangeStyle.Render(fmt.Sprintf("Attempting to upload video: %s", updatedVideo.UploadVideo)))
 					newVideoID := publishing.UploadVideo(&updatedVideo) // Pass the whole struct
 					if newVideoID == "" {
-						log.Printf(m.errorStyle.Render(fmt.Sprintf("Failed to upload video from path: %s. YouTube API might have returned an empty ID or an error occurred.", updatedVideo.UploadVideo)))
+						log.Print(m.errorStyle.Render(fmt.Sprintf("Failed to upload video from path: %s. YouTube API might have returned an empty ID or an error occurred.", updatedVideo.UploadVideo)))
 						// Potentially revert uploadTrigger or handle error more explicitly.
 						// For now, if upload fails, newVideoID will be empty, and updatedVideo.VideoId won't be set with a new ID.
 						// We might want to return an error here to prevent saving if upload was critical.
@@ -1038,7 +1038,7 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 						if updatedVideo.Thumbnail != "" { // User provided/confirmed a thumbnail path
 							// No need for tempVideoForThumbnail, updatedVideo now has the correct VideoId
 							if tnErr := publishing.UploadThumbnail(updatedVideo); tnErr != nil { // Use updatedVideo directly
-								log.Printf(m.errorStyle.Render(fmt.Sprintf("Failed to upload thumbnail: %v", tnErr)))
+								log.Print(m.errorStyle.Render(fmt.Sprintf("Failed to upload thumbnail: %v", tnErr)))
 								// This error is non-critical to the video upload itself, so we log and continue.
 								// Consider if this should be a return fmt.Errorf(...)
 							} else {
@@ -1108,7 +1108,7 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 					fmt.Println(m.orangeStyle.Render("Post-Publish details editing cancelled.")) // Corrected message
 					continue                                                                     // Go back to phase selection
 				}
-				log.Printf(m.errorStyle.Render(fmt.Sprintf("Error running post-publish details form: %v", err))) // Corrected message
+				log.Print(m.errorStyle.Render(fmt.Sprintf("Error running post-publish details form: %v", err))) // Corrected message
 				return err                                                                                       // Return on other errors
 			}
 
@@ -1142,19 +1142,19 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 				// Action: Slack Post (if changed from false to true in this phase)
 				if !originalSlackPosted && updatedVideo.SlackPosted && updatedVideo.VideoId != "" {
 					if errSl := slack.LoadAndValidateSlackConfig(""); errSl != nil { // Renamed err to errSl
-						log.Printf(m.errorStyle.Render(fmt.Sprintf("Failed to load Slack configuration: %v", errSl)))
+						log.Print(m.errorStyle.Render(fmt.Sprintf("Failed to load Slack configuration: %v", errSl)))
 						updatedVideo.SlackPosted = false                                   // Revert intent
 						return fmt.Errorf("failed to load Slack configuration: %w", errSl) // Return error
 					} else {
 						slackService, errSlSvc := slack.NewSlackService(slack.GlobalSlackConfig) // Renamed err to errSlSvc
 						if errSlSvc != nil {
-							log.Printf(m.errorStyle.Render(fmt.Sprintf("Failed to create Slack service: %v", errSlSvc)))
+							log.Print(m.errorStyle.Render(fmt.Sprintf("Failed to create Slack service: %v", errSlSvc)))
 							updatedVideo.SlackPosted = false                                  // Revert intent
 							return fmt.Errorf("failed to create Slack service: %w", errSlSvc) // Return error
 						} else {
 							errSlPost := slackService.PostVideo(&updatedVideo, updatedVideo.Path) // Renamed err to errSlPost
 							if errSlPost != nil {
-								log.Printf(m.errorStyle.Render(fmt.Sprintf("Failed to post video to Slack: %v", errSlPost)))
+								log.Print(m.errorStyle.Render(fmt.Sprintf("Failed to post video to Slack: %v", errSlPost)))
 								updatedVideo.SlackPosted = false                                  // Revert intent
 								return fmt.Errorf("failed to post video to Slack: %w", errSlPost) // Return error
 							} else {
@@ -1169,7 +1169,7 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 				// Action: BlueSky Post (if changed from false to true in this phase)
 				if !originalBlueSkyPosted && updatedVideo.BlueSkyPosted && updatedVideo.Tweet != "" && updatedVideo.VideoId != "" {
 					if configuration.GlobalSettings.Bluesky.Identifier == "" || configuration.GlobalSettings.Bluesky.Password == "" {
-						log.Printf(m.errorStyle.Render("BlueSky credentials not configured. Cannot post to BlueSky."))
+						log.Print(m.errorStyle.Render("BlueSky credentials not configured. Cannot post to BlueSky."))
 						updatedVideo.BlueSkyPosted = false // Revert intent
 					} else {
 						bsConfig := bluesky.Config{
@@ -1178,7 +1178,7 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 							URL:        configuration.GlobalSettings.Bluesky.URL,
 						}
 						if bsErr := bluesky.SendPost(bsConfig, updatedVideo.Tweet, updatedVideo.VideoId, updatedVideo.Thumbnail); bsErr != nil {
-							log.Printf(m.errorStyle.Render(fmt.Sprintf("Failed to post to BlueSky: %v", bsErr)))
+							log.Print(m.errorStyle.Render(fmt.Sprintf("Failed to post to BlueSky: %v", bsErr)))
 							updatedVideo.BlueSkyPosted = false // Revert intent
 						} else {
 							fmt.Println(m.confirmationStyle.Render("Posted to BlueSky."))
@@ -1962,14 +1962,27 @@ func (m *MenuHandler) HandleAnalyzeTitles() error {
 	}
 
 	fmt.Println(m.greenStyle.Render("✓ Analysis complete!"))
-	fmt.Println(m.normalStyle.Render(fmt.Sprintf("Analysis length: %d characters", len(analysis))))
+	fmt.Println(m.normalStyle.Render("Saving results to files..."))
+
+	// Save files using the testable function
+	files, err := SaveAnalysisFiles(analytics, analysis, "tmp", configuration.GlobalSettings.YouTube.ChannelId)
+	if err != nil {
+		fmt.Println(m.errorStyle.Render(fmt.Sprintf("Failed to save files: %v", err)))
+		return err
+	}
+
+	// Display success message with file paths
 	fmt.Println("")
-	fmt.Println(m.normalStyle.Render("=== AI ANALYSIS OUTPUT (TEMPORARY) ==="))
+	fmt.Println(m.greenStyle.Render("✓ Files saved successfully!"))
 	fmt.Println("")
-	fmt.Println(analysis)
+	fmt.Println(m.normalStyle.Render("Files saved:"))
+	fmt.Println(m.normalStyle.Render(fmt.Sprintf("  • Raw data: %s", files.JSONPath)))
+	fmt.Println(m.normalStyle.Render(fmt.Sprintf("  • Analysis: %s", files.MDPath)))
 	fmt.Println("")
-	fmt.Println(m.normalStyle.Render("=== END OF AI ANALYSIS ==="))
-	fmt.Println(m.normalStyle.Render("Note: This output will be saved to files in Milestone 4"))
+	fmt.Println(m.normalStyle.Render("Next steps:"))
+	fmt.Println(m.normalStyle.Render("  1. Review the analysis markdown file"))
+	fmt.Println(m.normalStyle.Render("  2. Update internal/ai/titles.go with insights"))
+	fmt.Println(m.normalStyle.Render("  3. Future titles will use improved patterns"))
 
 	return nil
 }
