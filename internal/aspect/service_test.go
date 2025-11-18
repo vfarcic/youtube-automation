@@ -16,8 +16,8 @@ func TestGetAspects(t *testing.T) {
 	service := NewService()
 	metadata := service.GetAspects()
 
-	// Test that we have the expected number of aspects (6 phases)
-	expectedAspectCount := 6
+	// Test that we have the expected number of aspects (7 phases)
+	expectedAspectCount := 7
 	if len(metadata.Aspects) != expectedAspectCount {
 		t.Errorf("Expected %d aspects, got %d", expectedAspectCount, len(metadata.Aspects))
 	}
@@ -304,7 +304,7 @@ func TestGetAspectsOverview(t *testing.T) {
 	overview := service.GetAspectsOverview()
 
 	t.Run("Should return correct number of aspects", func(t *testing.T) {
-		expectedCount := 6
+		expectedCount := 7
 		if len(overview.Aspects) != expectedCount {
 			t.Errorf("Expected %d aspects, got %d", expectedCount, len(overview.Aspects))
 		}
@@ -318,6 +318,7 @@ func TestGetAspectsOverview(t *testing.T) {
 			AspectKeyPostProduction,
 			AspectKeyPublishing,
 			AspectKeyPostPublish,
+			AspectKeyAnalysis,
 		}
 
 		// Verify aspects are sorted by order field
@@ -343,10 +344,11 @@ func TestGetAspectsOverview(t *testing.T) {
 		expectedFieldCounts := map[string]int{
 			AspectKeyInitialDetails: 10, // actual count from mapping (includes sponsor name and URL)
 			AspectKeyWorkProgress:   11, // actual count from mapping
-			AspectKeyDefinition:     7,  // actual count from mapping
+			AspectKeyDefinition:     7,  // actual count from mapping (includes Titles array)
 			AspectKeyPostProduction: 6,  // actual count from mapping
 			AspectKeyPublishing:     3,  // actual count from mapping
 			AspectKeyPostPublish:    10, // actual count from mapping
+			AspectKeyAnalysis:       1,  // actual count from mapping (Titles for share percentages)
 		}
 
 		for _, aspect := range overview.Aspects {
@@ -978,7 +980,7 @@ func TestGetAspectFields_IncludesFieldName(t *testing.T) {
 
 	// Test specific field mappings that we know should exist
 	expectedFieldNames := map[string]string{
-		"Title":            "title",           // Simple property
+		"Titles":           "titles",          // Array property
 		"Description Tags": "descriptionTags", // Compound property
 	}
 

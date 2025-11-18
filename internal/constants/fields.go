@@ -8,6 +8,7 @@ const (
 	PhaseTitlePostProduction    = "Post-Production"
 	PhaseTitlePublishingDetails = "Publishing Details"
 	PhaseTitlePostPublish       = "Post-Publish Details"
+	PhaseTitleAnalysis          = "Analysis"
 )
 
 // Field titles used throughout the application - these must match the CLI form field titles

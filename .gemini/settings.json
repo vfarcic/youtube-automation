@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "dot-ai": {
+      "command": "docker",
+      "args": [
+        "compose",
+        "-f",
+        "${PWD}/docker-compose-dot-ai.yaml",
+        "run",
+        "--rm",
+        "--remove-orphans",
+        "dot-ai"
+      ],
+    }
+  },
+  "general": {
+    "previewFeatures": true
+  }
+}

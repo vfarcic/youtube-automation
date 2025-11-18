@@ -27,6 +27,13 @@ type VideoIndex struct {
 	Category string
 }
 
+// TitleVariant represents a single title variant for A/B testing
+type TitleVariant struct {
+	Index int     `yaml:"index" json:"index"`                     // 1=uploaded, 2=variant, 3=variant
+	Text  string  `yaml:"text" json:"text"`                       // Title text
+	Share float64 `yaml:"share,omitempty" json:"share,omitempty"` // Watch time share % from YouTube A/B test
+}
+
 // Video represents all data associated with a video project.
 // All fields are already exported.
 type Video struct {
@@ -41,9 +48,10 @@ type Video struct {
 	Screen               bool        `json:"screen" completion:"true_only"`
 	Head                 bool        `json:"head" completion:"true_only"`
 	Thumbnails           bool        `json:"thumbnails" completion:"true_only"`
-	Diagrams             bool        `json:"diagrams" completion:"true_only"`
-	Title                string      `json:"title" completion:"filled_only"`
-	Description          string      `json:"description" completion:"filled_only"`
+	Diagrams             bool           `json:"diagrams" completion:"true_only"`
+	Titles               []TitleVariant `yaml:"titles,omitempty" json:"titles,omitempty" completion:"filled_only"`
+	Title                string         `json:"title" completion:"filled_only"` // DEPRECATED: fallback for old videos
+	Description          string         `json:"description" completion:"filled_only"`
 	Tags                 string      `json:"tags" completion:"filled_only"`
 	DescriptionTags      string      `json:"descriptionTags" completion:"filled_only"`
 	Location             string      `json:"location" completion:"filled_only"`
@@ -116,6 +124,16 @@ func (y *YAML) GetVideo(path string) (Video, error) {
 	if err != nil {
 		return video, fmt.Errorf("failed to unmarshal video data from %s: %w", path, err)
 	}
+
+	// Auto-migrate: if Titles array is empty but legacy Title field exists, migrate it
+	if len(video.Titles) == 0 && video.Title != "" {
+		video.Titles = []TitleVariant{{
+			Index: 1,
+			Text:  video.Title,
+			Share: 0,
+		}}
+	}
+
 	return video, nil
 }
 
@@ -154,4 +172,19 @@ func (y *YAML) WriteIndex(vi []VideoIndex) error {
 		return fmt.Errorf("failed to write video index to file %s: %w", y.IndexPath, err)
 	}
 	return nil
+}
+
+// GetUploadTitle returns the primary title to upload to YouTube (Index=1)
+// With auto-migration in GetVideo(), this should always find a title in Titles array
+func (v *Video) GetUploadTitle() string {
+	for _, t := range v.Titles {
+		if t.Index == 1 {
+			return t.Text
+		}
+	}
+	// Fallback (shouldn't happen with auto-migration, but safe)
+	if v.Title != "" {
+		return v.Title
+	}
+	return ""
 }

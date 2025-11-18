@@ -301,7 +301,7 @@ If you are interested in sponsoring this channel, please visit https://devopstoo
 
 	upload := &youtube.Video{
 		Snippet: &youtube.VideoSnippet{
-			Title:       video.Title,
+			Title:       video.GetUploadTitle(),
 			Description: description,
 			CategoryId:  "28",
 			ChannelId:   channelID,

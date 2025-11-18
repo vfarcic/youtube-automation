@@ -1,4 +1,4 @@
-Generate 5 compelling and SEO-friendly YouTube video titles based on the provided manuscript. Target 56-65 characters for optimal performance (acceptable range: 55-75 characters maximum).
+Generate 10 compelling and SEO-friendly YouTube video titles based on the provided manuscript. Target 56-65 characters for optimal performance (acceptable range: 55-75 characters maximum).
 
 CRITICAL: Front-load the hook in the first 60 characters (mobile truncation point). Prioritize these proven high-performing patterns:
 
@@ -37,7 +37,7 @@ AVOID these proven low-performing patterns:
 
 IMPORTANT: You must respond with ONLY a valid JSON array of strings. No explanations, no markdown formatting, no additional text. Just the JSON array.
 
-Example format: ["Title 1", "Title 2", "Title 3", "Title 4", "Title 5"]
+Example format: ["Title 1", "Title 2", "Title 3", "Title 4", "Title 5", "Title 6", "Title 7", "Title 8", "Title 9", "Title 10"]
 
 Video Manuscript:
 {{.ManuscriptContent}}

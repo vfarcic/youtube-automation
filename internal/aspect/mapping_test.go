@@ -11,8 +11,8 @@ import (
 func TestGetVideoAspectMappings(t *testing.T) {
 	mappings := GetVideoAspectMappings()
 
-	t.Run("Should return exactly 6 aspect mappings", func(t *testing.T) {
-		expectedCount := 6
+	t.Run("Should return exactly 7 aspect mappings", func(t *testing.T) {
+		expectedCount := 7
 		if len(mappings) != expectedCount {
 			t.Errorf("Expected %d mappings, got %d", expectedCount, len(mappings))
 		}
@@ -26,6 +26,7 @@ func TestGetVideoAspectMappings(t *testing.T) {
 			AspectKeyPostProduction,
 			AspectKeyPublishing,
 			AspectKeyPostPublish,
+			AspectKeyAnalysis,
 		}
 
 		// Sort mappings by order to ensure consistent testing
@@ -50,6 +51,7 @@ func TestGetVideoAspectMappings(t *testing.T) {
 			AspectKeyPostProduction: "Post Production",
 			AspectKeyPublishing:     "Publishing",
 			AspectKeyPostPublish:    "Post Publish",
+			AspectKeyAnalysis:       "Analysis",
 		}
 
 		for _, mapping := range mappings {
@@ -157,10 +159,11 @@ func TestGetVideoAspectMappings(t *testing.T) {
 		expectedCounts := map[string]int{
 			AspectKeyInitialDetails: 10, // ProjectName, ProjectURL, Amount, Emails, Blocked, Name, URL, Date, Delayed, Gist
 			AspectKeyWorkProgress:   11, // Code, Head, Screen, RelatedVideos, Thumbnails, Diagrams, Screenshots, Location, Tagline, TaglineIdeas, OtherLogos
-			AspectKeyDefinition:     7,  // Title, Description, Tags, DescriptionTags, Tweet, Animations, RequestThumbnail
+			AspectKeyDefinition:     7,  // Titles, Description, Tags, DescriptionTags, Tweet, Animations, RequestThumbnail
 			AspectKeyPostProduction: 6,  // Thumbnail, Members, RequestEdit, Timecodes, Movie, Slides
 			AspectKeyPublishing:     3,  // UploadVideo, VideoId, HugoPath
 			AspectKeyPostPublish:    10, // DOT, BlueSky, LinkedIn, Slack, YouTube Highlight/Comment/Reply, GDE, Repo, NotifySponsors
+			AspectKeyAnalysis:       1,  // Titles (for A/B test share percentages)
 		}
 
 		for _, mapping := range mappings {

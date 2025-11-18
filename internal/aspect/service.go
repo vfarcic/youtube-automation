@@ -185,6 +185,7 @@ func getEndpointForAspect(aspectKey string) string {
 		AspectKeyPostProduction: "/api/videos/{videoName}/post-production",
 		AspectKeyPublishing:     "/api/videos/{videoName}/publishing",
 		AspectKeyPostPublish:    "/api/videos/{videoName}/post-publish",
+		AspectKeyAnalysis:       "/api/videos/{videoName}/analysis",
 	}
 	return endpointMap[aspectKey]
 }
@@ -197,6 +198,7 @@ func getIconForAspect(aspectKey string) string {
 		AspectKeyPostProduction: "scissors",
 		AspectKeyPublishing:     "upload",
 		AspectKeyPostPublish:    "share",
+		AspectKeyAnalysis:       "chart",
 	}
 	return iconMap[aspectKey]
 }

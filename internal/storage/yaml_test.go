@@ -419,3 +419,193 @@ func TestVideo_JSONConsistency(t *testing.T) {
 	})
 
 }
+
+func TestGetUploadTitle(t *testing.T) {
+	tests := []struct {
+		name     string
+		video    Video
+		expected string
+	}{
+		{
+			name: "Single title in Titles array",
+			video: Video{
+				Titles: []TitleVariant{
+					{Index: 1, Text: "Primary Title", Share: 0},
+				},
+			},
+			expected: "Primary Title",
+		},
+		{
+			name: "Multiple titles, finds Index 1",
+			video: Video{
+				Titles: []TitleVariant{
+					{Index: 2, Text: "Variant A", Share: 32.5},
+					{Index: 1, Text: "Uploaded Title", Share: 45.2},
+					{Index: 3, Text: "Variant B", Share: 22.3},
+				},
+			},
+			expected: "Uploaded Title",
+		},
+		{
+			name: "No Titles array, fallback to legacy Title",
+			video: Video{
+				Title:  "Legacy Title",
+				Titles: []TitleVariant{},
+			},
+			expected: "Legacy Title",
+		},
+		{
+			name: "Empty Titles and empty legacy Title",
+			video: Video{
+				Title:  "",
+				Titles: []TitleVariant{},
+			},
+			expected: "",
+		},
+		{
+			name: "Index 1 missing, fallback to legacy",
+			video: Video{
+				Title: "Fallback Title",
+				Titles: []TitleVariant{
+					{Index: 2, Text: "Only Variant", Share: 100},
+				},
+			},
+			expected: "Fallback Title",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.video.GetUploadTitle()
+			if got != tt.expected {
+				t.Errorf("GetUploadTitle() = %q, want %q", got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestAutoMigrationOnLoad(t *testing.T) {
+	// Create a temp file with old format (Title field only)
+	tempDir := t.TempDir()
+	videoPath := tempDir + "/test-video.yaml"
+
+	oldFormatYAML := `name: Test Video
+path: /path/to/video
+category: testing
+title: Legacy Title Field
+description: Test description
+`
+	err := os.WriteFile(videoPath, []byte(oldFormatYAML), 0644)
+	if err != nil {
+		t.Fatalf("Failed to write test file: %v", err)
+	}
+
+	// Load the video
+	y := NewYAML(tempDir + "/index.yaml")
+	video, err := y.GetVideo(videoPath)
+	if err != nil {
+		t.Fatalf("GetVideo failed: %v", err)
+	}
+
+	// Verify auto-migration happened
+	if len(video.Titles) != 1 {
+		t.Errorf("Expected Titles array to have 1 element after migration, got %d", len(video.Titles))
+	}
+	if len(video.Titles) > 0 {
+		if video.Titles[0].Index != 1 {
+			t.Errorf("Expected migrated title Index to be 1, got %d", video.Titles[0].Index)
+		}
+		if video.Titles[0].Text != "Legacy Title Field" {
+			t.Errorf("Expected migrated title Text to be 'Legacy Title Field', got %q", video.Titles[0].Text)
+		}
+		if video.Titles[0].Share != 0 {
+			t.Errorf("Expected migrated title Share to be 0, got %f", video.Titles[0].Share)
+		}
+	}
+}
+
+func TestNoMigrationIfTitlesArrayExists(t *testing.T) {
+	// Create a temp file with new format (Titles array)
+	tempDir := t.TempDir()
+	videoPath := tempDir + "/test-video.yaml"
+
+	newFormatYAML := `name: Test Video
+path: /path/to/video
+category: testing
+title: Should Be Ignored
+titles:
+  - index: 1
+    text: New Format Title
+    share: 0
+  - index: 2
+    text: Variant Title
+    share: 0
+`
+	err := os.WriteFile(videoPath, []byte(newFormatYAML), 0644)
+	if err != nil {
+		t.Fatalf("Failed to write test file: %v", err)
+	}
+
+	// Load the video
+	y := NewYAML(tempDir + "/index.yaml")
+	video, err := y.GetVideo(videoPath)
+	if err != nil {
+		t.Fatalf("GetVideo failed: %v", err)
+	}
+
+	// Verify no migration (should use Titles array as-is)
+	if len(video.Titles) != 2 {
+		t.Errorf("Expected Titles array to have 2 elements, got %d", len(video.Titles))
+	}
+	if len(video.Titles) > 0 && video.Titles[0].Text != "New Format Title" {
+		t.Errorf("Expected first title to be 'New Format Title', got %q", video.Titles[0].Text)
+	}
+}
+
+func TestTitleVariantSerialization(t *testing.T) {
+	t.Run("TitleVariant array serializes with share percentages", func(t *testing.T) {
+		video := Video{
+			Name: "test-video",
+			Titles: []TitleVariant{
+				{Index: 1, Text: "Primary Title", Share: 45.2},
+				{Index: 2, Text: "Variant A", Share: 32.8},
+				{Index: 3, Text: "Variant B", Share: 22.0},
+			},
+		}
+
+		jsonData, err := json.Marshal(video)
+		require.NoError(t, err)
+
+		var jsonMap map[string]interface{}
+		err = json.Unmarshal(jsonData, &jsonMap)
+		require.NoError(t, err)
+
+		titles, ok := jsonMap["titles"].([]interface{})
+		require.True(t, ok, "titles should be an array")
+		assert.Len(t, titles, 3)
+
+		title1 := titles[0].(map[string]interface{})
+		assert.Equal(t, float64(1), title1["index"])
+		assert.Equal(t, "Primary Title", title1["text"])
+		assert.Equal(t, 45.2, title1["share"])
+	})
+
+	t.Run("TitleVariant array deserializes correctly", func(t *testing.T) {
+		jsonData := `{
+			"name": "test-video",
+			"titles": [
+				{"index": 1, "text": "Primary Title", "share": 45.2},
+				{"index": 2, "text": "Variant A", "share": 32.8}
+			]
+		}`
+
+		var video Video
+		err := json.Unmarshal([]byte(jsonData), &video)
+		require.NoError(t, err)
+
+		assert.Len(t, video.Titles, 2)
+		assert.Equal(t, 1, video.Titles[0].Index)
+		assert.Equal(t, "Primary Title", video.Titles[0].Text)
+		assert.Equal(t, 45.2, video.Titles[0].Share)
+	})
+}

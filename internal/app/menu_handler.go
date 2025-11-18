@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -79,6 +80,7 @@ const (
 	editPhasePostProduction
 	editPhasePublishing
 	editPhasePostPublish
+	editPhaseAnalysis
 	// actionReturn can be reused for returning from this sub-menu
 )
 
@@ -463,21 +465,21 @@ func (m *MenuHandler) ChooseVideosAndHandleError(vi []storage.VideoIndex, phase 
 		return date1.Before(date2)
 	})
 
-	// Create video selection options
-	var videoOptions []huh.Option[storage.Video]
+	// Create video selection options using video names (strings are comparable)
+	var videoOptions []huh.Option[string]
 	for _, video := range videosInPhase {
 		displayTitle := m.getVideoTitleForDisplay(video, phase, time.Now())
-		videoOptions = append(videoOptions, huh.NewOption(displayTitle, video))
+		videoOptions = append(videoOptions, huh.NewOption(displayTitle, video.Name))
 	}
-	videoOptions = append(videoOptions, huh.NewOption("Return", storage.Video{Name: "return"}))
+	videoOptions = append(videoOptions, huh.NewOption("Return", "return"))
 
-	var selectedVideo storage.Video
+	var selectedVideoName string
 	form := huh.NewForm(
 		huh.NewGroup(
-			huh.NewSelect[storage.Video]().
+			huh.NewSelect[string]().
 				Title("Select a video:").
 				Options(videoOptions...).
-				Value(&selectedVideo),
+				Value(&selectedVideoName),
 		),
 	)
 
@@ -490,8 +492,17 @@ func (m *MenuHandler) ChooseVideosAndHandleError(vi []storage.VideoIndex, phase 
 		return fmt.Errorf("failed to run video selection form: %w", err)
 	}
 
-	if selectedVideo.Name == "return" {
+	if selectedVideoName == "return" {
 		return nil
+	}
+
+	// Look up the selected video by name
+	var selectedVideo storage.Video
+	for _, video := range videosInPhase {
+		if video.Name == selectedVideoName {
+			selectedVideo = video
+			break
+		}
 	}
 
 	// Now show action options for the selected video
@@ -780,6 +791,7 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 		editCompleted, editTotal := m.videoManager.CalculatePostProductionProgress(videoToEdit)
 		publishCompleted, publishTotal := m.videoManager.CalculatePublishingProgress(videoToEdit)
 		postPublishCompleted, postPublishTotal := m.videoManager.CalculatePostPublishProgress(videoToEdit)
+		analysisCompleted, analysisTotal := m.videoManager.CalculateAnalysisProgress(videoToEdit)
 
 		editPhaseOptions := []huh.Option[int]{
 			huh.NewOption(m.getEditPhaseOptionText(constants.PhaseTitleInitialDetails, initCompleted, initTotal), editPhaseInitial),
@@ -788,6 +800,7 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 			huh.NewOption(m.getEditPhaseOptionText(constants.PhaseTitlePostProduction, editCompleted, editTotal), editPhasePostProduction),
 			huh.NewOption(m.getEditPhaseOptionText(constants.PhaseTitlePublishingDetails, publishCompleted, publishTotal), editPhasePublishing),
 			huh.NewOption(m.getEditPhaseOptionText(constants.PhaseTitlePostPublish, postPublishCompleted, postPublishTotal), editPhasePostPublish),
+			huh.NewOption(m.getEditPhaseOptionText(constants.PhaseTitleAnalysis, analysisCompleted, analysisTotal), editPhaseAnalysis),
 			huh.NewOption("Return to Video List", actionReturn),
 		}
 
@@ -1210,6 +1223,129 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 				fmt.Println(m.orangeStyle.Render("Changes not saved for post-publish details."))
 			}
 
+		case editPhaseAnalysis:
+			// Handle Analysis phase - edit title A/B test share percentages
+			if len(updatedVideo.Titles) == 0 {
+				fmt.Println(m.errorStyle.Render("No titles found. Please add titles in the Definition phase first."))
+				continue
+			}
+
+			// Create string variables for form input (huh.NewInput requires *string)
+			share1Str, share2Str, share3Str := "", "", ""
+			title1Text, title2Text, title3Text := "", "", ""
+
+			// Load current values and convert to strings
+			for _, t := range updatedVideo.Titles {
+				switch t.Index {
+				case 1:
+					title1Text = t.Text
+					if t.Share > 0 {
+						share1Str = fmt.Sprintf("%.2f", t.Share)
+					}
+				case 2:
+					title2Text = t.Text
+					if t.Share > 0 {
+						share2Str = fmt.Sprintf("%.2f", t.Share)
+					}
+				case 3:
+					title3Text = t.Text
+					if t.Share > 0 {
+						share3Str = fmt.Sprintf("%.2f", t.Share)
+					}
+				}
+			}
+
+			// Build form fields dynamically based on which titles exist
+			var formFields []huh.Field
+			formFields = append(formFields, huh.NewNote().
+				Title("Title A/B Test Results").
+				Description("Enter watch time share percentages from YouTube Studio A/B test results"))
+
+			if title1Text != "" {
+				formFields = append(formFields,
+					huh.NewNote().Description(fmt.Sprintf("Title 1: %s", title1Text)),
+					huh.NewInput().
+						Title("Watch Time Share % (Title 1)").
+						Value(&share1Str).
+						Placeholder("0.0"),
+				)
+			}
+
+			if title2Text != "" {
+				formFields = append(formFields,
+					huh.NewNote().Description(fmt.Sprintf("Title 2: %s", title2Text)),
+					huh.NewInput().
+						Title("Watch Time Share % (Title 2)").
+						Value(&share2Str).
+						Placeholder("0.0"),
+				)
+			}
+
+			if title3Text != "" {
+				formFields = append(formFields,
+					huh.NewNote().Description(fmt.Sprintf("Title 3: %s", title3Text)),
+					huh.NewInput().
+						Title("Watch Time Share % (Title 3)").
+						Value(&share3Str).
+						Placeholder("0.0"),
+				)
+			}
+
+			analysisForm := huh.NewForm(huh.NewGroup(formFields...))
+
+			if err := analysisForm.Run(); err != nil {
+				if err == huh.ErrUserAborted {
+					fmt.Println(m.orangeStyle.Render("Analysis editing cancelled."))
+					continue
+				}
+				return fmt.Errorf("failed to run analysis form: %w", err)
+			}
+
+			// Parse string inputs to float64 and update the title shares
+			for i := range updatedVideo.Titles {
+				var shareValue float64
+				var parseErr error
+
+				switch updatedVideo.Titles[i].Index {
+				case 1:
+					if share1Str != "" {
+						shareValue, parseErr = strconv.ParseFloat(share1Str, 64)
+						if parseErr != nil {
+							fmt.Println(m.errorStyle.Render(fmt.Sprintf("Invalid share value for Title 1: %s", share1Str)))
+							continue
+						}
+						updatedVideo.Titles[i].Share = shareValue
+					}
+				case 2:
+					if share2Str != "" {
+						shareValue, parseErr = strconv.ParseFloat(share2Str, 64)
+						if parseErr != nil {
+							fmt.Println(m.errorStyle.Render(fmt.Sprintf("Invalid share value for Title 2: %s", share2Str)))
+							continue
+						}
+						updatedVideo.Titles[i].Share = shareValue
+					}
+				case 3:
+					if share3Str != "" {
+						shareValue, parseErr = strconv.ParseFloat(share3Str, 64)
+						if parseErr != nil {
+							fmt.Println(m.errorStyle.Render(fmt.Sprintf("Invalid share value for Title 3: %s", share3Str)))
+							continue
+						}
+						updatedVideo.Titles[i].Share = shareValue
+					}
+				}
+			}
+
+			// Save the video
+			yaml := storage.YAML{}
+			if err := yaml.WriteVideo(updatedVideo, updatedVideo.Path); err != nil {
+				return fmt.Errorf("failed to save analysis data: %w", err)
+			}
+
+			fmt.Println(m.greenStyle.Render("✓ Analysis data saved successfully"))
+			videoToEdit = updatedVideo // Update the local copy for the next iteration
+
 		case actionReturn:
 			return nil // Return from editing this video
 		}
@@ -1245,10 +1381,17 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 		revertField            func(originalValue interface{})
 	}{
 		{
-			name: "Title", description: "Video title (max 70 chars for best display). SEO is important.", isTitleField: true,
-			getValue:     func() interface{} { return videoToEdit.Title },
-			updateAction: func(newValue interface{}) { videoToEdit.Title = newValue.(string) },
-			revertField:  func(originalValue interface{}) { videoToEdit.Title = originalValue.(string) },
+			name: "Titles", description: "Video titles for A/B testing (max 70 chars each). First title is uploaded to YouTube.", isTitleField: true,
+			getValue: func() interface{} {
+				// Return array of titles (not used directly, but keeps interface consistent)
+				return videoToEdit.Titles
+			},
+			updateAction: func(newValue interface{}) {
+				// Will be handled in the title field logic
+			},
+			revertField: func(originalValue interface{}) {
+				videoToEdit.Titles = originalValue.([]storage.TitleVariant)
+			},
 		},
 		{
 			name: "Description", description: "Video description (max 5000 chars). Include keywords.", isDescriptionField: true,
@@ -1309,23 +1452,61 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 		var formError error
 
 		if df.isTitleField {
-			tempTitleValue := originalFieldValue.(string)
 			fieldSavedOrSkipped := false
 
+			// Initialize title values once before the loop (with fallback to legacy Title field)
+			title1, title2, title3 := "", "", ""
+			if len(videoToEdit.Titles) > 0 {
+				for _, t := range videoToEdit.Titles {
+					switch t.Index {
+					case 1:
+						title1 = t.Text
+					case 2:
+						title2 = t.Text
+					case 3:
+						title3 = t.Text
+					}
+				}
+			} else if videoToEdit.Title != "" {
+				// Fallback to legacy Title field
+				title1 = videoToEdit.Title
+			}
+
 			for !fieldSavedOrSkipped {
+
 				var selectedAction int = generalActionUnknown
-				titleFieldItself := huh.NewInput().Title(constants.FieldTitleTitle).Description(df.description).Value(&tempTitleValue)
-				actionSelect := huh.NewSelect[int]().Title("Action for Title").Options(
-					huh.NewOption("Save Title & Continue", generalActionSave),
-					huh.NewOption("Ask AI for Suggestions", generalActionAskAI),
-					huh.NewOption("Continue Without Saving Title", generalActionSkip),
-				).Value(&selectedAction)
-				titleGroup := huh.NewGroup(titleFieldItself, actionSelect)
-				titleForm := huh.NewForm(titleGroup)
+				titleForm := huh.NewForm(
+					huh.NewGroup(
+						huh.NewNote().
+							Title("Titles").
+							Description(df.description),
+						huh.NewInput().
+							Title("✓ Title 1 (Uploaded to YouTube)").
+							Value(&title1).
+							CharLimit(70),
+						huh.NewInput().
+							Title("  Title 2 (A/B Test Variant - optional)").
+							Value(&title2).
+							CharLimit(70),
+						huh.NewInput().
+							Title("  Title 3 (A/B Test Variant - optional)").
+							Value(&title3).
+							CharLimit(70),
+						huh.NewSelect[int]().
+							Title("Action for Titles").
+							Options(
+								huh.NewOption("Save Titles & Continue", generalActionSave),
+								huh.NewOption("Ask AI for Suggestions", generalActionAskAI),
+								huh.NewOption("Continue Without Saving Titles", generalActionSkip),
+							).
+							Value(&selectedAction),
+					),
+				)
+
 				formError = titleForm.Run()
 				if formError != nil {
 					if formError == huh.ErrUserAborted {
-						fmt.Println(m.orangeStyle.Render(fmt.Sprintf("Action for '%s' aborted by user.", df.name)))
+						fmt.Println(m.orangeStyle.Render("Action for 'Titles' aborted by user."))
 						df.revertField(originalFieldValue)
 						if fieldIdx == 0 {
 							fmt.Println(m.normalStyle.Render(MessageDefinitionPhaseAborted))
@@ -1334,15 +1515,35 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 						fieldSavedOrSkipped = true
 						continue
 					}
-					fmt.Println(m.errorStyle.Render(fmt.Sprintf("Error in title form: %v", formError)))
+					fmt.Println(m.errorStyle.Render(fmt.Sprintf("Error in titles form: %v", formError)))
 					return videoToEdit, formError
 				}
+
 				switch selectedAction {
 				case generalActionSave:
-					df.updateAction(tempTitleValue)
-					saveErr := yamlHelper.WriteVideo(videoToEdit, videoToEdit.Path) // Renamed err to saveErr
+					// Create a map of existing titles to preserve Share percentages
+					existingShares := make(map[string]float64)
+					for _, t := range originalFieldValue.([]storage.TitleVariant) {
+						existingShares[t.Text] = t.Share
+					}
+
+					// Update Titles array, preserving Share percentages for matching titles
+					videoToEdit.Titles = []storage.TitleVariant{}
+					if title1 != "" {
+						share := existingShares[title1] // Will be 0 if not found
+						videoToEdit.Titles = append(videoToEdit.Titles, storage.TitleVariant{Index: 1, Text: title1, Share: share})
+					}
+					if title2 != "" {
+						share := existingShares[title2]
+						videoToEdit.Titles = append(videoToEdit.Titles, storage.TitleVariant{Index: 2, Text: title2, Share: share})
+					}
+					if title3 != "" {
+						share := existingShares[title3]
+						videoToEdit.Titles = append(videoToEdit.Titles, storage.TitleVariant{Index: 3, Text: title3, Share: share})
+					}
+					saveErr := yamlHelper.WriteVideo(videoToEdit, videoToEdit.Path)
 					if saveErr != nil {
-						fmt.Println(m.errorStyle.Render(fmt.Sprintf("Error saving changes for '%s': %v", df.name, saveErr)))
+						fmt.Println(m.errorStyle.Render(fmt.Sprintf("Error saving titles: %v", saveErr)))
 						df.revertField(originalFieldValue)
 						return videoToEdit, saveErr
 					}
@@ -1364,16 +1565,42 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 								if suggErr != nil {
 									fmt.Fprintf(os.Stderr, "Error suggesting titles: %v\n", suggErr)
 								} else if len(suggestedTitles) > 0 {
-									var selectedAITitle string
+									// Multi-select 1-3 titles
+									var selectedTitles []string
 									options := []huh.Option[string]{}
 									for _, sTitle := range suggestedTitles {
 										options = append(options, huh.NewOption(sTitle, sTitle))
 									}
-									aiSelectForm := huh.NewForm(huh.NewGroup(huh.NewSelect[string]().Title("Select an AI Suggested Title (or Esc to use current)").Options(options...).Value(&selectedAITitle)))
-									aiSelectErr := aiSelectForm.Run()
-									if aiSelectErr == nil && selectedAITitle != "" {
-										fmt.Println(m.normalStyle.Render(fmt.Sprintf("AI Suggested title selected: %s", selectedAITitle)))
-										tempTitleValue = selectedAITitle
+									multiSelectForm := huh.NewForm(
+										huh.NewGroup(
+											huh.NewMultiSelect[string]().
+												Title("Select 1-3 titles for A/B testing (first = uploaded to YouTube)").
+												Description("Use space to select, enter to confirm").
+												Options(options...).
+												Value(&selectedTitles).
+												Limit(3),
+										),
+									)
+									aiSelectErr := multiSelectForm.Run()
+									if aiSelectErr == nil && len(selectedTitles) > 0 {
+										// Update title variables based on selection order
+										title1 = ""
+										title2 = ""
+										title3 = ""
+										for i, title := range selectedTitles {
+											switch i {
+											case 0:
+												title1 = title
+												fmt.Println(m.normalStyle.Render(fmt.Sprintf("✓ Title 1 (Uploaded): %s", title)))
+											case 1:
+												title2 = title
+												fmt.Println(m.normalStyle.Render(fmt.Sprintf("  Title 2 (Variant): %s", title)))
+											case 2:
+												title3 = title
+												fmt.Println(m.normalStyle.Render(fmt.Sprintf("  Title 3 (Variant): %s", title)))
+											}
+										}
+										// Continue to show the form again with new values
 									} else if aiSelectErr != nil && aiSelectErr != huh.ErrUserAborted {
 										fmt.Fprintf(os.Stderr, "Error during AI title selection: %v\n", aiSelectErr)
 									}

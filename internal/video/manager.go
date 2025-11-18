@@ -244,6 +244,26 @@ func (m *Manager) CalculatePostPublishProgress(video storage.Video) (int, int) {
 	return completed, total
 }
 
+// CalculateAnalysisProgress calculates Analysis phase progress on-the-fly
+func (m *Manager) CalculateAnalysisProgress(video storage.Video) (int, int) {
+	// If no titles exist, return 0/0 (nothing to track)
+	if len(video.Titles) == 0 {
+		return 0, 0
+	}
+
+	completed := 0
+	total := len(video.Titles)
+
+	// Count titles that have share percentages filled (Share > 0)
+	for _, title := range video.Titles {
+		if title.Share > 0 {
+			completed++
+		}
+	}
+
+	return completed, total
+}
+
 // countCompletedTasks counts completed tasks based on field values
 func (m *Manager) countCompletedTasks(fields []interface{}) (completed int, total int) {
 	for _, field := range fields {

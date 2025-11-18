@@ -1015,6 +1015,107 @@ func TestCalculatePostPublishProgress(t *testing.T) {
 	}
 }
 
+func TestCalculateAnalysisProgress(t *testing.T) {
+	manager := video.NewManager(nil)
+
+	testCases := []struct {
+		name              string
+		video             storage.Video
+		expectedCompleted int
+		expectedTotal     int
+		description       string
+	}{
+		{
+			name:              "No_titles",
+			video:             storage.Video{},
+			expectedCompleted: 0,
+			expectedTotal:     0,
+			description:       "Video with no titles should return 0/0",
+		},
+		{
+			name: "One_title_no_share",
+			video: storage.Video{
+				Titles: []storage.TitleVariant{
+					{Index: 1, Text: "Test Title", Share: 0},
+				},
+			},
+			expectedCompleted: 0,
+			expectedTotal:     1,
+			description:       "Title without share percentage should not be counted as complete",
+		},
+		{
+			name: "One_title_with_share",
+			video: storage.Video{
+				Titles: []storage.TitleVariant{
+					{Index: 1, Text: "Test Title", Share: 45.5},
+				},
+			},
+			expectedCompleted: 1,
+			expectedTotal:     1,
+			description:       "Title with share percentage should be counted as complete",
+		},
+		{
+			name: "Three_titles_none_complete",
+			video: storage.Video{
+				Titles: []storage.TitleVariant{
+					{Index: 1, Text: "Title 1", Share: 0},
+					{Index: 2, Text: "Title 2", Share: 0},
+					{Index: 3, Text: "Title 3", Share: 0},
+				},
+			},
+			expectedCompleted: 0,
+			expectedTotal:     3,
+			description:       "Three titles without shares should be 0/3",
+		},
+		{
+			name: "Three_titles_some_complete",
+			video: storage.Video{
+				Titles: []storage.TitleVariant{
+					{Index: 1, Text: "Title 1", Share: 40.0},
+					{Index: 2, Text: "Title 2", Share: 35.5},
+					{Index: 3, Text: "Title 3", Share: 0},
+				},
+			},
+			expectedCompleted: 2,
+			expectedTotal:     3,
+			description:       "Two titles with shares should be 2/3",
+		},
+		{
+			name: "Three_titles_all_complete",
+			video: storage.Video{
+				Titles: []storage.TitleVariant{
+					{Index: 1, Text: "Title 1", Share: 40.0},
+					{Index: 2, Text: "Title 2", Share: 35.5},
+					{Index: 3, Text: "Title 3", Share: 24.5},
+				},
+			},
+			expectedCompleted: 3,
+			expectedTotal:     3,
+			description:       "All three titles with shares should be 3/3",
+		},
+		{
+			name: "Two_titles_mixed",
+			video: storage.Video{
+				Titles: []storage.TitleVariant{
+					{Index: 1, Text: "Title 1", Share: 60.0},
+					{Index: 2, Text: "Title 2", Share: 0},
+				},
+			},
+			expectedCompleted: 1,
+			expectedTotal:     2,
+			description:       "One complete out of two should be 1/2",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			completed, total := manager.CalculateAnalysisProgress(tc.video)
+			assert.Equal(t, tc.expectedCompleted, completed, "Completed count mismatch for %s", tc.description)
+			assert.Equal(t, tc.expectedTotal, total, "Total count mismatch for %s", tc.description)
+		})
+	}
+}
+
 // Note: countCompletedTasks and containsString are private methods, tested indirectly through other functions
 
 func TestGetVideoPhase_ErrorHandling(t *testing.T) {

@@ -44,7 +44,7 @@ func GetVideoAspectMappings() []AspectMapping {
 			"Screenshots", "Location", "Tagline", "TaglineIdeas", "OtherLogos",
 		},
 		AspectKeyDefinition: {
-			"Title", "Description", "Tags", "DescriptionTags", "Tweet", "Animations", "RequestThumbnail",
+			"Titles", "Description", "Tags", "DescriptionTags", "Tweet", "Animations", "RequestThumbnail",
 		},
 		AspectKeyPostProduction: {
 			"Thumbnail", "Members", "RequestEdit", "Timecodes", "Movie", "Slides",
@@ -57,6 +57,9 @@ func GetVideoAspectMappings() []AspectMapping {
 			"YouTubeHighlight", "YouTubeComment", "YouTubeCommentReply",
 			"GDE", "Repo", "NotifiedSponsors",
 		},
+		AspectKeyAnalysis: {
+			"Titles",
+		},
 	}
 
 	aspectTitles := map[string]string{
@@ -66,6 +69,7 @@ func GetVideoAspectMappings() []AspectMapping {
 		AspectKeyPostProduction: "Post Production",
 		AspectKeyPublishing:     "Publishing",
 		AspectKeyPostPublish:    "Post Publish",
+		AspectKeyAnalysis:       "Analysis",
 	}
 
 	aspectDescriptions := map[string]string{
@@ -75,6 +79,7 @@ func GetVideoAspectMappings() []AspectMapping {
 		AspectKeyPostProduction: "Post-production editing and review tasks",
 		AspectKeyPublishing:     "Publishing settings and video upload",
 		AspectKeyPostPublish:    "Post-publication tasks and social media",
+		AspectKeyAnalysis:       "Performance analytics and A/B test results",
 	}
 
 	// Define the correct workflow order for aspects (used by both CLI and API)
@@ -85,6 +90,7 @@ func GetVideoAspectMappings() []AspectMapping {
 		AspectKeyPostProduction: 4,
 		AspectKeyPublishing:     5,
 		AspectKeyPostPublish:    6,
+		AspectKeyAnalysis:       7,
 	}
 
 	var aspects []AspectMapping

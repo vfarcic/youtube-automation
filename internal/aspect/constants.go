@@ -20,4 +20,5 @@ const (
 	AspectKeyPostProduction = "post-production" // Matches video service phase
 	AspectKeyPublishing     = "publishing"      // Matches video service phase
 	AspectKeyPostPublish    = "post-publish"    // Matches video service phase
+	AspectKeyAnalysis       = "analysis"        // Analytics and performance data
 )

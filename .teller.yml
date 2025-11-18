@@ -12,4 +12,5 @@ providers:
           bluesky-password: BLUESKY_PASSWORD
           anthropic-api-key: ANTHROPIC_API_KEY
           github-token: GITHUB_TOKEN
-          google-gemini-api-key: GOOGLE_GEMINI_API_KEY
+          google-gemini-api-key: GOOGLE_GENERATIVE_AI_API_KEY
+# Google Generative AI API key is missing. Pass it using the 'apiKey' parameter or the GOOGLE_GENERATIVE_AI_API_KEY environment variable.

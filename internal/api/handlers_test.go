@@ -1180,6 +1180,7 @@ func TestGetEditingAspects(t *testing.T) {
 		aspect.AspectKeyPostProduction,
 		aspect.AspectKeyPublishing,
 		aspect.AspectKeyPostPublish,
+		aspect.AspectKeyAnalysis,
 	}
 
 	if len(aspectOverview.Aspects) != len(expectedKeys) {
