@@ -5,7 +5,7 @@
 | **PRD ID** | 344 |
 | **Issue** | [#344](https://github.com/vfarcic/youtube-automation/issues/344) |
 | **Feature Name** | AI Title Generation Improvement |
-| **Status** | Draft |
+| **Status** | Deferred until January 2026 (Waiting for A/B test data) |
 | **Priority** | Medium |
 | **Author** | @vfarcic |
 | **Created** | 2025-11-18 |

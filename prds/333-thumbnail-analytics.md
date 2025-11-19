@@ -1,6 +1,6 @@
 # PRD: Thumbnail Analytics & Competitive Benchmarking
 
-**Status**: Draft
+**Status**: Deferred until January 2026 (Waiting for A/B test data)
 **Priority**: High
 **GitHub Issue**: [#333](https://github.com/vfarcic/youtube-automation/issues/333)
 **Created**: 2025-11-09
