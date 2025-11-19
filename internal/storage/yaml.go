@@ -34,35 +34,45 @@ type TitleVariant struct {
 	Share float64 `yaml:"share,omitempty" json:"share,omitempty"` // Watch time share % from YouTube A/B test
 }
 
+// ThumbnailVariant represents a single thumbnail variant
+type ThumbnailVariant struct {
+	Index int     `yaml:"index" json:"index"`                     // 1=Original, 2=Subtle, 3=Bold
+	Type  string  `yaml:"type" json:"type"`                       // "original", "subtle", "bold"
+	Path  string  `yaml:"path" json:"path"`                       // Path to the image file
+	Share float64 `yaml:"share,omitempty" json:"share,omitempty"` // Watch time share % from YouTube A/B test
+}
+
 // Video represents all data associated with a video project.
 // All fields are already exported.
 type Video struct {
-	Name                 string      `json:"name" completion:"filled_only"`
-	Path                 string      `json:"path" completion:"filled_only"`
-	Category             string      `json:"category" completion:"filled_only"`
-	ProjectName          string      `json:"projectName" completion:"filled_only"`
-	ProjectURL           string      `json:"projectURL" completion:"filled_only"`
-	Sponsorship          Sponsorship `json:"sponsorship"`
-	Date                 string      `json:"date" completion:"filled_only"`
-	Delayed              bool        `json:"delayed" completion:"false_only"`
-	Screen               bool        `json:"screen" completion:"true_only"`
-	Head                 bool        `json:"head" completion:"true_only"`
-	Thumbnails           bool        `json:"thumbnails" completion:"true_only"`
-	Diagrams             bool           `json:"diagrams" completion:"true_only"`
-	Titles               []TitleVariant `yaml:"titles,omitempty" json:"titles,omitempty" completion:"filled_only"`
-	Title                string         `json:"title" completion:"filled_only"` // DEPRECATED: fallback for old videos
-	Description          string         `json:"description" completion:"filled_only"`
-	Tags                 string      `json:"tags" completion:"filled_only"`
-	DescriptionTags      string      `json:"descriptionTags" completion:"filled_only"`
-	Location             string      `json:"location" completion:"filled_only"`
-	Tagline              string      `json:"tagline" completion:"filled_only"`
-	TaglineIdeas         string      `json:"taglineIdeas" completion:"filled_only"`
-	OtherLogos           string      `json:"otherLogos" completion:"filled_only"`
-	Screenshots          bool        `json:"screenshots" completion:"true_only"`
-	RequestThumbnail     bool        `json:"requestThumbnail" completion:"true_only"`
-	Thumbnail            string      `json:"thumbnail" completion:"filled_only"`
-	Language             string      `json:"language" completion:"filled_only"`
-	Members              string      `json:"members" completion:"filled_only"`
+	Name                 string             `json:"name" completion:"filled_only"`
+	Path                 string             `json:"path" completion:"filled_only"`
+	Category             string             `json:"category" completion:"filled_only"`
+	ProjectName          string             `json:"projectName" completion:"filled_only"`
+	ProjectURL           string             `json:"projectURL" completion:"filled_only"`
+	Sponsorship          Sponsorship        `json:"sponsorship"`
+	Date                 string             `json:"date" completion:"filled_only"`
+	Delayed              bool               `json:"delayed" completion:"false_only"`
+	Screen               bool               `json:"screen" completion:"true_only"`
+	Head                 bool               `json:"head" completion:"true_only"`
+	Thumbnails           bool               `json:"thumbnails" completion:"true_only"`
+	Diagrams             bool               `json:"diagrams" completion:"true_only"`
+	Titles               []TitleVariant     `yaml:"titles,omitempty" json:"titles,omitempty" completion:"filled_only"`
+	Title                string             `json:"title" completion:"filled_only"` // DEPRECATED: fallback for old videos
+	Description          string             `json:"description" completion:"filled_only"`
+	Tags                 string             `json:"tags" completion:"filled_only"`
+	DescriptionTags      string             `json:"descriptionTags" completion:"filled_only"`
+	Location             string             `json:"location" completion:"filled_only"`
+	Tagline              string             `json:"tagline" completion:"filled_only"`
+	TaglineIdeas         string             `json:"taglineIdeas" completion:"filled_only"`
+	OtherLogos           string             `json:"otherLogos" completion:"filled_only"`
+	Screenshots          bool               `json:"screenshots" completion:"true_only"`
+	RequestThumbnail     bool               `json:"requestThumbnail" completion:"true_only"`
+	// DEPRECATED: This field is for backward compatibility. Use ThumbnailVariants instead.
+	Thumbnail            string             `json:"thumbnail" completion:"filled_only"` // DEPRECATED: fallback for old videos
+	ThumbnailVariants    []ThumbnailVariant `yaml:"thumbnailVariants,omitempty" json:"thumbnailVariants,omitempty" completion:"filled_only"`
+	Language             string             `json:"language" completion:"filled_only"`
+	Members              string             `json:"members" completion:"filled_only"`
 	Animations           string      `json:"animations" completion:"filled_only"`
 	RequestEdit          bool        `json:"requestEdit" completion:"true_only"`
 	Movie                bool        `json:"movie" completion:"filled_only"`
@@ -130,6 +140,16 @@ func (y *YAML) GetVideo(path string) (Video, error) {
 		video.Titles = []TitleVariant{{
 			Index: 1,
 			Text:  video.Title,
+			Share: 0,
+		}}
+	}
+
+	// Auto-migrate: if ThumbnailVariants array is empty but legacy Thumbnail field exists, migrate it
+	if len(video.ThumbnailVariants) == 0 && video.Thumbnail != "" {
+		video.ThumbnailVariants = []ThumbnailVariant{{
+			Index: 1,
+			Type:  "original",
+			Path:  video.Thumbnail,
 			Share: 0,
 		}}
 	}

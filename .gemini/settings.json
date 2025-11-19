@@ -10,7 +10,7 @@
         "--rm",
         "--remove-orphans",
         "dot-ai"
-      ],
+      ]
     }
   },
   "general": {

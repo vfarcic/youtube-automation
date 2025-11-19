@@ -921,6 +921,115 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 			save := true
 			originalRequestEditStatus := updatedVideo.RequestEdit
 
+			// --- Thumbnail Management Section ---
+			// Initialize thumbnail variables from struct
+			thumbOriginal := updatedVideo.Thumbnail
+			thumbSubtle := ""
+			thumbBold := ""
+
+			// Load existing variants if present
+			for _, v := range updatedVideo.ThumbnailVariants {
+				switch v.Type {
+				case "original":
+					thumbOriginal = v.Path
+				case "subtle":
+					thumbSubtle = v.Path
+				case "bold":
+					thumbBold = v.Path
+				}
+			}
+
+			// Loop for interactive thumbnail management
+			thumbnailDone := false
+			const (
+				actionThumbContinue = 0
+				actionThumbGenerate = 1
+			)
+
+			for !thumbnailDone {
+				var thumbAction int
+
+				// If we have a generated subtle/bold but they are empty, pre-fill with a logical default if original exists
+				if thumbOriginal != "" {
+					ext := filepath.Ext(thumbOriginal)
+					base := strings.TrimSuffix(thumbOriginal, ext)
+					if thumbSubtle == "" {
+						thumbSubtle = fmt.Sprintf("%s-subtle%s", base, ext)
+					}
+					if thumbBold == "" {
+						thumbBold = fmt.Sprintf("%s-bold%s", base, ext)
+					}
+				}
+
+				thumbForm := huh.NewForm(
+					huh.NewGroup(
+						huh.NewNote().Title("Thumbnail Management"),
+						huh.NewInput().Title(m.colorTitleString(constants.FieldTitleThumbnailPath, thumbOriginal)).Value(&thumbOriginal).Description("Path to the original thumbnail"),
+						huh.NewInput().Title("Thumbnail (Subtle)").Value(&thumbSubtle).Description("Path to the subtle variation"),
+						huh.NewInput().Title("Thumbnail (Bold)").Value(&thumbBold).Description("Path to the bold variation"),
+						huh.NewSelect[int]().
+							Title("Action").
+							Options(
+								huh.NewOption("Save & Continue to Details", actionThumbContinue),
+								huh.NewOption("Generate Variation Prompts (AI)", actionThumbGenerate),
+							).
+							Value(&thumbAction),
+					),
+				)
+
+				err := thumbForm.Run()
+				if err != nil {
+					if errors.Is(err, huh.ErrUserAborted) {
+						fmt.Println(m.orangeStyle.Render("Thumbnail editing cancelled. Returning to menu."))
+						return nil // Return to main menu
+					}
+					return fmt.Errorf("error in thumbnail form: %w", err)
+				}
+
+				switch thumbAction {
+				case actionThumbGenerate:
+					if thumbOriginal == "" {
+						fmt.Println(m.errorStyle.Render("Please enter an Original Thumbnail path first."))
+						continue
+					}
+					// Check if file exists
+					if _, err := os.Stat(thumbOriginal); os.IsNotExist(err) {
+						fmt.Println(m.errorStyle.Render(fmt.Sprintf("Original thumbnail file not found: %s", thumbOriginal)))
+						continue
+					}
+
+					fmt.Println(m.normalStyle.Render("Analyzing thumbnail and generating variations..."))
+					ctx := context.Background()
+					variations, err := ai.GenerateThumbnailVariations(ctx, thumbOriginal)
+					if err != nil {
+						fmt.Println(m.errorStyle.Render(fmt.Sprintf("Failed to generate variations: %v", err)))
+					} else {
+						fmt.Println("")
+						fmt.Println(m.greenStyle.Render("✓ Variations generated! Copy these prompts:"))
+						fmt.Println("")
+						fmt.Println(m.normalStyle.Render("--- Subtle Variation ---"))
+						fmt.Println(variations.Subtle)
+						fmt.Println("")
+						fmt.Println(m.normalStyle.Render("--- Bold Variation ---"))
+						fmt.Println(variations.Bold)
+						fmt.Println("")
+						fmt.Println(m.orangeStyle.Render("Press Enter to continue..."))
+						fmt.Scanln() // Wait for user acknowledgement
+					}
+
+				case actionThumbContinue:
+					// Update the video struct with the final thumbnail values
+					updatedVideo.Thumbnail = thumbOriginal
+					updatedVideo.ThumbnailVariants = []storage.ThumbnailVariant{
+						{Index: 1, Type: "original", Path: thumbOriginal},
+						{Index: 2, Type: "subtle", Path: thumbSubtle},
+						{Index: 3, Type: "bold", Path: thumbBold},
+					}
+					thumbnailDone = true
+				}
+			}
+
+			// --- Rest of Post-Production Form ---
 			timeCodesTitle := constants.FieldTitleTimecodes
 			if strings.Contains(updatedVideo.Timecodes, "FIXME:") {
 				timeCodesTitle = m.orangeStyle.Render(timeCodesTitle)
@@ -929,13 +1038,13 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 			}
 
 			editFormFields := []huh.Field{
-				huh.NewInput().Title(m.colorTitleString(constants.FieldTitleThumbnailPath, updatedVideo.Thumbnail)).Value(&updatedVideo.Thumbnail),
+				huh.NewNote().Title("Post-Production Details"),
 				huh.NewInput().Title(m.colorTitleString(constants.FieldTitleMembers, updatedVideo.Members)).Value(&updatedVideo.Members),
 				huh.NewConfirm().Title(m.colorTitleBool(constants.FieldTitleRequestEdit, updatedVideo.RequestEdit)).Value(&updatedVideo.RequestEdit),
 				huh.NewText().Lines(5).CharLimit(10000).Title(timeCodesTitle).Value(&updatedVideo.Timecodes),
 				huh.NewConfirm().Title(m.colorTitleBool(constants.FieldTitleMovieDone, updatedVideo.Movie)).Value(&updatedVideo.Movie),
 				huh.NewConfirm().Title(m.colorTitleBool(constants.FieldTitleSlidesDone, updatedVideo.Slides)).Value(&updatedVideo.Slides),
-				huh.NewConfirm().Affirmative("Save").Negative("Cancel").Value(&save),
+				huh.NewConfirm().Affirmative("Save All").Negative("Cancel").Value(&save),
 			}
 
 			phaseEditForm := huh.NewForm(huh.NewGroup(editFormFields...))
@@ -943,7 +1052,6 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 			if err != nil {
 				if errors.Is(err, huh.ErrUserAborted) {
 					fmt.Println(m.orangeStyle.Render(MessagePostProductionEditCancelled))
-					// Continue the loop to re-select edit phase
 					continue
 				}
 				return fmt.Errorf("%s: %w", ErrorRunPostProductionForm, err)
@@ -951,7 +1059,7 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 
 			if save {
 				yaml := storage.YAML{}
-				// No longer store calculated values - both CLI and API use real-time calculations only
+				// Save the updated video (which now includes new thumbnail variants and other fields)
 				if err := yaml.WriteVideo(updatedVideo, updatedVideo.Path); err != nil {
 					return fmt.Errorf("%s: %w", ErrorSavePostProductionDetails, err)
 				}
