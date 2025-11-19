@@ -1,10 +1,10 @@
 # PRD: Thumbnail A/B Test Variation Generator
 
-**Status**: Draft
+**Status**: Implementation Complete
 **Priority**: High
 **GitHub Issue**: [#334](https://github.com/vfarcic/youtube-automation/issues/334)
 **Created**: 2025-11-09
-**Last Updated**: 2025-11-09
+**Last Updated**: 2025-11-19
 
 ---
 
@@ -20,36 +20,31 @@ Thumbnails from the design agency follow a consistent pattern, creating limited 
 
 ## Solution Overview
 
-Create a slash command that:
-1. Analyzes a provided thumbnail image (from agency) using AI vision
-2. Generates two variation prompts based on best practices and strategic hypotheses
-3. User feeds prompts to image generation AI (Midjourney/DALL-E/Stable Diffusion)
-4. User uploads original + 2 variations to YouTube A/B testing
-5. YouTube tracks performance and declares winner
-6. Results inform future agency guidelines (feeds into PRD #333)
+Integrated workflow within the CLI application that:
+1. Analyzes a provided thumbnail image (from agency) using AI vision (Anthropic).
+2. Generates two strategic variation prompts:
+   - **Subtle Refinement**: A/B test of visual hierarchy (shift focus, lighting, layout).
+   - **Bold Subject Variation**: Same style, but drastically different subject depiction (e.g., photo vs. drawing).
+3. User uses these prompts with an image generator (Midjourney/DALL-E) to create files.
+4. User saves file paths in the application.
+5. Application manages original + 2 variations for YouTube A/B testing.
 
 **Key Principle**: This creates a **learning feedback loop**. Each video becomes an experiment that teaches us what works for our specific audience.
 
 ## User Journey
 
-### Primary Flow: Generate Variation Prompts
+### Primary Flow: Generate & Save Variations
 
-1. User receives thumbnail from agency for upcoming video
-2. User saves thumbnail locally (e.g., `./tmp/video-thumbnail.jpg`)
-3. User runs slash command: `/thumbnail-variations ./tmp/video-thumbnail.jpg`
-4. Claude Code:
-   - Reads the thumbnail image
-   - Analyzes visual characteristics (text, colors, composition)
-   - References historical guidelines (from PRD #333 if available)
-   - Generates 2 strategic variation prompts
-5. Claude Code outputs:
-   - **Analysis**: Description of original thumbnail characteristics
-   - **Variation A Prompt**: First hypothesis to test (e.g., "Increase text contrast")
-   - **Variation B Prompt**: Second hypothesis to test (e.g., "Simplify composition")
-   - **Rationale**: Why these variations are worth testing
-6. User copies prompts to image generation AI (Midjourney, DALL-E, etc.)
-7. User generates 2 variations
-8. User uploads all 3 thumbnails to YouTube A/B test feature
+1. User enters "Edit Video" -> "Post-Production" in the CLI.
+2. User inputs the original thumbnail path.
+3. User selects **[Generate Variation Prompts (AI)]**.
+4. AI analyzes the thumbnail and outputs two prompts:
+   - **Subtle**: Describes a variation shifting visual emphasis.
+   - **Bold**: Describes the subject in detail for blending with a creator photo (to maintain style but change subject).
+5. User copies prompts to image generation AI.
+6. User generates images and saves them locally.
+7. User inputs the paths for the new "Subtle" and "Bold" thumbnails into the CLI form.
+8. CLI saves all three paths to the video's metadata (`.yaml`).
 
 ### Secondary Flow: Track Results and Learn
 
@@ -70,13 +65,14 @@ Create a slash command that:
 ## Success Criteria
 
 ### Must Have
-- [ ] Slash command accepts thumbnail file path as input
-- [ ] AI vision analyzes thumbnail and identifies visual characteristics
-- [ ] Generates 2 distinct, strategic variation prompts
-- [ ] Variations are testable hypotheses (not random changes)
-- [ ] Output is formatted for easy copy-paste to image AI
-- [ ] Includes rationale explaining why these variations matter
-- [ ] Graceful error handling for missing files, unsupported formats, AI failures
+- [x] CLI accepts thumbnail file path as input
+- [x] AI vision analyzes thumbnail and identifies visual characteristics
+- [x] Generates 2 distinct, strategic variation prompts (Subtle vs Bold)
+- [x] Variations are testable hypotheses (not random changes)
+- [x] Output is formatted for easy copy-paste to image AI
+- [x] Includes rationale explaining why these variations matter
+- [x] Graceful error handling for missing files, unsupported formats, AI failures
+- [x] Data persistence for variation file paths
 
 ### Nice to Have
 - [ ] Support for URL input (not just local file path)
@@ -96,349 +92,139 @@ Create a slash command that:
 ### New Components
 
 ```
-.claude/commands/thumbnail-variations.md
-└── Slash command that orchestrates variation generation
+internal/app/menu_handler.go
+└── HandleThumbnailVariations() & editPhasePostProduction updates
+    - Orchestrates the interactive workflow
 
-internal/ai/thumbnail_variations.go
-├── AnalyzeThumbnailForVariations(imagePath) → AI vision analysis
-├── GenerateVariationPrompts(analysis, guidelines) → Create 2 prompts
-└── FormatVariationOutput() → Structure output for user
+internal/ai/thumbnails.go
+├── GenerateThumbnailVariations(ctx, imagePath) → AI vision analysis & prompt generation
+└── parseVariationResponse() → Extracts JSON prompt data
 
-internal/ai/templates/thumbnail-variations.md
-└── Prompt template for AI to generate variation ideas
+internal/ai/templates/thumbnail_variations.md
+└── Prompt template defining "Subtle" and "Bold" strategies
+
+internal/storage/yaml.go
+└── ThumbnailVariants struct & migration logic for data persistence
 ```
 
 ### Data Flow
 
 ```
-User: /thumbnail-variations ./tmp/thumbnail.jpg
+User (CLI): Selects "Generate Variations"
          ↓
 Read image file from path
          ↓
-Send to AI Vision (Claude/GPT-4V):
+Send to Anthropic Vision:
   - Analyze visual characteristics
-  - Reference guidelines from PRD #333 (if available)
-  - Generate strategic hypotheses
+  - Apply strategies from template (Subtle Hierarchy Shift vs. Bold Subject Swap)
          ↓
-AI returns:
-  - Original analysis
-  - Variation A prompt + rationale
-  - Variation B prompt + rationale
+AI returns JSON:
+  - Variation 1 Prompt (Subtle)
+  - Variation 2 Prompt (Bold)
          ↓
-Format output for terminal display
+CLI formats and displays prompts
          ↓
-User copies prompts to Midjourney/DALL-E
+User generates images externally
          ↓
-User generates variations
+User inputs paths into CLI
          ↓
-User uploads to YouTube A/B test
-         ↓
-(Future: Track results in ./tmp/ab-tests/)
+CLI saves paths to video.yaml
 ```
 
 ### Integration Points
 
 1. **AI Provider with Vision** (`internal/ai/provider.go`)
-   - Use Claude 3.5 Sonnet or GPT-4 Vision
-   - Send thumbnail image for analysis
-   - Similar pattern to PRD #333 vision analysis
+   - Uses Anthropic SDK (Claude 3.5 Sonnet) for vision analysis.
 
-2. **File System** (`./tmp` directory)
-   - Read thumbnail images from user-specified path
-   - (Future) Save variation prompts and results for tracking
+2. **CLI Interface** (`internal/app/`)
+   - Integrated into the existing `huh` form workflow.
 
-3. **Guidelines Reference** (Optional)
-   - If `./tmp/thumbnail-guidelines-*.md` exists (from PRD #333)
-   - Include guidelines context in AI prompt
-   - Variations aligned with strategic insights
+3. **Storage Layer** (`internal/storage/`)
+   - Persists variation paths in `ThumbnailVariants` slice.
 
-### Slash Command Design
+### CLI Design
 
-**Command Syntax:**
-```bash
-/thumbnail-variations <image-path>
-```
+**Location:** Video Edit Menu -> Post-Production Phase
 
-**Examples:**
-```bash
-/thumbnail-variations ./tmp/video-123-thumbnail.jpg
-/thumbnail-variations ~/Downloads/thumbnail.png
-```
-
-**Output Format:**
-```markdown
-## Thumbnail Variation Analysis
-
-### Original Thumbnail Analysis
-- **Text**: 4 words, high contrast, top-center positioning
-- **Colors**: Dark blue background, yellow text, high contrast
-- **Composition**: Face visible, simple layout
-- **Complexity**: Medium (3 visual elements)
-
-### Variation A: Increase Text Boldness
-**Hypothesis**: Bolder, larger text may improve readability on mobile devices
-
-**Image Generation Prompt:**
-"Create a YouTube thumbnail with a dark blue background. Feature a professional headshot in the lower left corner. Add bold, extra-large yellow text reading '[YOUR TEXT]' positioned at the top center. High contrast, simple composition, professional DevOps aesthetic."
-
-**Rationale**: Analysis shows top performers in DevOps niche use larger, bolder text. Testing if this improves mobile CTR.
-
-### Variation B: Simplify Composition
-**Hypothesis**: Removing secondary visual elements may improve focus and CTR
-
-**Image Generation Prompt:**
-"Create a minimalist YouTube thumbnail with a solid dark blue background. Feature only large, bold yellow text reading '[YOUR TEXT]' centered on the image. No other elements. High contrast, clean, professional aesthetic."
-
-**Rationale**: Competitor analysis suggests simpler thumbnails outperform busy layouts. Testing minimal approach.
-
----
-
-**Next Steps:**
-1. Copy prompts to Midjourney/DALL-E
-2. Generate 2 variations
-3. Upload original + 2 variations to YouTube A/B test
-4. Track winning pattern for future guidelines
-```
+**Workflow:**
+1. **Thumbnail Management**: Dedicated sub-loop within the form.
+2. **Action Menu**: `[Save & Continue]`, `[Generate Variation Prompts]`.
+3. **Output**: Displays prompts clearly with copy-paste support.
 
 ## Implementation Milestones
 
-### Milestone 1: Slash Command Foundation
-**Goal**: Slash command can accept file path and read image
+### Milestone 1: CLI Integration (Completed)
+**Goal**: Integrate workflow into `editPhasePostProduction`
+- [x] Update `menu_handler.go`
+- [x] Implement interactive loop for thumbnail management
+- [x] Add inputs for Original, Subtle, and Bold paths
 
-- Create `.claude/commands/thumbnail-variations.md`
-- Parse command arguments (file path)
-- Validate file exists and is supported format (jpg, png, webp)
-- Read image file into memory
-- Error handling for missing/invalid files
-- Basic test with sample thumbnail
-
-**Validation**: Command accepts file path and loads image successfully
-
----
-
-### Milestone 2: AI Vision Integration
+### Milestone 2: AI Vision Integration (Completed)
 **Goal**: Send thumbnail to AI and get analysis
+- [x] Create `thumbnails.go` module
+- [x] Implement `GenerateThumbnailVariations` using Anthropic SDK
+- [x] Handle base64 image encoding and API response parsing
 
-- Create `thumbnail_variations.go` module
-- Implement image-to-AI pipeline (Claude Vision or GPT-4V)
-- Extract visual characteristics: text, colors, composition, complexity
-- Return structured analysis data
-- Handle AI API failures gracefully
-- Test with various thumbnail styles
-
-**Validation**: AI correctly identifies visual characteristics of thumbnails
-
----
-
-### Milestone 3: Variation Prompt Generation
+### Milestone 3: Variation Prompt Generation (Completed)
 **Goal**: AI generates 2 strategic variation prompts
+- [x] Create `templates/thumbnail_variations.md`
+- [x] Define "Subtle" strategy (Visual Hierarchy Shift)
+- [x] Define "Bold" strategy (Subject Variation / Photo Blending)
 
-- Create prompt template for variation generation
-- Implement `GenerateVariationPrompts()` function
-- Ensure variations are meaningfully different
-- Ensure variations are testable hypotheses (grounded in strategy)
-- Format prompts for image generation AI
-- Test with multiple thumbnail styles
+### Milestone 4: Data Persistence (Completed)
+**Goal**: Save variation paths
+- [x] Update `Video` struct in `yaml.go`
+- [x] Add `ThumbnailVariants` slice
+- [x] Add auto-migration for legacy `Thumbnail` field
 
-**Validation**: AI generates distinct, strategic variations with rationale
-
----
-
-### Milestone 4: Guidelines Integration (Optional)
-**Goal**: Reference existing guidelines from PRD #333
-
-- Check if `./tmp/thumbnail-guidelines-*.md` exists
-- Parse guidelines for key insights
-- Include guidelines context in AI prompt
-- Align variations with strategic insights
-- Fallback gracefully if no guidelines exist
-
-**Validation**: Variations reference specific guideline insights when available
-
----
-
-### Milestone 5: Output Formatting
-**Goal**: Terminal output is clear, actionable, copy-paste friendly
-
-- Format analysis section (bullet points, clear labels)
-- Format variation prompts (ready for Midjourney/DALL-E)
-- Include rationale for each variation
-- Add next steps instructions
-- Test readability in terminal
-
-**Validation**: User can quickly understand and use output
-
----
-
-### Milestone 6: Testing & Refinement
-**Goal**: Feature works reliably with various inputs
-
-- Test with different image formats (jpg, png, webp)
-- Test with different thumbnail styles (text-heavy, minimal, complex)
-- Validate variation quality (meaningfully different, strategic)
-- Error handling for edge cases
-- Performance optimization (image loading, AI tokens)
-
-**Validation**: Feature works reliably across different use cases
-
----
-
-### Milestone 7: Production Ready
-**Goal**: Feature is stable and ready for regular use
-
-- Comprehensive error handling
-- Clear error messages for common issues
-- Documentation in slash command file
-- (Optional) Example workflow in CLAUDE.md
-- Final end-to-end testing
-
-**Validation**: Feature works reliably for every video
-
----
-
-## Dependencies
-
-### External
-- AI Provider with vision capabilities (Claude 3.5 Sonnet or GPT-4 Vision)
-- YouTube A/B testing feature (user's responsibility to use)
-- Image generation AI (Midjourney/DALL-E - user's responsibility)
-
-### Internal
-- Existing AI provider in `internal/ai/provider.go`
-- File system utilities for reading images
-- (Optional) Guidelines from PRD #333
-
-### User Requirements
-- Access to image generation AI (Midjourney, DALL-E, Stable Diffusion, etc.)
-- YouTube channel with A/B testing enabled (available to most channels)
-- Thumbnails from design agency (or ability to create originals)
+### Milestone 5: Output Formatting (Completed)
+**Goal**: Terminal output is clear and actionable
+- [x] Use `lipgloss` styles for prompt display
+- [x] Clear instructions for next steps (copy-paste)
 
 ## Risks & Mitigation
 
 ### Risk: Variation Quality
 **Impact**: High
-**Probability**: Medium
 **Mitigation**:
-- Iterate on prompt design to ensure strategic variations
-- Test with real thumbnails before launch
-- Include rationale so user can judge quality
-- Fallback: User can re-run with refined guidance
+- Refined prompt template to ensure "Subtle" changes are meaningful A/B tests.
+- Refined "Bold" prompt to support photo-blending for brand consistency.
 
 ### Risk: Image Generation AI Compatibility
 **Impact**: Low
-**Probability**: Low
 **Mitigation**:
-- Generate generic prompts that work across platforms
-- (Nice to have) Support multiple prompt formats
-- Document which AI tools work best
-
-### Risk: File Format Support
-**Impact**: Low
-**Probability**: Low
-**Mitigation**:
-- Support common formats (jpg, png, webp)
-- Clear error messages for unsupported formats
-- Document supported formats in slash command
-
-### Risk: A/B Test Interpretation
-**Impact**: Medium
-**Probability**: Medium
-**Mitigation**:
-- Include guidance on statistical significance
-- Recommend minimum test duration (7-14 days)
-- (Future) Track and summarize results in tool
-
-## Open Questions
-
-1. **Image generation AI preference**: Should we optimize prompts for specific platform (Midjourney vs. DALL-E)?
-   - **Decision**: Generic prompts for v1, platform-specific as nice-to-have
-
-2. **Number of variations**: Why 2 variations instead of 3-5?
-   - **Decision**: 2 variations + original = 3 total (YouTube A/B test limit for most channels)
-
-3. **Guidelines reference**: Should this be required or optional?
-   - **Decision**: Optional. Works standalone, enhanced if PRD #333 analysis exists
-
-4. **Result tracking**: Should we build tracking into this PRD?
-   - **Decision**: Manual tracking for v1, automated tracking as future enhancement
-
-5. **Interactive mode**: Should users pick from multiple suggested variations?
-   - **Decision**: Auto-generate 2 strategic variations for v1, interactive as nice-to-have
+- Prompts are descriptive and platform-agnostic.
+- "Bold" prompt includes full physical description to support diverse generation workflows.
 
 ## Future Enhancements
 
 **Phase 2: Result Tracking**
 - Save variation prompts to `./tmp/ab-tests/video-{id}.json`
 - User inputs A/B test results (winning variation, CTR difference)
-- Build database of validated patterns
-- Feed results back into PRD #333 guidelines
 
 **Phase 3: Learning System**
 - Analyze historical A/B test results
 - Identify consistently winning patterns
-- Prioritize variations that have high success probability
-- Recommend when to stop testing (pattern validated)
 
 **Phase 4: Automation**
-- Direct integration with image generation APIs (auto-generate variations)
+- Direct integration with image generation APIs (auto-generate images)
 - Direct integration with YouTube API (auto-upload A/B test)
-- Automated result collection
-- Closed-loop learning system
-
-**Phase 5: Advanced Variations**
-- Generate 3-5 variations, user picks best 2
-- Test multiple hypotheses simultaneously
-- Statistical analysis of cumulative results
-- Confidence scoring for recommendations
 
 ---
 
 ## Progress Log
 
-### [Date] - Session [N]: [Milestone] Complete
-**Duration**: ~X hours
-**Status**: X of 7 milestones complete (X%)
+### 2025-11-19 - Implementation Complete
+**Status**: 100% Complete
 
-#### ✅ Milestone [N]: [Name] (100%)
-**Files Created:**
-- [List files]
+#### ✅ Milestone 1-5: Full Implementation
+**Files Created/Modified:**
+- `internal/app/menu_handler.go`
+- `internal/ai/thumbnails.go`
+- `internal/ai/templates/thumbnail_variations.md`
+- `internal/storage/yaml.go`
 
 **Implementation Details:**
-- [Key implementation notes]
-
-**Testing & Validation:**
-- [Test results]
-
-**Technical Decisions Made:**
-- [Decisions and rationale]
-
----
-
-## Cross-References
-
-**Related PRDs:**
-- **PRD #333**: Thumbnail Analytics & Competitive Benchmarking (in progress) - Provides strategic guidelines
-- **PRD #331**: YouTube Title Analytics & Optimization (completed) - Similar slash command pattern
-
-**Integration Flow:**
-```
-PRD #333 (Analytics) → Strategic Guidelines
-         ↓
-PRD #334 (Variation Generator) → A/B Testing
-         ↓
-YouTube A/B Test Results → Validation
-         ↓
-PRD #333 (Updated Guidelines) → Improved Instructions
-```
-
----
-
-## References
-
-- [YouTube A/B Testing Feature](https://support.google.com/youtube/answer/11364882)
-- [Claude Vision Capabilities](https://docs.anthropic.com/claude/docs/vision)
-- [Midjourney Prompt Guide](https://docs.midjourney.com/docs/prompts)
-- [DALL-E Prompt Guide](https://platform.openai.com/docs/guides/images)
-- [PRD #333 - Thumbnail Analytics](prds/333-thumbnail-analytics.md) - Complementary feature
-- [PRD #331 - Title Analytics](prds/done/331-youtube-title-analytics.md) - Reference slash command pattern
-- [GitHub Issue #334](https://github.com/vfarcic/youtube-automation/issues/334)
+- Fully integrated into the CLI application structure.
+- Leveraged Anthropic SDK for vision capabilities.
+- Refined prompts based on user feedback to support photo-blending workflows.
