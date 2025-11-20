@@ -92,8 +92,18 @@ func (m *Manager) CalculateOverallProgress(video storage.Video) (int, int) {
 
 // CalculateDefinePhaseCompletion calculates the completed and total tasks for the Definition phase.
 func (m *Manager) CalculateDefinePhaseCompletion(video storage.Video) (completed int, total int) {
+	// Check Titles array - at least one title with non-empty text is required
+	titleComplete := false
+	if len(video.Titles) > 0 {
+		for _, t := range video.Titles {
+			if len(strings.TrimSpace(t.Text)) > 0 && strings.TrimSpace(t.Text) != "-" {
+				titleComplete = true
+				break
+			}
+		}
+	}
+
 	fieldsToCount := []interface{}{
-		video.Title,
 		video.Description,
 		video.Tags,
 		video.DescriptionTags,
@@ -102,8 +112,14 @@ func (m *Manager) CalculateDefinePhaseCompletion(video storage.Video) (completed
 		video.RequestThumbnail, // This is a bool
 		// Gist removed - it belongs to InitialDetails phase, not Definition phase
 	}
-	total = len(fieldsToCount)
+	total = len(fieldsToCount) + 1 // +1 for title check
 
+	// Count title completion
+	if titleComplete {
+		completed++
+	}
+
+	// Count other fields
 	for _, field := range fieldsToCount {
 		switch v := field.(type) {
 		case string:

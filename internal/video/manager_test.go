@@ -144,12 +144,12 @@ func TestCalculateDefinePhaseCompletion(t *testing.T) {
 			name:              "All tasks incomplete",
 			video:             storage.Video{},
 			expectedCompleted: 0,
-			expectedTotal:     7, // Title, Description, Tags, DescriptionTags, Tweet, Animations, RequestThumbnail (Highlight and Gist removed)
+			expectedTotal:     7, // Titles, Description, Tags, DescriptionTags, Tweet, Animations, RequestThumbnail (Gist removed)
 		},
 		{
 			name: "Some tasks complete",
 			video: storage.Video{
-				Title:            "Test Title",
+				Titles:           []storage.TitleVariant{{Index: 1, Text: "Test Title"}},
 				Description:      "Test Description",
 				Tweet:            "A tweet",
 				RequestThumbnail: true,
@@ -158,9 +158,9 @@ func TestCalculateDefinePhaseCompletion(t *testing.T) {
 			expectedTotal:     7,
 		},
 		{
-			name: "All Definition tasks complete", // Updated name - Gist is not part of Definition
+			name: "All Definition tasks complete",
 			video: storage.Video{
-				Title:            "Complete Title",
+				Titles:           []storage.TitleVariant{{Index: 1, Text: "Complete Title"}},
 				Description:      "Complete Description",
 				Tags:             "tag1,tag2",
 				DescriptionTags:  "desc_tag1",
@@ -173,9 +173,9 @@ func TestCalculateDefinePhaseCompletion(t *testing.T) {
 			expectedTotal:     7,
 		},
 		{
-			name: "All Definition tasks complete with Gist (Gist should not affect Definition count)", // Updated test
+			name: "All Definition tasks complete with Gist (Gist should not affect Definition count)",
 			video: storage.Video{
-				Title:            "Complete Title",
+				Titles:           []storage.TitleVariant{{Index: 1, Text: "Complete Title"}},
 				Description:      "Complete Description",
 				Tags:             "tag1,tag2",
 				DescriptionTags:  "desc_tag1",
@@ -184,14 +184,14 @@ func TestCalculateDefinePhaseCompletion(t *testing.T) {
 				RequestThumbnail: true,
 				Gist:             "path/to/my/gist.md", // This should NOT affect Definition phase count
 			},
-			expectedCompleted: 7, // Now 7 - Highlight removed, Gist doesn't count for Definition
+			expectedCompleted: 7,
 			expectedTotal:     7,
 		},
 		{
 			name: "Edge case - empty strings not counted",
 			video: storage.Video{
-				Title:            "",  // Empty
-				Description:      "-", // Dash, not counted
+				Titles:           []storage.TitleVariant{}, // Empty array
+				Description:      "-",                      // Dash, not counted
 				Tags:             "",
 				DescriptionTags:  "",
 				Tweet:            "",
@@ -199,18 +199,44 @@ func TestCalculateDefinePhaseCompletion(t *testing.T) {
 				RequestThumbnail: false, // Boolean false
 				Gist:             "",    // Empty Gist (but doesn't matter for Definition phase)
 			},
-			expectedCompleted: 0, // No filled fields (Highlight removed)
+			expectedCompleted: 0,
 			expectedTotal:     7,
 		},
 		{
 			name: "Edge case - string with only spaces not counted",
 			video: storage.Video{
-				Title:            "   ", // Spaces only
+				Titles:           []storage.TitleVariant{{Index: 1, Text: "   "}}, // Spaces only
 				Description:      "Valid Description",
 				RequestThumbnail: true,
 				Gist:             "  valid/gist/path.md  ", // Gist doesn't affect Definition phase count
 			},
-			expectedCompleted: 2, // Description, RequestThumbnail (Gist not counted for Definition)
+			expectedCompleted: 2, // Description, RequestThumbnail (title with spaces not counted)
+			expectedTotal:     7,
+		},
+		{
+			name: "Multiple titles - at least one valid counts as complete",
+			video: storage.Video{
+				Titles: []storage.TitleVariant{
+					{Index: 1, Text: "Valid Title"},
+					{Index: 2, Text: "Another Title"},
+					{Index: 3, Text: "Third Title"},
+				},
+				Description:      "Test Description",
+				RequestThumbnail: true,
+			},
+			expectedCompleted: 3, // Titles (1), Description (1), RequestThumbnail (1)
+			expectedTotal:     7,
+		},
+		{
+			name: "Titles array with empty text not counted",
+			video: storage.Video{
+				Titles: []storage.TitleVariant{
+					{Index: 1, Text: ""},
+					{Index: 2, Text: "-"},
+				},
+				Description: "Test Description",
+			},
+			expectedCompleted: 1, // Only Description
 			expectedTotal:     7,
 		},
 	}
@@ -436,7 +462,7 @@ func TestCalculateOverallProgress(t *testing.T) {
 				Screen: true,
 
 				// Definition phase
-				Title:       "Test Title",
+				Titles:      []storage.TitleVariant{{Index: 1, Text: "Test Title"}},
 				Description: "Test Description",
 
 				// Post-Production phase
@@ -476,7 +502,7 @@ func TestCalculateOverallProgress(t *testing.T) {
 				OtherLogos:    "some_logo.png",
 
 				// Definition
-				Title:            "Complete Title",
+				Titles:           []storage.TitleVariant{{Index: 1, Text: "Complete Title"}},
 				Description:      "Complete Description",
 				Tags:             "tag1,tag2",
 				DescriptionTags:  "desc_tag1",
