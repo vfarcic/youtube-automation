@@ -510,7 +510,7 @@ func TestVideoService_UpdateVideoPhase_Definition(t *testing.T) {
 	require.NoError(t, err)
 
 	updateData := map[string]interface{}{
-		"title":                      "New Title",
+		"titles":                     []storage.TitleVariant{{Index: 1, Text: "New Title", Share: 0}},
 		"description":                "New Description",
 		"tags":                       "new,tags",
 		"descriptionTags":            "#new #description #tags",
@@ -524,7 +524,8 @@ func TestVideoService_UpdateVideoPhase_Definition(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, videoAfterUpdate)
 
-	assert.Equal(t, "New Title", videoAfterUpdate.Title)
+	assert.Len(t, videoAfterUpdate.Titles, 1)
+	assert.Equal(t, "New Title", videoAfterUpdate.Titles[0].Text)
 	assert.Equal(t, "New Description", videoAfterUpdate.Description)
 	assert.Equal(t, "new,tags", videoAfterUpdate.Tags)
 	assert.Equal(t, "#new #description #tags", videoAfterUpdate.DescriptionTags)

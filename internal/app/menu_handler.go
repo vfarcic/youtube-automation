@@ -1245,7 +1245,7 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 						updatedVideo.NotifiedSponsors = false // Revert intent
 					} else {
 						emailService := notification.NewEmail(configuration.GlobalSettings.Email.Password)
-						emailService.SendSponsors(configuration.GlobalSettings.Email.From, updatedVideo.Sponsorship.Emails, updatedVideo.VideoId, updatedVideo.Sponsorship.Amount, updatedVideo.Title)
+						emailService.SendSponsors(configuration.GlobalSettings.Email.From, updatedVideo.Sponsorship.Emails, updatedVideo.VideoId, updatedVideo.Sponsorship.Amount, updatedVideo.GetUploadTitle())
 						fmt.Println(m.confirmationStyle.Render("Sponsor notification email sent."))
 					}
 				} else if originalNotifiedSponsors && !updatedVideo.NotifiedSponsors { // User deselected in this phase

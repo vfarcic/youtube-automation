@@ -39,7 +39,7 @@ func TestPostVideoThumbnail(t *testing.T) {
 			name: "Successful post with valid video details",
 			videoDetails: storage.Video{
 				VideoId:   "vid001",
-				Title:     "Test Video Title",
+				Titles:    []storage.TitleVariant{{Index: 1, Text: "Test Video Title", Share: 0}},
 				Thumbnail: "http://example.com/thumbnail.jpg",
 			},
 			mockSetup: func(mockClient *mockInternalSlackClient) {
@@ -54,14 +54,14 @@ func TestPostVideoThumbnail(t *testing.T) {
 		},
 		{
 			name:          "Error when VideoId is empty",
-			videoDetails:  storage.Video{Title: "No Video ID", Thumbnail: "http://example.com/image.png"},
+			videoDetails:  storage.Video{Titles: []storage.TitleVariant{{Index: 1, Text: "No Video ID", Share: 0}}, Thumbnail: "http://example.com/image.png"},
 			mockSetup:     func(mockClient *mockInternalSlackClient) { /* No PostMessage call expected */ },
 			expectError:   true,
 			errorContains: "VideoId is empty",
 		},
 		{
 			name:          "Error when Thumbnail is empty",
-			videoDetails:  storage.Video{VideoId: "vid002", Title: "No Thumbnail"},
+			videoDetails:  storage.Video{VideoId: "vid002", Titles: []storage.TitleVariant{{Index: 1, Text: "No Thumbnail", Share: 0}}},
 			mockSetup:     func(mockClient *mockInternalSlackClient) { /* No PostMessage call expected */ },
 			expectError:   true,
 			errorContains: "Thumbnail URL is empty",
@@ -70,7 +70,7 @@ func TestPostVideoThumbnail(t *testing.T) {
 			name: "Error when Slack PostMessage itself fails",
 			videoDetails: storage.Video{
 				VideoId:   "vid003",
-				Title:     "API Error Video",
+				Titles:    []storage.TitleVariant{{Index: 1, Text: "API Error Video", Share: 0}},
 				Thumbnail: "http://example.com/apifail.jpg",
 			},
 			mockSetup: func(mockClient *mockInternalSlackClient) {
@@ -86,7 +86,7 @@ func TestPostVideoThumbnail(t *testing.T) {
 			name: "Handles empty video title by using default",
 			videoDetails: storage.Video{
 				VideoId:   "vid004",
-				Title:     "", // Empty title
+				Titles:    []storage.TitleVariant{}, // Empty titles
 				Thumbnail: "http://example.com/default_title.jpg",
 			},
 			mockSetup: func(mockClient *mockInternalSlackClient) {

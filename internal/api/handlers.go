@@ -274,7 +274,7 @@ func transformToVideoListItems(videos []storage.Video) []VideoListItem {
 		phase := video2.CalculateVideoPhase(video)
 
 		// Handle edge cases for missing fields
-		title := video.Title
+		title := video.GetUploadTitle()
 		if title == "" {
 			title = video.Name // Fallback to name if title is empty
 		}

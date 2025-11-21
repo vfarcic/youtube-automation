@@ -260,9 +260,9 @@ func UploadVideo(video *storage.Video) string {
 
 	// Construct Hugo URL from title and category for video description
 	hugoURL := ""
-	if video.Title != "" && video.Gist != "" {
+	if video.GetUploadTitle() != "" && video.Gist != "" {
 		category := GetCategoryFromFilePath(video.Gist)
-		hugoURL = ConstructHugoURL(video.Title, category)
+		hugoURL = ConstructHugoURL(video.GetUploadTitle(), category)
 	}
 
 	// Build sponsor section if both name and URL are available and not "N/A"

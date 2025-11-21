@@ -726,6 +726,13 @@ func (s *VideoService) setFieldValue(fieldValue reflect.Value, newValue interfac
 		} else {
 			return fmt.Errorf("expected float, got %v", newValueType)
 		}
+	case reflect.Slice:
+		// Handle slice types (e.g., []TitleVariant)
+		if newValueType.AssignableTo(fieldType) {
+			fieldValue.Set(reflect.ValueOf(newValue))
+		} else {
+			return fmt.Errorf("expected %v, got %v", fieldType, newValueType)
+		}
 	default:
 		return fmt.Errorf("unsupported field type: %v", fieldType)
 	}

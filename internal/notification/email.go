@@ -51,7 +51,7 @@ func generateThumbnailEmailContent(video storage.Video) (subject, body string) {
 	if len(logos) > 0 {
 		logos = fmt.Sprintf("<li>Logo: %s</li>", logos)
 	}
-	subject = fmt.Sprintf("Thumbnail: %s", video.Title)
+	subject = fmt.Sprintf("Thumbnail: %s", video.GetUploadTitle())
 	taglineIdeas := ""
 	if len(video.TaglineIdeas) > 0 && video.TaglineIdeas != "N/A" && video.TaglineIdeas != "-" {
 		taglineIdeas = fmt.Sprintf("Ideas:<br/>%s", video.TaglineIdeas)
@@ -86,7 +86,7 @@ func generateEditEmailContent(video storage.Video) (subject, body, attachmentPat
 	if len(video.Gist) == 0 {
 		return "", "", "", fmt.Errorf("Gist is empty")
 	}
-	subject = fmt.Sprintf("Video: %s", video.Title)
+	subject = fmt.Sprintf("Video: %s", video.GetUploadTitle())
 	animations := strings.Split(video.Animations, "\n")
 	animationsString := ""
 	for i := range animations {
@@ -111,7 +111,7 @@ func generateEditEmailContent(video storage.Video) (subject, body, attachmentPat
 		video.ProjectName,
 		video.ProjectURL,
 		video.ProjectName,
-		video.Title,
+		video.GetUploadTitle(),
 		animationsString,
 		video.Members,
 	)

@@ -259,7 +259,7 @@ func TestEmailFunctionality(t *testing.T) {
 		TaglineIdeas: "Tagline Idea 1\nTagline Idea 2",
 		Animations:   "Animation 1\nAnimation 2",
 		Members:      "Member 1, Member 2",
-		Title:        "Test Title",
+		Titles:       []storage.TitleVariant{{Index: 1, Text: "Test Title", Share: 0}},
 		VideoId:      "test-video-id",
 		Gist:         gistPath,
 		Sponsorship:  storage.Sponsorship{Amount: "$500", Emails: "sponsor1@example.com,sponsor2@example.com"},
@@ -370,8 +370,8 @@ func TestEmailFunctionality(t *testing.T) {
 			t.Errorf("Expected body to contain location '%s'", video.Location)
 		}
 
-		if !strings.Contains(msg.Body, video.Title) {
-			t.Errorf("Expected body to contain title '%s'", video.Title)
+		if !strings.Contains(msg.Body, video.GetUploadTitle()) {
+			t.Errorf("Expected body to contain title '%s'", video.GetUploadTitle())
 		}
 	})
 
@@ -414,7 +414,7 @@ func TestEmailFunctionality(t *testing.T) {
 			video.Sponsorship.Emails,
 			video.VideoId,
 			video.Sponsorship.Amount,
-			video.Title,
+			video.GetUploadTitle(),
 		)
 		if err != nil {
 			t.Fatalf("SendSponsors failed: %v", err)
@@ -428,7 +428,7 @@ func TestEmailFunctionality(t *testing.T) {
 
 		// Verify message contents
 		msg := messages[0]
-		expectedSubject := fmt.Sprintf("DevOps Toolkit Video Sponsorship - %s", video.Title)
+		expectedSubject := fmt.Sprintf("DevOps Toolkit Video Sponsorship - %s", video.GetUploadTitle())
 		if !strings.Contains(msg.Subject, expectedSubject) {
 			t.Errorf("Expected subject to contain '%s', got '%s'", expectedSubject, msg.Subject)
 		}
@@ -454,7 +454,7 @@ func TestGenerateThumbnailEmailContent(t *testing.T) {
 			name: "Basic video",
 			video: storage.Video{
 				ProjectName: "My Test Project",
-				Title:       "My Test Title",
+				Titles:      []storage.TitleVariant{{Index: 1, Text: "My Test Title", Share: 0}},
 				Location:    "/vids/my-test-project",
 				Tagline:     "Cool Tagline",
 			},
@@ -465,7 +465,7 @@ func TestGenerateThumbnailEmailContent(t *testing.T) {
 			name: "Video with ProjectURL",
 			video: storage.Video{
 				ProjectName: "Project With URL",
-				Title:       "Project With URL Title",
+				Titles:      []storage.TitleVariant{{Index: 1, Text: "Project With URL Title", Share: 0}},
 				Location:    "/vids/url-project",
 				Tagline:     "URL Tagline",
 				ProjectURL:  "http://example.com/logo.png",
@@ -477,7 +477,7 @@ func TestGenerateThumbnailEmailContent(t *testing.T) {
 			name: "Video with OtherLogos",
 			video: storage.Video{
 				ProjectName: "Project Other Logos",
-				Title:       "Project Other Logos Title",
+				Titles:      []storage.TitleVariant{{Index: 1, Text: "Project Other Logos Title", Share: 0}},
 				Location:    "/vids/other-logos",
 				Tagline:     "Other Logos Tagline",
 				OtherLogos:  "logo2.png, logo3.svg",
@@ -489,7 +489,7 @@ func TestGenerateThumbnailEmailContent(t *testing.T) {
 			name: "Video with ProjectURL and OtherLogos",
 			video: storage.Video{
 				ProjectName: "Project Both Logos",
-				Title:       "Project Both Logos Title",
+				Titles:      []storage.TitleVariant{{Index: 1, Text: "Project Both Logos Title", Share: 0}},
 				Location:    "/vids/both-logos",
 				Tagline:     "Both Logos Tagline",
 				ProjectURL:  "http://example.com/logo.png",
@@ -502,7 +502,7 @@ func TestGenerateThumbnailEmailContent(t *testing.T) {
 			name: "Video with TaglineIdeas",
 			video: storage.Video{
 				ProjectName:  "Project Tagline Ideas",
-				Title:        "Project Tagline Ideas Title",
+				Titles:       []storage.TitleVariant{{Index: 1, Text: "Project Tagline Ideas Title", Share: 0}},
 				Location:     "/vids/tagline-ideas",
 				Tagline:      "Main Tagline",
 				TaglineIdeas: "Idea 1\nIdea 2",
@@ -514,7 +514,7 @@ func TestGenerateThumbnailEmailContent(t *testing.T) {
 			name: "Video with N/A ProjectURL and OtherLogos",
 			video: storage.Video{
 				ProjectName: "Project N/A Logos",
-				Title:       "Project N/A Logos Title",
+				Titles:      []storage.TitleVariant{{Index: 1, Text: "Project N/A Logos Title", Share: 0}},
 				Location:    "/vids/na-logos",
 				Tagline:     "N/A Logos Tagline",
 				ProjectURL:  "N/A",
@@ -528,7 +528,7 @@ func TestGenerateThumbnailEmailContent(t *testing.T) {
 			name: "Video with empty ProjectURL and OtherLogos",
 			video: storage.Video{
 				ProjectName: "Project Empty Logos",
-				Title:       "Project Empty Logos Title",
+				Titles:      []storage.TitleVariant{{Index: 1, Text: "Project Empty Logos Title", Share: 0}},
 				Location:    "/vids/empty-logos",
 				Tagline:     "Empty Logos Tagline",
 				ProjectURL:  "",
@@ -614,7 +614,7 @@ func TestGenerateEditEmailContent(t *testing.T) {
 			video: storage.Video{
 				ProjectName: "My Edit Project",
 				Location:    "/vids/edit-project",
-				Title:       "Awesome Video Title",
+				Titles:      []storage.TitleVariant{{Index: 1, Text: "Awesome Video Title", Share: 0}},
 				ProjectURL:  "http://project.url/logo.png",
 				Animations:  "Anim1\n- Anim2\n\nAnim3 With Spaces", // Test newline, prefix, and spaces
 				Members:     "MemberA, MemberB",
@@ -642,7 +642,7 @@ func TestGenerateEditEmailContent(t *testing.T) {
 			video: storage.Video{
 				ProjectName: "Simple Project",
 				Location:    "/vids/simple",
-				Title:       "Simple Title",
+				Titles:      []storage.TitleVariant{{Index: 1, Text: "Simple Title", Share: 0}},
 				ProjectURL:  "http://simple.url/",
 				Animations:  "", // No animations
 				Members:     "", // No members
