@@ -26,7 +26,7 @@ Or to pin the version:
 <!-- x-release-please-start-version -->
 
 ```sh
-go get -u 'github.com/anthropics/anthropic-sdk-go@v1.18.1'
+go get -u 'github.com/anthropics/anthropic-sdk-go@v1.19.0'
 ```
 
 <!-- x-release-please-end -->
@@ -59,7 +59,7 @@ func main() {
 		Messages: []anthropic.MessageParam{
 			anthropic.NewUserMessage(anthropic.NewTextBlock("What is a quaternion?")),
 		},
-		Model: anthropic.ModelClaudeSonnet4_5_20250929,
+		Model: anthropic.ModelClaudeOpus4_5_20251101,
 	})
 	if err != nil {
 		panic(err.Error())
@@ -614,7 +614,7 @@ client.Messages.New(
 			}},
 			Role: anthropic.MessageParamRoleUser,
 		}},
-		Model: anthropic.ModelClaudeSonnet4_5_20250929,
+		Model: anthropic.ModelClaudeOpus4_5_20251101,
 	},
 	// This sets the per-retry timeout
 	option.WithRequestTimeout(20*time.Second),
@@ -684,7 +684,7 @@ client.Messages.New(
 			}},
 			Role: anthropic.MessageParamRoleUser,
 		}},
-		Model: anthropic.ModelClaudeSonnet4_5_20250929,
+		Model: anthropic.ModelClaudeOpus4_5_20251101,
 	},
 	option.WithMaxRetries(5),
 )
@@ -710,7 +710,7 @@ message, err := client.Messages.New(
 			}},
 			Role: anthropic.MessageParamRoleUser,
 		}},
-		Model: anthropic.ModelClaudeSonnet4_5_20250929,
+		Model: anthropic.ModelClaudeOpus4_5_20251101,
 	},
 	option.WithResponseInto(&response),
 )
