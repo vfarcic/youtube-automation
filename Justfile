@@ -17,7 +17,7 @@ build-local:
 
 # Run the application with environment variables
 run:
-  eval "$(teller sh)"
+  eval $(vals env -export -f .env.vals.yaml)
   youtube-release
 
 # Run tests with coverage

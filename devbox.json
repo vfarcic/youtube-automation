@@ -1,9 +1,9 @@
 {
   "packages": [
-    "teller@2.0.7",
     "just@1.43.1",
     "git@2.51.2",
-    "nushell@0.108.0"
+    "nushell@0.108.0",
+    "vals@0.42.5"
   ],
   "shell": {
     "init_hook": [
