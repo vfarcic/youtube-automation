@@ -35,72 +35,67 @@ When analyzing performance, **always consider the publish date**. Older videos n
 - Focus more on engagement metrics (likes/views ratio, comments/views ratio, avg view duration) which are less affected by age
 - When identifying patterns, check if they hold true across both old and recent videos
 
-### Your Analysis Should Include:
-
-#### 1. High-Performing Title Patterns
-Identify what the top-performing videos (by views, engagement, watch time) have in common:
-- **Length patterns**: Character count ranges that perform best
-- **Structural patterns**: Common formats (e.g., "How to...", "X vs Y", "Top N...", question format)
-- **Word choice**: Keywords, power words, or phrases that appear in top performers
-- **Punctuation**: Use of colons, dashes, questions, exclamation points
-- **Specificity vs. generality**: Are top titles more specific or more broad?
-
-For each pattern, provide:
-- Clear description of the pattern
-- Specific examples from the data
-- Quantified impact (e.g., "Titles with numbers average 45% more views")
-
-#### 2. Low-Performing Title Patterns
-Identify what correlates with lower performance:
-- What do underperforming videos have in common?
-- What anti-patterns should be avoided?
-- What's missing compared to top performers?
-
-Provide specific examples and quantified differences.
-
-#### 3. Title Length Analysis
-- Calculate optimal character count range
-- Analyze if very short or very long titles underperform
-- Consider YouTube's title truncation (typically ~70 characters)
-
-#### 4. Content Type & Topic Analysis
-If you can infer content types from titles (tutorials, comparisons, news, opinions, etc.):
-- Which types perform best?
-- Are certain title styles better for specific content types?
-- Do certain topics or technologies generate more interest?
-
-#### 5. Engagement Patterns
-Look beyond just views:
-- Do certain title patterns drive more likes relative to views?
-- Do certain patterns generate more comments?
-- Do certain patterns have better watch time (avg duration)?
-
-#### 6. Actionable Recommendations
-Provide **5-7 specific, actionable recommendations** for improving future title generation:
-- Each must be specific (not generic advice)
-- Each must be data-backed with examples
-- Each must be directly actionable
-
-**Format each as:**
-- **Recommendation**: [Clear guidance]
-- **Evidence**: [Data supporting this recommendation]
-- **Example**: [Show how to apply this]
-
-#### 7. Prompt Engineering Suggestions
-Based on your findings, suggest specific modifications to the title generation prompt. For example:
-- "Include numbers in 30-40% of titles (e.g., 'Top 5...', '3 Ways to...')"
-- "Keep titles between 50-65 characters for optimal performance"
-- "Use comparison format ('X vs Y') for technical tool reviews"
-- "Avoid generic words like 'guide', 'tutorial' in favor of specific outcomes"
-
 ---
 
 ## Output Requirements
 
-- **Be specific**: Use concrete examples from the data, not generic YouTube advice
-- **Quantify everything**: Provide percentages, averages, comparisons
-- **Be actionable**: Focus on patterns that can be directly implemented in title generation
-- **Prioritize impact**: Highlight the patterns with the biggest performance differences
-- **Consider channel context**: Tailor recommendations to what works for THIS channel's content and audience
+Return your analysis as a **valid JSON object** with the following structure:
 
-Your analysis will be used to improve the title generation prompt, so make your recommendations concrete and implementable.
+```json
+{
+  "highPerformingPatterns": [
+    {
+      "pattern": "Pattern name (e.g., 'Titles with numbers')",
+      "description": "Clear description of the pattern",
+      "impact": "Quantified impact (e.g., '45% more views on average')",
+      "examples": ["Example title 1", "Example title 2"]
+    }
+  ],
+  "lowPerformingPatterns": [
+    {
+      "pattern": "Anti-pattern name",
+      "description": "What correlates with lower performance",
+      "impact": "Quantified negative impact",
+      "examples": ["Example title 1", "Example title 2"]
+    }
+  ],
+  "titleLengthAnalysis": {
+    "optimalRange": "Character count range (e.g., '50-65 characters')",
+    "finding": "Description of length impact on performance",
+    "data": "Supporting statistics"
+  },
+  "contentTypeAnalysis": {
+    "finding": "Which content types/topics perform best",
+    "topPerformers": ["Content type 1", "Content type 2"],
+    "data": "Supporting statistics"
+  },
+  "engagementPatterns": {
+    "finding": "Title patterns that drive engagement beyond just views",
+    "likesPattern": "Patterns that drive likes",
+    "commentsPattern": "Patterns that drive comments",
+    "watchTimePattern": "Patterns that drive longer watch time"
+  },
+  "recommendations": [
+    {
+      "recommendation": "Clear, actionable guidance",
+      "evidence": "Data supporting this recommendation with specific metrics",
+      "example": "How to apply this (before/after example or specific approach)"
+    }
+  ],
+  "promptSuggestions": [
+    "Specific modification to title generation prompt (e.g., 'Include numbers in 30-40% of titles')",
+    "Another specific suggestion (e.g., 'Keep titles between 50-65 characters')",
+    "Use comparison format ('X vs Y') for technical tool reviews"
+  ]
+}
+```
+
+**Critical Requirements:**
+- **Return ONLY valid JSON** - no markdown code blocks, no extra text
+- **Be specific**: Use concrete examples from the data, not generic advice
+- **Quantify everything**: Provide percentages, averages, comparisons in impact fields
+- **Be actionable**: Focus on patterns that can be directly implemented
+- **Prioritize impact**: Highlight patterns with biggest performance differences (5-7 recommendations max)
+- **Consider channel context**: Tailor to THIS channel's content and audience
+
+Your JSON response will be parsed programmatically, so ensure it's valid and follows the exact structure above.
