@@ -1,9 +1,9 @@
 # PRD: YouTube Publishing Timing Analytics & Optimization
 
 **Issue**: [#336](https://github.com/vfarcic/youtube-automation/issues/336)
-**Status**: Draft
+**Status**: Design Complete
 **Created**: 2025-11-10
-**Last Updated**: 2025-11-10
+**Last Updated**: 2025-11-29
 **Priority**: Medium
 
 ---
@@ -23,60 +23,74 @@ Unlike the title analytics feature which analyzes existing variation in titles, 
 
 ## Proposed Solution
 
-A **two-phase system** that first generates experimentation plans, then analyzes results:
+A **unified analysis system** with iterative improvement:
 
-### Phase 1: Experimentation Mode (Insufficient Data)
-When timing variation is insufficient (< 3 videos per time slot):
+### Core Workflow
 
-1. **Detect lack of variation** - Analyze existing publish times, identify under-tested slots
-2. **AI-generated schedule recommendations** - Suggest varied publish times for upcoming videos based on:
-   - Target audience timezone/location (from YouTube demographics)
-   - Content niche patterns (DevOps/tech publishing norms)
-   - YouTube best practices research
-   - Competitor analysis (if feasible)
-3. **Suggest date modifications** - Recommend specific date/time changes for scheduled-but-unpublished videos
-4. **Track progress** - Monitor which time slots have sufficient data (3+ videos minimum)
-5. **Integrate with publish workflow** - Show next recommended time slot when publishing
+**Every time user runs analysis** (Menu → Analyze → Timing):
 
-### Phase 2: Analysis Mode (Sufficient Data)
-Once each targeted time slot has 3+ videos:
+1. **Fetch YouTube Analytics**
+   - Audience demographics (locations, viewing patterns)
+   - All video performance data (views, CTR, engagement)
+   - **Publish dates and times for all videos** (critical for pattern analysis)
 
-1. **Fetch performance data** - Use YouTube Analytics API (extend existing `GetVideoAnalyticsForLastYear()`)
-2. **AI-powered pattern analysis** - Identify optimal publish windows considering:
-   - Initial performance velocity (first 7/14 days to avoid age bias)
-   - Normalized metrics (views-per-day, engagement rate)
-   - Day-of-week patterns
-   - Time-of-day patterns (hourly or period-based)
-   - CTR, watch time, engagement correlations
-3. **Generate recommendations** - Specific, actionable guidance on best publish times
-4. **Save analysis files** - JSON data + markdown report (same pattern as title analytics)
-5. **Slash command review** - `/analyze-timing` for guided review workflow
+2. **AI Analyzes Performance Patterns**
+   - Group videos by publish day/time
+   - Identify top performers (high views, engagement for their day/time)
+   - Identify poor performers (low views, engagement for their day/time)
+   - Consider audience timezone and content niche patterns
+
+3. **Generate 6-8 Timing Recommendations** (UTC)
+   - **Keep** times that perform well (data-driven)
+   - **Replace** poor performers with new alternatives
+   - **Add** new times to test if no variation exists yet
+   - All times in **UTC format** (e.g., "16:00" = 5pm CET winter)
+
+4. **User Reviews and Saves to settings.yaml**
+   - Show recommendations with reasoning
+   - User approves → saves to `settings.yaml`
+   - Can re-run periodically (quarterly, biannually) to evolve recommendations
+
+5. **Apply Recommendations to Videos**
+   - Button in "Initial Details" form: "Apply Random Timing"
+   - Picks random recommendation from settings.yaml
+   - Applies to **same week** as current date (Monday-Sunday)
+   - User sees new date/time and approves before saving
+
+### Key Design Principles
+
+- **Same logic every run**: AI always analyzes performance and generates recommendations
+- **Iterative improvement**: Build on success, evolve based on data
+- **User control**: Manual review and application, not automatic
+- **UTC consistency**: All times in UTC for YouTube API compatibility
+- **Same-week scheduling**: Preserve weekly planning boundaries
 
 ---
 
 ## Goals & Non-Goals
 
 ### Goals
-✅ **Detect timing variation deficiency** and alert user
-✅ **Generate AI-driven experimentation plans** with 6-8 priority time slots to test
-✅ **Track experimentation progress** via video metadata (which slots have 3+ videos)
-✅ **Integrate with publish workflow** to show next recommended slot
-✅ **Analyze timing patterns** once sufficient data exists
-✅ **Provide baseline performance metrics** even with no variation
-✅ **Support iterative refinement** - re-run analysis as more data accumulates
+✅ **Analyze audience behavior** - Understand when target audience is most active
+✅ **Generate timing recommendations** - 6-8 day/time combinations in UTC based on data
+✅ **Store recommendations in settings.yaml** - Persistent, reusable timing library
+✅ **Easy application to videos** - One-click button to apply random timing from library
+✅ **Iterative improvement** - Keep successful times, replace poor performers over time
+✅ **Same-week scheduling** - Apply recommendations within current week boundary
+✅ **Support re-analysis** - Re-run periodically as more performance data accumulates
 
 ### Non-Goals
-❌ **Automatic date/time modification** - User manually reviews and applies suggestions
-❌ **Real-time scheduling** - No integration with calendar systems
-❌ **A/B testing infrastructure** - Not building statistical testing framework
+❌ **Automatic date/time modification** - User manually clicks button and approves
+❌ **Real-time scheduling** - No calendar system integration
+❌ **A/B testing infrastructure** - Simple performance comparison, not statistical framework
 ❌ **Multi-channel comparison** - Single channel analysis only
-❌ **Audience timezone detection** - Uses existing YouTube Analytics demographics
+❌ **Timezone conversion UI** - Keep UTC, defer timezone handling to future PRD
+❌ **Automatic recommendation generation** - User triggers analysis manually
 
 ---
 
 ## User Experience
 
-### CLI Workflow: Experimentation Mode
+### CLI Workflow: Generate Timing Recommendations
 
 ```
 Main Menu
@@ -89,116 +103,103 @@ Main Menu
 ```
 Fetching video analytics from YouTube...
 ✓ Successfully fetched analytics for 127 videos
+  - Publish dates/times: Extracted
+  - Performance metrics: Views, CTR, engagement
+  - Audience data: Top locations, viewing patterns
 
-Analyzing publishing timing patterns...
-
-⚠️  Insufficient Timing Variation Detected
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Current Schedule: 95% of videos published Monday 4:00pm EST
-  - Monday 4pm: 121 videos
-  - Tuesday 10am: 4 videos
-  - Wednesday 2pm: 2 videos
-
-Need 3+ videos per time slot for meaningful analysis.
-
-Generating Experimentation Plan...
-✓ AI recommendations complete!
-
-📋 Recommended Time Slots to Test (Next 12 weeks):
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Based on DevOps audience patterns and timezone analysis:
-
-Priority 1: Tuesday 10:00am EST (Workday morning, 2/3 videos)
-Priority 2: Thursday 2:00pm EST (Mid-week afternoon, 0/3 videos)
-Priority 3: Wednesday 9:00am EST (Workday start, 0/3 videos)
-Priority 4: Friday 11:00am EST (Pre-weekend, 0/3 videos)
-Priority 5: Monday 10:00am EST (Week start, 0/3 videos)
-Priority 6: Tuesday 3:00pm EST (Afternoon slot, 0/3 videos)
-
-📝 Suggested Schedule Modifications:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Found 18 scheduled videos (Phase 0-4) that could be rescheduled:
-
-1. "kubernetes-best-practices-2025.yaml" (Phase 2)
-   Current: Monday 2025-11-17 16:00:00
-   Suggest: Tuesday 2025-11-18 10:00:00 (Priority slot 1)
-
-2. "terraform-vs-pulumi-comparison.yaml" (Phase 1)
-   Current: Monday 2025-11-24 16:00:00
-   Suggest: Thursday 2025-11-27 14:00:00 (Priority slot 2)
-
-[...16 more suggestions...]
-
-💡 Next Steps:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-1. Review suggested schedule in: ./tmp/timing-experiment-2025-11-10.md
-2. Manually update video YAML files with new dates/times
-3. As videos publish, run this analysis again to track progress
-4. Once 3+ videos per slot, meaningful analysis will be available
-
-✓ Files saved:
-  - ./tmp/timing-analytics-2025-11-10.json (baseline data)
-  - ./tmp/timing-experiment-2025-11-10.md (schedule recommendations)
-```
-
-### CLI Workflow: Analysis Mode (After Experimentation)
-
-```
-Fetching video analytics from YouTube...
-✓ Successfully fetched analytics for 145 videos
-
-Analyzing publishing timing patterns...
-✓ Sufficient variation detected! (6/6 priority slots have 3+ videos)
-
-Analyzing performance patterns with AI...
+Analyzing timing patterns with AI...
 This may take a moment.
-✓ Analysis complete!
 
-📊 Key Findings:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Best Overall: Tuesday 10:00am EST
-  - Avg first-week views: 8,247 (vs baseline 5,201)
-  - Avg CTR: 8.9% (vs baseline 6.2%)
-  - Engagement rate: 12.3% (vs baseline 9.1%)
+📊 Current Publishing Pattern
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  - Monday 16:00 UTC: 121 videos (95%)
+  - Tuesday 10:00 UTC: 4 videos (3%)
+  - Wednesday 14:00 UTC: 2 videos (2%)
 
-Top 3 Time Slots:
-  1. Tuesday 10:00am EST (+58% views vs baseline)
-  2. Wednesday 9:00am EST (+41% views vs baseline)
-  3. Thursday 2:00pm EST (+23% views vs baseline)
+Primary audience: Europe (60%), North America (25%)
+Content type: DevOps, cloud-native tutorials
 
-Worst Performers:
-  - Friday 11:00am EST (-18% views vs baseline)
-  - Monday 10:00am EST (-12% views vs baseline)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ Recommended Publish Times (UTC)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Monday 16:00 UTC
+   Reasoning: Current baseline, no negative performance data
+   Status: Keep for comparison
+
+2. Tuesday 09:00 UTC
+   Reasoning: European workday morning (10-11am CET), high engagement window
+   Status: New - test early-week morning
+
+3. Tuesday 15:00 UTC
+   Reasoning: US East Coast morning (10-11am EST), workday start
+   Status: New - test transatlantic window
+
+4. Thursday 13:00 UTC
+   Reasoning: Mid-week afternoon, typically strong B2B engagement
+   Status: New - test mid-week slot
+
+5. Thursday 16:00 UTC
+   Reasoning: End-of-workday Europe + mid-day US overlap
+   Status: New - test overlap period
+
+6. Wednesday 10:00 UTC
+   Reasoning: Mid-week morning for global audience
+   Status: New - test Wednesday pattern
+
+💾 Save these recommendations to settings.yaml? (y/N): _
+```
+
+**If user confirms:**
+
+```
+✓ Recommendations saved to settings.yaml
+  - 6 timing recommendations stored
+  - Use "Apply Random Timing" button when editing videos
+  - Re-run this analysis in 3-6 months to evolve recommendations
 
 ✓ Files saved:
-  - ./tmp/timing-analytics-2025-11-10.json (full data)
-  - ./tmp/timing-analysis-2025-11-10.md (detailed insights)
-
-💡 Next Steps:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-1. Review detailed analysis: ./tmp/timing-analysis-2025-11-10.md
-2. Run /analyze-timing for guided recommendations
-3. Update publishing schedule to favor Tuesday 10am slot
-4. Continue monitoring with monthly analysis runs
+  - ./tmp/timing-analytics-2025-11-29.json (raw data)
+  - ./tmp/timing-recommendations-2025-11-29.md (full analysis)
 ```
 
-### Publish Workflow Integration
+### Video Edit Workflow: Apply Timing
 
-When user publishes a video during experimentation phase:
+**In "Initial Details" form:**
 
 ```
-Publishing Video to YouTube
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Video: Kubernetes Best Practices 2025
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Title: Building Cloud-Native Apps with Kubernetes
-Scheduled Publish: Monday 2025-11-17 16:00:00
+Project Name: kubernetes-demo
+Project URL: https://github.com/user/k8s-demo
 
-💡 Timing Experiment Suggestion:
+📅 Date: 2025-12-02T16:00  (Monday 16:00 UTC)
+
+[Apply Random Timing]  ← NEW BUTTON
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Recommended slot: Thursday 2025-11-20 14:00:00 (Priority 2)
-Reason: Testing mid-week afternoon slot (0/3 videos)
+```
 
-Would you like to use the recommended time? (y/N): _
+**When user clicks "Apply Random Timing":**
+
+```
+🎲 Randomly selected: Thursday 13:00 UTC
+   (Mid-week afternoon, typically strong B2B engagement)
+
+📅 Original date: Monday 2025-12-02 16:00 UTC
+📅 New date:      Thursday 2025-12-05 13:00 UTC
+   (Same week: Monday Dec 2 - Sunday Dec 8)
+
+Apply this timing? (y/N): _
+```
+
+**If user confirms:**
+```
+✓ Date updated to 2025-12-05T13:00
+  Field updated, ready to save video
 ```
 
 ---
@@ -207,273 +208,259 @@ Would you like to use the recommended time? (y/N): _
 
 ### Architecture Overview
 
-Following the **title analytics pattern** with extensions for experimentation:
+**Simplified architecture** following title analytics pattern:
 
 ```
 internal/
 ├── publishing/
-│   ├── youtube_analytics.go         [EXTEND] Add timing-specific queries
+│   ├── youtube_analytics.go         [EXTEND] Add timing data extraction
 │   └── youtube_analytics_test.go    [EXTEND]
 ├── ai/
-│   ├── analyze_timing.go            [NEW] Phase 2: Performance analysis
+│   ├── analyze_timing.go            [NEW] Generate timing recommendations
 │   ├── analyze_timing_test.go       [NEW]
-│   ├── generate_schedule.go         [NEW] Phase 1: Experiment plan
-│   ├── generate_schedule_test.go    [NEW]
 │   └── templates/
-│       ├── analyze-timing.md        [NEW] Analysis prompt
-│       └── generate-schedule.md     [NEW] Experiment prompt
+│       └── analyze-timing.md        [NEW] Analysis prompt (UTC-aware)
 ├── app/
 │   ├── menu_handler.go              [EXTEND] Add HandleAnalyzeTiming
-│   ├── analytics_files.go           [EXTEND] Add SaveTimingFiles
-│   ├── analytics_files_test.go      [EXTEND]
-│   └── timing_suggestions.go        [NEW] Video date modification logic
-└── video/
-    └── manager.go                   [EXTEND] Add GetScheduledVideos helper
+│   ├── aspect_forms.go              [EXTEND] Add "Apply Random Timing" button
+│   ├── timing_logic.go              [NEW] Apply timing logic
+│   └── timing_logic_test.go         [NEW]
+└── configuration/
+    └── settings.go                  [EXTEND] Add timing recommendations struct
 
-.claude/commands/
-└── analyze-timing.md                [NEW] Slash command for review
+settings.yaml                        [EXTEND] Store recommendations
+```
+
+### Settings.yaml Structure
+
+**Add timing recommendations section:**
+
+```yaml
+timing:
+  recommendations:
+    - day: "Monday"
+      time: "16:00"  # UTC
+      reasoning: "Current baseline, no negative performance data"
+    - day: "Tuesday"
+      time: "09:00"  # UTC
+      reasoning: "European workday morning (10-11am CET), high engagement window"
+    - day: "Tuesday"
+      time: "15:00"  # UTC
+      reasoning: "US East Coast morning (10-11am EST), workday start"
+    - day: "Thursday"
+      time: "13:00"  # UTC
+      reasoning: "Mid-week afternoon, typically strong B2B engagement"
+    - day: "Thursday"
+      time: "16:00"  # UTC
+      reasoning: "End-of-workday Europe + mid-day US overlap"
+    - day: "Wednesday"
+      time: "10:00"  # UTC
+      reasoning: "Mid-week morning for global audience"
 ```
 
 ### Data Structures
 
-**Extend existing `VideoAnalytics` struct:**
+**Settings configuration:**
+
+```go
+// internal/configuration/settings.go
+type TimingRecommendation struct {
+    Day       string `yaml:"day" json:"day"`             // "Monday", "Tuesday", etc.
+    Time      string `yaml:"time" json:"time"`           // "16:00", "09:00", etc. (UTC)
+    Reasoning string `yaml:"reasoning" json:"reasoning"` // Why this slot recommended
+}
+
+type TimingConfig struct {
+    Recommendations []TimingRecommendation `yaml:"recommendations" json:"recommendations"`
+}
+
+type Settings struct {
+    // ... existing fields
+    Timing TimingConfig `yaml:"timing" json:"timing"`
+}
+```
+
+**Analytics data (extend existing):**
 
 ```go
 // internal/publishing/youtube_analytics.go
 type VideoAnalytics struct {
+    // ... existing fields
     VideoID             string
     Title               string
     Views               int64
     CTR                 float64
-    AverageViewDuration float64
     Likes               int64
     Comments            int64
-    PublishedAt         time.Time
+    PublishedAt         time.Time  // Already exists, extract day/time from this
 
-    // NEW: Timing-specific fields
+    // NEW: Computed timing fields
     DayOfWeek           string    // "Monday", "Tuesday", etc.
-    TimeOfDay           string    // "09:00", "14:00", etc. (hour:minute)
-    TimePeriod          string    // "morning", "afternoon", "evening", "night"
-    FirstWeekViews      int64     // Views in first 7 days
-    FirstWeekCTR        float64   // CTR in first 7 days (if available)
+    TimeOfDay           string    // "16:00", "09:00", etc. (UTC hour:minute)
     ViewsPerDay         float64   // Normalized: TotalViews / DaysSincePublish
     EngagementRate      float64   // (Likes + Comments) / Views
 }
 ```
 
-**New structs for experimentation:**
+### AI Prompt Template
 
-```go
-// internal/app/timing_suggestions.go
-type TimeSlot struct {
-    DayOfWeek   string    // "Monday", "Tuesday", etc.
-    TimeOfDay   string    // "10:00", "14:00", etc.
-    Priority    int       // 1-8 (AI-ranked priority)
-    Reasoning   string    // Why this slot was chosen
-    VideosCount int       // Current count of videos in this slot
-    TargetCount int       // Minimum needed (default 3)
-    Status      string    // "needs_testing", "sufficient_data"
-}
-
-type ScheduleSuggestion struct {
-    VideoPath      string    // Path to video YAML file
-    VideoTitle     string    // For display
-    CurrentPhase   int       // 0-4 (only suggest for unpublished)
-    CurrentDate    time.Time // Existing scheduled date
-    SuggestedDate  time.Time // Recommended new date
-    RecommendedSlot TimeSlot // Which slot this fills
-}
-
-type ExperimentPlan struct {
-    GeneratedAt       time.Time
-    PrioritySlots     []TimeSlot
-    Suggestions       []ScheduleSuggestion
-    CurrentCoverage   string              // "3/7 days tested, 2/4 periods tested"
-    EstimatedWeeks    int                 // Weeks to complete experiment
-}
-```
-
-### AI Prompt Templates
-
-**Template 1: Schedule Generation** (`internal/ai/templates/generate-schedule.md`)
+**Single Unified Template** (`internal/ai/templates/analyze-timing.md`)
 
 ```markdown
-You are analyzing a YouTube channel's publishing schedule to recommend an experimentation plan for testing varied publish times.
+You are analyzing a YouTube channel's publishing schedule and performance data to generate timing recommendations.
+
+**CRITICAL: All times must be in UTC timezone format (HH:MM, 24-hour).**
 
 ## Current Publishing Pattern
 {{range .CurrentPattern}}
-- {{.DayOfWeek}} {{.TimeOfDay}}: {{.Count}} videos ({{.Percentage}}%)
+- {{.DayOfWeek}} {{.TimeOfDay}} UTC: {{.Count}} videos ({{.Percentage}}%)
+{{end}}
+
+## Performance Data by Time Slot
+{{range .PerformanceBySlot}}
+**{{.DayOfWeek}} {{.TimeOfDay}} UTC** ({{.VideoCount}} videos)
+- Avg Views: {{.AvgViews}}
+- Avg Views/Day: {{.AvgViewsPerDay}}
+- Avg CTR: {{.AvgCTR}}%
+- Avg Engagement: {{.AvgEngagement}}%
+- Performance: {{.Rating}} (excellent/good/average/poor)
 {{end}}
 
 ## Channel Context
 - **Total Videos**: {{.TotalVideos}}
-- **Content Type**: {{.ContentType}} (DevOps, cloud-native, tutorials)
-- **Target Audience**: {{.AudienceDescription}}
-- **Top Viewer Locations**: {{.TopLocations}}
-- **Typical Video Length**: {{.AvgDuration}} minutes
+- **Content Type**: DevOps, cloud-native, Kubernetes tutorials
+- **Primary Audience Locations**: {{.TopLocations}}
+- **Audience Timezone Distribution**: {{.TimezoneBreakdown}}
 
-## Task
-Generate 6-8 priority time slots to test over the next 12 weeks. For each slot, provide:
+## Task: Generate 6-8 Timing Recommendations
 
-1. **Day and Time** (EST timezone)
-2. **Priority** (1=highest)
-3. **Reasoning** (why this slot is promising based on audience/niche)
-4. **Expected Impact** (hypothesis about performance)
+Your goal is **iterative improvement**: keep what works, replace what doesn't.
 
-### Considerations:
-- **Audience Timezone**: Most viewers in {{.PrimaryTimezone}}
-- **Content Niche**: DevOps professionals typically check YouTube during work breaks, mornings, or evenings
-- **YouTube Algorithm**: First 1-2 hours after publish are critical for momentum
-- **Workday Patterns**: B2B tech content performs differently than entertainment
-- **Weekend vs Weekday**: Consider professional audience behavior
+### Strategy:
+1. **If time slot has data**:
+   - Performance excellent/good → **KEEP** in recommendations
+   - Performance poor → **REPLACE** with new alternative
+
+2. **If time slot has no data**:
+   - Current time is neutral → **KEEP** as baseline
+   - Add new times to test based on audience patterns
+
+3. **Output 6-8 total recommendations** with mix of proven and new times
+
+### Audience Behavior Patterns (DevOps/Tech):
+- Professional audience checks YouTube during:
+  - Work breaks (mid-morning, lunch, mid-afternoon)
+  - Commute times (if viewing on mobile)
+  - Evening learning sessions
+- Workdays (Mon-Fri) typically outperform weekends for B2B content
+- First 1-2 hours after publish critical for YouTube algorithm momentum
+- European audience (CET = UTC+1): Active 08:00-18:00 CET = 07:00-17:00 UTC
+- US East Coast (EST = UTC-5): Active 08:00-18:00 EST = 13:00-23:00 UTC
+- Overlap window: 13:00-17:00 UTC hits both audiences' workdays
 
 ### Constraints:
-- Focus on **workday times** (Mon-Fri) unless data suggests otherwise
-- Avoid very early (before 8am) or very late (after 8pm) EST
-- Spread across different days and times for maximum variation
-- Prioritize slots likely to outperform current baseline ({{.BaselineDayTime}})
+- **All times MUST be UTC** (e.g., "16:00", not "5pm CET")
+- Focus on workday times (Mon-Fri) unless data shows otherwise
+- Spread across different days for variation
+- Consider global audience timezone overlaps
+- Include times proven to work + new times to test
 
 ### Output Format:
-Return a prioritized list of time slots with clear, data-driven reasoning.
+For each recommendation (6-8 total), provide:
+```json
+{
+  "day": "Monday",
+  "time": "16:00",
+  "reasoning": "Current baseline. European end-of-workday (5pm CET) + US mid-day. No negative performance data, keep for comparison."
+}
 ```
 
-**Template 2: Performance Analysis** (`internal/ai/templates/analyze-timing.md`)
-
-```markdown
-You are analyzing YouTube video performance data to identify optimal publishing times.
-
-## Dataset
-{{.VideoCount}} videos published between {{.StartDate}} and {{.EndDate}}
-
-{{range .Videos}}
-- **{{.Title}}**
-  - Published: {{.DayOfWeek}} {{.TimeOfDay}}
-  - First Week Views: {{.FirstWeekViews}}
-  - Total Views: {{.Views}}
-  - CTR: {{.CTR}}%
-  - Engagement Rate: {{.EngagementRate}}%
-  - Views/Day: {{.ViewsPerDay}}
-{{end}}
-
-## Analysis Tasks
-
-### 1. Day-of-Week Patterns
-Analyze performance by day of week. Account for:
-- **Sample size per day** (statistical significance)
-- **Video age bias** (focus on first-week metrics)
-- **Content type variations** (if detectable)
-
-### 2. Time-of-Day Patterns
-Analyze performance by publish time. Consider:
-- **Hour-level granularity** (if sufficient data)
-- **Grouped periods** (morning 8-11am, afternoon 12-4pm, evening 5-8pm)
-- **Interaction with day-of-week** (e.g., Tuesday morning vs Tuesday afternoon)
-
-### 3. Best vs Worst Performers
-Identify:
-- **Top 3 time slots** with highest avg first-week views
-- **Bottom 3 time slots** to avoid
-- **Statistical confidence** (mention sample sizes)
-
-### 4. Engagement Correlations
-Check if timing affects:
-- **CTR** (does publish time impact click-through?)
-- **Watch time** (do certain times get more engaged viewers?)
-- **Engagement rate** (likes/comments per view)
-
-### 5. Baseline Comparison
-Compare experimental slots against original baseline ({{.BaselineDayTime}}):
-- **Percentage improvement/decline**
-- **Absolute differences** in key metrics
-
-### 6. Actionable Recommendations
-Provide 5-7 specific recommendations:
-- **Optimal publish day/time** (primary recommendation)
-- **Secondary options** (backup time slots)
-- **Times to avoid** (underperformers)
-- **Confidence levels** (high/medium/low based on sample size)
-- **Next steps** (continue testing, adjust schedule, etc.)
-
-### Important Considerations:
-- **Statistical Significance**: Note when sample sizes are too small for strong conclusions
-- **Seasonal Effects**: Mention if data spans multiple seasons
-- **Content-Specific Patterns**: Highlight if certain content types perform better at specific times
-- **Audience Behavior**: Explain findings in context of DevOps/tech professional audience
-
-### Output Format:
-Structured markdown with clear sections, data-backed insights, and specific, actionable guidance.
+Return ONLY valid JSON array of recommendations, no markdown formatting.
 ```
 
 ### Core Functions
 
-**Experimentation Phase:**
-
-```go
-// internal/ai/generate_schedule.go
-func GenerateExperimentSchedule(ctx context.Context, analytics []VideoAnalytics, audienceData AudienceContext) (*ExperimentPlan, error)
-
-// internal/app/timing_suggestions.go
-func DetectTimingVariation(analytics []VideoAnalytics) (hasVariation bool, coverage TimingCoverage)
-func GetScheduledVideos(minPhase, maxPhase int) ([]Video, error)
-func GenerateScheduleSuggestions(plan ExperimentPlan, scheduledVideos []Video) ([]ScheduleSuggestion, error)
-func FormatExperimentReport(plan ExperimentPlan, suggestions []ScheduleSuggestion) string
-```
-
-**Analysis Phase:**
+**Analysis and Recommendation Generation:**
 
 ```go
 // internal/ai/analyze_timing.go
-func AnalyzeTiming(ctx context.Context, analytics []VideoAnalytics) (string, error)
+func GenerateTimingRecommendations(ctx context.Context, analytics []VideoAnalytics) ([]TimingRecommendation, error)
 
 // internal/publishing/youtube_analytics.go (extend existing)
-func EnrichWithTimingData(analytics []VideoAnalytics) []VideoAnalytics
-func CalculateFirstWeekMetrics(ctx context.Context, videoID string, publishedAt time.Time) (FirstWeekMetrics, error)
+func EnrichWithTimingData(analytics []VideoAnalytics) []VideoAnalytics {
+    // Extract DayOfWeek, TimeOfDay from PublishedAt
+    // Calculate ViewsPerDay, EngagementRate
+}
+
+func GroupByTimeSlot(analytics []VideoAnalytics) map[string][]VideoAnalytics {
+    // Group videos by "Monday 16:00", "Tuesday 09:00", etc.
+}
 ```
 
-**Shared Functions:**
+**Settings Management:**
 
 ```go
-// internal/app/analytics_files.go (extend existing)
-func SaveTimingAnalysisFiles(analytics []VideoAnalytics, analysis string, isExperiment bool) (AnalysisFiles, error)
+// internal/configuration/settings.go
+func SaveTimingRecommendations(recommendations []TimingRecommendation) error {
+    // Update settings.yaml with new recommendations
+}
 
-// internal/app/menu_handler.go
-func (h *MenuHandler) HandleAnalyzeTiming(ctx context.Context) error
+func LoadTimingRecommendations() ([]TimingRecommendation, error) {
+    // Read recommendations from settings.yaml
+}
 ```
 
-### Video YAML Integration
+**Apply Timing Logic:**
 
-**Accessing video date fields:**
+```go
+// internal/app/timing_logic.go
+func ApplyRandomTiming(currentDate time.Time, recommendations []TimingRecommendation) (time.Time, TimingRecommendation, error) {
+    // 1. Pick random recommendation
+    // 2. Calculate next occurrence within same week (Mon-Sun)
+    // 3. Return new date + selected recommendation
+}
+
+func GetWeekBoundaries(date time.Time) (monday, sunday time.Time) {
+    // Return Monday and Sunday of the week containing date
+}
+```
+
+**Menu Handler:**
+
+```go
+// internal/app/menu_handler.go
+func (h *MenuHandler) HandleAnalyzeTiming(ctx context.Context) error {
+    // 1. Fetch YouTube Analytics
+    // 2. Enrich with timing data
+    // 3. Call AI to generate recommendations
+    // 4. Display to user
+    // 5. Save to settings.yaml if approved
+    // 6. Save analysis files to ./tmp/
+}
+```
+
+### Video Date Format
+
+**Current format in YAML:**
 
 ```yaml
-# Example: data/devops-toolkit/kubernetes-best-practices.yaml
-title: "Kubernetes Best Practices 2025"
-date: "2025-11-17T16:00:00Z"  # Current scheduled time
-phase: 2  # Material Done (unpublished)
-# ... other fields
+# Example: manuscript/category-02/video.yaml
+date: "2025-12-02T16:00"  # UTC (no timezone suffix)
 ```
 
-**Reading/suggesting modifications:**
+**YouTube API interpretation:**
+- Treats as UTC when no timezone specified
+- `16:00` UTC = 5pm CET (winter) / 6pm CEST (summer)
+- Passed directly to YouTube API's `PublishAt` field
 
-1. Find all videos in phases 0-4 (unpublished) using existing `storage` package
-2. Parse `date` field from each video's YAML
-3. Generate new date/time recommendations based on experiment plan
-4. Display suggestions to user (don't auto-modify)
-5. User manually edits YAML files with new dates
-
-**Progress tracking approach:**
-
-Instead of maintaining separate state file, calculate coverage dynamically:
-1. Fetch all historical video analytics
-2. Group by time slot (day + hour)
-3. Count videos per slot
-4. Identify slots with < 3 videos (need testing)
-5. Prioritize these slots in recommendations
-
-This is **stateless** - no need to track "which slots we've tested" separately since video metadata contains publish dates.
+**Apply Random Timing:**
+- Button updates this field in-place
+- Format remains `YYYY-MM-DDTHH:MM`
+- User sees change in form, saves video normally
 
 ### Menu Integration
 
-**Add to existing analyze menu:**
+**Add "Timing" to Analyze menu:**
 
 ```go
 // internal/app/menu_handler.go
@@ -501,81 +488,47 @@ func (h *MenuHandler) HandleAnalyzeMenu(ctx context.Context) error {
 }
 
 func (h *MenuHandler) HandleAnalyzeTiming(ctx context.Context) error {
-    // 1. Fetch analytics
-    fmt.Println("Fetching video analytics from YouTube...")
-    analytics, err := publishing.GetVideoAnalyticsForLastYear(ctx)
-    if err != nil {
-        return fmt.Errorf("failed to fetch analytics: %w", err)
-    }
-    fmt.Printf("✓ Successfully fetched analytics for %d videos\n\n", len(analytics))
-
-    // 2. Enrich with timing data
-    analytics = publishing.EnrichWithTimingData(analytics)
-
-    // 3. Check for variation
-    hasVariation, coverage := timing_suggestions.DetectTimingVariation(analytics)
-
-    if !hasVariation {
-        // EXPERIMENTATION MODE
-        return h.handleExperimentationMode(ctx, analytics, coverage)
-    } else {
-        // ANALYSIS MODE
-        return h.handleAnalysisMode(ctx, analytics)
-    }
-}
-
-func (h *MenuHandler) handleExperimentationMode(ctx context.Context, analytics []VideoAnalytics, coverage TimingCoverage) error {
-    fmt.Println("⚠️  Insufficient Timing Variation Detected")
-    // Display current pattern...
-    // Generate experiment plan...
-    // Get scheduled videos...
-    // Generate suggestions...
-    // Save files...
-    // Display next steps...
-}
-
-func (h *MenuHandler) handleAnalysisMode(ctx context.Context, analytics []VideoAnalytics) error {
-    fmt.Println("✓ Sufficient variation detected!")
-    // Run AI analysis...
-    // Save files...
-    // Display key findings...
+    // 1. Fetch analytics from YouTube
+    // 2. Enrich with timing data (day/time extraction)
+    // 3. Group by time slot and calculate performance metrics
+    // 4. Call AI to generate 6-8 recommendations
+    // 5. Display to user
+    // 6. Prompt to save to settings.yaml
+    // 7. Save analysis JSON/markdown to ./tmp/
 }
 ```
 
-### Integration with Publish Workflow
+### Initial Details Form Integration
 
-**Display timing suggestion during publish:**
+**Add button below date field:**
 
 ```go
-// internal/app/menu_handler.go (in HandlePublishVideo or similar)
+// internal/app/aspect_forms.go (where InitialDetails form is defined)
 
-func (h *MenuHandler) showTimingSuggestion(video Video) {
-    // Check if experimentation is active
-    plan, err := timing_suggestions.GetActiveExperimentPlan()
-    if err != nil || plan == nil {
-        return // No active experiment
-    }
+func CreateInitialDetailsForm(video *storage.Video) *huh.Form {
+    return huh.NewForm(
+        huh.NewGroup(
+            // ... existing fields (ProjectName, ProjectURL)
 
-    // Find next priority slot needing videos
-    nextSlot := plan.GetNextRecommendedSlot()
-    if nextSlot == nil {
-        return // All slots have sufficient data
-    }
+            huh.NewInput().
+                Title("Date (UTC)").
+                Value(&video.Date).
+                Validate(/* date validation */),
 
-    // Calculate suggested publish date
-    suggestedDate := timing_suggestions.CalculateNextDateForSlot(nextSlot, video.Date)
+            // NEW: Apply Random Timing button
+            huh.NewConfirm().
+                Title("Apply Random Timing?").
+                Description("Pick a random timing recommendation from settings.yaml").
+                Affirmative("Apply").
+                Negative("Skip").
+                Value(&applyTiming),
+        ),
+    )
 
-    // Display suggestion
-    fmt.Printf("\n💡 Timing Experiment Suggestion:\n")
-    fmt.Printf("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
-    fmt.Printf("Recommended slot: %s %s (Priority %d)\n",
-        nextSlot.DayOfWeek, nextSlot.TimeOfDay, nextSlot.Priority)
-    fmt.Printf("Reason: %s\n", nextSlot.Reasoning)
-    fmt.Printf("\nCurrent: %s\n", video.Date.Format("Monday 2006-01-02 15:04:05"))
-    fmt.Printf("Suggested: %s\n", suggestedDate.Format("Monday 2006-01-02 15:04:05"))
-    fmt.Printf("\nWould you like to use the recommended time? (y/N): ")
-
-    // Handle user input...
+    // After form runs, if applyTiming == true:
+    // - Call timing_logic.ApplyRandomTiming(video.Date, recommendations)
+    // - Update video.Date with result
+    // - Show confirmation
 }
 ```
 
@@ -583,95 +536,138 @@ func (h *MenuHandler) showTimingSuggestion(video Video) {
 
 ## Success Metrics
 
-### Experimentation Phase
-- **Schedule Diversity**: 6+ time slots tested with 3+ videos each within 12 weeks
-- **User Adoption**: 70%+ of suggested schedule changes applied by user
-- **Data Quality**: All experiment videos have complete analytics data
+### Initial Release
+- **Recommendation Generation**: AI successfully generates 6-8 timing recommendations based on analytics
+- **Settings Storage**: Recommendations persist in settings.yaml correctly
+- **Button Functionality**: "Apply Random Timing" button works reliably in Initial Details form
+- **Same-Week Logic**: Date calculations respect Monday-Sunday boundaries
+- **UTC Consistency**: All times stored and applied in UTC format
 
-### Analysis Phase
-- **Insight Quality**: AI identifies clear performance differences (>20%) between best/worst slots
-- **Actionability**: Recommendations are specific enough to implement immediately
-- **Statistical Confidence**: Findings based on sufficient sample sizes (3+ videos per slot minimum)
+### User Adoption
+- **Feature Usage**: 50%+ of videos use "Apply Random Timing" button
+- **Schedule Diversity**: Achieve 4+ different day/time combinations within 3 months
+- **Re-analysis**: User re-runs timing analysis quarterly to evolve recommendations
 
-### Overall Feature Success
-- **Performance Improvement**: 15%+ increase in first-week views after adopting optimal timing
-- **User Engagement**: Feature used monthly to monitor timing effectiveness
-- **Workflow Integration**: 50%+ of video publishes reference timing recommendations
+### Performance Impact
+- **Measurable Variation**: Sufficient data to compare performance across time slots (after 3-6 months)
+- **Optimization**: 10-15%+ improvement in views/engagement for best-performing slots
+- **Data-Driven Decisions**: Recommendations evolve based on actual performance data
 
 ---
 
 ## Implementation Milestones
 
-### Milestone 1: Core Timing Analytics Infrastructure
-- [ ] Extend `VideoAnalytics` struct with timing fields (day, time, first-week metrics)
-- [ ] Implement `EnrichWithTimingData()` to parse publish times into structured fields
-- [ ] Add `CalculateFirstWeekMetrics()` for age-normalized analysis
-- [ ] Implement `DetectTimingVariation()` to assess data coverage
+### Milestone 1: Settings & Configuration
+- [ ] Add `TimingRecommendation` and `TimingConfig` structs to `internal/configuration/settings.go`
+- [ ] Implement `LoadTimingRecommendations()` and `SaveTimingRecommendations()` functions
+- [ ] Add settings.yaml schema for `timing.recommendations` array
 - [ ] Add comprehensive unit tests (80% coverage target)
 
-**Validation**: Can fetch and enrich video analytics with timing data, detect variation status
+**Validation**: Can read/write timing recommendations from/to settings.yaml
 
-### Milestone 2: Experimentation Plan Generation
-- [ ] Create `generate-schedule.md` AI prompt template with audience/niche context
-- [ ] Implement `GenerateExperimentSchedule()` using AI to suggest 6-8 priority slots
-- [ ] Build `GetScheduledVideos()` helper to find unpublished videos (phases 0-4)
-- [ ] Implement `GenerateScheduleSuggestions()` to map slots to specific videos
-- [ ] Create `FormatExperimentReport()` for user-friendly output
-- [ ] Add tests for schedule generation logic
+### Milestone 2: Analytics Data Extraction
+- [ ] **Refactor existing fetcher** to accept `period` parameter (if not already)
+- [ ] Verify `VideoAnalytics` struct has `PublishedAt` field (should already exist)
+- [ ] Extend `VideoAnalytics` struct with computed fields: `DayOfWeek`, `TimeOfDay`, `ViewsPerDay`, `EngagementRate`
+- [ ] Implement `EnrichWithTimingData()` to extract day/time from `PublishedAt`
+- [ ] Implement `GroupByTimeSlot()` to aggregate videos by publish time
+- [ ] Calculate performance metrics per time slot
+- [ ] Add tests for timing data extraction and grouping
 
-**Validation**: System generates actionable experiment plans with specific video date suggestions
+**Validation**: Can extract timing patterns from YouTube Analytics data without modifying fetching logic
 
-### Milestone 3: Performance Analysis Engine
-- [ ] Create `analyze-timing.md` AI prompt template for pattern detection
-- [ ] Implement `AnalyzeTiming()` function with statistical analysis requirements
-- [ ] Build day-of-week and time-of-day grouping logic
-- [ ] Calculate baseline comparisons and performance deltas
-- [ ] Add tests for analysis accuracy and edge cases
+### Milestone 3: AI Recommendation Generation
+- [ ] Create `analyze-timing.md` AI prompt template (UTC-aware, iterative improvement strategy)
+- [ ] Implement `GenerateTimingRecommendations()` function
+- [ ] Parse JSON response from AI into `[]TimingRecommendation`
+- [ ] Handle edge cases (no data, AI errors, invalid JSON)
+- [ ] Add tests for recommendation generation
 
-**Validation**: Given varied timing data, system produces meaningful insights and recommendations
+**Validation**: AI generates 6-8 timing recommendations based on performance data
 
-### Milestone 4: CLI Integration & User Experience
-- [ ] Add "Timing" option to Analyze menu in `menu_handler.go`
-- [ ] Implement `HandleAnalyzeTiming()` with experimentation vs analysis mode logic
-- [ ] Create `SaveTimingAnalysisFiles()` for JSON + markdown output
-- [ ] Build progress display (coverage stats, key findings summary)
-- [ ] Add publish workflow integration to show timing suggestions
-- [ ] Test complete CLI workflow end-to-end
+### Milestone 4: Apply Random Timing Logic
+- [ ] Implement `ApplyRandomTiming(currentDate, recommendations)` in `internal/app/timing_logic.go`
+- [ ] Implement `GetWeekBoundaries()` helper (Monday-Sunday calculation)
+- [ ] Handle date format conversion (`YYYY-MM-DDTHH:MM`)
+- [ ] Add tests for week boundary logic and date calculation
 
-**Validation**: Users can run timing analysis via CLI, receive experiment plans or performance insights
+**Validation**: Can pick random recommendation and apply to same week as current date
 
-### Milestone 5: Documentation & Slash Command
-- [ ] Create comprehensive user documentation for timing analysis feature
-- [ ] Implement `/analyze-timing` slash command for guided review workflow
-- [ ] Add usage examples and best practices guide
-- [ ] Document expected experimentation timeline and sample sizes
-- [ ] Update CLAUDE.md with timing analysis architecture notes
+### Milestone 5: CLI & Form Integration
+- [ ] Add "Timing" option to Analyze menu
+- [ ] Implement `HandleAnalyzeTiming()` menu handler
+- [ ] Add "Apply Random Timing" button to Initial Details form
+- [ ] Wire button to `ApplyRandomTiming()` logic
+- [ ] Save analysis files to `./tmp/` (JSON + markdown)
+- [ ] Test complete end-to-end workflow
 
-**Validation**: Users understand how to use feature, run experiments, and interpret results
+**Validation**: Users can generate recommendations and apply them via button click
+
+### Milestone 6: Documentation
+- [ ] Update CLAUDE.md with timing feature architecture
+- [ ] **Add "Analytics Integration Pattern" section to CLAUDE.md** documenting shared fetcher approach:
+  - Pattern: `fetch once → enrich differently → different AI prompts`
+  - Code example showing `GetVideoAnalytics()` reused by multiple analyses
+  - Guidelines for adding new analyses (reuse fetcher, add enrichment, create AI prompt)
+- [ ] Document settings.yaml timing configuration
+- [ ] Add usage examples and best practices
+- [ ] Document UTC timezone handling
+
+**Validation**: Users and developers understand how to use timing recommendations and add new analyses following established patterns
 
 ---
 
 ## Dependencies
 
 ### Existing Infrastructure
+
 - **YouTube Analytics API Integration** (`internal/publishing/youtube_analytics.go`)
-  - Already fetches views, CTR, engagement metrics
-  - Needs extension for first-week metrics calculation
+  - **REUSES existing analytics fetcher** (`GetVideoAnalyticsForLastYear()` or similar)
+  - **All analyses share the same fetcher function** - title analysis and timing analysis both use it
+  - Fetcher should accept period parameter (e.g., `period: "last_year"`, `"last_quarter"`)
+  - Returns comprehensive `VideoAnalytics` struct with all fields
+  - **Timing analysis adds NO new fetching logic** - only enrichment functions
 
 - **AI Provider System** (`internal/ai/`)
   - Azure OpenAI and Anthropic already configured
   - Template system supports new prompts
+  - Each analysis type has its own AI module with specific prompts
 
 - **Video Storage Layer** (`internal/storage/`)
-  - YAML-based video metadata with date fields
+  - YAML-based video metadata with date fields (UTC format)
   - Phase system (0-7) for workflow tracking
 
 - **CLI Menu System** (`internal/app/menu_handler.go`)
-  - Existing analyze menu to extend
+  - Existing Analyze menu to extend
+  - Pattern: fetch analytics once → multiple analyses can use same data
+
+### Shared Analytics Pattern
+
+**Key Principle**: One fetcher, multiple enrichers
+
+```go
+// Shared by all analyses (already exists)
+analytics := publishing.GetVideoAnalytics(ctx, period)
+
+// Title analysis
+titleData := ExtractTitleData(analytics)
+ai.AnalyzeTitles(titleData)
+
+// Timing analysis
+timingData := EnrichWithTimingData(analytics)
+ai.GenerateTimingRecommendations(timingData)
+```
+
+**What's New for Timing**:
+- `EnrichWithTimingData()` - extract day/time from PublishedAt
+- `GroupByTimeSlot()` - group videos by publish time
+- Timing-specific AI prompt template
+- Everything else is reused
 
 ### External APIs
 - **YouTube Analytics API v2** (already authenticated)
-  - May need additional queries for time-range-specific metrics
+  - Same API calls as title analysis
+  - No additional queries needed
 
 - **YouTube Data API v3** (already authenticated)
   - No changes needed
@@ -732,42 +728,104 @@ func (h *MenuHandler) showTimingSuggestion(video Video) {
 
 ## Open Questions
 
-1. **First-Week Metrics API**: Can YouTube Analytics API provide views/CTR for first 7 days after publish, or only cumulative? Need to verify API capabilities.
+### Resolved ✅
 
-2. **Audience Timezone Detection**: Should we fetch viewer geography from YouTube Analytics to auto-detect target timezone, or use fixed EST?
+1. **Settings Integration**: ✅ RESOLVED - Store in `settings.yaml` for persistent, reusable recommendations
+2. **Timezone Handling**: ✅ RESOLVED - Use UTC, defer timezone conversion to future PRD
+3. **Two-Phase System**: ✅ RESOLVED - Unified approach, same logic every run
+4. **Application Method**: ✅ RESOLVED - Button in Initial Details form, not automatic
+5. **Week Boundaries**: ✅ RESOLVED - Monday-Sunday, same week as current date
+6. **Recommendation Count**: ✅ RESOLVED - 6-8 timing recommendations
 
-3. **Time Slot Granularity**: Start with hour-level (24 slots per day) or broader periods (morning/afternoon/evening/night)? AI can handle either, but user experience differs.
+### Remaining
 
-4. **Experiment Duration**: Default to 12 weeks for testing 6-8 slots with 1 video/week. Is this reasonable, or should we recommend 2 videos/week (6 weeks)?
+1. **First-Week Metrics API**: Can YouTube Analytics API provide views/CTR for first 7 days after publish, or only cumulative? May need to calculate normalized metrics (views-per-day) as fallback.
 
-5. **API Endpoint**: Should we add `/api/analyze/timing` REST endpoint initially, or CLI-only like early title analytics?
+2. **API Endpoint**: Should we add `/api/analyze/timing` REST endpoint initially, or CLI-only? Suggest CLI-only for v1, add REST later if needed.
 
-6. **Settings Integration**: Should optimal timing recommendations be stored in `settings.yaml` for reference, or only in `./tmp/` analysis files?
+3. **Competitor Analysis**: Feasible to check when similar channels publish? Would require additional YouTube Data API queries. Defer to future enhancement.
 
-7. **Competitor Analysis**: Feasible to check when similar channels publish? Would require additional YouTube Data API queries and channel identification logic.
+---
+
+## Design Decisions
+
+### 2025-11-29: Major Simplification
+
+**Decision**: Simplify from two-phase system to unified approach
+- **Rationale**: Two-phase design (experimentation vs. analysis) was overcomplicating the feature. User insight: "I don't think it should matter whether it is the first or the second or the third run"
+- **Impact**: Significantly simplified architecture, removed stateful tracking, same logic runs every time
+- **Code Impact**: Removed `ExperimentPlan`, `ScheduleSuggestion`, `DetectTimingVariation`, phase-specific handlers
+
+**Decision**: Store recommendations in settings.yaml
+- **Rationale**: Persistent, reusable library of timing recommendations that can be applied repeatedly
+- **Impact**: Added `TimingConfig` to settings.go, recommendations persist across sessions
+- **Code Impact**: New structs in `internal/configuration/settings.go`
+
+**Decision**: Apply via button in Initial Details form
+- **Rationale**: User-controlled application, not automatic. Picks random recommendation from settings.yaml
+- **Impact**: Non-intrusive, user explicitly chooses when to vary timing
+- **Code Impact**: New button in `aspect_forms.go`, calls `ApplyRandomTiming()`
+
+**Decision**: Same-week constraint (Monday-Sunday)
+- **Rationale**: Preserve weekly planning, user sets Monday date and knows what day/time it'll publish that week
+- **Impact**: Predictable scheduling, no cross-week changes
+- **Code Impact**: `GetWeekBoundaries()` function, date calculation logic
+
+**Decision**: Use UTC exclusively
+- **Rationale**: Video YAML dates are stored as `T16:00` (no timezone suffix), YouTube API treats as UTC. Keep consistent.
+- **Impact**: AI must generate times in UTC, no timezone conversion in this PRD
+- **Code Impact**: AI prompt explicitly requires UTC format, all recommendations in UTC
+
+**Decision**: Include publish dates/times in analytics
+- **Rationale**: AI needs to see when videos were published to analyze performance patterns
+- **Impact**: Critical data for pattern detection
+- **Code Impact**: Ensure `PublishedAt` is extracted and passed to AI
+
+**Decision**: Iterative improvement (keep good, replace bad)
+- **Rationale**: Build on success rather than complete replacement. User insight: "keep some of the current dates (those that were more successful)"
+- **Impact**: Recommendations evolve over time, not thrown away
+- **Code Impact**: AI prompt strategy: keep excellent/good performers, replace poor performers
+
+**Decision**: Shared analytics fetcher across all analyses
+- **Rationale**: Title analysis and timing analysis need the same base data (views, CTR, publishedAt, etc.). User insight: "all options in Analyze should use the same function... and the major difference is in data we embed in prompts"
+- **Impact**: Single source of truth, consistency across analyses, easier to add new analyses
+- **Code Impact**:
+  - Refactor existing fetcher to accept `period` parameter
+  - Timing analysis only adds enrichment functions (`EnrichWithTimingData`, `GroupByTimeSlot`)
+  - NO new YouTube API fetching logic needed
+  - Pattern: `fetch once → enrich differently → different AI prompts`
 
 ---
 
 ## Progress Log
 
 ### 2025-11-10
-- ✅ PRD created with comprehensive two-phase design (experimentation + analysis)
+- ✅ PRD created with comprehensive two-phase design
 - ✅ Defined 5 major implementation milestones
-- ✅ Analyzed title analytics architecture for consistency patterns
-- ✅ Addressed chicken-and-egg problem with experiment plan generation
-- 📝 Pending: Verify YouTube Analytics API capabilities for first-week metrics
-- 📝 Pending: User review and approval to begin implementation
+- ✅ Analyzed title analytics architecture
+- 📝 Pending: User review
+
+### 2025-11-29
+- ✅ Major design simplification based on user feedback
+- ✅ Resolved all major design questions
+- ✅ Unified approach (same logic every run)
+- ✅ Settings.yaml integration designed
+- ✅ Button-based application workflow
+- ✅ UTC timezone handling clarified
+- ✅ Milestones reduced from 5 to 6 (simpler structure)
+- ✅ PRD status updated to "Design Complete"
+- 📝 Ready for implementation
 
 ---
 
 ## Notes
 
-This feature represents a **significant evolution** beyond simple analytics reporting (like title analytics) by introducing:
+**Key Innovation**: Iterative improvement model - AI keeps what works and evolves recommendations over time rather than complete replacement.
 
-1. **Active experimentation guidance** - System tells user what to test, not just what happened
-2. **Stateful workflow awareness** - Integrates with video phases and scheduling
-3. **Iterative refinement** - Transitions from "not enough data" to "actionable insights" over time
+**Simplified Design Principle**: Same logic every run. No phases, no state tracking, no complexity. Just: analyze → recommend → store → apply.
 
-The chicken-and-egg problem (need variation to analyze, but no variation exists) is solved by making the feature **proactive** rather than purely reactive. This sets a pattern for future analytics features that may need similar bootstrapping.
-
-**Key Design Principle**: Follow title analytics architecture patterns while extending for stateful experimentation workflow.
+**⚠️ IMPORTANT - Post-Implementation**:
+After completing implementation, update CLAUDE.md with "Analytics Integration Pattern" section documenting the shared fetcher approach. This establishes a reusable pattern for future analyses (thumbnails, descriptions, etc.). Include:
+- Code example of shared `GetVideoAnalytics()` function
+- Pattern diagram: `fetch once → enrich differently → different AI prompts`
+- Guidelines for developers adding new analyses
