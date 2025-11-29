@@ -41,10 +41,12 @@ Your goal is **iterative improvement through data-driven experimentation**.
    - Generate new recommendations to test
    - Focus on creating **diverse experimental coverage**
 
-3. **Ensure diversity in recommendations**:
-   - Spread across **different days of the week** (Monday through Sunday)
-   - Spread across **different UTC hours** (aim for 12+ hour range across recommendations)
-   - Avoid clustering all recommendations around similar times
+3. **Ensure diversity in recommendations** (CRITICAL REQUIREMENT):
+   - **Maximum 2 recommendations on the same day** (e.g., at most 2 on Monday)
+   - **Maximum 2 recommendations at the same time** (e.g., at most 2 at 16:00)
+   - Spread across **at least 4 different days of the week**
+   - Spread across **at least 12-hour time range** (e.g., if earliest is 08:00, latest should be 20:00+)
+   - Avoid clustering - recommendations should explore different audience behaviors
 
 4. **Output 6-8 total recommendations** with mix of:
    - Proven performers (if data exists)
@@ -69,8 +71,9 @@ Each recommendation must include **substantive reasoning** that explains the str
 
 - **All times MUST be UTC** (format: "HH:MM" 24-hour, e.g., "09:00", "16:00", "21:00")
 - **All days MUST be full English weekday names** (e.g., "Monday", "Tuesday", "Saturday")
-- **Maximize experimental diversity**: Recommendations should span multiple days and time ranges
-- **Iterative approach**: Keep what works based on data, explore new possibilities where data is missing
+- **Diversity is MANDATORY**: Max 2 same-day, max 2 same-time, min 4 different days, min 12-hour spread
+- **No clustering around one "safe" slot**: Even if one time has the most data, explore alternatives
+- **Iterative approach**: Balance proven performers with experimental exploration
 
 ### Output Format
 

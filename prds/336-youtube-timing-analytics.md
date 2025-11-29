@@ -594,7 +594,8 @@ func CreateInitialDetailsForm(video *storage.Video) *huh.Form {
 - [x] Save analysis files to `./tmp/` (complete audit trail: analytics, prompt, response, result)
 
 **Validation**: User can run tool → Analyze → Timing → generate and save 6-8 recommendations to settings.yaml ✅
-**Completed**: 2025-11-29
+**Completed**: 2025-11-29 (morning)
+**Enhanced**: 2025-11-29 (evening) - Critical bug fixes for production readiness (see work log)
 
 **Implementation Notes**:
 - AI prompt uses assumption-free approach (no timezone targeting, no behavioral assumptions)
@@ -905,6 +906,87 @@ Implemented first-week metrics system instead of cumulative `ViewsPerDay` to eli
 1. Fix remaining test failures (title analysis tests)
 2. Manual end-to-end testing of both analyses
 3. Start Milestone 4 (Apply Random Timing button)
+
+### 2025-11-29 (Late Evening): Critical Bug Fixes & Data Quality Improvements
+**Duration**: ~4-5 hours
+**Primary Focus**: Post-Milestone 3 bug fixes and real-world validation
+
+**Context**: After Milestone 3 completion, user testing revealed critical data quality issues producing incorrect recommendations with zero metrics.
+
+**Issues Fixed**:
+1. ⭐ **Critical: Zero metrics bug**
+   - First-week metrics never fetched, all performance data showed 0 in AI prompt
+   - Root cause: `EnrichWithFirstWeekMetrics()` not called before timing enrichment
+   - Fix: Added metrics fetching in `analyze_timing.go:55-59` with smart skipping for pre-populated test data
+   - Impact: Real performance metrics now drive recommendations
+   - Evidence: `internal/ai/analyze_timing.go`, `internal/publishing/youtube_analytics.go:307-309`
+
+2. ⭐ **Critical: Test suite blocked**
+   - Title analysis tests failing after JSON refactoring (expected string, got struct)
+   - Fixed validation functions to expect `TitleAnalysisResult` struct
+   - Updated mock responses from markdown to valid JSON
+   - Impact: All tests passing, CI unblocked
+   - Evidence: `internal/ai/analyze_titles_test.go:148, 159, 267-341`
+
+3. ⭐ **Data quality: Live stream contamination**
+   - Live streams have fundamentally different performance (live spike, different CTR)
+   - Added `LiveBroadcastContent` field fetching from YouTube API
+   - Filter: Skip videos where `LiveBroadcastContent != "none"`
+   - Impact: Only regular videos included in analysis
+   - Evidence: `internal/publishing/youtube_analytics.go:117, 142, 173-175`
+
+4. ⭐ **Data quality: Historical video contamination**
+   - Videos from 2021 appearing in 365-day analysis
+   - Root cause: YouTube Analytics API filters by view dates, not publish dates
+   - Fix: Manual publish date filtering `metadata.PublishedAt.Before(startDate)`
+   - Impact: Only videos published in last 365 days included
+   - Evidence: `internal/publishing/youtube_analytics.go:180-184`
+
+5. ⭐ **Data quality: YouTube Shorts contamination**
+   - Shorts (≤60s) have completely different audience behavior and algorithm treatment
+   - Implemented `isShort()` function with ISO 8601 duration parsing (PT1M30S format)
+   - Added `ContentDetails.Duration` fetching from YouTube API
+   - Comprehensive test suite (15 test cases covering edge cases)
+   - Impact: Clean dataset of regular long-form videos only
+   - Evidence: `internal/publishing/youtube_analytics.go:129, 146, 187-189, 476-512`
+   - Tests: `internal/publishing/youtube_analytics_test.go:534-570`
+
+6. ⭐ **Analysis quality: Insufficient sample sizes**
+   - Time slots with 1-2 videos lack statistical significance
+   - Added `filterTimeSlotsByMinVideos()` requiring minimum 3 videos per slot
+   - AI only sees statistically meaningful time slots
+   - Impact: More reliable recommendations, no noise from sparse data
+   - Evidence: `internal/ai/analyze_timing.go:68-70, 140-159`
+
+7. ⭐ **Recommendation diversity: 16:00 UTC clustering**
+   - AI recommending 4-5 slots at Monday 16:00 (the "safe" high-data slot)
+   - Strengthened prompt constraints with explicit limits:
+     - Max 2 recommendations same day
+     - Max 2 recommendations same time
+     - Min 4 different days
+     - Min 12-hour time spread
+   - Impact: Better experimental coverage, more actionable insights
+   - Evidence: `internal/ai/templates/analyze-timing.md:44-49, 74-76`
+
+**Validation Completed**:
+- ✅ All tests passing (`go test ./...` - 25 packages)
+- ✅ Build successful (`make build-local`)
+- ✅ Real-world user testing with actual YouTube channel data
+- ✅ Analytics files show real first-week metrics (no more zeros)
+- ✅ Appropriate video count (~50-60 vs 200, matching weekly schedule)
+- ✅ Recommendations show good day/time diversity
+- ✅ No live streams, Shorts, or old videos in dataset
+
+**Files Modified**:
+- `internal/ai/analyze_timing.go` (55-62, 68-70, 140-159)
+- `internal/ai/analyze_titles_test.go` (148-225, 267-341)
+- `internal/ai/templates/analyze-timing.md` (44-49, 74-76)
+- `internal/publishing/youtube_analytics.go` (117, 129, 142, 146, 173-175, 180-184, 187-189, 476-512)
+- `internal/publishing/youtube_analytics_test.go` (534-570)
+
+**Impact**: Milestone 3 now produces accurate, actionable recommendations with high-quality data and proper experimental design. Feature is production-ready for real-world use.
+
+**Next Session Priority**: Begin Milestone 4 (Apply Random Timing button implementation)
 
 ---
 

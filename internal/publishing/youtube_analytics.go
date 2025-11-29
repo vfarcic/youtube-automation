@@ -78,14 +78,15 @@ func GetVideoAnalytics(ctx context.Context, startDate, endDate time.Time) ([]Vid
 	// Metrics: views, averageViewDuration, likes, comments, cardClickRate
 	// Dimensions: video (group by video ID)
 	// Note: cardClickRate represents CTR (click-through rate from impressions)
+	// MaxResults: 200 top-performing videos provides sufficient sample for timing analysis
 	analyticsCall := analyticsService.Reports.Query().
 		Ids("channel=="+channelID).
 		StartDate(startDateStr).
 		EndDate(endDateStr).
 		Metrics("views,estimatedMinutesWatched,likes,comments,averageViewDuration,cardClickRate").
 		Dimensions("video").
-		Sort("-views"). // Sort by views descending
-		MaxResults(200) // Fetch up to 200 videos
+		Sort("-views").
+		MaxResults(200)
 
 	analyticsResponse, err := analyticsCall.Do()
 	if err != nil {
@@ -108,10 +109,12 @@ func GetVideoAnalytics(ctx context.Context, startDate, endDate time.Time) ([]Vid
 		}
 	}
 
-	// Fetch video metadata (titles and publish dates) from YouTube Data API
+	// Fetch video metadata (titles, publish dates, broadcast status, and duration) from YouTube Data API
 	videoMetadata := make(map[string]struct {
-		Title       string
-		PublishedAt time.Time
+		Title               string
+		PublishedAt         time.Time
+		LiveBroadcastContent string
+		Duration            string // ISO 8601 duration format (e.g., "PT15M30S")
 	})
 
 	// YouTube Data API allows up to 50 video IDs per request
@@ -123,7 +126,7 @@ func GetVideoAnalytics(ctx context.Context, startDate, endDate time.Time) ([]Vid
 		}
 		chunk := videoIDs[i:end]
 
-		videosCall := youtubeService.Videos.List([]string{"snippet"}).Id(chunk...)
+		videosCall := youtubeService.Videos.List([]string{"snippet", "contentDetails"}).Id(chunk...)
 		videosResponse, err := videosCall.Do()
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch video metadata: %w", err)
@@ -132,11 +135,15 @@ func GetVideoAnalytics(ctx context.Context, startDate, endDate time.Time) ([]Vid
 		for _, video := range videosResponse.Items {
 			publishedAt, _ := time.Parse(time.RFC3339, video.Snippet.PublishedAt)
 			videoMetadata[video.Id] = struct {
-				Title       string
-				PublishedAt time.Time
+				Title               string
+				PublishedAt         time.Time
+				LiveBroadcastContent string
+				Duration            string
 			}{
-				Title:       video.Snippet.Title,
-				PublishedAt: publishedAt,
+				Title:               video.Snippet.Title,
+				PublishedAt:         publishedAt,
+				LiveBroadcastContent: video.Snippet.LiveBroadcastContent,
+				Duration:            video.ContentDetails.Duration,
 			}
 		}
 	}
@@ -161,6 +168,23 @@ func GetVideoAnalytics(ctx context.Context, startDate, endDate time.Time) ([]Vid
 		metadata, exists := videoMetadata[videoID]
 		if !exists {
 			// Skip videos without metadata (shouldn't happen)
+			continue
+		}
+
+		// Skip live streams and premieres - they have different performance characteristics
+		// LiveBroadcastContent values: "none" (regular video), "live", "upcoming", "completed"
+		if metadata.LiveBroadcastContent != "none" {
+			continue
+		}
+
+		// Skip videos published before the start date
+		// Note: YouTube Analytics API filters by view dates, not publish dates
+		if metadata.PublishedAt.Before(startDate) {
+			continue
+		}
+
+		// Skip Shorts (videos ≤ 60 seconds) - they have different performance characteristics
+		if isShort(metadata.Duration) {
 			continue
 		}
 
@@ -303,6 +327,11 @@ func EnrichWithFirstWeekMetrics(ctx context.Context, analytics []VideoAnalytics)
 	for i, video := range analytics {
 		enriched[i] = video
 
+		// Skip if first-week data already populated (e.g., from tests or pre-processing)
+		if video.FirstWeekViews > 0 {
+			continue
+		}
+
 		// Fetch first-week metrics for this video
 		firstWeek, err := GetFirstWeekMetrics(ctx, video.VideoID, video.PublishedAt)
 		if err != nil {
@@ -442,4 +471,42 @@ func CalculateTimeSlotPerformance(grouped map[TimeSlot][]VideoAnalytics) []TimeS
 	}
 
 	return results
+}
+
+// isShort checks if a video is a YouTube Short based on its duration.
+// Shorts are defined as videos with duration ≤ 60 seconds.
+//
+// Parameters:
+//   - duration: ISO 8601 duration string (e.g., "PT1M30S", "PT45S", "PT10M5S")
+//
+// Returns:
+//   - bool: true if video is a Short (≤ 60 seconds), false otherwise
+func isShort(duration string) bool {
+	// Parse ISO 8601 duration format (e.g., "PT1M30S" = 1 minute 30 seconds)
+	// Format: PT[hours]H[minutes]M[seconds]S
+
+	if duration == "" {
+		return false
+	}
+
+	var hours, minutes, seconds int
+
+	// Simple parsing: extract H, M, S values
+	// Format: PT1H2M3S or PT2M30S or PT45S
+	fmt.Sscanf(duration, "PT%dH%dM%dS", &hours, &minutes, &seconds)
+	if hours == 0 && minutes == 0 {
+		// Try parsing without hours (e.g., "PT2M30S")
+		fmt.Sscanf(duration, "PT%dM%dS", &minutes, &seconds)
+	}
+	if hours == 0 && minutes == 0 && seconds == 0 {
+		// Try parsing seconds only (e.g., "PT45S")
+		fmt.Sscanf(duration, "PT%dS", &seconds)
+	}
+	if hours == 0 && minutes > 0 && seconds == 0 {
+		// Try parsing minutes only (e.g., "PT5M")
+		fmt.Sscanf(duration, "PT%dM", &minutes)
+	}
+
+	totalSeconds := hours*3600 + minutes*60 + seconds
+	return totalSeconds <= 60
 }

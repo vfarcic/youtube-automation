@@ -52,20 +52,30 @@ func GenerateTimingRecommendations(ctx context.Context, analytics []publishing.V
 		return nil, "", "", fmt.Errorf("failed to get AI provider: %w", err)
 	}
 
-	// Enrich analytics with timing data
-	enriched := publishing.EnrichWithTimingData(analytics)
+	// First, fetch first-week metrics for all videos (critical for accurate comparison)
+	enrichedWithMetrics, err := publishing.EnrichWithFirstWeekMetrics(ctx, analytics)
+	if err != nil {
+		return nil, "", "", fmt.Errorf("failed to fetch first-week metrics: %w", err)
+	}
+
+	// Then enrich with timing data (day/time extraction and engagement calculation)
+	enriched := publishing.EnrichWithTimingData(enrichedWithMetrics)
 
 	// Group by time slot and calculate performance
 	grouped := publishing.GroupByTimeSlot(enriched)
 	performance := publishing.CalculateTimeSlotPerformance(grouped)
 
-	// Calculate current pattern summary
+	// Filter out time slots with insufficient data (< 3 videos)
+	// Statistical significance requires minimum sample size
+	filteredPerformance := filterTimeSlotsByMinVideos(performance, 3)
+
+	// Calculate current pattern summary (only for slots with enough data)
 	currentPattern := calculateCurrentPattern(grouped, len(analytics))
 
 	// Prepare template data
 	data := TimingAnalysisData{
 		CurrentPattern:    currentPattern,
-		PerformanceBySlot: performance,
+		PerformanceBySlot: filteredPerformance,
 		TotalVideos:       len(analytics),
 	}
 
@@ -125,6 +135,27 @@ func calculateCurrentPattern(grouped map[publishing.TimeSlot][]publishing.VideoA
 	}
 
 	return summaries
+}
+
+// filterTimeSlotsByMinVideos filters out time slots with insufficient video count
+// for statistical significance.
+//
+// Parameters:
+//   - performance: Array of time slot performance data
+//   - minVideos: Minimum number of videos required per slot
+//
+// Returns:
+//   - []publishing.TimeSlotPerformance: Filtered array with only slots meeting minimum
+func filterTimeSlotsByMinVideos(performance []publishing.TimeSlotPerformance, minVideos int) []publishing.TimeSlotPerformance {
+	filtered := make([]publishing.TimeSlotPerformance, 0, len(performance))
+
+	for _, perf := range performance {
+		if perf.VideoCount >= minVideos {
+			filtered = append(filtered, perf)
+		}
+	}
+
+	return filtered
 }
 
 // parseTimingRecommendations extracts JSON from AI response and parses into recommendations

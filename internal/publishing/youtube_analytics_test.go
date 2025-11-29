@@ -530,3 +530,41 @@ func TestVideoAnalyticsDataValidation(t *testing.T) {
 		})
 	}
 }
+
+func TestIsShort(t *testing.T) {
+	tests := []struct {
+		name     string
+		duration string
+		want     bool
+	}{
+		// Shorts (≤ 60 seconds)
+		{name: "30 seconds", duration: "PT30S", want: true},
+		{name: "60 seconds exactly", duration: "PT60S", want: true},
+		{name: "45 seconds", duration: "PT45S", want: true},
+		{name: "1 minute (60s)", duration: "PT1M", want: true},
+		{name: "59 seconds", duration: "PT59S", want: true},
+
+		// Not Shorts (> 60 seconds)
+		{name: "61 seconds", duration: "PT61S", want: false},
+		{name: "1 minute 1 second", duration: "PT1M1S", want: false},
+		{name: "2 minutes", duration: "PT2M", want: false},
+		{name: "5 minutes 30 seconds", duration: "PT5M30S", want: false},
+		{name: "10 minutes", duration: "PT10M", want: false},
+		{name: "15 minutes 42 seconds", duration: "PT15M42S", want: false},
+		{name: "1 hour", duration: "PT1H", want: false},
+		{name: "1 hour 2 minutes 3 seconds", duration: "PT1H2M3S", want: false},
+
+		// Edge cases
+		{name: "empty string", duration: "", want: false},
+		{name: "0 seconds", duration: "PT0S", want: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := isShort(tt.duration)
+			if got != tt.want {
+				t.Errorf("isShort(%q) = %v, want %v", tt.duration, got, tt.want)
+			}
+		})
+	}
+}
