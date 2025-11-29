@@ -162,7 +162,21 @@ When adding new AI features:
 - Provide both traditional (JSON) and optimized (URL params) API endpoints
 - Include proper error handling and retry logic
 
-#### 4. Hugo URL Construction
+#### 4. Analytics Pattern (Shared Fetcher)
+When adding new analytics features (titles, timing, thumbnails, etc.):
+- **Reuse** `GetVideoAnalytics()` from `internal/publishing/youtube_analytics.go` - single source of truth
+- **Enrich** analytics data differently based on analysis type (e.g., `EnrichWithTimingData()`, title extraction)
+- **Create** analysis-specific AI prompt in `internal/ai/templates/`
+- **Save** complete audit trail: analytics JSON, prompt, AI response, formatted result (see `SaveCompleteAnalysis()`)
+- Pattern: `fetch once → enrich differently → different AI prompts`
+
+Example: Timing analytics feature (`Analyze → Timing` menu):
+- Fetches YouTube analytics with first-week metrics (eliminates age bias)
+- AI generates 6-8 timing recommendations stored in `settings.yaml`
+- "Apply Random Timing" button in video forms picks random recommendation within same week
+- All times in UTC, iterative improvement (keep good, replace poor performers)
+
+#### 5. Hugo URL Construction
 For any Hugo-related functionality, use the established pattern:
 - Extract category from manuscript path using `GetCategoryFromFilePath()`
 - Sanitize titles using `SanitizeTitle()`
