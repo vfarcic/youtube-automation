@@ -566,16 +566,20 @@ func CreateInitialDetailsForm(video *storage.Video) *huh.Form {
 **Validation**: Can read/write timing recommendations from/to settings.yaml ✅
 **Completed**: 2025-11-29
 
-### Milestone 2: Analytics Data Extraction
-- [ ] **Refactor existing fetcher** to accept `period` parameter (if not already)
-- [ ] Verify `VideoAnalytics` struct has `PublishedAt` field (should already exist)
-- [ ] Extend `VideoAnalytics` struct with computed fields: `DayOfWeek`, `TimeOfDay`, `ViewsPerDay`, `EngagementRate`
-- [ ] Implement `EnrichWithTimingData()` to extract day/time from `PublishedAt`
-- [ ] Implement `GroupByTimeSlot()` to aggregate videos by publish time
-- [ ] Calculate performance metrics per time slot
-- [ ] Add tests for timing data extraction and grouping
+### Milestone 2: Analytics Data Extraction ✅
+- [x] Verify existing fetcher accepts flexible date ranges (already exists - `GetVideoAnalytics(ctx, startDate, endDate)`)
+- [x] Verify `VideoAnalytics` struct has `PublishedAt` field (confirmed - field exists and populated)
+- [x] **Implement first-week metrics system** (`GetFirstWeekMetrics()`, `EnrichWithFirstWeekMetrics()`) - Critical for eliminating age bias
+- [x] Extend `VideoAnalytics` struct with first-week fields (`FirstWeekViews`, `FirstWeekLikes`, `FirstWeekComments`, `FirstWeekCTR`) and timing fields (`DayOfWeek`, `TimeOfDay`, `FirstWeekEngagement`)
+- [x] Implement `EnrichWithTimingData()` to extract day/time from `PublishedAt` and calculate engagement rate
+- [x] Implement `GroupByTimeSlot()` with `TimeSlot` struct for video aggregation
+- [x] Implement `CalculateTimeSlotPerformance()` for metric aggregation per time slot
+- [x] Add comprehensive tests for all timing functions (10+ test functions, all passing)
 
-**Validation**: Can extract timing patterns from YouTube Analytics data without modifying fetching logic
+**Validation**: Can extract timing patterns and first-week performance metrics from YouTube Analytics data ✅
+**Completed**: 2025-11-29
+
+**Implementation Notes**: Added first-week metrics system (not in original plan) to eliminate age bias. Uses per-video API queries with `filters="video==ID"` - simple, maintainable approach prioritizing accuracy over optimization. Quarterly analysis frequency makes N API calls acceptable.
 
 ### Milestone 3: AI Recommendation Generation
 - [ ] Create `analyze-timing.md` AI prompt template (UTC-aware, iterative improvement strategy)
@@ -806,7 +810,7 @@ ai.GenerateTimingRecommendations(timingData)
 - ✅ Analyzed title analytics architecture
 - 📝 Pending: User review
 
-### 2025-11-29
+### 2025-11-29 (Morning)
 - ✅ Major design simplification based on user feedback
 - ✅ Resolved all major design questions
 - ✅ Unified approach (same logic every run)
@@ -816,7 +820,33 @@ ai.GenerateTimingRecommendations(timingData)
 - ✅ Milestones reduced from 5 to 6 (simpler structure)
 - ✅ PRD status updated to "Design Complete"
 - ✅ **Milestone 1 completed**: Settings & Configuration infrastructure implemented with 83.3% test coverage
-- 📝 Ready for Milestone 2: Analytics Data Extraction
+
+### 2025-11-29 (Afternoon): Milestone 2 - Analytics Data Extraction Complete
+**Duration**: ~3 hours
+**Commits**: Multiple implementation commits
+**Primary Focus**: First-week metrics system and timing data extraction
+
+**Completed PRD Items**:
+- [x] Extended `VideoAnalytics` struct with first-week performance fields - Evidence: `internal/publishing/youtube_analytics.go:27-37`
+- [x] Implemented first-week metrics fetching system - Evidence: `GetFirstWeekMetrics()` (line 202-285), `EnrichWithFirstWeekMetrics()` (line 287-322)
+- [x] Implemented timing data extraction - Evidence: `EnrichWithTimingData()` (line 324-357)
+- [x] Implemented grouping and aggregation - Evidence: `TimeSlot` struct (line 359-368), `GroupByTimeSlot()` (line 370-392), `TimeSlotPerformance` struct (line 394-402), `CalculateTimeSlotPerformance()` (line 404-445)
+- [x] Comprehensive test coverage - Evidence: `internal/publishing/youtube_analytics_test.go` (+330 lines, 10+ test functions, all passing)
+
+**Critical Design Decision Made**:
+Implemented first-week metrics system instead of cumulative `ViewsPerDay` to eliminate age bias. Original plan was to use `Views / DaysSincePublish` as normalized metric, but this incorrectly favors newer videos. First-week metrics provide accurate apples-to-apples comparison across all videos regardless of publication date, which is critical for timing analysis since YouTube's algorithm prioritizes early performance.
+
+**Implementation Approach**:
+- Uses standard YouTube Analytics API with `filters="video==ID"` parameter (per-video queries)
+- Makes N API calls (one per video) - simple, maintainable approach
+- Prioritized accuracy and code simplicity over batching optimization
+- Quarterly analysis frequency makes performance impact acceptable (user can wait)
+
+**Files Modified**:
+- `internal/publishing/youtube_analytics.go`: +286 lines
+- `internal/publishing/youtube_analytics_test.go`: +330 lines
+
+**Next Session Priority**: Milestone 3 - AI Recommendation Generation
 
 ---
 
