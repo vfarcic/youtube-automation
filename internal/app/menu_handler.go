@@ -828,6 +828,8 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 		switch selectedEditPhase {
 		case editPhaseInitial:
 			save := true
+			applyRandomTiming := false // Track if user wants to apply random timing
+
 			// Auto-populate Gist path if empty, similar to old logic
 			if len(updatedVideo.Gist) == 0 && updatedVideo.Path != "" {
 				updatedVideo.Gist = strings.Replace(updatedVideo.Path, ".yaml", ".md", 1)
@@ -842,6 +844,12 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 				huh.NewInput().Title(m.colorTitleSponsoredEmails(constants.FieldTitleSponsorshipEmails, updatedVideo.Sponsorship.Amount, updatedVideo.Sponsorship.Emails)).Value(&updatedVideo.Sponsorship.Emails),
 				huh.NewInput().Title(m.colorTitleStringInverse(constants.FieldTitleSponsorshipBlocked, updatedVideo.Sponsorship.Blocked)).Value(&updatedVideo.Sponsorship.Blocked),
 				huh.NewInput().Title(m.colorTitleString(constants.FieldTitlePublishDate, updatedVideo.Date)).Value(&updatedVideo.Date),
+				huh.NewConfirm().
+					Title("Apply Random Timing?").
+					Description("Pick a random timing recommendation from settings.yaml").
+					Affirmative("Yes").
+					Negative("No").
+					Value(&applyRandomTiming),
 				huh.NewConfirm().Title(m.colorTitleBoolInverse(constants.FieldTitleDelayed, updatedVideo.Delayed)).Value(&updatedVideo.Delayed), // True means NOT delayed, so inverse logic for green
 				huh.NewInput().Title(m.colorTitleString(constants.FieldTitleGistPath, updatedVideo.Gist)).Value(&updatedVideo.Gist),
 				huh.NewConfirm().Affirmative("Save").Negative("Cancel").Value(&save),
@@ -856,6 +864,55 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 					continue // Continue the loop to re-select edit phase
 				}
 				return fmt.Errorf("%s: %w", ErrorRunInitialDetailsForm, err)
+			}
+
+			// Handle random timing application if user requested it
+			if applyRandomTiming && save {
+				// Load timing recommendations from settings
+				recommendations := m.settings.Timing.Recommendations
+
+				if len(recommendations) == 0 {
+					fmt.Println(m.orangeStyle.Render("⚠️  No timing recommendations found in settings.yaml"))
+					fmt.Println(m.normalStyle.Render("   Run 'Analyze → Timing' to generate recommendations first."))
+				} else {
+					// Apply random timing
+					originalDate := updatedVideo.Date
+					newDateStr, selectedRec, timingErr := ApplyRandomTiming(updatedVideo.Date, recommendations)
+					if timingErr != nil {
+						fmt.Println(m.errorStyle.Render(fmt.Sprintf("Error applying random timing: %v", timingErr)))
+					} else {
+						// Update the video date
+						updatedVideo.Date = newDateStr
+
+						// Show user what changed
+						fmt.Println(m.normalStyle.Render("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
+						fmt.Println(m.confirmationStyle.Render("🎲 Random timing applied:"))
+						fmt.Println(m.normalStyle.Render(fmt.Sprintf("   %s %s UTC", selectedRec.Day, selectedRec.Time)))
+						fmt.Println(m.normalStyle.Render(fmt.Sprintf("   Reasoning: %s", selectedRec.Reasoning)))
+						fmt.Println(m.normalStyle.Render(""))
+
+						// Format dates with day of week
+						originalDateFormatted := originalDate
+						newDateFormatted := newDateStr
+						if parsedOriginal, parseErr := time.Parse("2006-01-02T15:04", originalDate); parseErr == nil {
+							originalDateFormatted = fmt.Sprintf("%s, %s", parsedOriginal.Format("Monday"), originalDate)
+						}
+						if parsedNew, parseErr := time.Parse("2006-01-02T15:04", newDateStr); parseErr == nil {
+							newDateFormatted = fmt.Sprintf("%s, %s", parsedNew.Format("Monday"), newDateStr)
+						}
+
+						fmt.Println(m.normalStyle.Render(fmt.Sprintf("📅 Original date: %s", originalDateFormatted)))
+						fmt.Println(m.confirmationStyle.Render(fmt.Sprintf("📅 New date:      %s", newDateFormatted)))
+
+						// Parse dates to show week boundaries
+						if parsedDate, parseErr := time.Parse("2006-01-02T15:04", newDateStr); parseErr == nil {
+							monday, sunday := GetWeekBoundaries(parsedDate)
+							fmt.Println(m.normalStyle.Render(fmt.Sprintf("   (Same week: Monday %s - Sunday %s)",
+								monday.Format("Jan 2"), sunday.Format("Jan 2, 2006"))))
+						}
+						fmt.Println(m.normalStyle.Render("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"))
+					}
+				}
 			}
 
 			if save {
