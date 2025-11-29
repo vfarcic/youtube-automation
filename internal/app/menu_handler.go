@@ -828,6 +828,8 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 		switch selectedEditPhase {
 		case editPhaseInitial:
 			save := true
+			applyRandomTiming := false // Track if user wants to apply random timing
+
 			// Auto-populate Gist path if empty, similar to old logic
 			if len(updatedVideo.Gist) == 0 && updatedVideo.Path != "" {
 				updatedVideo.Gist = strings.Replace(updatedVideo.Path, ".yaml", ".md", 1)
@@ -842,6 +844,12 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 				huh.NewInput().Title(m.colorTitleSponsoredEmails(constants.FieldTitleSponsorshipEmails, updatedVideo.Sponsorship.Amount, updatedVideo.Sponsorship.Emails)).Value(&updatedVideo.Sponsorship.Emails),
 				huh.NewInput().Title(m.colorTitleStringInverse(constants.FieldTitleSponsorshipBlocked, updatedVideo.Sponsorship.Blocked)).Value(&updatedVideo.Sponsorship.Blocked),
 				huh.NewInput().Title(m.colorTitleString(constants.FieldTitlePublishDate, updatedVideo.Date)).Value(&updatedVideo.Date),
+				huh.NewConfirm().
+					Title("Apply Random Timing?").
+					Description("Pick a random timing recommendation from settings.yaml").
+					Affirmative("Yes").
+					Negative("No").
+					Value(&applyRandomTiming),
 				huh.NewConfirm().Title(m.colorTitleBoolInverse(constants.FieldTitleDelayed, updatedVideo.Delayed)).Value(&updatedVideo.Delayed), // True means NOT delayed, so inverse logic for green
 				huh.NewInput().Title(m.colorTitleString(constants.FieldTitleGistPath, updatedVideo.Gist)).Value(&updatedVideo.Gist),
 				huh.NewConfirm().Affirmative("Save").Negative("Cancel").Value(&save),
@@ -856,6 +864,55 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 					continue // Continue the loop to re-select edit phase
 				}
 				return fmt.Errorf("%s: %w", ErrorRunInitialDetailsForm, err)
+			}
+
+			// Handle random timing application if user requested it
+			if applyRandomTiming && save {
+				// Load timing recommendations from settings
+				recommendations := m.settings.Timing.Recommendations
+
+				if len(recommendations) == 0 {
+					fmt.Println(m.orangeStyle.Render("⚠️  No timing recommendations found in settings.yaml"))
+					fmt.Println(m.normalStyle.Render("   Run 'Analyze → Timing' to generate recommendations first."))
+				} else {
+					// Apply random timing
+					originalDate := updatedVideo.Date
+					newDateStr, selectedRec, timingErr := ApplyRandomTiming(updatedVideo.Date, recommendations)
+					if timingErr != nil {
+						fmt.Println(m.errorStyle.Render(fmt.Sprintf("Error applying random timing: %v", timingErr)))
+					} else {
+						// Update the video date
+						updatedVideo.Date = newDateStr
+
+						// Show user what changed
+						fmt.Println(m.normalStyle.Render("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
+						fmt.Println(m.confirmationStyle.Render("🎲 Random timing applied:"))
+						fmt.Println(m.normalStyle.Render(fmt.Sprintf("   %s %s UTC", selectedRec.Day, selectedRec.Time)))
+						fmt.Println(m.normalStyle.Render(fmt.Sprintf("   Reasoning: %s", selectedRec.Reasoning)))
+						fmt.Println(m.normalStyle.Render(""))
+
+						// Format dates with day of week
+						originalDateFormatted := originalDate
+						newDateFormatted := newDateStr
+						if parsedOriginal, parseErr := time.Parse("2006-01-02T15:04", originalDate); parseErr == nil {
+							originalDateFormatted = fmt.Sprintf("%s, %s", parsedOriginal.Format("Monday"), originalDate)
+						}
+						if parsedNew, parseErr := time.Parse("2006-01-02T15:04", newDateStr); parseErr == nil {
+							newDateFormatted = fmt.Sprintf("%s, %s", parsedNew.Format("Monday"), newDateStr)
+						}
+
+						fmt.Println(m.normalStyle.Render(fmt.Sprintf("📅 Original date: %s", originalDateFormatted)))
+						fmt.Println(m.confirmationStyle.Render(fmt.Sprintf("📅 New date:      %s", newDateFormatted)))
+
+						// Parse dates to show week boundaries
+						if parsedDate, parseErr := time.Parse("2006-01-02T15:04", newDateStr); parseErr == nil {
+							monday, sunday := GetWeekBoundaries(parsedDate)
+							fmt.Println(m.normalStyle.Render(fmt.Sprintf("   (Same week: Monday %s - Sunday %s)",
+								monday.Format("Jan 2"), sunday.Format("Jan 2, 2006"))))
+						}
+						fmt.Println(m.normalStyle.Render("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"))
+					}
+				}
 			}
 
 			if save {
@@ -2246,6 +2303,7 @@ func (m *MenuHandler) HandleAnalyzeMenu() error {
 				Title("What would you like to analyze?").
 				Options(
 					huh.NewOption("Titles (fetch video analytics)", 0),
+					huh.NewOption("Timing (generate publish time recommendations)", 1),
 					huh.NewOption("Back", actionReturn),
 				).
 				Value(&selectedOption),
@@ -2260,6 +2318,8 @@ func (m *MenuHandler) HandleAnalyzeMenu() error {
 	switch selectedOption {
 	case 0:
 		return m.HandleAnalyzeTitles()
+	case 1:
+		return m.HandleAnalyzeTiming()
 	case actionReturn:
 		return nil
 	}
@@ -2290,7 +2350,7 @@ func (m *MenuHandler) HandleAnalyzeTitles() error {
 	fmt.Println(m.normalStyle.Render("Analyzing title patterns with AI..."))
 	fmt.Println(m.normalStyle.Render("This may take a moment."))
 
-	analysis, err := ai.AnalyzeTitles(ctx, analytics)
+	result, prompt, rawResponse, err := ai.AnalyzeTitles(ctx, analytics)
 	if err != nil {
 		fmt.Println(m.errorStyle.Render(fmt.Sprintf("Failed to analyze titles: %v", err)))
 		return err
@@ -2299,8 +2359,19 @@ func (m *MenuHandler) HandleAnalyzeTitles() error {
 	fmt.Println(m.greenStyle.Render("✓ Analysis complete!"))
 	fmt.Println(m.normalStyle.Render("Saving results to files..."))
 
-	// Save files using the testable function
-	files, err := SaveAnalysisFiles(analytics, analysis, "tmp", configuration.GlobalSettings.YouTube.ChannelId)
+	// Format result as markdown
+	formattedResult := FormatTitleAnalysisMarkdown(result, len(analytics), configuration.GlobalSettings.YouTube.ChannelId)
+
+	// Save complete analysis with all audit trail files
+	files, err := SaveCompleteAnalysis(
+		"title-analysis",
+		analytics,
+		prompt,
+		rawResponse,
+		formattedResult,
+		"tmp",
+		configuration.GlobalSettings.YouTube.ChannelId,
+	)
 	if err != nil {
 		fmt.Println(m.errorStyle.Render(fmt.Sprintf("Failed to save files: %v", err)))
 		return err
@@ -2308,16 +2379,128 @@ func (m *MenuHandler) HandleAnalyzeTitles() error {
 
 	// Display success message with file paths
 	fmt.Println("")
-	fmt.Println(m.greenStyle.Render("✓ Files saved successfully!"))
+	fmt.Println(m.greenStyle.Render("✓ Analysis files saved successfully!"))
 	fmt.Println("")
 	fmt.Println(m.normalStyle.Render("Files saved:"))
-	fmt.Println(m.normalStyle.Render(fmt.Sprintf("  • Raw data: %s", files.JSONPath)))
-	fmt.Println(m.normalStyle.Render(fmt.Sprintf("  • Analysis: %s", files.MDPath)))
+	fmt.Println(m.normalStyle.Render(fmt.Sprintf("  • Analytics data: %s", files.AnalyticsPath)))
+	fmt.Println(m.normalStyle.Render(fmt.Sprintf("  • AI prompt: %s", files.PromptPath)))
+	fmt.Println(m.normalStyle.Render(fmt.Sprintf("  • Raw AI response: %s", files.ResponsePath)))
+	fmt.Println(m.normalStyle.Render(fmt.Sprintf("  • Formatted analysis: %s", files.ResultPath)))
 	fmt.Println("")
 	fmt.Println(m.normalStyle.Render("Next steps:"))
-	fmt.Println(m.normalStyle.Render("  1. Review the analysis markdown file"))
+	fmt.Println(m.normalStyle.Render("  1. Review the formatted analysis file"))
 	fmt.Println(m.normalStyle.Render("  2. Update internal/ai/titles.go with insights"))
 	fmt.Println(m.normalStyle.Render("  3. Future titles will use improved patterns"))
+
+	return nil
+}
+
+// HandleAnalyzeTiming fetches video analytics and generates timing recommendations
+func (m *MenuHandler) HandleAnalyzeTiming() error {
+	fmt.Println(m.normalStyle.Render("Fetching video analytics from YouTube..."))
+	fmt.Println(m.normalStyle.Render("This may take a moment and might require re-authentication."))
+
+	ctx := context.Background()
+	analytics, err := publishing.GetVideoAnalyticsForLastYear(ctx)
+	if err != nil {
+		fmt.Println(m.errorStyle.Render(fmt.Sprintf("Failed to fetch analytics: %v", err)))
+		return err
+	}
+
+	if len(analytics) == 0 {
+		fmt.Println(m.orangeStyle.Render("No video analytics found for the last 365 days."))
+		return nil
+	}
+
+	fmt.Println(m.greenStyle.Render(fmt.Sprintf("✓ Successfully fetched analytics for %d videos from the last 365 days", len(analytics))))
+
+	// Run AI analysis
+	fmt.Println(m.normalStyle.Render("Analyzing timing patterns with AI..."))
+	fmt.Println(m.normalStyle.Render("This may take a moment."))
+
+	recommendations, prompt, rawResponse, err := ai.GenerateTimingRecommendations(ctx, analytics)
+	if err != nil {
+		fmt.Println(m.errorStyle.Render(fmt.Sprintf("Failed to generate timing recommendations: %v", err)))
+		return err
+	}
+
+	fmt.Println(m.greenStyle.Render("✓ Analysis complete!"))
+	fmt.Println("")
+	fmt.Println(m.normalStyle.Render("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
+	fmt.Println(m.normalStyle.Render("📊 Timing Recommendations"))
+	fmt.Println(m.normalStyle.Render("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
+	fmt.Println("")
+
+	// Display recommendations
+	for i, rec := range recommendations {
+		fmt.Println(m.greenStyle.Render(fmt.Sprintf("%d. %s %s UTC", i+1, rec.Day, rec.Time)))
+		fmt.Println(m.normalStyle.Render(fmt.Sprintf("   %s", rec.Reasoning)))
+		fmt.Println("")
+	}
+
+	// Ask user if they want to save recommendations
+	var saveToSettings bool
+	form := huh.NewForm(
+		huh.NewGroup(
+			huh.NewConfirm().
+				Title("Save these recommendations to settings.yaml?").
+				Description("Recommendations can then be applied to videos using the 'Apply Random Timing' button").
+				Affirmative("Yes, save").
+				Negative("No, skip").
+				Value(&saveToSettings),
+		),
+	)
+
+	if err := form.Run(); err != nil {
+		return fmt.Errorf("failed to run save confirmation form: %w", err)
+	}
+
+	if saveToSettings {
+		// Save to settings.yaml
+		if err := configuration.SaveTimingRecommendations(recommendations); err != nil {
+			fmt.Println(m.errorStyle.Render(fmt.Sprintf("Failed to save to settings.yaml: %v", err)))
+			return err
+		}
+		fmt.Println(m.greenStyle.Render("✓ Recommendations saved to settings.yaml"))
+	}
+
+	fmt.Println(m.normalStyle.Render("Saving analysis files..."))
+
+	// Format result as markdown
+	formattedResult := FormatTimingRecommendationsMarkdown(recommendations, len(analytics), configuration.GlobalSettings.YouTube.ChannelId)
+
+	// Save complete analysis with all audit trail files
+	files, err := SaveCompleteAnalysis(
+		"timing-analysis",
+		analytics,
+		prompt,
+		rawResponse,
+		formattedResult,
+		"tmp",
+		configuration.GlobalSettings.YouTube.ChannelId,
+	)
+	if err != nil {
+		fmt.Println(m.errorStyle.Render(fmt.Sprintf("Failed to save files: %v", err)))
+		return err
+	}
+
+	// Display success message with file paths
+	fmt.Println("")
+	fmt.Println(m.greenStyle.Render("✓ Analysis files saved successfully!"))
+	fmt.Println("")
+	fmt.Println(m.normalStyle.Render("Files saved:"))
+	fmt.Println(m.normalStyle.Render(fmt.Sprintf("  • Analytics data: %s", files.AnalyticsPath)))
+	fmt.Println(m.normalStyle.Render(fmt.Sprintf("  • AI prompt: %s", files.PromptPath)))
+	fmt.Println(m.normalStyle.Render(fmt.Sprintf("  • Raw AI response: %s", files.ResponsePath)))
+	fmt.Println(m.normalStyle.Render(fmt.Sprintf("  • Formatted analysis: %s", files.ResultPath)))
+	fmt.Println("")
+
+	if saveToSettings {
+		fmt.Println(m.normalStyle.Render("Next steps:"))
+		fmt.Println(m.normalStyle.Render("  1. Review the formatted analysis file"))
+		fmt.Println(m.normalStyle.Render("  2. Use 'Apply Random Timing' button when editing videos"))
+		fmt.Println(m.normalStyle.Render("  3. Re-run analysis in 3-6 months to evolve recommendations"))
+	}
 
 	return nil
 }

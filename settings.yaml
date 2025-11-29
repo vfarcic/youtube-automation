@@ -36,3 +36,16 @@ slack:
   targetChannelIDs:
     - "C0123EXAMPLE1" # Placeholder: e.g., #announcements
     - "C0456EXAMPLE2" # Placeholder: e.g., #new-videos
+
+# Added for PRD #336: YouTube Timing Analytics & Optimization
+# This section stores AI-generated timing recommendations for video publishing
+# Run "Analyze → Timing" from the main menu to generate recommendations
+timing:
+  recommendations:
+    # Example recommendations (replace these by running timing analysis):
+    # - day: "Monday"
+    #   time: "16:00"
+    #   reasoning: "European end-of-workday (5pm CET) + US mid-day"
+    # - day: "Tuesday"
+    #   time: "09:00"
+    #   reasoning: "European morning: 10-11am CET, high engagement window"

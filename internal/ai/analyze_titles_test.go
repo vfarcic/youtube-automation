@@ -47,6 +47,45 @@ func TestAnalyzeTitles(t *testing.T) {
 		},
 	}
 
+	validJSONResponse := `{
+		"highPerformingPatterns": [
+			{
+				"pattern": "Titles with numbers",
+				"description": "Titles containing numbers perform significantly better",
+				"impact": "40% more views on average",
+				"examples": ["Top 5 DevOps Tools", "3 Ways to Deploy Kubernetes"]
+			}
+		],
+		"lowPerformingPatterns": [],
+		"titleLengthAnalysis": {
+			"optimalRange": "50-65 characters",
+			"finding": "Mid-length titles perform best",
+			"data": "Average views: 50-65 chars = 45K, <50 chars = 32K, >65 chars = 38K"
+		},
+		"contentTypeAnalysis": {
+			"finding": "Tutorial content outperforms news",
+			"topPerformers": ["Tutorials", "Comparisons"],
+			"data": "Tutorials avg 50K views, News avg 25K views"
+		},
+		"engagementPatterns": {
+			"finding": "Question titles drive more comments",
+			"likesPattern": "Specific outcomes get more likes",
+			"commentsPattern": "Questions generate discussions",
+			"watchTimePattern": "Comprehensive titles have higher retention"
+		},
+		"recommendations": [
+			{
+				"recommendation": "Include numbers in 30-40% of titles",
+				"evidence": "Titles with numbers average 45% more views",
+				"example": "Transform 'Kubernetes Guide' to 'Top 5 Kubernetes Best Practices'"
+			}
+		],
+		"promptSuggestions": [
+			"Include numbers in 30-40% of titles",
+			"Keep titles between 50-65 characters"
+		]
+	}`
+
 	tests := []struct {
 		name              string
 		analytics         []publishing.VideoAnalytics
@@ -54,19 +93,19 @@ func TestAnalyzeTitles(t *testing.T) {
 		mockError         error
 		wantErr           bool
 		expectedErrSubstr string
-		validateResponse  func(t *testing.T, response string)
+		validateResponse  func(t *testing.T, result TitleAnalysisResult)
 	}{
 		{
 			name:         "Successful analysis with valid data",
 			analytics:    sampleAnalytics,
-			mockResponse: "# Analysis Results\n\n## High-Performing Patterns\n- Titles with numbers perform 40% better\n- Comparison format ('vs') drives engagement",
+			mockResponse: validJSONResponse,
 			wantErr:      false,
-			validateResponse: func(t *testing.T, response string) {
-				if !strings.Contains(response, "Analysis Results") {
-					t.Errorf("Expected response to contain 'Analysis Results', got: %s", response)
+			validateResponse: func(t *testing.T, result TitleAnalysisResult) {
+				if len(result.HighPerformingPatterns) == 0 {
+					t.Error("Expected at least one high-performing pattern")
 				}
-				if len(response) < 50 {
-					t.Errorf("Expected substantial response, got only %d characters", len(response))
+				if len(result.Recommendations) == 0 {
+					t.Error("Expected at least one recommendation")
 				}
 			},
 		},
@@ -104,22 +143,83 @@ func TestAnalyzeTitles(t *testing.T) {
 					PublishedAt:        time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 				},
 			},
-			mockResponse: "# Single Video Analysis\nLimited data available.",
+			mockResponse: `{
+				"highPerformingPatterns": [],
+				"lowPerformingPatterns": [],
+				"titleLengthAnalysis": {
+					"optimalRange": "N/A",
+					"finding": "Limited data - single video only",
+					"data": "Insufficient data for length analysis"
+				},
+				"contentTypeAnalysis": {
+					"finding": "Single video - no comparison available",
+					"topPerformers": [],
+					"data": "N/A"
+				},
+				"engagementPatterns": {
+					"finding": "Limited data available",
+					"likesPattern": "N/A",
+					"commentsPattern": "N/A",
+					"watchTimePattern": "N/A"
+				},
+				"recommendations": [],
+				"promptSuggestions": ["Need more videos for meaningful analysis"]
+			}`,
 			wantErr:      false,
-			validateResponse: func(t *testing.T, response string) {
-				if !strings.Contains(response, "Single Video") {
-					t.Errorf("Expected response to contain 'Single Video', got: %s", response)
+			validateResponse: func(t *testing.T, result TitleAnalysisResult) {
+				if result.TitleLengthAnalysis.Finding == "" {
+					t.Error("Expected non-empty finding for single video analysis")
+				}
+				if len(result.PromptSuggestions) == 0 {
+					t.Error("Expected at least one prompt suggestion")
 				}
 			},
 		},
 		{
-			name:         "Large dataset",
-			analytics:    generateLargeAnalyticsDataset(100),
-			mockResponse: "# Large Dataset Analysis\n\n## Patterns from 100 videos\n- Pattern 1\n- Pattern 2",
-			wantErr:      false,
-			validateResponse: func(t *testing.T, response string) {
-				if !strings.Contains(response, "Large Dataset") {
-					t.Errorf("Expected response to contain 'Large Dataset', got: %s", response)
+			name:      "Large dataset",
+			analytics: generateLargeAnalyticsDataset(100),
+			mockResponse: `{
+				"highPerformingPatterns": [
+					{
+						"pattern": "Pattern from 100 videos",
+						"description": "Large dataset analysis reveals trends",
+						"impact": "Significant sample size",
+						"examples": ["Video 1", "Video 2"]
+					}
+				],
+				"lowPerformingPatterns": [],
+				"titleLengthAnalysis": {
+					"optimalRange": "50-60 characters",
+					"finding": "Clear pattern from large dataset",
+					"data": "Analysis of 100 videos"
+				},
+				"contentTypeAnalysis": {
+					"finding": "Strong patterns with 100 videos",
+					"topPerformers": ["Type A", "Type B"],
+					"data": "Large dataset provides confidence"
+				},
+				"engagementPatterns": {
+					"finding": "Clear engagement trends",
+					"likesPattern": "Pattern identified",
+					"commentsPattern": "Pattern identified",
+					"watchTimePattern": "Pattern identified"
+				},
+				"recommendations": [
+					{
+						"recommendation": "Apply patterns from large dataset",
+						"evidence": "100 videos analyzed",
+						"example": "Example based on data"
+					}
+				],
+				"promptSuggestions": ["Pattern 1", "Pattern 2"]
+			}`,
+			wantErr: false,
+			validateResponse: func(t *testing.T, result TitleAnalysisResult) {
+				if len(result.HighPerformingPatterns) == 0 {
+					t.Error("Expected at least one pattern from large dataset")
+				}
+				if len(result.Recommendations) == 0 {
+					t.Error("Expected recommendations from large dataset")
 				}
 			},
 		},
@@ -141,7 +241,7 @@ func TestAnalyzeTitles(t *testing.T) {
 				return mock, nil
 			}
 
-			gotAnalysis, err := AnalyzeTitles(ctx, tt.analytics)
+			gotAnalysis, _, _, err := AnalyzeTitles(ctx, tt.analytics)
 
 			if tt.wantErr {
 				if err == nil {
@@ -179,9 +279,32 @@ func TestAnalyzeTitles_TemplateExecution(t *testing.T) {
 		},
 	}
 
-	// Use a mock that returns a successful response
+	// Use a mock that returns valid JSON response
+	validJSON := `{
+		"highPerformingPatterns": [],
+		"lowPerformingPatterns": [],
+		"titleLengthAnalysis": {
+			"optimalRange": "N/A",
+			"finding": "Special characters test",
+			"data": "Test data"
+		},
+		"contentTypeAnalysis": {
+			"finding": "Template execution successful",
+			"topPerformers": [],
+			"data": "Test"
+		},
+		"engagementPatterns": {
+			"finding": "Test",
+			"likesPattern": "Test",
+			"commentsPattern": "Test",
+			"watchTimePattern": "Test"
+		},
+		"recommendations": [],
+		"promptSuggestions": ["Test suggestion"]
+	}`
+
 	mockProvider := &MockProvider{
-		response: "# Analysis Results\nTest response",
+		response: validJSON,
 		err:      nil,
 	}
 
@@ -193,17 +316,27 @@ func TestAnalyzeTitles_TemplateExecution(t *testing.T) {
 		return mockProvider, nil
 	}
 
-	result, err := AnalyzeTitles(ctx, analytics)
+	result, prompt, rawResponse, err := AnalyzeTitles(ctx, analytics)
 	if err != nil {
 		t.Fatalf("AnalyzeTitles() unexpected error = %v", err)
 	}
 
-	// Verify we got a response (template was successfully executed and AI returned data)
-	if result == "" {
-		t.Errorf("Expected non-empty result from AnalyzeTitles")
+	// Verify we got valid results (template was successfully executed and AI returned data)
+	if prompt == "" {
+		t.Errorf("Expected non-empty prompt from AnalyzeTitles")
 	}
-	if !strings.Contains(result, "Analysis Results") {
-		t.Errorf("Expected result to contain mock response 'Analysis Results', got: %s", result)
+	if rawResponse == "" {
+		t.Errorf("Expected non-empty rawResponse from AnalyzeTitles")
+	}
+
+	// Verify the result was properly parsed
+	if result.TitleLengthAnalysis.Finding == "" {
+		t.Error("Expected non-empty finding in parsed result")
+	}
+
+	// Verify special characters in the title were handled correctly in template
+	if !strings.Contains(prompt, "Test Title with Special Characters") {
+		t.Error("Expected prompt to contain the title with special characters")
 	}
 }
 

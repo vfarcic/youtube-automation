@@ -26,6 +26,7 @@ type Settings struct {
 	VideoDefaults SettingsVideoDefaults `yaml:"videoDefaults"`
 	API           SettingsAPI           `yaml:"api"`
 	Slack         SettingsSlack         `yaml:"slack"`
+	Timing        TimingConfig          `yaml:"timing"`
 }
 
 type SettingsEmail struct {
@@ -81,6 +82,19 @@ type SettingsAPI struct {
 
 type SettingsSlack struct {
 	TargetChannelIDs []string `yaml:"targetChannelIDs"`
+}
+
+// TimingRecommendation represents a single timing recommendation
+// for video publishing based on audience behavior and performance data
+type TimingRecommendation struct {
+	Day       string `yaml:"day" json:"day"`             // "Monday", "Tuesday", etc.
+	Time      string `yaml:"time" json:"time"`           // "16:00", "09:00", etc. (UTC)
+	Reasoning string `yaml:"reasoning" json:"reasoning"` // Why this slot recommended
+}
+
+// TimingConfig holds timing recommendations for video publishing
+type TimingConfig struct {
+	Recommendations []TimingRecommendation `yaml:"recommendations" json:"recommendations"`
 }
 
 var GlobalSettings Settings
