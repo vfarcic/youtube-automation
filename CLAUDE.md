@@ -182,7 +182,7 @@ For any Hugo-related functionality, use the established pattern:
 - Sanitize titles using `SanitizeTitle()`
 - Construct URLs using `ConstructHugoURL()`
 
-#### 5. Test-First Development (MANDATORY)
+#### 6. Test-First Development (MANDATORY)
 **⚠️ CRITICAL: Tests are NOT optional. Every code change MUST include tests.**
 
 When writing ANY new functionality or modifying existing code:
