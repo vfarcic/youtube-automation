@@ -27,6 +27,15 @@ import (
 
 const channelID = "UCfz8x0lVzJpb_dgWm9kPVrw"
 
+// youtubeScopes defines all OAuth2 scopes required for YouTube operations.
+// These scopes are requested during the initial authentication and cached.
+// All scopes must be included upfront to avoid re-authentication issues.
+var youtubeScopes = []string{
+	youtube.YoutubeUploadScope,                             // Upload videos and thumbnails
+	youtube.YoutubeReadonlyScope,                           // Read video metadata
+	"https://www.googleapis.com/auth/yt-analytics.readonly", // Access analytics data
+}
+
 // This variable indicates whether the script should launch a web server to
 // initiate the authorization flow or just display the URL in the terminal
 // window. Note the following instructions based on this setting:
@@ -63,21 +72,19 @@ const launchWebServer = true
 // https://developers.google.com/api-client-library/python/guide/aaa_client_secrets
 // `
 
-// getClient uses a Context and Config to retrieve a Token
-// then generate a Client. It returns the generated Client.
-func getClient(ctx context.Context, config *oauth2.Config) *http.Client {
+// getClient uses a Context to retrieve a Token and generate a Client.
+// It uses the centralized youtubeScopes for all YouTube operations.
+// If modifying the scopes, delete your previously saved credentials at ~/.credentials/youtube-go.json
+func getClient(ctx context.Context) *http.Client {
 	b, err := os.ReadFile("client_secret.json")
 	if err != nil {
 		log.Fatalf("Unable to read client secret file: %v", err)
 	}
 
-	// If modifying the scope, delete your previously saved credentials
-	// at ~/.credentials/youtube-go.json
-	configFromJSON, err := google.ConfigFromJSON(b, config.Scopes...)
+	config, err := google.ConfigFromJSON(b, youtubeScopes...)
 	if err != nil {
 		log.Fatalf("Unable to parse client secret file to config: %v", err)
 	}
-	config = configFromJSON
 
 	// Use a redirect URI like this for a web app. The redirect URI must be a
 	// valid one for your OAuth2 credentials.
@@ -243,7 +250,7 @@ func UploadVideo(video *storage.Video) string {
 		log.Fatalf("You must provide a thumbnail of the video file to upload")
 		return ""
 	}
-	client := getClient(context.Background(), &oauth2.Config{Scopes: []string{youtube.YoutubeUploadScope}})
+	client := getClient(context.Background())
 
 	// FIXME: Remove the comment
 	// service, err := youtube.New(client)
@@ -393,7 +400,7 @@ func GetAdditionalInfo(hugoURL, projectName, projectURL, relatedVideosRaw string
 
 
 func UploadThumbnail(video storage.Video) error {
-	client := getClient(context.Background(), &oauth2.Config{Scopes: []string{youtube.YoutubeUploadScope}})
+	client := getClient(context.Background())
 
 	// FIXME: Remove the comment
 	// service, err := youtube.New(client)

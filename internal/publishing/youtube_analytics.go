@@ -7,7 +7,6 @@ import (
 
 	"devopstoolkit/youtube-automation/internal/configuration"
 
-	"golang.org/x/oauth2"
 	"google.golang.org/api/option"
 	"google.golang.org/api/youtube/v3"
 	"google.golang.org/api/youtubeanalytics/v2"
@@ -44,13 +43,7 @@ type VideoAnalytics struct {
 //   - []VideoAnalytics: Array of video analytics data
 //   - error: Any error encountered during the API calls
 func GetVideoAnalytics(ctx context.Context, startDate, endDate time.Time) ([]VideoAnalytics, error) {
-	// Create OAuth client with analytics scope
-	client := getClient(ctx, &oauth2.Config{
-		Scopes: []string{
-			youtube.YoutubeReadonlyScope,
-			"https://www.googleapis.com/auth/yt-analytics.readonly",
-		},
-	})
+	client := getClient(ctx)
 
 	// Initialize YouTube Data API service (for video titles)
 	youtubeService, err := youtube.NewService(ctx, option.WithHTTPClient(client))
@@ -238,13 +231,7 @@ type FirstWeekMetrics struct {
 //   - FirstWeekMetrics: Performance data for days 0-7
 //   - error: Any error encountered during the API call
 func GetFirstWeekMetrics(ctx context.Context, videoID string, publishDate time.Time) (FirstWeekMetrics, error) {
-	// Create OAuth client with analytics scope
-	client := getClient(ctx, &oauth2.Config{
-		Scopes: []string{
-			youtube.YoutubeReadonlyScope,
-			"https://www.googleapis.com/auth/yt-analytics.readonly",
-		},
-	})
+	client := getClient(ctx)
 
 	// Initialize YouTube Analytics API service
 	analyticsService, err := youtubeanalytics.NewService(ctx, option.WithHTTPClient(client))

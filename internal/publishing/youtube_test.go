@@ -847,6 +847,43 @@ func TestUpdateVideoLanguage(t *testing.T) {
 
 // TODO: Add TestUploadThumbnail if not already present and relevant
 
+// TestYouTubeScopes verifies that all required OAuth scopes are properly defined
+func TestYouTubeScopes(t *testing.T) {
+	// Verify scopes array is not empty
+	if len(youtubeScopes) == 0 {
+		t.Fatal("youtubeScopes should not be empty")
+	}
+
+	// Verify all required scopes are present
+	requiredScopes := map[string]bool{
+		youtube.YoutubeUploadScope:                             false, // Upload videos and thumbnails
+		youtube.YoutubeReadonlyScope:                           false, // Read video metadata
+		"https://www.googleapis.com/auth/yt-analytics.readonly": false, // Analytics access
+	}
+
+	for _, scope := range youtubeScopes {
+		if _, exists := requiredScopes[scope]; exists {
+			requiredScopes[scope] = true
+		}
+	}
+
+	// Check that all required scopes were found
+	for scope, found := range requiredScopes {
+		if !found {
+			t.Errorf("Required scope missing from youtubeScopes: %s", scope)
+		}
+	}
+
+	// Verify no duplicate scopes
+	scopeSet := make(map[string]bool)
+	for _, scope := range youtubeScopes {
+		if scopeSet[scope] {
+			t.Errorf("Duplicate scope found in youtubeScopes: %s", scope)
+		}
+		scopeSet[scope] = true
+	}
+}
+
 func TestMain(m *testing.M) {
 	// ... existing code ...
 }
