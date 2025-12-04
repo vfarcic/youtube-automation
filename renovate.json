@@ -8,6 +8,11 @@
       "matchManagers": ["devbox"],
       "automerge": true,
       "commitMessageSuffix": "[skip ci]"
+    },
+    {
+      "matchManagers": ["gomod"],
+      "matchUpdateTypes": ["patch", "minor"],
+      "automerge": true
     }
   ]
 }
