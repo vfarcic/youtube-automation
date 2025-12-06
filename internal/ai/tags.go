@@ -1,10 +1,21 @@
 package ai
 
 import (
+	"bytes"
 	"context"
+	_ "embed"
 	"fmt"
 	"strings"
+	"text/template"
 )
+
+//go:embed templates/tags.md
+var tagsTemplate string
+
+// tagsTemplateData holds the data for the tags template
+type tagsTemplateData struct {
+	Content string
+}
 
 // SuggestTags generates comma-separated tags using the configured AI provider.
 // It expects the AI to return a single comma-separated string of tags,
@@ -18,19 +29,22 @@ func SuggestTags(ctx context.Context, manuscriptContent string, optionalConfig .
 		return "", fmt.Errorf("manuscript content is empty, cannot generate tags")
 	}
 
-	prompt := fmt.Sprintf(
-		`Based on the following manuscript, generate a comma-separated list of relevant tags.
-The total length of the comma-separated string of tags MUST NOT exceed 450 characters.
-Provide ONLY the comma-separated string of tags, without any additional explanation, preamble, or markdown formatting.
+	// Parse and execute template for tags generation prompt
+	tmpl, err := template.New("tags").Parse(tagsTemplate)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse tags template: %w", err)
+	}
 
-Manuscript:
----
-%s
----
+	data := tagsTemplateData{
+		Content: manuscriptContent,
+	}
 
-Tags (comma-separated, max 450 chars):`,
-		manuscriptContent,
-	)
+	var promptBuf bytes.Buffer
+	if err := tmpl.Execute(&promptBuf, data); err != nil {
+		return "", fmt.Errorf("failed to execute tags template: %w", err)
+	}
+
+	prompt := promptBuf.String()
 
 	responseContent, err := provider.GenerateContent(ctx, prompt, 200)
 	if err != nil {

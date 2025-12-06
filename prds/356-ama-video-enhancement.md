@@ -96,19 +96,19 @@ Main Menu
 
 ### Must Have
 - [x] Fetch YouTube auto-generated captions via API
-- [ ] Generate content-specific title from transcript
-- [ ] Generate timecodes identifying Q&A segments (00:00 = "Intro" for music/animation)
-- [ ] Generate content-specific description from transcript
-- [ ] Generate relevant tags from transcript (max 450 chars)
+- [x] Generate content-specific title from transcript
+- [x] Generate timecodes identifying Q&A segments (00:00 = "Intro" for music/animation)
+- [x] Generate content-specific description from transcript
+- [x] Generate relevant tags from transcript (max 450 chars)
 - [ ] Display all four outputs for user editing before applying
 - [ ] Apply changes to YouTube video (title, description, and tags)
 - [x] New "Ask Me Anything" root menu section
 - [ ] All new code has comprehensive tests (80% coverage)
 
 ### Should Have
-- [ ] Reuse existing `SuggestTitles`, `SuggestDescription` and `SuggestTags` patterns
+- [x] Reuse existing `SuggestTitles`, `SuggestDescription` and `SuggestTags` patterns
 - [ ] Preserve existing description boilerplate (after ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬)
-- [ ] Handle videos without captions gracefully
+- [x] Handle videos without captions gracefully
 - [ ] Progress feedback during generation
 
 ### Could Have
@@ -254,14 +254,14 @@ Main Menu
 - [x] Write comprehensive tests for caption functions
 - **Validation**: ✅ Can fetch transcript for any public video with captions
 
-### 2. AMA Content Generation
-- [ ] Create `internal/ai/ama.go` with generation functions
-- [ ] Create prompt template for title generation
-- [ ] Create prompt template for timecode generation (00:00 = Intro)
-- [ ] Adapt description generation for transcript input
-- [ ] Adapt tags generation for transcript input
-- [ ] Write tests for all generation functions
-- **Validation**: Given a transcript, generates valid title, timecodes, description, and tags
+### 2. AMA Content Generation ✅
+- [x] Create `internal/ai/ama.go` with generation functions
+- [x] Create prompt template for title generation
+- [x] Create prompt template for timecode generation (00:00 = Intro)
+- [x] Adapt description generation for transcript input
+- [x] Adapt tags generation for transcript input
+- [x] Write tests for all generation functions
+- **Validation**: ✅ Given a transcript, generates valid title, timecodes, description, and tags
 
 ### 3. YouTube Video Update Capability
 - [ ] Implement `GetVideoMetadata()` to fetch current title/description/tags
@@ -367,6 +367,23 @@ None - all required APIs and patterns already exist
 
 ## Progress Log
 
+### 2025-12-06 (Session 3)
+- **Milestone 2: AMA Content Generation - COMPLETE**
+- Created `internal/ai/ama.go` with 5 generation functions:
+  - `GenerateAMATitle()` - generates AMA-specific title from transcript
+  - `GenerateAMATimecodes()` - extracts Q&A segments with timestamps
+  - `GenerateAMADescription()` - generates description from transcript
+  - `GenerateAMATags()` - generates tags with 450 char limit
+  - `GenerateAMAContent()` - convenience function for all 4 outputs
+- Created prompt templates:
+  - `internal/ai/templates/ama-title.md`
+  - `internal/ai/templates/ama-timecodes.md`
+- Refactored existing AI modules to use template files:
+  - `descriptions.go` now uses `templates/description.md`
+  - `tags.go` now uses `templates/tags.md`
+- Created comprehensive tests in `ama_test.go` (78.3% coverage)
+- All tests pass
+
 ### 2025-12-06 (Session 2)
 - Updated PRD to include title generation from transcript
 - Added note about intro music/animation (00:00 = "Intro" so viewers can skip)
@@ -394,4 +411,4 @@ None - all required APIs and patterns already exist
 
 ---
 
-**Next Steps**: Begin Milestone 2 (AMA Content Generation - title, timecodes, description, tags)
+**Next Steps**: Begin Milestone 3 (YouTube Video Update Capability) or Milestone 4 (AMA Menu and UI)
