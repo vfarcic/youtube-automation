@@ -64,9 +64,18 @@ func TestExtractDateFromISO(t *testing.T) {
 func TestSaveAMAFiles(t *testing.T) {
 	// Create a temporary directory for testing
 	tmpDir := t.TempDir()
-	originalDir, _ := os.Getwd()
-	defer os.Chdir(originalDir)
-	os.Chdir(tmpDir)
+	originalDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("failed to get working directory: %v", err)
+	}
+	defer func() {
+		if err := os.Chdir(originalDir); err != nil {
+			t.Errorf("failed to restore working directory: %v", err)
+		}
+	}()
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("failed to change to temp directory: %v", err)
+	}
 
 	// Create a minimal MenuHandler
 	handler := &MenuHandler{}
