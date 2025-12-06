@@ -41,12 +41,14 @@ func GetTranscript(videoID string) (string, error) {
 
 	// Convert to SRT-like format
 	var result strings.Builder
+	lineNum := 0
 	for _, transcript := range transcripts {
-		for i, line := range transcript.Lines {
+		for _, line := range transcript.Lines {
+			lineNum++
 			startTime := formatSRTTime(line.Start)
 			endTime := formatSRTTime(line.Start + line.Duration)
 
-			result.WriteString(fmt.Sprintf("%d\n", i+1))
+			result.WriteString(fmt.Sprintf("%d\n", lineNum))
 			result.WriteString(fmt.Sprintf("%s --> %s\n", startTime, endTime))
 			result.WriteString(line.Text + "\n\n")
 		}
