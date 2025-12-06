@@ -106,7 +106,7 @@ Main Menu
 - [ ] All new code has comprehensive tests (80% coverage)
 
 ### Should Have
-- [ ] Reuse existing `SuggestDescription` and `SuggestTags` patterns
+- [ ] Reuse existing `SuggestTitles`, `SuggestDescription` and `SuggestTags` patterns
 - [ ] Preserve existing description boilerplate (after ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬)
 - [ ] Handle videos without captions gracefully
 - [ ] Progress feedback during generation
@@ -131,19 +131,23 @@ Main Menu
    - Already abstracted for Azure OpenAI and Anthropic
    - Use `GetAIProvider()` and `GenerateContent()` pattern
 
-2. **Description Generation Pattern** (`internal/ai/descriptions.go`)
+2. **Title Generation Pattern** (`internal/ai/titles.go`)
+   - Adapt `SuggestTitles()` for transcript input instead of manuscript
+   - Similar prompt structure, different input source
+
+3. **Description Generation Pattern** (`internal/ai/descriptions.go`)
    - Adapt `SuggestDescription()` for transcript input instead of manuscript
    - Similar prompt structure, different input source
 
-3. **Tags Generation Pattern** (`internal/ai/tags.go`)
+4. **Tags Generation Pattern** (`internal/ai/tags.go`)
    - Adapt `SuggestTags()` for transcript input
    - Keep 450 character limit and truncation logic
 
-4. **YouTube API Client** (`internal/publishing/youtube.go`)
+5. **YouTube API Client** (`internal/publishing/youtube.go`)
    - Reuse `getClient()` for OAuth authentication
    - Add new caption fetching and video update functions
 
-5. **Menu System Pattern** (`internal/app/menu_analyze.go`)
+6. **Menu System Pattern** (`internal/app/menu_analyze.go`)
    - Follow same structure for new AMA menu
    - Use `huh` forms for input and display
 
