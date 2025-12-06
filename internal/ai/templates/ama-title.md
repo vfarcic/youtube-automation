@@ -1,5 +1,7 @@
 Generate a single YouTube video title for an AMA (Ask Me Anything) livestream based on the transcript below.
 
+IMPORTANT: The host's name is Viktor (with a K), not Victor.
+
 REQUIREMENTS:
 - Summarize the main topics/questions discussed (2-4 key themes)
 - Target 50-70 characters for optimal display

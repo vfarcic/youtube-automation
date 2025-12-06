@@ -123,6 +123,8 @@ func GenerateAMADescription(ctx context.Context, transcript string) (string, err
 	prompt := fmt.Sprintf(
 		`Based on the following AMA (Ask Me Anything) livestream transcript, generate a concise and engaging video description.
 
+IMPORTANT: The host's name is Viktor (with a K), not Victor.
+
 REQUIREMENTS:
 - One or two paragraphs long
 - Summarize the main topics and questions discussed
@@ -165,6 +167,8 @@ func GenerateAMATags(ctx context.Context, transcript string) (string, error) {
 
 	prompt := fmt.Sprintf(
 		`Based on the following AMA (Ask Me Anything) livestream transcript, generate a comma-separated list of relevant tags.
+
+IMPORTANT: The host's name is Viktor (with a K), not Victor.
 
 REQUIREMENTS:
 - The total length of the comma-separated string MUST NOT exceed 450 characters
