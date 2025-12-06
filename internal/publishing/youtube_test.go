@@ -217,7 +217,7 @@ func TestGetAdditionalInfo(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := GetAdditionalInfo(tt.hugoPath, tt.projectName, tt.projectURL, tt.relatedVideos)
+			result := GetAdditionalInfoFromPath(tt.hugoPath, tt.projectName, tt.projectURL, tt.relatedVideos)
 
 			// Check for expected gist content
 			if tt.expectedGist {
@@ -614,7 +614,7 @@ func TestUploadVideo(t *testing.T) {
 		t.Errorf("Expected snippet DefaultAudioLanguage to be 'en', got '%s'", mockService.videos[videoID2].Snippet.DefaultAudioLanguage)
 	}
 
-	// Test case 3: Upload with specific language, audio language falls back to main language
+	// Test case 3: Upload with specific language, audio language falls back to global default
 	video3 := &storage.Video{
 		Title:         "Test Video 3 Specific Lang, Audio Fallback",
 		Description:   "Description for video 3",
@@ -622,7 +622,7 @@ func TestUploadVideo(t *testing.T) {
 		UploadVideo:   videoPath,
 		Thumbnail:     thumbnailPath,
 		Language:      "es",
-		AudioLanguage: "", // Should fall back to 'es'
+		AudioLanguage: "", // Falls back to global default 'en'
 	}
 	videoID3 := mockService.uploadVideo(video3)
 	if videoID3 == "" {
@@ -631,14 +631,14 @@ func TestUploadVideo(t *testing.T) {
 	if video3.AppliedLanguage != "es" {
 		t.Errorf("Expected AppliedLanguage to be 'es', got '%s'", video3.AppliedLanguage)
 	}
-	if video3.AppliedAudioLanguage != "es" {
-		t.Errorf("Expected AppliedAudioLanguage to be 'es' (fallback), got '%s'", video3.AppliedAudioLanguage)
+	if video3.AppliedAudioLanguage != "en" {
+		t.Errorf("Expected AppliedAudioLanguage to be 'en' (global default), got '%s'", video3.AppliedAudioLanguage)
 	}
 	if mockService.videos[videoID3].Snippet.DefaultLanguage != "es" {
 		t.Errorf("Expected snippet DefaultLanguage to be 'es', got '%s'", mockService.videos[videoID3].Snippet.DefaultLanguage)
 	}
-	if mockService.videos[videoID3].Snippet.DefaultAudioLanguage != "es" {
-		t.Errorf("Expected snippet DefaultAudioLanguage to be 'es', got '%s'", mockService.videos[videoID3].Snippet.DefaultAudioLanguage)
+	if mockService.videos[videoID3].Snippet.DefaultAudioLanguage != "en" {
+		t.Errorf("Expected snippet DefaultAudioLanguage to be 'en' (global default), got '%s'", mockService.videos[videoID3].Snippet.DefaultAudioLanguage)
 	}
 
 	// Test case 4: Upload failure (renumbered from 3)
@@ -759,7 +759,7 @@ func TestUpdateVideoLanguage(t *testing.T) {
 		{
 			name: "specific lang, empty audio lang", videoID: "id3",
 			inputLangCode: "jp", inputAudioLangCode: "",
-			expectedLangInSnippet: "jp", expectedAudioLangSnippet: "jp", // audio falls back to main lang
+			expectedLangInSnippet: "jp", expectedAudioLangSnippet: "en", // audio falls back to global default
 		},
 		{
 			name: "both empty, fallback to global defaults", videoID: "id4",
@@ -885,5 +885,5 @@ func TestYouTubeScopes(t *testing.T) {
 }
 
 func TestMain(m *testing.M) {
-	// ... existing code ...
+	os.Exit(m.Run())
 }

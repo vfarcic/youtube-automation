@@ -11,6 +11,7 @@ require (
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/emersion/go-smtp v0.24.0
 	github.com/go-chi/chi/v5 v5.2.3
+	github.com/horiagug/youtube-transcript-api-go v0.0.13
 	github.com/sirupsen/logrus v1.9.3
 	github.com/slack-go/slack v0.17.3
 	github.com/spf13/cobra v1.10.2

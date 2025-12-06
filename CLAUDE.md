@@ -233,6 +233,7 @@ func TestFunctionName(t *testing.T) {
 
 **File I/O Testing:**
 - Use `t.TempDir()` for temporary directories
+- Use `./tmp` instead of `/tmp` for any temporary files outside of tests
 - Clean up resources in tests
 - Test both successful file writes and error conditions
 
