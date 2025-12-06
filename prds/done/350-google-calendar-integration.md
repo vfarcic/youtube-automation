@@ -1,9 +1,10 @@
 # PRD: Google Calendar Integration for Video Release Reminders
 
 **Issue**: #350
-**Status**: In Progress (Core Implementation Complete)
+**Status**: Complete
 **Created**: 2025-11-29
 **Last Updated**: 2025-12-06
+**Completed**: 2025-12-06
 
 ## Problem Statement
 
@@ -48,24 +49,24 @@ Automatically create Google Calendar events after video uploads that block time 
 ## Success Criteria
 
 ### Must Have
-- [ ] Google Calendar API integration with OAuth2 authentication
-- [ ] Automatic calendar event creation after successful video upload
-- [ ] Calendar events include correct timing (publish time ± 30 minutes)
-- [ ] Event title includes video title with clear visual indicator (📺)
-- [ ] Event description includes YouTube video URL
-- [ ] Works in CLI mode
-- [ ] Proper error handling if calendar creation fails (doesn't block upload process)
-- [ ] Configuration in settings.yaml for Google Calendar credentials
-- [ ] Manual "Create Calendar Event" button in video form with the following behavior:
+- [x] Google Calendar API integration with OAuth2 authentication
+- [x] Automatic calendar event creation after successful video upload
+- [x] Calendar events include correct timing (publish time ± 30 minutes)
+- [x] Event title includes video title with clear visual indicator (📺)
+- [x] Event description includes YouTube video URL
+- [x] Works in CLI mode
+- [x] Proper error handling if calendar creation fails (doesn't block upload process)
+- [x] Configuration in settings.yaml for Google Calendar credentials
+- [x] Manual "Create Calendar Event" button in video form with the following behavior:
   - Always visible in the form (all phases)
   - Always defaults to "No" (stateless, no tracking of existing entries)
   - Selecting "Yes" creates a new calendar entry (no duplicate prevention)
   - Does not influence completion counters (excluded from phase completion criteria)
 
 ### Should Have
-- [ ] Clear success/failure messages when calendar events are created
-- [ ] Event description includes additional context (category, tags, etc.)
-- [ ] Logging of calendar event creation for debugging
+- [x] Clear success/failure messages when calendar events are created
+- [x] Event description includes additional context (category, tags, etc.)
+- [x] Logging of calendar event creation for debugging
 
 ### Could Have
 - [ ] Calendar event color coding based on video category
@@ -152,15 +153,15 @@ Continue with normal upload flow
 - [x] Add calendar settings to settings.yaml
 - [x] Document environment variable setup
 - [x] Add enable/disable flag for calendar integration
-- [ ] Update configuration documentation
+- [x] Update configuration documentation
 - **Validation**: Calendar integration configurable through settings
 
 ### 5. Testing & Documentation
 - [x] Write unit tests for calendar event creation logic
-- [ ] Write integration tests with mocked Google Calendar API
-- [ ] Update user documentation with setup instructions
+- [x] Write integration tests with mocked Google Calendar API
+- [x] Update user documentation with setup instructions
 - [x] Test CLI mode
-- [ ] Achieve 80% test coverage
+- [x] Achieve 80% test coverage
 - **Validation**: All tests pass, documentation complete, feature ready for use
 
 ## Dependencies
@@ -274,7 +275,4 @@ Continue with normal upload flow
 
 ---
 
-**Next Steps**:
-- Complete documentation for setup instructions
-- Add integration tests with mocked Calendar API
-- Verify test coverage meets 80% threshold
+**Implementation Complete**: All milestones achieved. Feature merged to main in commit `7db0024`.
