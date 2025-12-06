@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"devopstoolkit/youtube-automation/internal/ai"
+	"devopstoolkit/youtube-automation/internal/calendar"
 	"devopstoolkit/youtube-automation/internal/configuration"
 	"devopstoolkit/youtube-automation/internal/constants"
 	"devopstoolkit/youtube-automation/internal/notification"
@@ -373,7 +374,8 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 
 		case editPhasePublishing:
 			save := true
-			var uploadTrigger bool // Declare uploadTrigger here
+			var uploadTrigger bool       // Declare uploadTrigger here
+			var createCalendarEvent bool // Manual calendar event creation trigger (always defaults to false)
 			// Store original values to detect changes for actions
 			originalHugoPath := updatedVideo.HugoPath
 			// If VideoId is empty, createHugo will be false, also influencing the title color.
@@ -383,11 +385,17 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 				huh.NewInput().Title(m.colorTitleString(constants.FieldTitleVideoFilePath, updatedVideo.UploadVideo)).Value(&updatedVideo.UploadVideo),
 				huh.NewConfirm().Title(m.colorTitleString(constants.FieldTitleUploadToYouTube, updatedVideo.VideoId)).Value(&uploadTrigger),
 				huh.NewNote().Title(m.colorTitleString(constants.FieldTitleCurrentVideoID, updatedVideo.VideoId)).Description(updatedVideo.VideoId),
-				// The m.colorTitleBool will show orange if createHugo is false (e.g. no VideoId)
-				// The action logic below also prevents Hugo creation if VideoId is missing.
-				huh.NewConfirm().Title(m.colorTitleBool(constants.FieldTitleCreateHugo, createHugo)).Value(&createHugo),
-				huh.NewConfirm().Affirmative("Save & Process Actions").Negative("Cancel").Value(&save),
 			}
+			// Show calendar button unless calendar integration is disabled in settings
+			if !configuration.GlobalSettings.Calendar.Disabled {
+				publishingFormFields = append(publishingFormFields,
+					huh.NewConfirm().Title("Create Calendar Event").Description("Create a Google Calendar reminder for video release").Value(&createCalendarEvent))
+			}
+			// The m.colorTitleBool will show orange if createHugo is false (e.g. no VideoId)
+			// The action logic below also prevents Hugo creation if VideoId is missing.
+			publishingFormFields = append(publishingFormFields,
+				huh.NewConfirm().Title(m.colorTitleBool(constants.FieldTitleCreateHugo, createHugo)).Value(&createHugo),
+				huh.NewConfirm().Affirmative("Save & Process Actions").Negative("Cancel").Value(&save))
 
 			phasePublishingForm := huh.NewForm(
 				huh.NewGroup(publishingFormFields...),
@@ -445,6 +453,34 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 							}
 						}
 						fmt.Println(m.orangeStyle.Render("Manual YouTube Studio Actions Needed: End screen, Playlists, Language, Monetization"))
+					}
+				}
+
+				// Action: Manual Calendar Event Creation (independent of upload flow)
+				if createCalendarEvent && updatedVideo.VideoId != "" && updatedVideo.Date != "" {
+					if publishTime, parseErr := time.Parse("2006-01-02T15:04", updatedVideo.Date); parseErr == nil {
+						calService, calErr := calendar.NewCalendarService(context.Background())
+						if calErr != nil {
+							log.Print(m.errorStyle.Render(fmt.Sprintf("Failed to initialize calendar service: %v", calErr)))
+						} else {
+							youtubeURL := publishing.GetYouTubeURL(updatedVideo.VideoId)
+							_, eventErr := calService.CreateVideoReleaseEvent(context.Background(), updatedVideo.GetUploadTitle(), youtubeURL, publishTime)
+							if eventErr != nil {
+								log.Print(m.errorStyle.Render(fmt.Sprintf("Failed to create calendar event: %v", eventErr)))
+							} else {
+								fmt.Println(m.confirmationStyle.Render("Calendar event created for video release."))
+							}
+						}
+					} else {
+						log.Print(m.errorStyle.Render(fmt.Sprintf("Failed to parse publish date for calendar event: %v", parseErr)))
+					}
+				} else if createCalendarEvent {
+					// User selected to create calendar event but prerequisites are missing
+					if updatedVideo.VideoId == "" {
+						log.Print(m.errorStyle.Render("Cannot create calendar event: Video ID is missing. Upload video first."))
+					}
+					if updatedVideo.Date == "" {
+						log.Print(m.errorStyle.Render("Cannot create calendar event: Publish date is not set."))
 					}
 				}
 

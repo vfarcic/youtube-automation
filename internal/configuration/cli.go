@@ -27,6 +27,7 @@ type Settings struct {
 	API           SettingsAPI           `yaml:"api"`
 	Slack         SettingsSlack         `yaml:"slack"`
 	Timing        TimingConfig          `yaml:"timing"`
+	Calendar      SettingsCalendar      `yaml:"calendar"`
 }
 
 type SettingsEmail struct {
@@ -84,6 +85,11 @@ type SettingsSlack struct {
 	TargetChannelIDs []string `yaml:"targetChannelIDs"`
 }
 
+// SettingsCalendar holds Google Calendar integration settings
+type SettingsCalendar struct {
+	Disabled bool `yaml:"disabled"` // Set to true to disable calendar event creation (enabled by default)
+}
+
 // TimingRecommendation represents a single timing recommendation
 // for video publishing based on audience behavior and performance data
 type TimingRecommendation struct {
@@ -130,6 +136,7 @@ func init() {
 	RootCmd.Flags().StringVar(&GlobalSettings.VideoDefaults.AudioLanguage, "video-defaults-audio-language", "", "Default audio language for videos (e.g., 'en', 'es')")
 	RootCmd.Flags().IntVar(&GlobalSettings.API.Port, "api-port", GlobalSettings.API.Port, "Port for REST API server")
 	RootCmd.Flags().BoolVar(&GlobalSettings.API.Enabled, "api-enabled", GlobalSettings.API.Enabled, "Enable REST API server")
+	RootCmd.Flags().BoolVar(&GlobalSettings.Calendar.Disabled, "calendar-disabled", GlobalSettings.Calendar.Disabled, "Disable Google Calendar event creation after video upload")
 
 	// Default Bluesky URL if not set by file or flag
 	if GlobalSettings.Bluesky.URL == "" {
@@ -149,6 +156,8 @@ func init() {
 	if GlobalSettings.API.Port == 0 {
 		GlobalSettings.API.Port = 8080
 	}
+
+	// Calendar settings: enabled by default, set calendar.disabled: true to disable
 
 	// Check required fields and environment variables
 	if GlobalSettings.Email.From == "" {
