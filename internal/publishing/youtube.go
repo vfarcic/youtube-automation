@@ -33,6 +33,7 @@ const channelID = "UCfz8x0lVzJpb_dgWm9kPVrw"
 var youtubeScopes = []string{
 	youtube.YoutubeUploadScope,                             // Upload videos and thumbnails
 	youtube.YoutubeReadonlyScope,                           // Read video metadata
+	youtube.YoutubeForceSslScope,                           // Access captions (list and download)
 	"https://www.googleapis.com/auth/yt-analytics.readonly", // Access analytics data
 }
 

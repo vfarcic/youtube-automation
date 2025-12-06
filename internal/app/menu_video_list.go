@@ -73,6 +73,11 @@ func (m *MenuHandler) ChooseIndex() error {
 		if err != nil {
 			return fmt.Errorf("error in analyze menu: %w", err)
 		}
+	case indexAMA:
+		err = m.HandleAMAMenu()
+		if err != nil {
+			return fmt.Errorf("error in AMA menu: %w", err)
+		}
 	case actionReturn:
 		return ErrExitApplication
 	}
@@ -443,6 +448,7 @@ func (m *MenuHandler) getIndexOptions() []huh.Option[int] {
 		huh.NewOption("Create Video", indexCreateVideo),
 		huh.NewOption("List Videos", indexListVideos),
 		huh.NewOption("Analyze", indexAnalyze),
+		huh.NewOption("Ask Me Anything", indexAMA),
 		huh.NewOption("Exit", actionReturn),
 	}
 }

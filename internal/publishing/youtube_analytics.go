@@ -3,6 +3,7 @@ package publishing
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"devopstoolkit/youtube-automation/internal/configuration"
@@ -476,22 +477,30 @@ func isShort(duration string) bool {
 		return false
 	}
 
+	// Use strings.Contains to determine which format to parse
+	hasHours := strings.Contains(duration, "H")
+	hasMinutes := strings.Contains(duration, "M")
+	hasSeconds := strings.Contains(duration, "S")
+
 	var hours, minutes, seconds int
 
-	// Simple parsing: extract H, M, S values
-	// Format: PT1H2M3S or PT2M30S or PT45S
-	fmt.Sscanf(duration, "PT%dH%dM%dS", &hours, &minutes, &seconds)
-	if hours == 0 && minutes == 0 {
-		// Try parsing without hours (e.g., "PT2M30S")
+	switch {
+	case hasHours && hasMinutes && hasSeconds:
+		fmt.Sscanf(duration, "PT%dH%dM%dS", &hours, &minutes, &seconds)
+	case hasHours && hasMinutes:
+		fmt.Sscanf(duration, "PT%dH%dM", &hours, &minutes)
+	case hasHours && hasSeconds:
+		fmt.Sscanf(duration, "PT%dH%dS", &hours, &seconds)
+	case hasMinutes && hasSeconds:
 		fmt.Sscanf(duration, "PT%dM%dS", &minutes, &seconds)
-	}
-	if hours == 0 && minutes == 0 && seconds == 0 {
-		// Try parsing seconds only (e.g., "PT45S")
-		fmt.Sscanf(duration, "PT%dS", &seconds)
-	}
-	if hours == 0 && minutes > 0 && seconds == 0 {
-		// Try parsing minutes only (e.g., "PT5M")
+	case hasHours:
+		fmt.Sscanf(duration, "PT%dH", &hours)
+	case hasMinutes:
 		fmt.Sscanf(duration, "PT%dM", &minutes)
+	case hasSeconds:
+		fmt.Sscanf(duration, "PT%dS", &seconds)
+	default:
+		return false
 	}
 
 	totalSeconds := hours*3600 + minutes*60 + seconds

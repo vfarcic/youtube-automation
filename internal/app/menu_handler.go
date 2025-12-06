@@ -39,6 +39,7 @@ type MenuHandler struct {
 const indexCreateVideo = 0
 const indexListVideos = 1
 const indexAnalyze = 2
+const indexAMA = 3
 
 const (
 	actionEdit = iota
