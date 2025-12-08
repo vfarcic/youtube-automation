@@ -17,7 +17,7 @@ require (
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.11.1
 	github.com/tmc/langchaingo v0.1.14
-	golang.org/x/oauth2 v0.33.0
+	golang.org/x/oauth2 v0.34.0
 	golang.org/x/text v0.31.0
 	google.golang.org/api v0.257.0
 	gopkg.in/gomail.v2 v2.0.0-20160411212932-81ebce5c23df
