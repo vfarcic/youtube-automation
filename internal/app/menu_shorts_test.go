@@ -8,6 +8,11 @@ import (
 	"devopstoolkit/youtube-automation/internal/storage"
 )
 
+// Note: Success path testing for HandleAnalyzeShorts is not possible in this layer
+// because it requires interactive TTY input (huh forms). The AI analysis logic
+// is thoroughly tested in internal/ai/shorts_test.go. Here we test validation
+// and error handling paths that don't require TTY interaction.
+
 func TestDisplayAndSelectShortCandidates_EmptyCandidates(t *testing.T) {
 	handler := &MenuHandler{}
 

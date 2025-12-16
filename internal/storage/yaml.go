@@ -48,7 +48,7 @@ type Short struct {
 	ID            string `yaml:"id" json:"id"`                                           // Unique identifier (short1, short2, etc.)
 	Title         string `yaml:"title" json:"title"`                                     // Short title
 	Text          string `yaml:"text" json:"text"`                                       // Extracted manuscript segment
-	ScheduledDate string `yaml:"scheduled_date" json:"scheduled_date"`                   // ISO format publish timestamp
+	ScheduledDate string `yaml:"scheduled_date,omitempty" json:"scheduled_date,omitempty"` // ISO format publish timestamp
 	YouTubeID     string `yaml:"youtube_id,omitempty" json:"youtube_id,omitempty"`       // Short's YouTube video ID (empty until uploaded)
 }
 

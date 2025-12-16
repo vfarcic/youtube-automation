@@ -1071,12 +1071,10 @@ shorts:
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Setup: Create a temporary settings.yaml
-			settingsDir, err := os.MkdirTemp("", "shorts-settings-test")
-			require.NoError(t, err)
-			defer os.RemoveAll(settingsDir)
+			settingsDir := t.TempDir()
 
 			tmpfn := filepath.Join(settingsDir, "settings.yaml")
-			err = os.WriteFile(tmpfn, []byte(tt.yamlContent), 0644)
+			err := os.WriteFile(tmpfn, []byte(tt.yamlContent), 0644)
 			require.NoError(t, err)
 
 			// Change to temp directory

@@ -142,9 +142,29 @@ func normalizeWhitespace(s string) string {
 }
 
 // mapNormalizedPosition maps a position in normalized text back to original text.
-// This is needed because normalization changes character positions.
+// This is needed because normalization collapses whitespace sequences into single spaces,
+// changing character positions between the original and normalized versions.
+//
+// Algorithm overview:
+// We iterate through the original text while tracking our position in the normalized text.
+// When whitespace sequences are encountered, they count as a single character in normalized
+// position (since normalization collapses them). We find where normStart begins in the
+// original and where normStart+normLen ends.
+//
+// Parameters:
+//   - original: the original text with potentially multiple whitespace characters
+//   - normalized: the text after whitespace normalization (not directly used, for context)
+//   - normStart: starting position in the normalized text
+//   - normLen: length of the segment in normalized text
+//
+// Returns:
+//   - origStart: corresponding start position in original text
+//   - origEnd: corresponding end position in original text
 func mapNormalizedPosition(original, normalized string, normStart, normLen int) (origStart, origEnd int) {
-	// Count characters in original text, tracking normalized position
+	// State variables for tracking position mapping:
+	// - normPos: current position in the normalized string (increments per char or whitespace group)
+	// - origStart: where the target range starts in original (-1 until we find it)
+	// - inWhitespace: true when we're inside a whitespace sequence (to collapse multiple spaces)
 	normPos := 0
 	origStart = -1
 	inWhitespace := false
@@ -153,26 +173,30 @@ func mapNormalizedPosition(original, normalized string, normStart, normLen int) 
 		c := original[i]
 		isSpace := c == ' ' || c == '\t' || c == '\n' || c == '\r'
 
-		// Skip leading whitespace in original
+		// Skip leading whitespace in original (normalized text has no leading whitespace)
 		if origStart == -1 && isSpace {
 			continue
 		}
 
 		if isSpace {
 			if !inWhitespace {
-				// First whitespace character after non-whitespace
+				// First whitespace character after non-whitespace marks start of a whitespace group.
+				// Check if this position corresponds to our target start in normalized text.
 				if normPos >= normStart && origStart == -1 {
 					origStart = i
 				}
-				normPos++ // Count as single space in normalized
+				normPos++ // Entire whitespace sequence counts as single space in normalized
 				inWhitespace = true
 			}
-			// Skip additional whitespace characters
+			// Additional whitespace characters in sequence are skipped (already counted)
 		} else {
+			// Non-whitespace character
 			inWhitespace = false
+			// Check if this position corresponds to our target start
 			if normPos >= normStart && origStart == -1 {
 				origStart = i
 			}
+			// Check if we've reached the end of our target range
 			if normPos >= normStart+normLen {
 				return origStart, i
 			}
@@ -180,7 +204,7 @@ func mapNormalizedPosition(original, normalized string, normStart, normLen int) 
 		}
 	}
 
-	// If we reach the end, return end of original
+	// If we reach the end of original text, return end position
 	return origStart, len(original)
 }
 
