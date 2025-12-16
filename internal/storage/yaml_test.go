@@ -609,3 +609,221 @@ func TestTitleVariantSerialization(t *testing.T) {
 		assert.Equal(t, 45.2, video.Titles[0].Share)
 	})
 }
+
+// TestShortStruct tests the Short struct serialization and deserialization
+func TestShortStruct(t *testing.T) {
+	t.Run("Short struct serializes to JSON correctly", func(t *testing.T) {
+		short := Short{
+			ID:            "short1",
+			Title:         "Quick Kubernetes Tip",
+			Text:          "Here's a quick tip about Kubernetes...",
+			ScheduledDate: "2025-01-15T14:30:00Z",
+			YouTubeID:     "abc123xyz",
+		}
+
+		jsonData, err := json.Marshal(short)
+		require.NoError(t, err)
+
+		var jsonMap map[string]interface{}
+		err = json.Unmarshal(jsonData, &jsonMap)
+		require.NoError(t, err)
+
+		assert.Equal(t, "short1", jsonMap["id"])
+		assert.Equal(t, "Quick Kubernetes Tip", jsonMap["title"])
+		assert.Equal(t, "Here's a quick tip about Kubernetes...", jsonMap["text"])
+		assert.Equal(t, "2025-01-15T14:30:00Z", jsonMap["scheduled_date"])
+		assert.Equal(t, "abc123xyz", jsonMap["youtube_id"])
+	})
+
+	t.Run("Short struct deserializes from JSON correctly", func(t *testing.T) {
+		jsonData := `{
+			"id": "short2",
+			"title": "DevOps Best Practice",
+			"text": "One important DevOps practice is...",
+			"scheduled_date": "2025-01-16T10:00:00Z",
+			"youtube_id": "def456uvw"
+		}`
+
+		var short Short
+		err := json.Unmarshal([]byte(jsonData), &short)
+		require.NoError(t, err)
+
+		assert.Equal(t, "short2", short.ID)
+		assert.Equal(t, "DevOps Best Practice", short.Title)
+		assert.Equal(t, "One important DevOps practice is...", short.Text)
+		assert.Equal(t, "2025-01-16T10:00:00Z", short.ScheduledDate)
+		assert.Equal(t, "def456uvw", short.YouTubeID)
+	})
+
+	t.Run("Short struct omits empty YouTubeID in JSON", func(t *testing.T) {
+		short := Short{
+			ID:            "short3",
+			Title:         "Pending Short",
+			Text:          "This short hasn't been uploaded yet",
+			ScheduledDate: "2025-01-17T12:00:00Z",
+			YouTubeID:     "", // Empty, should be omitted
+		}
+
+		jsonData, err := json.Marshal(short)
+		require.NoError(t, err)
+
+		var jsonMap map[string]interface{}
+		err = json.Unmarshal(jsonData, &jsonMap)
+		require.NoError(t, err)
+
+		// YouTubeID should not be present when empty (omitempty)
+		_, exists := jsonMap["youtube_id"]
+		assert.False(t, exists, "youtube_id should be omitted when empty")
+	})
+
+	t.Run("Short struct serializes to YAML correctly", func(t *testing.T) {
+		short := Short{
+			ID:            "short1",
+			Title:         "Quick Tip",
+			Text:          "Here's a quick tip...",
+			ScheduledDate: "2025-01-15T14:30:00Z",
+			YouTubeID:     "abc123",
+		}
+
+		yamlData, err := yaml.Marshal(short)
+		require.NoError(t, err)
+
+		var parsedShort Short
+		err = yaml.Unmarshal(yamlData, &parsedShort)
+		require.NoError(t, err)
+
+		assert.Equal(t, short.ID, parsedShort.ID)
+		assert.Equal(t, short.Title, parsedShort.Title)
+		assert.Equal(t, short.Text, parsedShort.Text)
+		assert.Equal(t, short.ScheduledDate, parsedShort.ScheduledDate)
+		assert.Equal(t, short.YouTubeID, parsedShort.YouTubeID)
+	})
+}
+
+// TestVideoWithShorts tests Video struct with Shorts field
+func TestVideoWithShorts(t *testing.T) {
+	t.Run("Video with Shorts serializes to JSON correctly", func(t *testing.T) {
+		video := Video{
+			Name:     "test-video",
+			Category: "testing",
+			Shorts: []Short{
+				{
+					ID:            "short1",
+					Title:         "First Short",
+					Text:          "First short content",
+					ScheduledDate: "2025-01-15T14:30:00Z",
+					YouTubeID:     "abc123",
+				},
+				{
+					ID:            "short2",
+					Title:         "Second Short",
+					Text:          "Second short content",
+					ScheduledDate: "2025-01-16T10:00:00Z",
+					YouTubeID:     "",
+				},
+			},
+		}
+
+		jsonData, err := json.Marshal(video)
+		require.NoError(t, err)
+
+		var jsonMap map[string]interface{}
+		err = json.Unmarshal(jsonData, &jsonMap)
+		require.NoError(t, err)
+
+		shorts, ok := jsonMap["shorts"].([]interface{})
+		require.True(t, ok, "shorts should be an array")
+		assert.Len(t, shorts, 2)
+
+		short1 := shorts[0].(map[string]interface{})
+		assert.Equal(t, "short1", short1["id"])
+		assert.Equal(t, "First Short", short1["title"])
+	})
+
+	t.Run("Video without Shorts omits field in JSON", func(t *testing.T) {
+		video := Video{
+			Name:     "test-video",
+			Category: "testing",
+			Shorts:   nil,
+		}
+
+		jsonData, err := json.Marshal(video)
+		require.NoError(t, err)
+
+		var jsonMap map[string]interface{}
+		err = json.Unmarshal(jsonData, &jsonMap)
+		require.NoError(t, err)
+
+		_, exists := jsonMap["shorts"]
+		assert.False(t, exists, "shorts should be omitted when nil")
+	})
+
+	t.Run("Video with Shorts persists to YAML and loads correctly", func(t *testing.T) {
+		tempDir := t.TempDir()
+		videoPath := filepath.Join(tempDir, "test-video.yaml")
+
+		originalVideo := Video{
+			Name:     "Test Video with Shorts",
+			Category: "testing",
+			Path:     "/path/to/video",
+			Shorts: []Short{
+				{
+					ID:            "short1",
+					Title:         "Quick Tip",
+					Text:          "Here's a quick tip about testing...",
+					ScheduledDate: "2025-01-15T14:30:00Z",
+					YouTubeID:     "xyz789",
+				},
+				{
+					ID:            "short2",
+					Title:         "Another Tip",
+					Text:          "Another useful tip...",
+					ScheduledDate: "2025-01-16T10:00:00Z",
+					YouTubeID:     "", // Not yet uploaded
+				},
+			},
+		}
+
+		y := NewYAML(filepath.Join(tempDir, "index.yaml"))
+
+		// Write the video
+		err := y.WriteVideo(originalVideo, videoPath)
+		require.NoError(t, err)
+
+		// Read it back
+		loadedVideo, err := y.GetVideo(videoPath)
+		require.NoError(t, err)
+
+		// Verify Shorts were persisted correctly
+		assert.Len(t, loadedVideo.Shorts, 2)
+		assert.Equal(t, "short1", loadedVideo.Shorts[0].ID)
+		assert.Equal(t, "Quick Tip", loadedVideo.Shorts[0].Title)
+		assert.Equal(t, "Here's a quick tip about testing...", loadedVideo.Shorts[0].Text)
+		assert.Equal(t, "2025-01-15T14:30:00Z", loadedVideo.Shorts[0].ScheduledDate)
+		assert.Equal(t, "xyz789", loadedVideo.Shorts[0].YouTubeID)
+
+		assert.Equal(t, "short2", loadedVideo.Shorts[1].ID)
+		assert.Equal(t, "Another Tip", loadedVideo.Shorts[1].Title)
+		assert.Equal(t, "", loadedVideo.Shorts[1].YouTubeID)
+	})
+
+	t.Run("Video YAML without Shorts loads with empty Shorts slice", func(t *testing.T) {
+		tempDir := t.TempDir()
+		videoPath := filepath.Join(tempDir, "no-shorts-video.yaml")
+
+		// Write YAML without shorts field
+		yamlContent := `name: Video Without Shorts
+category: testing
+path: /path/to/video
+`
+		err := os.WriteFile(videoPath, []byte(yamlContent), 0644)
+		require.NoError(t, err)
+
+		y := NewYAML(filepath.Join(tempDir, "index.yaml"))
+		loadedVideo, err := y.GetVideo(videoPath)
+		require.NoError(t, err)
+
+		// Shorts should be nil/empty
+		assert.Empty(t, loadedVideo.Shorts)
+	})
+}

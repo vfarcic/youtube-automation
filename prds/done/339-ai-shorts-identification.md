@@ -1,10 +1,11 @@
 # PRD: AI-Powered YouTube Shorts Candidate Identification from Manuscripts
 
 **Issue**: #339
-**Status**: Planning
+**Status**: Complete (MVP)
 **Priority**: Medium
 **Created**: 2025-11-11
-**Last Updated**: 2025-11-28
+**Last Updated**: 2025-12-16
+**Follow-up**: PRD #360 (Shorts Upload Automation) - pending validation
 
 ---
 
@@ -58,13 +59,13 @@ Add AI-powered analysis to automatically identify manuscript segments suitable f
 ## Success Criteria
 
 ### Must Have (MVP)
-- [ ] AI successfully identifies 10 Short candidates from a manuscript
-- [ ] Candidates meet word count limit (configurable in settings.yaml)
-- [ ] System presents candidates with extracted text and AI rationale (during selection only)
-- [ ] Selected segments get TODO markers inserted in manuscript with unique IDs
-- [ ] TODO markers include (start) and (end) tags for clear boundaries
+- [x] AI successfully identifies 10 Short candidates from a manuscript
+- [x] Candidates meet word count limit (configurable in settings.yaml)
+- [x] System presents candidates with extracted text and AI rationale (during selection only)
+- [x] Selected segments get TODO markers inserted in manuscript with unique IDs
+- [x] TODO markers include (start) and (end) tags for clear boundaries
 - [ ] Scheduled publish dates calculated (1 day intervals, randomized times)
-- [ ] Selected Shorts metadata stored in video YAML
+- [x] Selected Shorts metadata stored in video YAML
 - [ ] "Upload Shorts" option accepts batch upload with file paths
 - [ ] Shorts uploaded with scheduled publish dates (not immediate)
 - [ ] Short descriptions include link to main video
@@ -300,11 +301,11 @@ Add AI-powered analysis to automatically identify manuscript segments suitable f
 
 ## Milestones
 
-- [ ] **AI Analysis Working**: Manuscript analysis identifies 10 Short candidates with rationale
-- [ ] **TODO Marker System Complete**: Markers inserted/parsed correctly with unique IDs and (start)/(end) tags
-- [ ] **Storage Schema Complete**: Video YAML stores simplified Shorts metadata (5 fields only)
+- [x] **AI Analysis Working**: Manuscript analysis identifies 10 Short candidates with rationale
+- [x] **TODO Marker System Complete**: Markers inserted/parsed correctly with unique IDs and (start)/(end) tags
+- [x] **Storage Schema Complete**: Video YAML stores simplified Shorts metadata (5 fields only)
 - [ ] **Scheduling Calculator Working**: Calculates 1-day intervals with randomized times
-- [ ] **CLI Selection Workflow Functional**: Users can analyze, select from 10 candidates, TODO markers inserted
+- [x] **CLI Selection Workflow Functional**: Users can analyze, select from 10 candidates, TODO markers inserted
 - [ ] **CLI Upload Workflow Functional**: Batch upload with file paths, scheduled publishing
 - [ ] **YouTube Integration Live**: Shorts upload successfully with scheduled dates and main video links
 - [ ] **API Endpoints Deployed**: RESTful API supports full Shorts workflow (if applicable)
@@ -334,6 +335,61 @@ Add AI-powered analysis to automatically identify manuscript segments suitable f
 - **Updated technical scope** with new Manuscript Modifier module
 - **Updated success criteria** and validation strategy
 - **PRD ready for implementation**
+
+### 2025-12-16
+- **Phase 1 Started: Storage Schema & Configuration**
+- ✅ Added `Short` struct to `internal/storage/yaml.go` with 5 fields (ID, Title, Text, ScheduledDate, YouTubeID)
+- ✅ Added `Shorts` field to `Video` struct (optional slice)
+- ✅ Added `ShortsConfig` struct to `internal/configuration/cli.go`
+- ✅ Added `Shorts` field to `Settings` struct
+- ✅ Added defaults: `MaxWords: 150`, `CandidateCount: 10`
+- ✅ Updated `settings.yaml` with shorts configuration section
+- ✅ Added comprehensive tests for Short struct serialization (JSON/YAML)
+- ✅ Added tests for Video with Shorts persistence
+- ✅ Added tests for ShortsConfig defaults and serialization
+- ✅ All tests pass, build successful
+- **Milestone Complete**: Storage Schema Complete
+
+### 2025-12-16 (Session 2)
+- **Phase 1 & 2: AI Analysis & CLI Selection**
+- ✅ Created `internal/ai/shorts.go` - AI module for manuscript analysis
+- ✅ Created `internal/ai/templates/shorts.md` - prompt template for identifying Short candidates
+- ✅ Created `internal/ai/shorts_test.go` - comprehensive unit tests
+- ✅ Created `internal/app/menu_shorts.go` - CLI handler for Shorts analysis
+- ✅ Created `internal/app/menu_shorts_test.go` - menu handler tests
+- ✅ Modified `internal/app/menu_phase_editor.go` - added Shorts section to Post-Production phase
+- ✅ User tested feature with real manuscript - AI successfully identified candidates
+- ✅ All tests pass, build successful
+- **Milestones Complete**: AI Analysis Working, CLI Selection Workflow Functional
+- **Next**: TODO marker system for manuscript modification
+
+### 2025-12-16 (Session 3)
+- **TODO Marker System Implementation**
+- ✅ Created `internal/manuscript/shorts.go` - manuscript modifier module
+- ✅ Implemented `InsertShortMarkers()` - inserts start/end markers around selected segments
+- ✅ Implemented text matching with whitespace normalization fallback
+- ✅ Implemented `RemoveShortMarkers()` - utility for cleanup/re-analysis
+- ✅ Implemented `ExtractShortText()` - extracts text between markers by ID
+- ✅ Created `internal/manuscript/shorts_test.go` - 14 comprehensive unit tests
+- ✅ Integrated marker insertion into CLI workflow (auto-inserts after selection)
+- ✅ Marker format: `TODO: Short (id: short1) (start)` / `TODO: Short (id: short1) (end)`
+- ✅ All tests pass, build successful
+- **Milestone Complete**: TODO Marker System Complete
+- **Next**: Scheduling calculator for publish dates
+
+### 2025-12-16 (Session 4)
+- **CLI Workflow & Completion Counter Improvements**
+- ✅ Updated Shorts section to match Thumbnail pattern ("Save & Continue to Details")
+- ✅ Added immediate YAML save when user clicks "Save & Continue" (consistent UX)
+- ✅ Added `ThumbnailVariants` and `Shorts` to Post-Production aspect mapping
+- ✅ Added `completion:"filled_only"` tag to Shorts field in `internal/storage/yaml.go`
+- ✅ Updated `CalculatePostProductionProgress` in `internal/video/manager.go` to use new fields
+- ✅ Updated `countCompletedTasks` to handle slice types (`[]ThumbnailVariant`, `[]Short`)
+- ✅ Post-Production completion counter now shows (x/7) with proper tracking
+- ✅ Updated all related tests (aspect, video manager, API handlers)
+- ✅ All tests pass, build successful
+- **Quality Improvement**: Shorts now save immediately and appear in completion counter
+- **Next**: Scheduling calculator for publish dates
 
 ---
 
