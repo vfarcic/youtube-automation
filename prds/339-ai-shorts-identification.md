@@ -61,8 +61,8 @@ Add AI-powered analysis to automatically identify manuscript segments suitable f
 - [x] AI successfully identifies 10 Short candidates from a manuscript
 - [x] Candidates meet word count limit (configurable in settings.yaml)
 - [x] System presents candidates with extracted text and AI rationale (during selection only)
-- [ ] Selected segments get TODO markers inserted in manuscript with unique IDs
-- [ ] TODO markers include (start) and (end) tags for clear boundaries
+- [x] Selected segments get TODO markers inserted in manuscript with unique IDs
+- [x] TODO markers include (start) and (end) tags for clear boundaries
 - [ ] Scheduled publish dates calculated (1 day intervals, randomized times)
 - [x] Selected Shorts metadata stored in video YAML
 - [ ] "Upload Shorts" option accepts batch upload with file paths
@@ -301,10 +301,10 @@ Add AI-powered analysis to automatically identify manuscript segments suitable f
 ## Milestones
 
 - [x] **AI Analysis Working**: Manuscript analysis identifies 10 Short candidates with rationale
-- [ ] **TODO Marker System Complete**: Markers inserted/parsed correctly with unique IDs and (start)/(end) tags
+- [x] **TODO Marker System Complete**: Markers inserted/parsed correctly with unique IDs and (start)/(end) tags
 - [x] **Storage Schema Complete**: Video YAML stores simplified Shorts metadata (5 fields only)
 - [ ] **Scheduling Calculator Working**: Calculates 1-day intervals with randomized times
-- [x] **CLI Selection Workflow Functional**: Users can analyze, select from 10 candidates (TODO markers pending)
+- [x] **CLI Selection Workflow Functional**: Users can analyze, select from 10 candidates, TODO markers inserted
 - [ ] **CLI Upload Workflow Functional**: Batch upload with file paths, scheduled publishing
 - [ ] **YouTube Integration Live**: Shorts upload successfully with scheduled dates and main video links
 - [ ] **API Endpoints Deployed**: RESTful API supports full Shorts workflow (if applicable)
@@ -361,6 +361,20 @@ Add AI-powered analysis to automatically identify manuscript segments suitable f
 - ✅ All tests pass, build successful
 - **Milestones Complete**: AI Analysis Working, CLI Selection Workflow Functional
 - **Next**: TODO marker system for manuscript modification
+
+### 2025-12-16 (Session 3)
+- **TODO Marker System Implementation**
+- ✅ Created `internal/manuscript/shorts.go` - manuscript modifier module
+- ✅ Implemented `InsertShortMarkers()` - inserts start/end markers around selected segments
+- ✅ Implemented text matching with whitespace normalization fallback
+- ✅ Implemented `RemoveShortMarkers()` - utility for cleanup/re-analysis
+- ✅ Implemented `ExtractShortText()` - extracts text between markers by ID
+- ✅ Created `internal/manuscript/shorts_test.go` - 14 comprehensive unit tests
+- ✅ Integrated marker insertion into CLI workflow (auto-inserts after selection)
+- ✅ Marker format: `TODO: Short (id: short1) (start)` / `TODO: Short (id: short1) (end)`
+- ✅ All tests pass, build successful
+- **Milestone Complete**: TODO Marker System Complete
+- **Next**: Scheduling calculator for publish dates
 
 ---
 

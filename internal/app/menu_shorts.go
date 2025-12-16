@@ -7,14 +7,15 @@ import (
 	"strings"
 
 	"devopstoolkit/youtube-automation/internal/ai"
+	"devopstoolkit/youtube-automation/internal/manuscript"
 	"devopstoolkit/youtube-automation/internal/storage"
 
 	"github.com/charmbracelet/huh"
 )
 
-// HandleAnalyzeShorts analyzes a video's manuscript for YouTube Shorts candidates
-// and lets the user select which ones to keep.
-// Returns the selected shorts (without TODO markers - that's a separate step).
+// HandleAnalyzeShorts analyzes a video's manuscript for YouTube Shorts candidates,
+// lets the user select which ones to keep, and inserts TODO markers into the manuscript.
+// Returns the selected shorts with markers inserted in the manuscript file.
 func (m *MenuHandler) HandleAnalyzeShorts(video *storage.Video) ([]storage.Short, error) {
 	// Check if manuscript path exists
 	if video.Gist == "" {
@@ -48,6 +49,22 @@ func (m *MenuHandler) HandleAnalyzeShorts(video *storage.Video) ([]storage.Short
 	selectedShorts, err := m.displayAndSelectShortCandidates(candidates)
 	if err != nil {
 		return nil, err
+	}
+
+	// Insert TODO markers into manuscript for selected shorts
+	if len(selectedShorts) > 0 {
+		fmt.Println(m.normalStyle.Render("Inserting TODO markers into manuscript..."))
+		if markerErr := manuscript.InsertShortMarkers(video.Gist, selectedShorts); markerErr != nil {
+			// Check if it's a partial success (some markers inserted but not all found)
+			if strings.Contains(markerErr.Error(), "markers inserted") {
+				fmt.Println(m.orangeStyle.Render(fmt.Sprintf("⚠️  %s", markerErr.Error())))
+			} else {
+				fmt.Println(m.errorStyle.Render(fmt.Sprintf("Failed to insert markers: %v", markerErr)))
+				// Continue anyway - shorts are still selected, just without markers
+			}
+		} else {
+			fmt.Println(m.greenStyle.Render(fmt.Sprintf("✓ TODO markers inserted in %s", video.Gist)))
+		}
 	}
 
 	return selectedShorts, nil
