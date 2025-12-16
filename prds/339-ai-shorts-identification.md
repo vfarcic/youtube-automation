@@ -376,6 +376,20 @@ Add AI-powered analysis to automatically identify manuscript segments suitable f
 - **Milestone Complete**: TODO Marker System Complete
 - **Next**: Scheduling calculator for publish dates
 
+### 2025-12-16 (Session 4)
+- **CLI Workflow & Completion Counter Improvements**
+- ✅ Updated Shorts section to match Thumbnail pattern ("Save & Continue to Details")
+- ✅ Added immediate YAML save when user clicks "Save & Continue" (consistent UX)
+- ✅ Added `ThumbnailVariants` and `Shorts` to Post-Production aspect mapping
+- ✅ Added `completion:"filled_only"` tag to Shorts field in `internal/storage/yaml.go`
+- ✅ Updated `CalculatePostProductionProgress` in `internal/video/manager.go` to use new fields
+- ✅ Updated `countCompletedTasks` to handle slice types (`[]ThumbnailVariant`, `[]Short`)
+- ✅ Post-Production completion counter now shows (x/7) with proper tracking
+- ✅ Updated all related tests (aspect, video manager, API handlers)
+- ✅ All tests pass, build successful
+- **Quality Improvement**: Shorts now save immediately and appear in completion counter
+- **Next**: Scheduling calculator for publish dates
+
 ---
 
 ## Notes

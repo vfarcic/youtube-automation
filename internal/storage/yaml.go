@@ -109,7 +109,7 @@ type Video struct {
 	AudioLanguage        string      `yaml:"audioLanguage,omitempty" json:"audioLanguage,omitempty" completion:"filled_only"`
 	Gist                 string      `yaml:"gist,omitempty" json:"gist,omitempty" completion:"filled_only"`
 	Code                 bool        `yaml:"code,omitempty" json:"code,omitempty" completion:"true_only"`
-	Shorts               []Short     `yaml:"shorts,omitempty" json:"shorts,omitempty"` // YouTube Shorts extracted from this video
+	Shorts               []Short     `yaml:"shorts,omitempty" json:"shorts,omitempty" completion:"filled_only"` // YouTube Shorts extracted from this video
 }
 
 // Sponsorship holds details about video sponsorship.

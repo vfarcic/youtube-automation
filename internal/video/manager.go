@@ -210,7 +210,8 @@ func (m *Manager) CalculateWorkProgressProgress(video storage.Video) (int, int) 
 // CalculatePostProductionProgress calculates Post-Production phase progress on-the-fly
 func (m *Manager) CalculatePostProductionProgress(video storage.Video) (int, int) {
 	fields := []interface{}{
-		video.Thumbnail,
+		video.ThumbnailVariants,
+		video.Shorts,
 		video.Members,
 		video.RequestEdit,
 		video.Movie,
@@ -290,6 +291,14 @@ func (m *Manager) countCompletedTasks(fields []interface{}) (completed int, tota
 			}
 		case bool:
 			if v {
+				completed++
+			}
+		case []storage.ThumbnailVariant:
+			if len(v) > 0 {
+				completed++
+			}
+		case []storage.Short:
+			if len(v) > 0 {
 				completed++
 			}
 		}

@@ -772,20 +772,21 @@ func TestCalculatePostProductionProgress(t *testing.T) {
 			name:              "Empty_video",
 			video:             storage.Video{},
 			expectedCompleted: 0,
-			expectedTotal:     6, // Thumbnail, Members, RequestEdit, Movie, Slides, Timecodes
+			expectedTotal:     7, // ThumbnailVariants, Shorts, Members, RequestEdit, Movie, Slides, Timecodes
 			description:       "Empty video should have no post-production progress",
 		},
 		{
 			name: "Basic_fields_complete",
 			video: storage.Video{
-				Thumbnail:   "thumbnail.jpg",
-				Members:     "member1,member2",
-				RequestEdit: true,
-				Movie:       true,
-				Slides:      true,
+				ThumbnailVariants: []storage.ThumbnailVariant{{Path: "thumbnail.jpg"}},
+				Shorts:            []storage.Short{{ID: "short1", Title: "Test Short"}},
+				Members:           "member1,member2",
+				RequestEdit:       true,
+				Movie:             true,
+				Slides:            true,
 			},
-			expectedCompleted: 5,
-			expectedTotal:     6,
+			expectedCompleted: 6,
+			expectedTotal:     7,
 			description:       "Basic post-production fields should be counted",
 		},
 		{
@@ -794,7 +795,7 @@ func TestCalculatePostProductionProgress(t *testing.T) {
 				Timecodes: "00:00 Intro, 05:00 Main content",
 			},
 			expectedCompleted: 1,
-			expectedTotal:     6,
+			expectedTotal:     7,
 			description:       "Valid timecodes should be counted",
 		},
 		{
@@ -803,7 +804,7 @@ func TestCalculatePostProductionProgress(t *testing.T) {
 				Timecodes: "00:00 Intro, FIXME: Add more timecodes",
 			},
 			expectedCompleted: 0,
-			expectedTotal:     6,
+			expectedTotal:     7,
 			description:       "Timecodes with FIXME should not be counted",
 		},
 		{
@@ -812,35 +813,37 @@ func TestCalculatePostProductionProgress(t *testing.T) {
 				Timecodes: "",
 			},
 			expectedCompleted: 0,
-			expectedTotal:     6,
+			expectedTotal:     7,
 			description:       "Empty timecodes should not be counted",
 		},
 		{
 			name: "All_complete",
 			video: storage.Video{
-				Thumbnail:   "thumbnail.jpg",
-				Members:     "member1,member2",
-				RequestEdit: true,
-				Movie:       true,
-				Slides:      true,
-				Timecodes:   "00:00 Intro, 05:00 Main, 10:00 Conclusion",
+				ThumbnailVariants: []storage.ThumbnailVariant{{Path: "thumbnail.jpg"}},
+				Shorts:            []storage.Short{{ID: "short1", Title: "Test Short"}},
+				Members:           "member1,member2",
+				RequestEdit:       true,
+				Movie:             true,
+				Slides:            true,
+				Timecodes:         "00:00 Intro, 05:00 Main, 10:00 Conclusion",
 			},
-			expectedCompleted: 6,
-			expectedTotal:     6,
+			expectedCompleted: 7,
+			expectedTotal:     7,
 			description:       "All post-production fields complete",
 		},
 		{
 			name: "Mixed_completion",
 			video: storage.Video{
-				Thumbnail:   "thumbnail.jpg",
-				Members:     "",    // Empty, not counted
-				RequestEdit: false, // False, not counted
-				Movie:       true,
-				Slides:      false,                  // False, not counted
-				Timecodes:   "FIXME: Add timecodes", // Has FIXME, not counted
+				ThumbnailVariants: []storage.ThumbnailVariant{{Path: "thumbnail.jpg"}},
+				Shorts:            []storage.Short{}, // Empty, not counted
+				Members:           "",                // Empty, not counted
+				RequestEdit:       false,             // False, not counted
+				Movie:             true,
+				Slides:            false,                  // False, not counted
+				Timecodes:         "FIXME: Add timecodes", // Has FIXME, not counted
 			},
-			expectedCompleted: 2, // Only Thumbnail and Movie
-			expectedTotal:     6,
+			expectedCompleted: 2, // Only ThumbnailVariants and Movie
+			expectedTotal:     7,
 			description:       "Mixed completion should count only valid fields",
 		},
 	}

@@ -322,8 +322,8 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 			// --- Shorts Analysis Section ---
 			shortsDone := false
 			const (
-				actionShortsSkip    = 0
-				actionShortsAnalyze = 1
+				actionShortsContinue = 0
+				actionShortsAnalyze  = 1
 			)
 
 			// Show current shorts count if any
@@ -342,7 +342,7 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 						huh.NewSelect[int]().
 							Title("Action").
 							Options(
-								huh.NewOption("Skip / Continue to Details", actionShortsSkip),
+								huh.NewOption("Save & Continue to Details", actionShortsContinue),
 								huh.NewOption("Analyze Manuscript for Shorts (AI)", actionShortsAnalyze),
 							).
 							Value(&shortsAction),
@@ -368,10 +368,20 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 					if len(selectedShorts) > 0 {
 						updatedVideo.Shorts = selectedShorts
 						shortsStatus = fmt.Sprintf("%d Shorts selected", len(selectedShorts))
-						fmt.Println(m.greenStyle.Render(fmt.Sprintf("✓ %d Shorts saved to video", len(selectedShorts))))
+						fmt.Println(m.greenStyle.Render(fmt.Sprintf("✓ %d Shorts selected", len(selectedShorts))))
 					}
 
-				case actionShortsSkip:
+				case actionShortsContinue:
+					// Save shorts to YAML immediately (like Thumbnail section)
+					if len(updatedVideo.Shorts) > 0 {
+						yaml := storage.YAML{}
+						if err := yaml.WriteVideo(updatedVideo, updatedVideo.Path); err != nil {
+							fmt.Println(m.errorStyle.Render(fmt.Sprintf("Failed to save shorts: %v", err)))
+							continue
+						}
+						fmt.Println(m.greenStyle.Render(fmt.Sprintf("✓ %d Shorts saved to video YAML", len(updatedVideo.Shorts))))
+						videoToEdit = updatedVideo // Persist changes for consistency
+					}
 					shortsDone = true
 				}
 			}
