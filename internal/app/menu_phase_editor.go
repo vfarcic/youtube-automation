@@ -319,6 +319,63 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 				}
 			}
 
+			// --- Shorts Analysis Section ---
+			shortsDone := false
+			const (
+				actionShortsSkip    = 0
+				actionShortsAnalyze = 1
+			)
+
+			// Show current shorts count if any
+			currentShortsCount := len(updatedVideo.Shorts)
+			shortsStatus := "No Shorts analyzed yet"
+			if currentShortsCount > 0 {
+				shortsStatus = fmt.Sprintf("%d Shorts selected", currentShortsCount)
+			}
+
+			for !shortsDone {
+				var shortsAction int
+
+				shortsForm := huh.NewForm(
+					huh.NewGroup(
+						huh.NewNote().Title("YouTube Shorts").Description(shortsStatus),
+						huh.NewSelect[int]().
+							Title("Action").
+							Options(
+								huh.NewOption("Skip / Continue to Details", actionShortsSkip),
+								huh.NewOption("Analyze Manuscript for Shorts (AI)", actionShortsAnalyze),
+							).
+							Value(&shortsAction),
+					),
+				)
+
+				err := shortsForm.Run()
+				if err != nil {
+					if errors.Is(err, huh.ErrUserAborted) {
+						fmt.Println(m.orangeStyle.Render("Shorts analysis cancelled. Returning to menu."))
+						return nil
+					}
+					return fmt.Errorf("error in shorts form: %w", err)
+				}
+
+				switch shortsAction {
+				case actionShortsAnalyze:
+					selectedShorts, analysisErr := m.HandleAnalyzeShorts(&updatedVideo)
+					if analysisErr != nil {
+						fmt.Println(m.errorStyle.Render(fmt.Sprintf("Shorts analysis failed: %v", analysisErr)))
+						continue
+					}
+					if len(selectedShorts) > 0 {
+						updatedVideo.Shorts = selectedShorts
+						shortsStatus = fmt.Sprintf("%d Shorts selected", len(selectedShorts))
+						fmt.Println(m.greenStyle.Render(fmt.Sprintf("✓ %d Shorts saved to video", len(selectedShorts))))
+					}
+
+				case actionShortsSkip:
+					shortsDone = true
+				}
+			}
+
 			// --- Rest of Post-Production Form ---
 			timeCodesTitle := constants.FieldTitleTimecodes
 			if strings.Contains(updatedVideo.Timecodes, "FIXME:") {
