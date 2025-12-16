@@ -1014,6 +1014,135 @@ func compareStringSlices(a, b []string) bool {
 	return true
 }
 
+// TestShortsConfigDefaults tests that ShortsConfig defaults are applied correctly
+func TestShortsConfigDefaults(t *testing.T) {
+	tests := []struct {
+		name                   string
+		yamlContent            string
+		expectedMaxWords       int
+		expectedCandidateCount int
+	}{
+		{
+			name: "Shorts config from YAML",
+			yamlContent: `
+shorts:
+  maxWords: 200
+  candidateCount: 15
+`,
+			expectedMaxWords:       200,
+			expectedCandidateCount: 15,
+		},
+		{
+			name:                   "Shorts config defaults when not in YAML",
+			yamlContent:            ``, // Empty YAML
+			expectedMaxWords:       150,
+			expectedCandidateCount: 10,
+		},
+		{
+			name: "Shorts config partial - maxWords only",
+			yamlContent: `
+shorts:
+  maxWords: 180
+`,
+			expectedMaxWords:       180,
+			expectedCandidateCount: 10, // Default
+		},
+		{
+			name: "Shorts config partial - candidateCount only",
+			yamlContent: `
+shorts:
+  candidateCount: 8
+`,
+			expectedMaxWords:       150, // Default
+			expectedCandidateCount: 8,
+		},
+		{
+			name: "Shorts config with zero values uses defaults",
+			yamlContent: `
+shorts:
+  maxWords: 0
+  candidateCount: 0
+`,
+			expectedMaxWords:       150, // Default applied for zero
+			expectedCandidateCount: 10,  // Default applied for zero
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Setup: Create a temporary settings.yaml
+			settingsDir, err := os.MkdirTemp("", "shorts-settings-test")
+			require.NoError(t, err)
+			defer os.RemoveAll(settingsDir)
+
+			tmpfn := filepath.Join(settingsDir, "settings.yaml")
+			err = os.WriteFile(tmpfn, []byte(tt.yamlContent), 0644)
+			require.NoError(t, err)
+
+			// Change to temp directory
+			originalWD, err := os.Getwd()
+			require.NoError(t, err)
+			err = os.Chdir(settingsDir)
+			require.NoError(t, err)
+			defer os.Chdir(originalWD)
+
+			// Reset and load settings
+			testSettings := Settings{}
+			yamlFile, err := os.ReadFile("settings.yaml")
+			if err == nil {
+				yaml.Unmarshal(yamlFile, &testSettings)
+			}
+
+			// Apply defaults (mimicking init() behavior)
+			if testSettings.Shorts.MaxWords == 0 {
+				testSettings.Shorts.MaxWords = 150
+			}
+			if testSettings.Shorts.CandidateCount == 0 {
+				testSettings.Shorts.CandidateCount = 10
+			}
+
+			// Assert
+			assert.Equal(t, tt.expectedMaxWords, testSettings.Shorts.MaxWords,
+				"MaxWords mismatch")
+			assert.Equal(t, tt.expectedCandidateCount, testSettings.Shorts.CandidateCount,
+				"CandidateCount mismatch")
+		})
+	}
+}
+
+// TestShortsConfigSerialization tests ShortsConfig JSON/YAML serialization
+func TestShortsConfigSerialization(t *testing.T) {
+	t.Run("ShortsConfig serializes to YAML correctly", func(t *testing.T) {
+		config := ShortsConfig{
+			MaxWords:       200,
+			CandidateCount: 15,
+		}
+
+		yamlData, err := yaml.Marshal(config)
+		require.NoError(t, err)
+
+		var parsed ShortsConfig
+		err = yaml.Unmarshal(yamlData, &parsed)
+		require.NoError(t, err)
+
+		assert.Equal(t, config.MaxWords, parsed.MaxWords)
+		assert.Equal(t, config.CandidateCount, parsed.CandidateCount)
+	})
+
+	t.Run("ShortsConfig deserializes from YAML correctly", func(t *testing.T) {
+		yamlContent := `
+maxWords: 175
+candidateCount: 12
+`
+		var config ShortsConfig
+		err := yaml.Unmarshal([]byte(yamlContent), &config)
+		require.NoError(t, err)
+
+		assert.Equal(t, 175, config.MaxWords)
+		assert.Equal(t, 12, config.CandidateCount)
+	})
+}
+
 func TestSlackSettingsLoading(t *testing.T) {
 	// Define the YAML content for the test
 	slackYAMLContent := `

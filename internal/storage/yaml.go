@@ -42,6 +42,16 @@ type ThumbnailVariant struct {
 	Share float64 `yaml:"share,omitempty" json:"share,omitempty"` // Watch time share % from YouTube A/B test
 }
 
+// Short represents a YouTube Short candidate extracted from a video manuscript.
+// Shorts are identified by AI analysis and stored with scheduling information.
+type Short struct {
+	ID            string `yaml:"id" json:"id"`                                           // Unique identifier (short1, short2, etc.)
+	Title         string `yaml:"title" json:"title"`                                     // Short title
+	Text          string `yaml:"text" json:"text"`                                       // Extracted manuscript segment
+	ScheduledDate string `yaml:"scheduled_date" json:"scheduled_date"`                   // ISO format publish timestamp
+	YouTubeID     string `yaml:"youtube_id,omitempty" json:"youtube_id,omitempty"`       // Short's YouTube video ID (empty until uploaded)
+}
+
 // Video represents all data associated with a video project.
 // All fields are already exported.
 type Video struct {
@@ -99,6 +109,7 @@ type Video struct {
 	AudioLanguage        string      `yaml:"audioLanguage,omitempty" json:"audioLanguage,omitempty" completion:"filled_only"`
 	Gist                 string      `yaml:"gist,omitempty" json:"gist,omitempty" completion:"filled_only"`
 	Code                 bool        `yaml:"code,omitempty" json:"code,omitempty" completion:"true_only"`
+	Shorts               []Short     `yaml:"shorts,omitempty" json:"shorts,omitempty"` // YouTube Shorts extracted from this video
 }
 
 // Sponsorship holds details about video sponsorship.

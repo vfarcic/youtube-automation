@@ -28,6 +28,7 @@ type Settings struct {
 	Slack         SettingsSlack         `yaml:"slack"`
 	Timing        TimingConfig          `yaml:"timing"`
 	Calendar      SettingsCalendar      `yaml:"calendar"`
+	Shorts        ShortsConfig          `yaml:"shorts"`
 }
 
 type SettingsEmail struct {
@@ -103,6 +104,12 @@ type TimingConfig struct {
 	Recommendations []TimingRecommendation `yaml:"recommendations" json:"recommendations"`
 }
 
+// ShortsConfig holds configuration for YouTube Shorts identification and scheduling
+type ShortsConfig struct {
+	MaxWords       int `yaml:"maxWords" json:"maxWords"`             // Maximum word count for a Short segment (default: 150)
+	CandidateCount int `yaml:"candidateCount" json:"candidateCount"` // Number of Short candidates to generate (default: 10)
+}
+
 var GlobalSettings Settings
 
 func init() {
@@ -155,6 +162,14 @@ func init() {
 	// Default API settings
 	if GlobalSettings.API.Port == 0 {
 		GlobalSettings.API.Port = 8080
+	}
+
+	// Default Shorts settings
+	if GlobalSettings.Shorts.MaxWords == 0 {
+		GlobalSettings.Shorts.MaxWords = 150
+	}
+	if GlobalSettings.Shorts.CandidateCount == 0 {
+		GlobalSettings.Shorts.CandidateCount = 10
 	}
 
 	// Calendar settings: enabled by default, set calendar.disabled: true to disable

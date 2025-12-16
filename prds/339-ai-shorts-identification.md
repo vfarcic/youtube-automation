@@ -1,10 +1,10 @@
 # PRD: AI-Powered YouTube Shorts Candidate Identification from Manuscripts
 
 **Issue**: #339
-**Status**: Planning
+**Status**: In Progress
 **Priority**: Medium
 **Created**: 2025-11-11
-**Last Updated**: 2025-11-28
+**Last Updated**: 2025-12-16
 
 ---
 
@@ -302,7 +302,7 @@ Add AI-powered analysis to automatically identify manuscript segments suitable f
 
 - [ ] **AI Analysis Working**: Manuscript analysis identifies 10 Short candidates with rationale
 - [ ] **TODO Marker System Complete**: Markers inserted/parsed correctly with unique IDs and (start)/(end) tags
-- [ ] **Storage Schema Complete**: Video YAML stores simplified Shorts metadata (5 fields only)
+- [x] **Storage Schema Complete**: Video YAML stores simplified Shorts metadata (5 fields only)
 - [ ] **Scheduling Calculator Working**: Calculates 1-day intervals with randomized times
 - [ ] **CLI Selection Workflow Functional**: Users can analyze, select from 10 candidates, TODO markers inserted
 - [ ] **CLI Upload Workflow Functional**: Batch upload with file paths, scheduled publishing
@@ -334,6 +334,20 @@ Add AI-powered analysis to automatically identify manuscript segments suitable f
 - **Updated technical scope** with new Manuscript Modifier module
 - **Updated success criteria** and validation strategy
 - **PRD ready for implementation**
+
+### 2025-12-16
+- **Phase 1 Started: Storage Schema & Configuration**
+- ✅ Added `Short` struct to `internal/storage/yaml.go` with 5 fields (ID, Title, Text, ScheduledDate, YouTubeID)
+- ✅ Added `Shorts` field to `Video` struct (optional slice)
+- ✅ Added `ShortsConfig` struct to `internal/configuration/cli.go`
+- ✅ Added `Shorts` field to `Settings` struct
+- ✅ Added defaults: `MaxWords: 150`, `CandidateCount: 10`
+- ✅ Updated `settings.yaml` with shorts configuration section
+- ✅ Added comprehensive tests for Short struct serialization (JSON/YAML)
+- ✅ Added tests for Video with Shorts persistence
+- ✅ Added tests for ShortsConfig defaults and serialization
+- ✅ All tests pass, build successful
+- **Milestone Complete**: Storage Schema Complete
 
 ---
 
