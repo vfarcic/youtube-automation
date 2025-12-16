@@ -1,10 +1,11 @@
 # PRD: AI-Powered YouTube Shorts Candidate Identification from Manuscripts
 
 **Issue**: #339
-**Status**: In Progress
+**Status**: Complete (MVP)
 **Priority**: Medium
 **Created**: 2025-11-11
 **Last Updated**: 2025-12-16
+**Follow-up**: PRD #360 (Shorts Upload Automation) - pending validation
 
 ---
 
