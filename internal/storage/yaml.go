@@ -68,7 +68,6 @@ type Video struct {
 	Thumbnails           bool               `json:"thumbnails" completion:"true_only"`
 	Diagrams             bool               `json:"diagrams" completion:"true_only"`
 	Titles               []TitleVariant     `yaml:"titles,omitempty" json:"titles,omitempty" completion:"filled_only"`
-	Title                string             `json:"title" completion:"filled_only"` // DEPRECATED: fallback for old videos
 	Description          string             `json:"description" completion:"filled_only"`
 	Tags                 string             `json:"tags" completion:"filled_only"`
 	DescriptionTags      string             `json:"descriptionTags" completion:"filled_only"`
@@ -146,15 +145,6 @@ func (y *YAML) GetVideo(path string) (Video, error) {
 		return video, fmt.Errorf("failed to unmarshal video data from %s: %w", path, err)
 	}
 
-	// Auto-migrate: if Titles array is empty but legacy Title field exists, migrate it
-	if len(video.Titles) == 0 && video.Title != "" {
-		video.Titles = []TitleVariant{{
-			Index: 1,
-			Text:  video.Title,
-			Share: 0,
-		}}
-	}
-
 	// Auto-migrate: if ThumbnailVariants array is empty but legacy Thumbnail field exists, migrate it
 	if len(video.ThumbnailVariants) == 0 && video.Thumbnail != "" {
 		video.ThumbnailVariants = []ThumbnailVariant{{
@@ -206,16 +196,11 @@ func (y *YAML) WriteIndex(vi []VideoIndex) error {
 }
 
 // GetUploadTitle returns the primary title to upload to YouTube (Index=1)
-// With auto-migration in GetVideo(), this should always find a title in Titles array
 func (v *Video) GetUploadTitle() string {
 	for _, t := range v.Titles {
 		if t.Index == 1 {
 			return t.Text
 		}
-	}
-	// Fallback (shouldn't happen with auto-migration, but safe)
-	if v.Title != "" {
-		return v.Title
 	}
 	return ""
 }

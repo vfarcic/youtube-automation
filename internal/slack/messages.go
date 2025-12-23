@@ -11,20 +11,20 @@ import (
 // PostVideoThumbnail posts a simple message with the video thumbnail linking to YouTube.
 // It uses the provided internal Slack client and video details.
 func PostVideoThumbnail(client *SlackClient, channelID string, videoDetails storage.Video) error {
+	videoTitle := videoDetails.GetUploadTitle()
+	if videoTitle == "" {
+		return fmt.Errorf("cannot post to Slack: video title is empty")
+	}
 	if videoDetails.VideoId == "" {
-		return fmt.Errorf("cannot post to Slack: VideoId is empty for video %q", videoDetails.Title)
+		return fmt.Errorf("cannot post to Slack: VideoId is empty for video %q", videoTitle)
 	}
 	if videoDetails.Thumbnail == "" {
 		// We could still post without a thumbnail, but the task is focused on thumbnail posting.
 		// For now, let's consider it an issue if the thumbnail URL is missing.
-		return fmt.Errorf("cannot post to Slack: Thumbnail URL is empty for video %q (ID: %s)", videoDetails.Title, videoDetails.VideoId)
+		return fmt.Errorf("cannot post to Slack: Thumbnail URL is empty for video %q (ID: %s)", videoTitle, videoDetails.VideoId)
 	}
 
 	videoURL := fmt.Sprintf("https://www.youtube.com/watch?v=%s", videoDetails.VideoId)
-	videoTitle := videoDetails.Title
-	if videoTitle == "" {
-		videoTitle = "New Video" // Default title if none provided
-	}
 	thumbnailURL := videoDetails.Thumbnail
 
 	// The message text that appears above the attachment

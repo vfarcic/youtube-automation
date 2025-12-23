@@ -126,9 +126,6 @@ func (m *MenuHandler) editPhaseDefinition(videoToEdit storage.Video, settings co
 						title3 = t.Text
 					}
 				}
-			} else if videoToEdit.Title != "" {
-				// Fallback to legacy Title field
-				title1 = videoToEdit.Title
 			}
 
 			for !fieldSavedOrSkipped {

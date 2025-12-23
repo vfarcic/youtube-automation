@@ -26,10 +26,11 @@ const (
 // BuildHeaderBlock creates a Slack Header block for a video.
 // Actual implementation will be in Subtask 4.3.
 func BuildHeaderBlock(videoDetails storage.Video) (*slack.HeaderBlock, error) {
-	if videoDetails.Title == "" {
+	title := videoDetails.GetUploadTitle()
+	if title == "" {
 		return nil, errors.New("video title cannot be empty for header block")
 	}
-	headerText := slack.NewTextBlockObject(slack.PlainTextType, videoDetails.Title, false, false)
+	headerText := slack.NewTextBlockObject(slack.PlainTextType, title, false, false)
 	headerBlock := slack.NewHeaderBlock(headerText)
 	return headerBlock, nil
 }
@@ -55,7 +56,7 @@ func BuildSectionBlockWithThumbnail(videoDetails storage.Video) (*slack.SectionB
 	textBlock := slack.NewTextBlockObject(slack.MarkdownType, textContent, false, false)
 
 	thumbnailURL := fmt.Sprintf(thumbnailURLFormat, videoDetails.VideoId)
-	imageAltText := videoDetails.Title
+	imageAltText := videoDetails.GetUploadTitle()
 	if imageAltText == "" { // Use default alt text if title is empty
 		imageAltText = thumbnailAltText
 	}

@@ -64,7 +64,7 @@ func (m *mockYouTubeService) uploadVideo(video *storage.Video) string {
 
 	// Record the upload request using fields from the video struct
 	m.uploads = append(m.uploads, &uploadRequest{
-		title:         video.Title,
+		title:         video.GetUploadTitle(),
 		description:   video.Description,
 		tags:          strings.Split(video.Tags, ""),
 		categoryId:    "28",
@@ -73,13 +73,13 @@ func (m *mockYouTubeService) uploadVideo(video *storage.Video) string {
 	})
 
 	// Create a fake video ID
-	videoId := "test-video-id-" + video.Title
+	videoId := "test-video-id-" + video.GetUploadTitle()
 
 	// Store the video in our mock database
 	m.videos[videoId] = &youtube.Video{
 		Id: videoId,
 		Snippet: &youtube.VideoSnippet{
-			Title:                video.Title,
+			Title:                video.GetUploadTitle(),
 			Description:          video.Description,
 			Tags:                 strings.Split(video.Tags, ","),
 			CategoryId:           "28",

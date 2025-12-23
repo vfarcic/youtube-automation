@@ -489,7 +489,7 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 				// The additional updatedVideo.VideoId != "" check here is for extra safety but might be redundant.
 				if createHugo && updatedVideo.VideoId != "" && updatedVideo.HugoPath == "" && originalHugoPath == "" { // Create new Hugo post only if VideoId is present
 					hugoPublisher := publishing.Hugo{}
-					createdPath, hugoErr := hugoPublisher.Post(updatedVideo.Gist, updatedVideo.Title, updatedVideo.Date, updatedVideo.VideoId)
+					createdPath, hugoErr := hugoPublisher.Post(updatedVideo.Gist, updatedVideo.GetUploadTitle(), updatedVideo.Date, updatedVideo.VideoId)
 					if hugoErr != nil {
 						log.Print(m.errorStyle.Render(fmt.Sprintf("Failed to create Hugo post: %v", hugoErr)))
 						updatedVideo.HugoPath = originalHugoPath // Revert intent
@@ -688,7 +688,7 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 
 				// Action: Repo Update (if changed meaningfully in this phase)
 				if updatedVideo.Repo != originalRepo && updatedVideo.Repo != "" && updatedVideo.Repo != "N/A" {
-					log.Println(m.orangeStyle.Render(fmt.Sprintf("TODO: Implement repository update for %s with title %s, videoId %s", updatedVideo.Repo, updatedVideo.Title, updatedVideo.VideoId)))
+					log.Println(m.orangeStyle.Render(fmt.Sprintf("TODO: Implement repository update for %s with title %s, videoId %s", updatedVideo.Repo, updatedVideo.GetUploadTitle(), updatedVideo.VideoId)))
 				} else if updatedVideo.Repo != originalRepo && (updatedVideo.Repo == "" || updatedVideo.Repo == "N/A") { // User cleared repo or set to N/A
 					// Just save the cleared/N/A state, no specific action beyond that.
 				}
