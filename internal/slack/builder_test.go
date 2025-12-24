@@ -22,7 +22,7 @@ func TestBuildHeaderBlock(t *testing.T) {
 		{
 			name: "Valid video title",
 			videoDetails: storage.Video{
-				Title: "My Awesome Video",
+				Titles: []storage.TitleVariant{{Index: 1, Text: "My Awesome Video"}},
 			},
 			expectedTitle: "My Awesome Video",
 			expectError:   false,
@@ -30,7 +30,7 @@ func TestBuildHeaderBlock(t *testing.T) {
 		{
 			name: "Empty video title",
 			videoDetails: storage.Video{
-				Title: "", // Empty title
+				Titles: []storage.TitleVariant{}, // Empty titles
 			},
 			expectedTitle: "",
 			expectError:   true,
@@ -38,7 +38,7 @@ func TestBuildHeaderBlock(t *testing.T) {
 		{
 			name: "Video with other details but valid title",
 			videoDetails: storage.Video{
-				Title:       "Another Great Video",
+				Titles:      []storage.TitleVariant{{Index: 1, Text: "Another Great Video"}},
 				Description: "Some description",
 				VideoId:     "video123",
 			},
@@ -196,7 +196,7 @@ func TestBuildSectionBlockWithThumbnail(t *testing.T) {
 		{
 			name: "Valid video with Description and VideoId",
 			videoDetails: storage.Video{
-				Title:       "Awesome Title",
+				Titles:      []storage.TitleVariant{{Index: 1, Text: "Awesome Title"}},
 				Description: "This is the full description.",
 				VideoId:     "vid123",
 			},
@@ -207,7 +207,7 @@ func TestBuildSectionBlockWithThumbnail(t *testing.T) {
 		{
 			name: "Valid video with Description and VideoId",
 			videoDetails: storage.Video{
-				Title:       "Another Title",
+				Titles:      []storage.TitleVariant{{Index: 1, Text: "Another Title"}},
 				Description: "Only description here.",
 				VideoId:     "vid456",
 			},
@@ -218,7 +218,7 @@ func TestBuildSectionBlockWithThumbnail(t *testing.T) {
 		{
 			name: "Valid video with no Description, but with VideoId",
 			videoDetails: storage.Video{
-				Title:   "Minimal Video",
+				Titles:  []storage.TitleVariant{{Index: 1, Text: "Minimal Video"}},
 				VideoId: "vid789",
 			},
 			expectedText:         defaultSummary,
@@ -228,7 +228,7 @@ func TestBuildSectionBlockWithThumbnail(t *testing.T) {
 		{
 			name: "Video with text fields but empty VideoId",
 			videoDetails: storage.Video{
-				Title:       "Text Only",
+				Titles:      []storage.TitleVariant{{Index: 1, Text: "Text Only"}},
 				Description: "Some description.",
 				VideoId:     "", // Empty VideoId
 			},
@@ -238,7 +238,7 @@ func TestBuildSectionBlockWithThumbnail(t *testing.T) {
 		{
 			name: "Video with very long description",
 			videoDetails: storage.Video{
-				Title:       "Long Desc Video",
+				Titles:      []storage.TitleVariant{{Index: 1, Text: "Long Desc Video"}},
 				Description: strings.Repeat("a", maxDescriptionLength+100),
 				VideoId:     "vidLong",
 			},
@@ -249,7 +249,7 @@ func TestBuildSectionBlockWithThumbnail(t *testing.T) {
 		{
 			name: "Empty video details (should error due to empty VideoId)",
 			videoDetails: storage.Video{
-				Title:       "",
+				Titles:      []storage.TitleVariant{},
 				Description: "",
 				VideoId:     "",
 			},
@@ -282,11 +282,11 @@ func TestBuildSectionBlockWithThumbnail(t *testing.T) {
 				assert.Equal(t, slack.METImage, block.Accessory.ImageElement.Type)
 				assert.Equal(t, tt.expectedThumbnailURL, block.Accessory.ImageElement.ImageURL)
 				// Use video title as alt text if available, otherwise a default or empty.
-				// BuildSectionBlockWithThumbnail sets alt text to video.Title
-				expectedAltText := tt.videoDetails.Title
+				// BuildSectionBlockWithThumbnail sets alt text to video.GetUploadTitle()
+				expectedAltText := tt.videoDetails.GetUploadTitle()
 				if expectedAltText == "" && tt.videoDetails.VideoId != "" {
-					// If title is empty but we have a thumbnail, a generic alt text might be better than empty.
-					// However, current implementation uses title directly.
+					// If title is empty but we have a thumbnail, fallback to thumbnailAltText constant
+					expectedAltText = thumbnailAltText
 				}
 				assert.Equal(t, expectedAltText, block.Accessory.ImageElement.AltText)
 			}
@@ -397,7 +397,7 @@ func TestBuildMessage(t *testing.T) {
 		{
 			name: "All details valid, expect all blocks",
 			videoDetails: storage.Video{
-				Title:      "Full Video",
+				Titles:     []storage.TitleVariant{{Index: 1, Text: "Full Video"}},
 				VideoId:    "full123",
 				Date:       "2023-01-01T10:00",
 				Category:   "Test Category",
@@ -410,6 +410,7 @@ func TestBuildMessage(t *testing.T) {
 		{
 			name: "Missing Title, should error from BuildHeaderBlock",
 			videoDetails: storage.Video{
+				Titles:  []storage.TitleVariant{},
 				VideoId: "noTitle123",
 			},
 			expectError:   true,
@@ -418,7 +419,7 @@ func TestBuildMessage(t *testing.T) {
 		{
 			name: "Missing VideoId, should error from BuildSectionBlockWithThumbnail (or Actions)",
 			videoDetails: storage.Video{
-				Title: "No Vid ID",
+				Titles: []storage.TitleVariant{{Index: 1, Text: "No Vid ID"}},
 			},
 			expectError:   true,
 			errorContains: "VideoId cannot be empty", // Could also be from Actions
@@ -426,7 +427,7 @@ func TestBuildMessage(t *testing.T) {
 		{
 			name: "Only Title and VideoId, expect Header, Section, Actions",
 			videoDetails: storage.Video{
-				Title:   "Minimal",
+				Titles:  []storage.TitleVariant{{Index: 1, Text: "Minimal"}},
 				VideoId: "min123",
 			},
 			expectError:    false,
@@ -435,7 +436,7 @@ func TestBuildMessage(t *testing.T) {
 		{
 			name: "Only Title, VideoId, Date, expect Header, Section, Context (1 element), Actions",
 			videoDetails: storage.Video{
-				Title:   "Date Video",
+				Titles:  []storage.TitleVariant{{Index: 1, Text: "Date Video"}},
 				VideoId: "date123",
 				Date:    "2023-02-01T12:00",
 			},

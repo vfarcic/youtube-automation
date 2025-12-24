@@ -83,19 +83,17 @@ func TestPostVideoThumbnail(t *testing.T) {
 			errorContains: "failed to post Slack message",
 		},
 		{
-			name: "Handles empty video title by using default",
+			name: "Error when video title is empty",
 			videoDetails: storage.Video{
 				VideoId:   "vid004",
 				Titles:    []storage.TitleVariant{}, // Empty titles
 				Thumbnail: "http://example.com/default_title.jpg",
 			},
 			mockSetup: func(mockClient *mockInternalSlackClient) {
-				mockClient.On("PostMessage",
-					testChannelID,
-					mock.MatchedBy(func(options []slack.MsgOption) bool { return len(options) == 2 }),
-				).Return(testChannelID, "12345.00004", nil).Once()
+				// No mock setup needed - should fail before calling Slack API
 			},
-			expectError: false,
+			expectError:   true,
+			errorContains: "video title is empty",
 		},
 	}
 

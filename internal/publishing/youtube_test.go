@@ -559,7 +559,7 @@ func TestUploadVideo(t *testing.T) {
 
 	// Test case 1: Successful upload
 	video1 := &storage.Video{
-		Title:         "Test Video 1",
+		Titles:        []storage.TitleVariant{{Index: 1, Text: "Test Video 1"}},
 		Description:   "Description for video 1",
 		Tags:          "tag1,tag2",
 		UploadVideo:   videoPath,
@@ -589,7 +589,7 @@ func TestUploadVideo(t *testing.T) {
 
 	// Test case 2: Upload with default language
 	video2 := &storage.Video{
-		Title:         "Test Video 2 Default Lang",
+		Titles:        []storage.TitleVariant{{Index: 1, Text: "Test Video 2 Default Lang"}},
 		Description:   "Description for video 2",
 		Tags:          "tag3,tag4",
 		UploadVideo:   videoPath,
@@ -616,7 +616,7 @@ func TestUploadVideo(t *testing.T) {
 
 	// Test case 3: Upload with specific language, audio language falls back to global default
 	video3 := &storage.Video{
-		Title:         "Test Video 3 Specific Lang, Audio Fallback",
+		Titles:        []storage.TitleVariant{{Index: 1, Text: "Test Video 3 Specific Lang, Audio Fallback"}},
 		Description:   "Description for video 3",
 		Tags:          "tag5,tag6",
 		UploadVideo:   videoPath,
@@ -645,7 +645,7 @@ func TestUploadVideo(t *testing.T) {
 	mockService.shouldFail = true
 	mockService.uploadError = fmt.Errorf("simulated upload error")
 	video4 := &storage.Video{
-		Title:       "Test Video 4 Fail",
+		Titles:      []storage.TitleVariant{{Index: 1, Text: "Test Video 4 Fail"}},
 		Description: "This upload should fail",
 		Tags:        "fail,test",
 		UploadVideo: videoPath,
@@ -660,7 +660,7 @@ func TestUploadVideo(t *testing.T) {
 	// Test case 5: Rate limit (renumbered from 4)
 	mockService.rateLimited = true
 	video5 := &storage.Video{
-		Title:       "Test Video 5 Rate Limit",
+		Titles:      []storage.TitleVariant{{Index: 1, Text: "Test Video 5 Rate Limit"}},
 		Description: "This upload should be rate limited",
 		Tags:        "rate,limit,test",
 		UploadVideo: videoPath,

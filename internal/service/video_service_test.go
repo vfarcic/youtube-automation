@@ -215,7 +215,7 @@ func TestVideoService_UpdateVideo(t *testing.T) {
 	require.NoError(t, err)
 
 	// Update some fields
-	video.Title = "Updated Title"
+	video.Titles = []storage.TitleVariant{{Index: 1, Text: "Updated Title"}}
 	video.Description = "Updated Description"
 	video.Head = true
 
@@ -225,7 +225,7 @@ func TestVideoService_UpdateVideo(t *testing.T) {
 	// Verify update persisted
 	updatedVideo, err := service.GetVideo("test-video", "test-category")
 	require.NoError(t, err)
-	assert.Equal(t, "Updated Title", updatedVideo.Title)
+	assert.Equal(t, "Updated Title", updatedVideo.GetUploadTitle())
 	assert.Equal(t, "Updated Description", updatedVideo.Description)
 	assert.True(t, updatedVideo.Head)
 
@@ -896,7 +896,7 @@ func TestVideoService_ReflectionBasedFieldMapping(t *testing.T) {
 	// Test that JSON field names work directly
 	updateData := map[string]interface{}{
 		"date":        "2025-01-01T12:00",
-		"title":       "Test Title",
+		"titles":      []storage.TitleVariant{{Index: 1, Text: "Test Title"}},
 		"description": "Test Description",
 		"delayed":     true,
 		"screen":      true,
@@ -908,7 +908,7 @@ func TestVideoService_ReflectionBasedFieldMapping(t *testing.T) {
 
 	// Verify that direct JSON field mappings work
 	assert.Equal(t, "2025-01-01T12:00", videoAfterUpdate.Date)
-	assert.Equal(t, "Test Title", videoAfterUpdate.Title)
+	assert.Equal(t, "Test Title", videoAfterUpdate.GetUploadTitle())
 	assert.Equal(t, "Test Description", videoAfterUpdate.Description)
 	assert.True(t, videoAfterUpdate.Delayed)
 	assert.True(t, videoAfterUpdate.Screen)
@@ -937,7 +937,7 @@ func TestVideoService_ReflectionBasedFieldMapping(t *testing.T) {
 
 	// Test that unknown fields are gracefully ignored
 	updateData3 := map[string]interface{}{
-		"title":               "Updated Title",
+		"titles":              []storage.TitleVariant{{Index: 1, Text: "Updated Title"}},
 		"unknownField":        "should be ignored",
 		"anotherUnknownField": 123,
 	}
@@ -947,7 +947,7 @@ func TestVideoService_ReflectionBasedFieldMapping(t *testing.T) {
 	require.NotNil(t, videoAfterUpdate3)
 
 	// Verify that known fields are updated and unknown fields are ignored
-	assert.Equal(t, "Updated Title", videoAfterUpdate3.Title)
+	assert.Equal(t, "Updated Title", videoAfterUpdate3.GetUploadTitle())
 	// Unknown fields should not cause errors
 }
 

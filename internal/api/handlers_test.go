@@ -267,7 +267,7 @@ func TestServer_UpdateVideo(t *testing.T) {
 	require.NoError(t, err)
 
 	// Update the video
-	video.Title = "Updated Title"
+	video.Titles = []storage.TitleVariant{{Index: 1, Text: "Updated Title"}}
 	video.Description = "Updated Description"
 
 	requestBody := UpdateVideoRequest{Video: video}
@@ -289,7 +289,7 @@ func TestServer_UpdateVideo(t *testing.T) {
 	var response GetVideoResponse
 	err = json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
-	assert.Equal(t, "Updated Title", response.Video.Title)
+	assert.Equal(t, "Updated Title", response.Video.GetUploadTitle())
 	assert.Equal(t, "Updated Description", response.Video.Description)
 }
 
@@ -553,7 +553,7 @@ func TestTransformToVideoListItems(t *testing.T) {
 		videos := []storage.Video{
 			{
 				Name:      "test-video",
-				Title:     "Test Video Title",
+				Titles:    []storage.TitleVariant{{Index: 1, Text: "Test Video Title"}},
 				Date:      "2025-01-01T12:00",
 				Thumbnail: "test-thumb.jpg",
 				Category:  "devops",
@@ -580,7 +580,7 @@ func TestTransformToVideoListItems(t *testing.T) {
 		videos := []storage.Video{
 			{
 				Name:      "no-title-video",
-				Title:     "",
+				Titles:    []storage.TitleVariant{}, // Empty titles
 				Thumbnail: "",
 				Category:  "test",
 			},
@@ -609,7 +609,7 @@ func TestTransformToVideoListItems(t *testing.T) {
 		}{
 			{
 				"basic draft",
-				storage.Video{Name: "test", Title: "Test", Category: "test"},
+				storage.Video{Name: "test", Titles: []storage.TitleVariant{{Index: 1, Text: "Test"}}, Category: "test"},
 				"draft",
 			},
 		}
@@ -626,12 +626,12 @@ func TestTransformToVideoListItems(t *testing.T) {
 		videos := []storage.Video{
 			{
 				Name:     "video-with-spaces-special", // Sanitized at service level
-				Title:    "Test Video",
+				Titles:   []storage.TitleVariant{{Index: 1, Text: "Test Video"}},
 				Category: "test-category",
 			},
 			{
 				Name:     "vidéo-avec-accénts", // Sanitized at service level
-				Title:    "French Video",
+				Titles:   []storage.TitleVariant{{Index: 1, Text: "French Video"}},
 				Category: "français",
 			},
 		}
@@ -649,12 +649,12 @@ func TestTransformToVideoListItems(t *testing.T) {
 		videos := []storage.Video{
 			{
 				Name:     "test-video", // Sanitized at service level
-				Title:    "Malformed Path Test",
+				Titles:   []storage.TitleVariant{{Index: 1, Text: "Malformed Path Test"}},
 				Category: "test",
 			},
 			{
 				Name:     "another-test", // Sanitized at service level
-				Title:    "No Path Segments",
+				Titles:   []storage.TitleVariant{{Index: 1, Text: "No Path Segments"}},
 				Category: "test",
 			},
 		}
@@ -676,7 +676,7 @@ func TestTransformToVideoListItems(t *testing.T) {
 		videos := []storage.Video{
 			{
 				Name:     sanitizedLongName, // Sanitized at service level
-				Title:    "Long Name Test",
+				Titles:   []storage.TitleVariant{{Index: 1, Text: "Long Name Test"}},
 				Category: "test",
 			},
 		}
@@ -695,12 +695,12 @@ func TestTransformToVideoListItems(t *testing.T) {
 		videos := []storage.Video{
 			{
 				Name:     "fallback-name", // Sanitized at service level
-				Title:    "No Filename Test",
+				Titles:   []storage.TitleVariant{{Index: 1, Text: "No Filename Test"}},
 				Category: "test",
 			},
 			{
 				Name:     "another-fallback", // Sanitized at service level
-				Title:    "Empty Path Test",
+				Titles:   []storage.TitleVariant{{Index: 1, Text: "Empty Path Test"}},
 				Category: "test",
 			},
 		}
@@ -852,7 +852,7 @@ func BenchmarkTransformToVideoListItems(b *testing.B) {
 	for i := 0; i < 50; i++ {
 		videos[i] = storage.Video{
 			Name:      fmt.Sprintf("test-video-%d", i+1),
-			Title:     fmt.Sprintf("Test Video Title %d with Some Length", i+1),
+			Titles:    []storage.TitleVariant{{Index: 1, Text: fmt.Sprintf("Test Video Title %d with Some Length", i+1)}},
 			Date:      "2025-01-06T16:30:45Z",
 			Thumbnail: fmt.Sprintf("thumbnails/video-%d.jpg", i+1),
 			Category:  "devops",
@@ -1008,7 +1008,7 @@ func TestVideoListItemPhaseField(t *testing.T) {
 				Name:     "delayed-video",
 				Category: "test-category",
 				Delayed:  true,
-				Title:    "Delayed Video",
+				Titles:   []storage.TitleVariant{{Index: 1, Text: "Delayed Video"}},
 			},
 			expectedPhase: workflow.PhaseDelayed,
 			description:   "Delayed video should have phase 5",
@@ -1019,7 +1019,7 @@ func TestVideoListItemPhaseField(t *testing.T) {
 				Name:        "blocked-video",
 				Category:    "test-category",
 				Sponsorship: storage.Sponsorship{Blocked: "Waiting for sponsor"},
-				Title:       "Blocked Video",
+				Titles:      []storage.TitleVariant{{Index: 1, Text: "Blocked Video"}},
 			},
 			expectedPhase: workflow.PhaseSponsoredBlocked,
 			description:   "Sponsored blocked video should have phase 6",
@@ -1030,7 +1030,7 @@ func TestVideoListItemPhaseField(t *testing.T) {
 				Name:     "published-video",
 				Category: "test-category",
 				Repo:     "github.com/some/repo",
-				Title:    "Published Video",
+				Titles:   []storage.TitleVariant{{Index: 1, Text: "Published Video"}},
 			},
 			expectedPhase: workflow.PhasePublished,
 			description:   "Published video should have phase 0",
@@ -1040,7 +1040,7 @@ func TestVideoListItemPhaseField(t *testing.T) {
 			video: storage.Video{
 				Name:     "idea-video",
 				Category: "test-category",
-				Title:    "Idea Video",
+				Titles:   []storage.TitleVariant{{Index: 1, Text: "Idea Video"}},
 			},
 			expectedPhase: workflow.PhaseIdeas,
 			description:   "Video with no workflow state should have phase 7 (Ideas)",
@@ -1078,7 +1078,7 @@ func TestVideoListItemPhaseField(t *testing.T) {
 			// Find our test video in the response
 			var testVideo *VideoListItem
 			for _, video := range response.Videos {
-				if video.Title == tc.video.Title {
+				if video.Title == tc.video.GetUploadTitle() {
 					testVideo = &video
 					break
 				}
@@ -1680,8 +1680,8 @@ func TestGetEditingAspectsWithCompletion(t *testing.T) {
 	require.NoError(t, err)
 
 	// Set some fields as completed for testing
-	video.Title = "Test Video Title"   // definition aspect - string field
-	video.Code = true                  // work-progress aspect - boolean field
+	video.Titles = []storage.TitleVariant{{Index: 1, Text: "Test Video Title"}} // definition aspect - string field
+	video.Code = true                                                            // work-progress aspect - boolean field
 	video.ProjectName = "Test Project" // initial-details aspect - string field
 	video.Delayed = true               // initial-details aspect - boolean field
 
@@ -1813,14 +1813,14 @@ func TestTransformToVideoListItems_StringID(t *testing.T) {
 		videos := []storage.Video{
 			{
 				Name:      "test-video",
-				Title:     "Test Video Title",
+				Titles:    []storage.TitleVariant{{Index: 1, Text: "Test Video Title"}},
 				Date:      "2025-01-01T12:00",
 				Thumbnail: "test-thumb.jpg",
 				Category:  "devops",
 			},
 			{
 				Name:     "another-video",
-				Title:    "Another Video",
+				Titles:   []storage.TitleVariant{{Index: 1, Text: "Another Video"}},
 				Category: "ai",
 			},
 		}
@@ -1848,7 +1848,7 @@ func TestTransformToVideoListItems_StringID(t *testing.T) {
 		videos := []storage.Video{
 			{
 				Name:      "windsurf", // Name is now sanitized at service level
-				Title:     "Remote Environments with Dev Containers and Devpod: Are They Worth It?",
+				Titles:    []storage.TitleVariant{{Index: 1, Text: "Remote Environments with Dev Containers and Devpod: Are They Worth It?"}},
 				Date:      "2025-01-01T12:00",
 				Thumbnail: "windsurf-thumb.jpg",
 				Category:  "development",
@@ -1856,7 +1856,7 @@ func TestTransformToVideoListItems_StringID(t *testing.T) {
 			},
 			{
 				Name:     "ai-for-policies", // Name is now sanitized at service level
-				Title:    "Using AI for Policy Management",
+				Titles:   []storage.TitleVariant{{Index: 1, Text: "Using AI for Policy Management"}},
 				Category: "ai",
 				Path:     "manuscript/ai/ai-for-policies.yaml",
 			},
@@ -1887,13 +1887,13 @@ func TestTransformToVideoListItems_EdgeCases(t *testing.T) {
 		videos := []storage.Video{
 			{
 				Name:     "", // Empty name
-				Title:    "Video with Empty Name",
+				Titles:   []storage.TitleVariant{{Index: 1, Text: "Video with Empty Name"}},
 				Category: "test",
 				Path:     "", // Empty path
 			},
 			{
 				Name:     "valid-name",
-				Title:    "Valid Video",
+				Titles:   []storage.TitleVariant{{Index: 1, Text: "Valid Video"}},
 				Category: "", // Empty category
 				Path:     "manuscript/test/valid-name.yaml",
 			},
@@ -1919,12 +1919,12 @@ func TestTransformToVideoListItems_EdgeCases(t *testing.T) {
 		videos := []storage.Video{
 			{
 				Name:     "video-with-spaces-special", // Name is now sanitized at service level
-				Title:    "Test Video",
+				Titles:   []storage.TitleVariant{{Index: 1, Text: "Test Video"}},
 				Category: "test-category",
 			},
 			{
 				Name:     "vidéo-avec-accénts", // Name is now sanitized at service level
-				Title:    "French Video",
+				Titles:   []storage.TitleVariant{{Index: 1, Text: "French Video"}},
 				Category: "français",
 			},
 		}

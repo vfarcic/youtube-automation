@@ -447,30 +447,20 @@ func TestGetUploadTitle(t *testing.T) {
 			expected: "Uploaded Title",
 		},
 		{
-			name: "No Titles array, fallback to legacy Title",
+			name: "Empty Titles array returns empty string",
 			video: Video{
-				Title:  "Legacy Title",
-				Titles: []TitleVariant{},
-			},
-			expected: "Legacy Title",
-		},
-		{
-			name: "Empty Titles and empty legacy Title",
-			video: Video{
-				Title:  "",
 				Titles: []TitleVariant{},
 			},
 			expected: "",
 		},
 		{
-			name: "Index 1 missing, fallback to legacy",
+			name: "Index 1 missing returns empty string",
 			video: Video{
-				Title: "Fallback Title",
 				Titles: []TitleVariant{
 					{Index: 2, Text: "Only Variant", Share: 100},
 				},
 			},
-			expected: "Fallback Title",
+			expected: "",
 		},
 	}
 
@@ -484,18 +474,17 @@ func TestGetUploadTitle(t *testing.T) {
 	}
 }
 
-func TestAutoMigrationOnLoad(t *testing.T) {
-	// Create a temp file with old format (Title field only)
+func TestVideoWithoutTitles(t *testing.T) {
+	// Create a temp file without titles (GetUploadTitle should return empty string)
 	tempDir := t.TempDir()
 	videoPath := tempDir + "/test-video.yaml"
 
-	oldFormatYAML := `name: Test Video
+	yamlWithoutTitles := `name: Test Video
 path: /path/to/video
 category: testing
-title: Legacy Title Field
 description: Test description
 `
-	err := os.WriteFile(videoPath, []byte(oldFormatYAML), 0644)
+	err := os.WriteFile(videoPath, []byte(yamlWithoutTitles), 0644)
 	if err != nil {
 		t.Fatalf("Failed to write test file: %v", err)
 	}
@@ -507,32 +496,23 @@ description: Test description
 		t.Fatalf("GetVideo failed: %v", err)
 	}
 
-	// Verify auto-migration happened
-	if len(video.Titles) != 1 {
-		t.Errorf("Expected Titles array to have 1 element after migration, got %d", len(video.Titles))
+	// Verify Titles array is empty and GetUploadTitle returns empty string
+	if len(video.Titles) != 0 {
+		t.Errorf("Expected Titles array to be empty, got %d elements", len(video.Titles))
 	}
-	if len(video.Titles) > 0 {
-		if video.Titles[0].Index != 1 {
-			t.Errorf("Expected migrated title Index to be 1, got %d", video.Titles[0].Index)
-		}
-		if video.Titles[0].Text != "Legacy Title Field" {
-			t.Errorf("Expected migrated title Text to be 'Legacy Title Field', got %q", video.Titles[0].Text)
-		}
-		if video.Titles[0].Share != 0 {
-			t.Errorf("Expected migrated title Share to be 0, got %f", video.Titles[0].Share)
-		}
+	if video.GetUploadTitle() != "" {
+		t.Errorf("Expected GetUploadTitle() to return empty string, got %q", video.GetUploadTitle())
 	}
 }
 
-func TestNoMigrationIfTitlesArrayExists(t *testing.T) {
-	// Create a temp file with new format (Titles array)
+func TestTitlesArrayLoading(t *testing.T) {
+	// Create a temp file with Titles array
 	tempDir := t.TempDir()
 	videoPath := tempDir + "/test-video.yaml"
 
-	newFormatYAML := `name: Test Video
+	titlesYAML := `name: Test Video
 path: /path/to/video
 category: testing
-title: Should Be Ignored
 titles:
   - index: 1
     text: New Format Title
@@ -541,7 +521,7 @@ titles:
     text: Variant Title
     share: 0
 `
-	err := os.WriteFile(videoPath, []byte(newFormatYAML), 0644)
+	err := os.WriteFile(videoPath, []byte(titlesYAML), 0644)
 	if err != nil {
 		t.Fatalf("Failed to write test file: %v", err)
 	}
@@ -553,7 +533,7 @@ titles:
 		t.Fatalf("GetVideo failed: %v", err)
 	}
 
-	// Verify no migration (should use Titles array as-is)
+	// Verify Titles array is loaded correctly
 	if len(video.Titles) != 2 {
 		t.Errorf("Expected Titles array to have 2 elements, got %d", len(video.Titles))
 	}
