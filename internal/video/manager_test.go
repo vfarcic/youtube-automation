@@ -922,6 +922,49 @@ func TestCalculatePublishingProgress(t *testing.T) {
 			expectedTotal:     2,
 			description:       "Dash values should not be counted",
 		},
+		{
+			name: "With_pending_shorts",
+			video: storage.Video{
+				UploadVideo: "video.mp4",
+				HugoPath:    "/path/to/hugo",
+				Shorts: []storage.Short{
+					{ID: "short1", Title: "Short 1", YouTubeID: ""},
+					{ID: "short2", Title: "Short 2", YouTubeID: ""},
+				},
+			},
+			expectedCompleted: 2,
+			expectedTotal:     4, // 2 base fields + 2 shorts
+			description:       "Pending shorts should add to total but not completed",
+		},
+		{
+			name: "With_uploaded_shorts",
+			video: storage.Video{
+				UploadVideo: "video.mp4",
+				HugoPath:    "/path/to/hugo",
+				Shorts: []storage.Short{
+					{ID: "short1", Title: "Short 1", YouTubeID: "abc123"},
+					{ID: "short2", Title: "Short 2", YouTubeID: "def456"},
+				},
+			},
+			expectedCompleted: 4,
+			expectedTotal:     4, // 2 base fields + 2 uploaded shorts
+			description:       "Uploaded shorts should count as completed",
+		},
+		{
+			name: "With_mixed_shorts",
+			video: storage.Video{
+				UploadVideo: "video.mp4",
+				HugoPath:    "/path/to/hugo",
+				Shorts: []storage.Short{
+					{ID: "short1", Title: "Short 1", YouTubeID: "abc123"},
+					{ID: "short2", Title: "Short 2", YouTubeID: ""},
+					{ID: "short3", Title: "Short 3", YouTubeID: "ghi789"},
+				},
+			},
+			expectedCompleted: 4, // 2 base + 2 uploaded shorts
+			expectedTotal:     5, // 2 base + 3 shorts
+			description:       "Mixed shorts should partially count",
+		},
 	}
 
 	for _, tc := range testCases {

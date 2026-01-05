@@ -884,6 +884,134 @@ func TestYouTubeScopes(t *testing.T) {
 	}
 }
 
+// TestBuildShortDescription tests the description generation for YouTube Shorts
+func TestBuildShortDescription(t *testing.T) {
+	tests := []struct {
+		name        string
+		title       string
+		mainVideoID string
+		want        string
+	}{
+		{
+			name:        "with main video ID",
+			title:       "Quick DevOps Tip",
+			mainVideoID: "abc123xyz",
+			want:        "Quick DevOps Tip\nWatch the full video: https://youtu.be/abc123xyz\n\n#Shorts",
+		},
+		{
+			name:        "without main video ID",
+			title:       "Standalone Short",
+			mainVideoID: "",
+			want:        "Standalone Short\n#Shorts",
+		},
+		{
+			name:        "with special characters in title",
+			title:       "Why K8s > Docker Swarm?",
+			mainVideoID: "def456",
+			want:        "Why K8s > Docker Swarm?\nWatch the full video: https://youtu.be/def456\n\n#Shorts",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := BuildShortDescription(tt.title, tt.mainVideoID)
+			if got != tt.want {
+				t.Errorf("BuildShortDescription() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+// TestUploadShort_Validation tests input validation for UploadShort
+func TestUploadShort_Validation(t *testing.T) {
+	tests := []struct {
+		name        string
+		filePath    string
+		short       storage.Short
+		mainVideoID string
+		wantErr     string
+	}{
+		{
+			name:     "empty file path",
+			filePath: "",
+			short: storage.Short{
+				ID:            "short1",
+				Title:         "Test Short",
+				ScheduledDate: "2025-01-16T10:00:00Z",
+			},
+			mainVideoID: "abc123",
+			wantErr:     "file path is required",
+		},
+		{
+			name:     "empty title",
+			filePath: "/path/to/video.mp4",
+			short: storage.Short{
+				ID:            "short1",
+				Title:         "",
+				ScheduledDate: "2025-01-16T10:00:00Z",
+			},
+			mainVideoID: "abc123",
+			wantErr:     "short title is required",
+		},
+		{
+			name:     "empty scheduled date",
+			filePath: "/path/to/video.mp4",
+			short: storage.Short{
+				ID:            "short1",
+				Title:         "Test Short",
+				ScheduledDate: "",
+			},
+			mainVideoID: "abc123",
+			wantErr:     "scheduled date is required",
+		},
+		{
+			name:     "non-existent file",
+			filePath: "/nonexistent/path/video.mp4",
+			short: storage.Short{
+				ID:            "short1",
+				Title:         "Test Short",
+				ScheduledDate: "2025-01-16T10:00:00Z",
+			},
+			mainVideoID: "abc123",
+			wantErr:     "video file does not exist",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := UploadShort(tt.filePath, tt.short, tt.mainVideoID)
+			if err == nil {
+				t.Errorf("UploadShort() expected error containing %q, got nil", tt.wantErr)
+				return
+			}
+			if !strings.Contains(err.Error(), tt.wantErr) {
+				t.Errorf("UploadShort() error = %q, want error containing %q", err.Error(), tt.wantErr)
+			}
+		})
+	}
+}
+
+// TestUploadShort_FileExists tests that UploadShort validates file existence correctly
+// Note: This test verifies the validation logic by checking that non-existent files
+// return the appropriate error, while existing files don't return that specific error.
+// We can't fully test the upload without mocking the YouTube API client.
+func TestUploadShort_FileExists(t *testing.T) {
+	// Test that non-existent file returns "does not exist" error
+	short := storage.Short{
+		ID:            "short1",
+		Title:         "Test Short",
+		ScheduledDate: "2025-01-16T10:00:00Z",
+	}
+
+	_, err := UploadShort("/definitely/nonexistent/path/video.mp4", short, "abc123")
+	if err == nil {
+		t.Error("UploadShort() should return error for non-existent file")
+	}
+	if !strings.Contains(err.Error(), "video file does not exist") {
+		t.Errorf("UploadShort() error should mention file does not exist, got: %v", err)
+	}
+}
+
 func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }

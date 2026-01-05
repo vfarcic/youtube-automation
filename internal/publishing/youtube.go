@@ -472,3 +472,89 @@ func updateVideoLanguage(updater videoServiceUpdater, videoID string, languageCo
 	_, err := updateCall.Do()
 	return err
 }
+
+// UploadShort uploads a YouTube Short with scheduled publishing.
+// The short's description includes a link back to the main video.
+//
+// Parameters:
+//   - filePath: Path to the short video file
+//   - short: Short metadata (title, scheduled date)
+//   - mainVideoID: YouTube ID of the main video to link to
+//
+// Returns:
+//   - string: The YouTube video ID of the uploaded short
+//   - error: Any error that occurred during upload
+func UploadShort(filePath string, short storage.Short, mainVideoID string) (string, error) {
+	if filePath == "" {
+		return "", fmt.Errorf("file path is required")
+	}
+	if short.Title == "" {
+		return "", fmt.Errorf("short title is required")
+	}
+	if short.ScheduledDate == "" {
+		return "", fmt.Errorf("scheduled date is required")
+	}
+
+	// Verify file exists
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		return "", fmt.Errorf("video file does not exist: %s", filePath)
+	}
+
+	client := getClient(context.Background())
+	ctx := context.Background()
+	service, err := youtube.NewService(ctx, option.WithHTTPClient(client))
+	if err != nil {
+		return "", fmt.Errorf("error creating YouTube client: %w", err)
+	}
+
+	// Build description with link to main video
+	description := BuildShortDescription(short.Title, mainVideoID)
+
+	upload := &youtube.Video{
+		Snippet: &youtube.VideoSnippet{
+			Title:       short.Title,
+			Description: description,
+			CategoryId:  "28", // Science & Technology
+			ChannelId:   channelID,
+		},
+		Status: &youtube.VideoStatus{
+			PrivacyStatus: "private",
+			PublishAt:     short.ScheduledDate,
+		},
+	}
+
+	// Set default language
+	defaultLanguage := configuration.GlobalSettings.VideoDefaults.Language
+	if defaultLanguage != "" {
+		upload.Snippet.DefaultLanguage = defaultLanguage
+	}
+	defaultAudioLanguage := configuration.GlobalSettings.VideoDefaults.AudioLanguage
+	if defaultAudioLanguage != "" {
+		upload.Snippet.DefaultAudioLanguage = defaultAudioLanguage
+	}
+
+	call := service.Videos.Insert([]string{"snippet", "status"}, upload)
+	file, err := os.Open(filePath)
+	if err != nil {
+		return "", fmt.Errorf("error opening video file %s: %w", filePath, err)
+	}
+	defer file.Close()
+
+	response, err := call.Media(file).Do()
+	if err != nil {
+		return "", fmt.Errorf("error uploading short to YouTube: %w", err)
+	}
+
+	fmt.Printf("Short uploaded successfully! Video ID: %v\n", response.Id)
+	return response.Id, nil
+}
+
+// BuildShortDescription creates the description for a YouTube Short
+// with a link back to the main video.
+func BuildShortDescription(title string, mainVideoID string) string {
+	mainVideoURL := ""
+	if mainVideoID != "" {
+		mainVideoURL = fmt.Sprintf("\nWatch the full video: %s\n", GetYouTubeURL(mainVideoID))
+	}
+	return fmt.Sprintf("%s%s\n#Shorts", title, mainVideoURL)
+}

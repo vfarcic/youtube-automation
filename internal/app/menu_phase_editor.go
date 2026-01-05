@@ -443,10 +443,24 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 			save := true
 			var uploadTrigger bool       // Declare uploadTrigger here
 			var createCalendarEvent bool // Manual calendar event creation trigger (always defaults to false)
+			var uploadShortsTrigger bool // Trigger for uploading shorts
 			// Store original values to detect changes for actions
 			originalHugoPath := updatedVideo.HugoPath
 			// If VideoId is empty, createHugo will be false, also influencing the title color.
 			createHugo := updatedVideo.HugoPath != "" && updatedVideo.VideoId != ""
+
+			// Find pending shorts (those without YouTubeID)
+			pendingShortIndices := []int{}
+			for i, short := range updatedVideo.Shorts {
+				if short.YouTubeID == "" {
+					pendingShortIndices = append(pendingShortIndices, i)
+				}
+			}
+			// Create slice for short file paths
+			shortFilePaths := make([]string, len(pendingShortIndices))
+			for i, shortIdx := range pendingShortIndices {
+				shortFilePaths[i] = updatedVideo.Shorts[shortIdx].FilePath
+			}
 
 			publishingFormFields := []huh.Field{
 				huh.NewInput().Title(m.colorTitleString(constants.FieldTitleVideoFilePath, updatedVideo.UploadVideo)).Value(&updatedVideo.UploadVideo),
@@ -461,7 +475,22 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 			// The m.colorTitleBool will show orange if createHugo is false (e.g. no VideoId)
 			// The action logic below also prevents Hugo creation if VideoId is missing.
 			publishingFormFields = append(publishingFormFields,
-				huh.NewConfirm().Title(m.colorTitleBool(constants.FieldTitleCreateHugo, createHugo)).Value(&createHugo),
+				huh.NewConfirm().Title(m.colorTitleBool(constants.FieldTitleCreateHugo, createHugo)).Value(&createHugo))
+
+			// Add shorts upload fields if there are pending shorts and main video is uploaded
+			if len(pendingShortIndices) > 0 && updatedVideo.VideoId != "" {
+				for i, shortIdx := range pendingShortIndices {
+					short := updatedVideo.Shorts[shortIdx]
+					fieldTitle := fmt.Sprintf("Short %d: %s", i+1, short.Title)
+					publishingFormFields = append(publishingFormFields,
+						huh.NewInput().Title(fieldTitle).Value(&shortFilePaths[i]).Placeholder("Leave empty to skip"))
+				}
+
+				publishingFormFields = append(publishingFormFields,
+					huh.NewConfirm().Title("Upload Shorts").Description("Upload shorts with specified file paths").Value(&uploadShortsTrigger))
+			}
+
+			publishingFormFields = append(publishingFormFields,
 				huh.NewConfirm().Affirmative("Save & Process Actions").Negative("Cancel").Value(&save))
 
 			phasePublishingForm := huh.NewForm(
@@ -548,6 +577,64 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 					}
 					if updatedVideo.Date == "" {
 						log.Print(m.errorStyle.Render("Cannot create calendar event: Publish date is not set."))
+					}
+				}
+
+				// Action: Upload Shorts if requested
+				if uploadShortsTrigger && len(pendingShortIndices) > 0 && updatedVideo.VideoId != "" {
+					// Parse main video date for scheduling
+					mainVideoDate, dateErr := time.Parse("2006-01-02T15:04", updatedVideo.Date)
+					if dateErr != nil {
+						mainVideoDate, dateErr = time.Parse("2006-01-02T15:04:05Z", updatedVideo.Date)
+					}
+					if dateErr != nil {
+						log.Print(m.errorStyle.Render(fmt.Sprintf("Failed to parse main video date for shorts scheduling: %v", dateErr)))
+					} else {
+						// Calculate scheduled dates
+						schedules := publishing.CalculateShortsSchedule(mainVideoDate, len(pendingShortIndices))
+
+						// Validate file paths exist before uploading
+						allPathsValid := true
+						for i, filePath := range shortFilePaths {
+							if filePath != "" {
+								if _, statErr := os.Stat(filePath); os.IsNotExist(statErr) {
+									log.Print(m.errorStyle.Render(fmt.Sprintf("File does not exist for short %d: %s", i+1, filePath)))
+									allPathsValid = false
+								}
+							}
+						}
+
+						if allPathsValid {
+							uploadedCount := 0
+							for i, shortIdx := range pendingShortIndices {
+								filePath := shortFilePaths[i]
+								if filePath == "" {
+									fmt.Println(m.orangeStyle.Render(fmt.Sprintf("Skipping short %d (no file path)", i+1)))
+									continue
+								}
+
+								short := &updatedVideo.Shorts[shortIdx]
+								short.FilePath = filePath
+								short.ScheduledDate = publishing.FormatScheduleISO(schedules[i])
+
+								fmt.Println(m.orangeStyle.Render(fmt.Sprintf("Uploading short %d: %s", i+1, short.Title)))
+
+								youtubeID, uploadErr := publishing.UploadShort(filePath, *short, updatedVideo.VideoId)
+								if uploadErr != nil {
+									log.Print(m.errorStyle.Render(fmt.Sprintf("Failed to upload short %d: %v", i+1, uploadErr)))
+									continue
+								}
+
+								short.YouTubeID = youtubeID
+								uploadedCount++
+								fmt.Println(m.confirmationStyle.Render(fmt.Sprintf("Short %d uploaded. YouTube ID: %s", i+1, youtubeID)))
+							}
+
+							if uploadedCount > 0 {
+								fmt.Println(m.confirmationStyle.Render(fmt.Sprintf("\n%d short(s) uploaded successfully.", uploadedCount)))
+								fmt.Println(m.orangeStyle.Render("Manual YouTube Studio Action: Set 'Related Video' link for each Short"))
+							}
+						}
 					}
 				}
 

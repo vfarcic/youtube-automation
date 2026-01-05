@@ -234,7 +234,17 @@ func (m *Manager) CalculatePublishingProgress(video storage.Video) (int, int) {
 		video.UploadVideo,
 		video.HugoPath,
 	}
-	return m.countCompletedTasks(fields)
+	completed, total := m.countCompletedTasks(fields)
+
+	// Add shorts to the count - each short adds 1 to total, uploaded shorts add 1 to completed
+	for _, short := range video.Shorts {
+		total++
+		if short.YouTubeID != "" {
+			completed++
+		}
+	}
+
+	return completed, total
 }
 
 // CalculatePostPublishProgress calculates Post-Publish phase progress on-the-fly
