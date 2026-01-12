@@ -66,3 +66,4 @@ scripts/prd_*.txt
 # Taskmaster generated files
 .taskmaster/state.json
 .taskmaster/reports/
+client_secret_spanish.json

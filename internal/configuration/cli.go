@@ -18,18 +18,19 @@ var RootCmd = &cobra.Command{
 }
 
 type Settings struct {
-	Email         SettingsEmail         `yaml:"email"`
-	AI            SettingsAI            `yaml:"ai"`
-	YouTube       SettingsYouTube       `yaml:"youtube"`
-	Hugo          SettingsHugo          `yaml:"hugo"`
-	Bluesky       SettingsBluesky       `yaml:"bluesky"`
-	VideoDefaults SettingsVideoDefaults `yaml:"videoDefaults"`
-	API           SettingsAPI           `yaml:"api"`
-	Slack         SettingsSlack         `yaml:"slack"`
-	Timing        TimingConfig          `yaml:"timing"`
-	Calendar      SettingsCalendar      `yaml:"calendar"`
-	Shorts        ShortsConfig          `yaml:"shorts"`
-	ElevenLabs    SettingsElevenLabs    `yaml:"elevenLabs"`
+	Email          SettingsEmail          `yaml:"email"`
+	AI             SettingsAI             `yaml:"ai"`
+	YouTube        SettingsYouTube        `yaml:"youtube"`
+	Hugo           SettingsHugo           `yaml:"hugo"`
+	Bluesky        SettingsBluesky        `yaml:"bluesky"`
+	VideoDefaults  SettingsVideoDefaults  `yaml:"videoDefaults"`
+	API            SettingsAPI            `yaml:"api"`
+	Slack          SettingsSlack          `yaml:"slack"`
+	Timing         TimingConfig           `yaml:"timing"`
+	Calendar       SettingsCalendar       `yaml:"calendar"`
+	Shorts         ShortsConfig           `yaml:"shorts"`
+	ElevenLabs     SettingsElevenLabs     `yaml:"elevenLabs"`
+	SpanishChannel SettingsSpanishChannel `yaml:"spanishChannel"`
 }
 
 type SettingsEmail struct {
@@ -121,6 +122,14 @@ type SettingsElevenLabs struct {
 	DropBackgroundAudio bool   `yaml:"dropBackgroundAudio"` // Whether to drop background audio (default: false)
 }
 
+// SettingsSpanishChannel holds configuration for the Spanish YouTube channel
+type SettingsSpanishChannel struct {
+	ChannelID       string `yaml:"channelId"`       // Spanish channel ID
+	CredentialsFile string `yaml:"credentialsFile"` // OAuth client secret file (default: client_secret_spanish.json)
+	TokenFile       string `yaml:"tokenFile"`       // Token cache file name (default: youtube-go-spanish.json)
+	CallbackPort    int    `yaml:"callbackPort"`    // OAuth callback port (default: 8091)
+}
+
 var GlobalSettings Settings
 
 func init() {
@@ -193,6 +202,17 @@ func init() {
 	}
 	// Note: TestMode defaults to false (zero value), set to true in settings.yaml for testing
 	// Note: StartTime/EndTime default to 0 (full video)
+
+	// Spanish channel defaults
+	if GlobalSettings.SpanishChannel.CredentialsFile == "" {
+		GlobalSettings.SpanishChannel.CredentialsFile = "client_secret_spanish.json"
+	}
+	if GlobalSettings.SpanishChannel.TokenFile == "" {
+		GlobalSettings.SpanishChannel.TokenFile = "youtube-go-spanish.json"
+	}
+	if GlobalSettings.SpanishChannel.CallbackPort == 0 {
+		GlobalSettings.SpanishChannel.CallbackPort = 8091
+	}
 
 	// Calendar settings: enabled by default, set calendar.disabled: true to disable
 

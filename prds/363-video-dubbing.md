@@ -201,11 +201,20 @@ spanishChannel:
 - [x] CLI integration: "Translate Metadata" option in Dubbing phase
 - [x] Progress counter updated to include translation step
 
-**Phase 6: Spanish Channel Setup** ← Was Phase 3
-- Create Spanish YouTube channel
-- Generate separate OAuth credentials
-- Add Spanish channel config to settings.yaml
-- Implement separate OAuth flow (port 8091)
+**Phase 6: Spanish Channel Setup** ✅
+- [x] Add `SettingsSpanishChannel` struct to configuration
+- [x] Add `spanishChannel` section to settings.yaml with defaults
+- [x] Refactor OAuth flow to accept parameters (credentials file, token file, port)
+- [x] Create `OAuthConfig` struct for parameterized OAuth
+- [x] Create `GetSpanishChannelClient()` and `GetSpanishChannelID()` functions
+- [x] Create `SpanishOAuthConfig()` with defaults (port 8091, separate credentials)
+- [x] Unit tests for Spanish channel configuration (7 test cases)
+- [x] Unit tests for OAuth config functions (4 test cases)
+- [x] **MANUAL**: Create Spanish YouTube channel (ID: `UCM7ZVtFa6baCzPRMwtIt_gA`)
+- [x] **MANUAL**: Generate OAuth credentials in Google Cloud Console
+- [x] **MANUAL**: Add authorized redirect URI: `http://localhost:8091`
+- [x] **MANUAL**: Download credentials as `client_secret_spanish.json`
+- [x] **MANUAL**: Fill in `channelId` in settings.yaml
 
 **Phase 7: Upload Integration** ← Was Phase 4
 - Implement `UploadVideoToSpanishChannel()`
@@ -277,6 +286,28 @@ spanishChannel:
 - [ ] **End-to-End Workflow Validated**: Full flow tested with real video
 
 ## Progress Log
+
+### 2026-01-12 (Update 6)
+- **Phase 6 Complete (Code)**: Spanish Channel Setup
+  - Added `SettingsSpanishChannel` struct to `internal/configuration/cli.go`
+  - Added `spanishChannel` section to `settings.yaml` with configurable fields
+  - Refactored OAuth flow in `internal/publishing/youtube.go` to be parameterized
+  - Created `OAuthConfig` struct with `CredentialsFile`, `TokenFileName`, `CallbackPort`
+  - Created `DefaultOAuthConfig()` for main channel (port 8090)
+  - Created `SpanishOAuthConfig()` for Spanish channel (port 8091)
+  - Created `GetSpanishChannelClient()` for Spanish channel authentication
+  - Created `GetSpanishChannelID()` helper function
+  - Added parameterized functions: `startWebServerWithPort()`, `tokenCacheFileWithName()`, `getTokenFromWebWithPort()`
+  - All existing OAuth functions delegate to parameterized versions (backward compatible)
+  - Comprehensive unit tests (11 new test cases across configuration and publishing)
+  - All tests passing, build verified
+- **Phase 6 Complete**: All manual setup steps finished
+  - Created Spanish YouTube channel (ID: `UCM7ZVtFa6baCzPRMwtIt_gA`)
+  - Generated OAuth credentials in Google Cloud Console
+  - Configured redirect URI `http://localhost:8091`
+  - Downloaded `client_secret_spanish.json`
+  - Updated `channelId` in settings.yaml
+  - Added `client_secret_spanish.json` to `.gitignore`
 
 ### 2025-01-12 (Update 5)
 - **Phase 5 Complete**: Translation Integration

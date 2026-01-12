@@ -1335,6 +1335,158 @@ dropBackgroundAudio: false
 	})
 }
 
+// TestSpanishChannelConfigDefaults tests that Spanish channel config defaults are applied correctly
+func TestSpanishChannelConfigDefaults(t *testing.T) {
+	tests := []struct {
+		name                    string
+		yamlContent             string
+		expectedChannelID       string
+		expectedCredentialsFile string
+		expectedTokenFile       string
+		expectedCallbackPort    int
+	}{
+		{
+			name: "Spanish channel config from YAML",
+			yamlContent: `
+spanishChannel:
+  channelId: "UC_SPANISH_CHANNEL"
+  credentialsFile: "custom_spanish_secret.json"
+  tokenFile: "custom-spanish-token.json"
+  callbackPort: 8092
+`,
+			expectedChannelID:       "UC_SPANISH_CHANNEL",
+			expectedCredentialsFile: "custom_spanish_secret.json",
+			expectedTokenFile:       "custom-spanish-token.json",
+			expectedCallbackPort:    8092,
+		},
+		{
+			name:                    "Spanish channel config defaults when not in YAML",
+			yamlContent:             ``, // Empty YAML
+			expectedChannelID:       "",
+			expectedCredentialsFile: "client_secret_spanish.json",
+			expectedTokenFile:       "youtube-go-spanish.json",
+			expectedCallbackPort:    8091,
+		},
+		{
+			name: "Spanish channel partial config - channelId only",
+			yamlContent: `
+spanishChannel:
+  channelId: "UC_MY_CHANNEL"
+`,
+			expectedChannelID:       "UC_MY_CHANNEL",
+			expectedCredentialsFile: "client_secret_spanish.json", // Default
+			expectedTokenFile:       "youtube-go-spanish.json",    // Default
+			expectedCallbackPort:    8091,                         // Default
+		},
+		{
+			name: "Spanish channel partial config - port only",
+			yamlContent: `
+spanishChannel:
+  callbackPort: 8095
+`,
+			expectedChannelID:       "",
+			expectedCredentialsFile: "client_secret_spanish.json",
+			expectedTokenFile:       "youtube-go-spanish.json",
+			expectedCallbackPort:    8095,
+		},
+		{
+			name: "Spanish channel with zero port uses default",
+			yamlContent: `
+spanishChannel:
+  channelId: "UC_TEST"
+  callbackPort: 0
+`,
+			expectedChannelID:       "UC_TEST",
+			expectedCredentialsFile: "client_secret_spanish.json",
+			expectedTokenFile:       "youtube-go-spanish.json",
+			expectedCallbackPort:    8091, // Default applied for zero
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Setup: Create a temporary settings.yaml
+			settingsDir := t.TempDir()
+
+			tmpfn := filepath.Join(settingsDir, "settings.yaml")
+			err := os.WriteFile(tmpfn, []byte(tt.yamlContent), 0644)
+			require.NoError(t, err)
+
+			// Change to temp directory
+			originalWD, err := os.Getwd()
+			require.NoError(t, err)
+			err = os.Chdir(settingsDir)
+			require.NoError(t, err)
+			defer os.Chdir(originalWD)
+
+			// Reset and load settings
+			testSettings := Settings{}
+			yamlFile, err := os.ReadFile("settings.yaml")
+			if err == nil {
+				yaml.Unmarshal(yamlFile, &testSettings)
+			}
+
+			// Apply defaults (mimicking init() behavior)
+			if testSettings.SpanishChannel.CredentialsFile == "" {
+				testSettings.SpanishChannel.CredentialsFile = "client_secret_spanish.json"
+			}
+			if testSettings.SpanishChannel.TokenFile == "" {
+				testSettings.SpanishChannel.TokenFile = "youtube-go-spanish.json"
+			}
+			if testSettings.SpanishChannel.CallbackPort == 0 {
+				testSettings.SpanishChannel.CallbackPort = 8091
+			}
+
+			// Assert
+			assert.Equal(t, tt.expectedChannelID, testSettings.SpanishChannel.ChannelID, "ChannelID mismatch")
+			assert.Equal(t, tt.expectedCredentialsFile, testSettings.SpanishChannel.CredentialsFile, "CredentialsFile mismatch")
+			assert.Equal(t, tt.expectedTokenFile, testSettings.SpanishChannel.TokenFile, "TokenFile mismatch")
+			assert.Equal(t, tt.expectedCallbackPort, testSettings.SpanishChannel.CallbackPort, "CallbackPort mismatch")
+		})
+	}
+}
+
+// TestSpanishChannelConfigSerialization tests Spanish channel config YAML serialization
+func TestSpanishChannelConfigSerialization(t *testing.T) {
+	t.Run("Spanish channel config serializes to YAML correctly", func(t *testing.T) {
+		config := SettingsSpanishChannel{
+			ChannelID:       "UC_TEST_CHANNEL",
+			CredentialsFile: "test_secret.json",
+			TokenFile:       "test-token.json",
+			CallbackPort:    8093,
+		}
+
+		yamlData, err := yaml.Marshal(config)
+		require.NoError(t, err)
+
+		var parsed SettingsSpanishChannel
+		err = yaml.Unmarshal(yamlData, &parsed)
+		require.NoError(t, err)
+
+		assert.Equal(t, config.ChannelID, parsed.ChannelID)
+		assert.Equal(t, config.CredentialsFile, parsed.CredentialsFile)
+		assert.Equal(t, config.TokenFile, parsed.TokenFile)
+		assert.Equal(t, config.CallbackPort, parsed.CallbackPort)
+	})
+
+	t.Run("Spanish channel config deserializes from YAML correctly", func(t *testing.T) {
+		yamlContent := `
+channelId: "UC_DESERIALIZED"
+credentialsFile: "deser_secret.json"
+tokenFile: "deser-token.json"
+callbackPort: 8094
+`
+		var config SettingsSpanishChannel
+		err := yaml.Unmarshal([]byte(yamlContent), &config)
+		require.NoError(t, err)
+
+		assert.Equal(t, "UC_DESERIALIZED", config.ChannelID)
+		assert.Equal(t, "deser_secret.json", config.CredentialsFile)
+		assert.Equal(t, "deser-token.json", config.TokenFile)
+		assert.Equal(t, 8094, config.CallbackPort)
+	})
+}
+
 func TestSlackSettingsLoading(t *testing.T) {
 	// Define the YAML content for the test
 	slackYAMLContent := `

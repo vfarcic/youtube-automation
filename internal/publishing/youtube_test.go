@@ -1012,6 +1012,178 @@ func TestUploadShort_FileExists(t *testing.T) {
 	}
 }
 
+// TestDefaultOAuthConfig tests the default OAuth configuration for the main channel
+func TestDefaultOAuthConfig(t *testing.T) {
+	config := DefaultOAuthConfig()
+
+	if config.CredentialsFile != "client_secret.json" {
+		t.Errorf("DefaultOAuthConfig().CredentialsFile = %q, want %q", config.CredentialsFile, "client_secret.json")
+	}
+	if config.TokenFileName != "youtube-go.json" {
+		t.Errorf("DefaultOAuthConfig().TokenFileName = %q, want %q", config.TokenFileName, "youtube-go.json")
+	}
+	if config.CallbackPort != 8090 {
+		t.Errorf("DefaultOAuthConfig().CallbackPort = %d, want %d", config.CallbackPort, 8090)
+	}
+}
+
+// TestSpanishOAuthConfig tests the Spanish OAuth configuration with various settings
+func TestSpanishOAuthConfig(t *testing.T) {
+	tests := []struct {
+		name                    string
+		setupSettings           func()
+		expectedCredentialsFile string
+		expectedTokenFileName   string
+		expectedCallbackPort    int
+	}{
+		{
+			name: "default values when settings are empty",
+			setupSettings: func() {
+				configuration.GlobalSettings.SpanishChannel = configuration.SettingsSpanishChannel{}
+			},
+			expectedCredentialsFile: "client_secret_spanish.json",
+			expectedTokenFileName:   "youtube-go-spanish.json",
+			expectedCallbackPort:    8091,
+		},
+		{
+			name: "custom values from settings",
+			setupSettings: func() {
+				configuration.GlobalSettings.SpanishChannel = configuration.SettingsSpanishChannel{
+					ChannelID:       "UC_CUSTOM_CHANNEL",
+					CredentialsFile: "custom_secret.json",
+					TokenFile:       "custom-token.json",
+					CallbackPort:    8095,
+				}
+			},
+			expectedCredentialsFile: "custom_secret.json",
+			expectedTokenFileName:   "custom-token.json",
+			expectedCallbackPort:    8095,
+		},
+		{
+			name: "partial settings - only credentials file",
+			setupSettings: func() {
+				configuration.GlobalSettings.SpanishChannel = configuration.SettingsSpanishChannel{
+					CredentialsFile: "partial_secret.json",
+				}
+			},
+			expectedCredentialsFile: "partial_secret.json",
+			expectedTokenFileName:   "youtube-go-spanish.json", // default
+			expectedCallbackPort:    8091,                      // default
+		},
+		{
+			name: "partial settings - only port",
+			setupSettings: func() {
+				configuration.GlobalSettings.SpanishChannel = configuration.SettingsSpanishChannel{
+					CallbackPort: 8099,
+				}
+			},
+			expectedCredentialsFile: "client_secret_spanish.json", // default
+			expectedTokenFileName:   "youtube-go-spanish.json",    // default
+			expectedCallbackPort:    8099,
+		},
+	}
+
+	// Save original settings to restore after tests
+	originalSettings := configuration.GlobalSettings.SpanishChannel
+	defer func() {
+		configuration.GlobalSettings.SpanishChannel = originalSettings
+	}()
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.setupSettings()
+			config := SpanishOAuthConfig()
+
+			if config.CredentialsFile != tt.expectedCredentialsFile {
+				t.Errorf("SpanishOAuthConfig().CredentialsFile = %q, want %q", config.CredentialsFile, tt.expectedCredentialsFile)
+			}
+			if config.TokenFileName != tt.expectedTokenFileName {
+				t.Errorf("SpanishOAuthConfig().TokenFileName = %q, want %q", config.TokenFileName, tt.expectedTokenFileName)
+			}
+			if config.CallbackPort != tt.expectedCallbackPort {
+				t.Errorf("SpanishOAuthConfig().CallbackPort = %d, want %d", config.CallbackPort, tt.expectedCallbackPort)
+			}
+		})
+	}
+}
+
+// TestGetSpanishChannelID tests the Spanish channel ID getter
+func TestGetSpanishChannelID(t *testing.T) {
+	tests := []struct {
+		name       string
+		channelID  string
+		expectedID string
+	}{
+		{
+			name:       "empty channel ID",
+			channelID:  "",
+			expectedID: "",
+		},
+		{
+			name:       "valid channel ID",
+			channelID:  "UC_SPANISH_CHANNEL_123",
+			expectedID: "UC_SPANISH_CHANNEL_123",
+		},
+	}
+
+	// Save original settings to restore after tests
+	originalSettings := configuration.GlobalSettings.SpanishChannel
+	defer func() {
+		configuration.GlobalSettings.SpanishChannel = originalSettings
+	}()
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			configuration.GlobalSettings.SpanishChannel.ChannelID = tt.channelID
+			result := GetSpanishChannelID()
+			if result != tt.expectedID {
+				t.Errorf("GetSpanishChannelID() = %q, want %q", result, tt.expectedID)
+			}
+		})
+	}
+}
+
+// TestTokenCacheFileWithName tests the parameterized token cache file path generation
+func TestTokenCacheFileWithName(t *testing.T) {
+	tests := []struct {
+		name         string
+		tokenName    string
+		wantContains string
+	}{
+		{
+			name:         "default token name",
+			tokenName:    "youtube-go.json",
+			wantContains: "youtube-go.json",
+		},
+		{
+			name:         "spanish token name",
+			tokenName:    "youtube-go-spanish.json",
+			wantContains: "youtube-go-spanish.json",
+		},
+		{
+			name:         "custom token name",
+			tokenName:    "custom-token.json",
+			wantContains: "custom-token.json",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			path, err := tokenCacheFileWithName(tt.tokenName)
+			if err != nil {
+				t.Errorf("tokenCacheFileWithName(%q) returned error: %v", tt.tokenName, err)
+				return
+			}
+			if !strings.Contains(path, tt.wantContains) {
+				t.Errorf("tokenCacheFileWithName(%q) = %q, want path containing %q", tt.tokenName, path, tt.wantContains)
+			}
+			if !strings.Contains(path, ".credentials") {
+				t.Errorf("tokenCacheFileWithName(%q) = %q, want path containing .credentials", tt.tokenName, path)
+			}
+		})
+	}
+}
+
 func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }

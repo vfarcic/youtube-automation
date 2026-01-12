@@ -27,6 +27,44 @@ import (
 
 const channelID = "UCfz8x0lVzJpb_dgWm9kPVrw"
 
+// OAuthConfig holds OAuth configuration for a YouTube channel
+type OAuthConfig struct {
+	CredentialsFile string // Path to client_secret file
+	TokenFileName   string // Name of token cache file (stored in ~/.credentials/)
+	CallbackPort    int    // Port for OAuth callback
+}
+
+// DefaultOAuthConfig returns the config for the main English channel
+func DefaultOAuthConfig() OAuthConfig {
+	return OAuthConfig{
+		CredentialsFile: "client_secret.json",
+		TokenFileName:   "youtube-go.json",
+		CallbackPort:    8090,
+	}
+}
+
+// SpanishOAuthConfig returns the config for the Spanish channel from settings
+func SpanishOAuthConfig() OAuthConfig {
+	cfg := configuration.GlobalSettings.SpanishChannel
+	credFile := cfg.CredentialsFile
+	if credFile == "" {
+		credFile = "client_secret_spanish.json"
+	}
+	tokenFile := cfg.TokenFile
+	if tokenFile == "" {
+		tokenFile = "youtube-go-spanish.json"
+	}
+	port := cfg.CallbackPort
+	if port == 0 {
+		port = 8091
+	}
+	return OAuthConfig{
+		CredentialsFile: credFile,
+		TokenFileName:   tokenFile,
+		CallbackPort:    port,
+	}
+}
+
 // youtubeScopes defines all OAuth2 scopes required for YouTube operations.
 // These scopes are requested during the initial authentication and cached.
 // All scopes must be included upfront to avoid re-authentication issues.
@@ -77,9 +115,15 @@ const launchWebServer = true
 // It uses the centralized youtubeScopes for all YouTube operations.
 // If modifying the scopes, delete your previously saved credentials at ~/.credentials/youtube-go.json
 func getClient(ctx context.Context) *http.Client {
-	b, err := os.ReadFile("client_secret.json")
+	return getClientWithConfig(ctx, DefaultOAuthConfig())
+}
+
+// getClientWithConfig uses a Context and OAuthConfig to retrieve a Token and generate a Client.
+// This allows different channels to use different credentials and callback ports.
+func getClientWithConfig(ctx context.Context, oauthCfg OAuthConfig) *http.Client {
+	b, err := os.ReadFile(oauthCfg.CredentialsFile)
 	if err != nil {
-		log.Fatalf("Unable to read client secret file: %v", err)
+		log.Fatalf("Unable to read client secret file %s: %v", oauthCfg.CredentialsFile, err)
 	}
 
 	config, err := google.ConfigFromJSON(b, youtubeScopes...)
@@ -89,11 +133,11 @@ func getClient(ctx context.Context) *http.Client {
 
 	// Use a redirect URI like this for a web app. The redirect URI must be a
 	// valid one for your OAuth2 credentials.
-	config.RedirectURL = "http://localhost:8090"
+	config.RedirectURL = fmt.Sprintf("http://localhost:%d", oauthCfg.CallbackPort)
 	// Use the following redirect URI if launchWebServer=false in oauth2.go
 	// config.RedirectURL = "urn:ietf:wg:oauth:2.0:oob"
 
-	cacheFile, err := tokenCacheFile()
+	cacheFile, err := tokenCacheFileWithName(oauthCfg.TokenFileName)
 	if err != nil {
 		log.Fatalf("Unable to get path to cached credential file. %v", err)
 	}
@@ -102,7 +146,7 @@ func getClient(ctx context.Context) *http.Client {
 		authURL := config.AuthCodeURL("state-token", oauth2.AccessTypeOffline)
 		if launchWebServer {
 			fmt.Println("Trying to get token from web")
-			tok, err = getTokenFromWeb(config, authURL)
+			tok, err = getTokenFromWebWithPort(config, authURL, oauthCfg.CallbackPort)
 		} else {
 			fmt.Println("Trying to get token from prompt")
 			tok, err = getTokenFromPrompt(config, authURL)
@@ -114,10 +158,27 @@ func getClient(ctx context.Context) *http.Client {
 	return config.Client(ctx, tok)
 }
 
-// startWebServer starts a web server that listens on http://localhost:8080.
+// GetSpanishChannelClient returns an authenticated HTTP client for the Spanish YouTube channel.
+// It uses separate credentials and token cache from the main English channel.
+func GetSpanishChannelClient(ctx context.Context) *http.Client {
+	return getClientWithConfig(ctx, SpanishOAuthConfig())
+}
+
+// GetSpanishChannelID returns the configured Spanish channel ID.
+func GetSpanishChannelID() string {
+	return configuration.GlobalSettings.SpanishChannel.ChannelID
+}
+
+// startWebServer starts a web server that listens on http://localhost:8090.
 // The webserver waits for an oauth code in the three-legged auth flow.
 func startWebServer() (codeCh chan string, err error) {
-	listener, err := net.Listen("tcp", "localhost:8090")
+	return startWebServerWithPort(8090)
+}
+
+// startWebServerWithPort starts a web server on the specified port.
+// The webserver waits for an oauth code in the three-legged auth flow.
+func startWebServerWithPort(port int) (codeCh chan string, err error) {
+	listener, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", port))
 	if err != nil {
 		return nil, err
 	}
@@ -183,9 +244,15 @@ func getTokenFromPrompt(config *oauth2.Config, authURL string) (*oauth2.Token, e
 // getTokenFromWeb uses Config to request a Token.
 // It returns the retrieved Token.
 func getTokenFromWeb(config *oauth2.Config, authURL string) (*oauth2.Token, error) {
-	codeCh, err := startWebServer()
+	return getTokenFromWebWithPort(config, authURL, 8090)
+}
+
+// getTokenFromWebWithPort uses Config to request a Token using a specific port.
+// It returns the retrieved Token.
+func getTokenFromWebWithPort(config *oauth2.Config, authURL string, port int) (*oauth2.Token, error) {
+	codeCh, err := startWebServerWithPort(port)
 	if err != nil {
-		fmt.Printf("Unable to start a web server.")
+		fmt.Printf("Unable to start a web server on port %d.", port)
 		return nil, err
 	}
 
@@ -206,6 +273,12 @@ func getTokenFromWeb(config *oauth2.Config, authURL string) (*oauth2.Token, erro
 // tokenCacheFile generates credential file path/filename.
 // It returns the generated credential path/filename.
 func tokenCacheFile() (string, error) {
+	return tokenCacheFileWithName("youtube-go.json")
+}
+
+// tokenCacheFileWithName generates credential file path with the specified filename.
+// It returns the generated credential path/filename.
+func tokenCacheFileWithName(filename string) (string, error) {
 	usr, err := user.Current()
 	if err != nil {
 		return "", err
@@ -213,7 +286,7 @@ func tokenCacheFile() (string, error) {
 	tokenCacheDir := filepath.Join(usr.HomeDir, ".credentials")
 	os.MkdirAll(tokenCacheDir, 0700)
 	return filepath.Join(tokenCacheDir,
-		url.QueryEscape("youtube-go.json")), err
+		url.QueryEscape(filename)), err
 }
 
 // tokenFromFile retrieves a Token from a given file path.
