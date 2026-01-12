@@ -294,10 +294,10 @@ func (m *Manager) CalculateAnalysisProgress(video storage.Video) (int, int) {
 }
 
 // CalculateDubbingProgress calculates Dubbing phase progress on-the-fly
-// Tracks progress for Spanish dubbing (MVP): 1 long-form video + N shorts
+// Tracks progress for Spanish dubbing (MVP): 1 long-form video + N shorts + 1 translation
 func (m *Manager) CalculateDubbingProgress(video storage.Video) (int, int) {
-	// Total = 1 (long-form) + number of shorts
-	total := 1 + len(video.Shorts)
+	// Total = 1 (long-form) + number of shorts + 1 (translation)
+	total := 1 + len(video.Shorts) + 1
 	completed := 0
 
 	// If no dubbing map exists, return 0/total
@@ -316,6 +316,11 @@ func (m *Manager) CalculateDubbingProgress(video storage.Video) (int, int) {
 		if shortInfo, ok := video.Dubbing[shortKey]; ok && shortInfo.DubbingStatus == "dubbed" {
 			completed++
 		}
+	}
+
+	// Check translation (complete when TranslatedTitle is set for long-form)
+	if esInfo, ok := video.Dubbing["es"]; ok && esInfo.Title != "" {
+		completed++
 	}
 
 	return completed, total

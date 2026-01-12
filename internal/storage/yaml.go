@@ -58,9 +58,10 @@ type Short struct {
 type DubbingInfo struct {
 	DubbingID       string `yaml:"dubbingId,omitempty" json:"dubbingId,omitempty"`             // ElevenLabs dubbing job ID
 	DubbedVideoPath string `yaml:"dubbedVideoPath,omitempty" json:"dubbedVideoPath,omitempty"` // Path to the dubbed video file
-	TranslatedTitle string `yaml:"translatedTitle,omitempty" json:"translatedTitle,omitempty"` // Translated video title
-	TranslatedDesc  string `yaml:"translatedDesc,omitempty" json:"translatedDesc,omitempty"`   // Translated video description
-	TranslatedTags  string `yaml:"translatedTags,omitempty" json:"translatedTags,omitempty"`   // Translated comma-separated tags
+	Title       string `yaml:"title,omitempty" json:"title,omitempty"`             // Video title for this language
+	Description string `yaml:"description,omitempty" json:"description,omitempty"` // Video description for this language
+	Tags        string `yaml:"tags,omitempty" json:"tags,omitempty"`               // Comma-separated tags for this language
+	Timecodes   string `yaml:"timecodes,omitempty" json:"timecodes,omitempty"`     // Timecode labels for this language
 	UploadedVideoID string `yaml:"uploadedVideoId,omitempty" json:"uploadedVideoId,omitempty"` // YouTube video ID on target channel
 	DubbingStatus   string `yaml:"dubbingStatus,omitempty" json:"dubbingStatus,omitempty"`     // Status: "", "dubbing", "dubbed", "failed"
 	DubbingError    string `yaml:"dubbingError,omitempty" json:"dubbingError,omitempty"`       // Error message if dubbing failed

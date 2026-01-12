@@ -1202,8 +1202,8 @@ func TestCalculateDubbingProgress(t *testing.T) {
 			name:              "No_dubbing_map_no_shorts",
 			video:             storage.Video{},
 			expectedCompleted: 0,
-			expectedTotal:     1, // Just long-form
-			description:       "Video with no dubbing map and no shorts should return 0/1",
+			expectedTotal:     2, // 1 long-form + 1 translation
+			description:       "Video with no dubbing map and no shorts should return 0/2",
 		},
 		{
 			name: "No_dubbing_map_with_shorts",
@@ -1214,8 +1214,8 @@ func TestCalculateDubbingProgress(t *testing.T) {
 				},
 			},
 			expectedCompleted: 0,
-			expectedTotal:     3, // 1 long-form + 2 shorts
-			description:       "Video with no dubbing map but 2 shorts should return 0/3",
+			expectedTotal:     4, // 1 long-form + 2 shorts + 1 translation
+			description:       "Video with no dubbing map but 2 shorts should return 0/4",
 		},
 		{
 			name: "Long_form_dubbed_no_shorts",
@@ -1224,9 +1224,9 @@ func TestCalculateDubbingProgress(t *testing.T) {
 					"es": {DubbingID: "dub123", DubbingStatus: "dubbed"},
 				},
 			},
-			expectedCompleted: 1,
-			expectedTotal:     1,
-			description:       "Long-form dubbed, no shorts should be 1/1",
+			expectedCompleted: 1, // dubbed but not translated
+			expectedTotal:     2, // 1 long-form + 1 translation
+			description:       "Long-form dubbed but not translated should be 1/2",
 		},
 		{
 			name: "Long_form_in_progress",
@@ -1236,8 +1236,8 @@ func TestCalculateDubbingProgress(t *testing.T) {
 				},
 			},
 			expectedCompleted: 0,
-			expectedTotal:     1,
-			description:       "Long-form in progress should be 0/1",
+			expectedTotal:     2, // 1 long-form + 1 translation
+			description:       "Long-form in progress should be 0/2",
 		},
 		{
 			name: "Long_form_and_shorts_partial",
@@ -1254,12 +1254,12 @@ func TestCalculateDubbingProgress(t *testing.T) {
 					// short3 not started
 				},
 			},
-			expectedCompleted: 2, // long-form + short1
-			expectedTotal:     4, // 1 long-form + 3 shorts
+			expectedCompleted: 2, // long-form + short1 (no translation yet)
+			expectedTotal:     5, // 1 long-form + 3 shorts + 1 translation
 			description:       "Partial dubbing should count only completed",
 		},
 		{
-			name: "All_dubbed",
+			name: "All_dubbed_not_translated",
 			video: storage.Video{
 				Shorts: []storage.Short{
 					{ID: "short1", Title: "Short 1"},
@@ -1271,9 +1271,26 @@ func TestCalculateDubbingProgress(t *testing.T) {
 					"es:short2": {DubbingID: "dub3", DubbingStatus: "dubbed"},
 				},
 			},
-			expectedCompleted: 3,
-			expectedTotal:     3,
-			description:       "All dubbed should be 3/3",
+			expectedCompleted: 3, // all dubbed but not translated
+			expectedTotal:     4, // 1 long-form + 2 shorts + 1 translation
+			description:       "All dubbed but not translated should be 3/4",
+		},
+		{
+			name: "All_dubbed_and_translated",
+			video: storage.Video{
+				Shorts: []storage.Short{
+					{ID: "short1", Title: "Short 1"},
+					{ID: "short2", Title: "Short 2"},
+				},
+				Dubbing: map[string]storage.DubbingInfo{
+					"es":        {DubbingID: "dub1", DubbingStatus: "dubbed", Title: "Título traducido"},
+					"es:short1": {DubbingID: "dub2", DubbingStatus: "dubbed"},
+					"es:short2": {DubbingID: "dub3", DubbingStatus: "dubbed"},
+				},
+			},
+			expectedCompleted: 4, // all dubbed + translated
+			expectedTotal:     4, // 1 long-form + 2 shorts + 1 translation
+			description:       "All dubbed and translated should be 4/4",
 		},
 		{
 			name: "Failed_dubbing_not_counted",
@@ -1283,7 +1300,7 @@ func TestCalculateDubbingProgress(t *testing.T) {
 				},
 			},
 			expectedCompleted: 0,
-			expectedTotal:     1,
+			expectedTotal:     2, // 1 long-form + 1 translation
 			description:       "Failed dubbing should not count as completed",
 		},
 	}

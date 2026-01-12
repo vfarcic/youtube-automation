@@ -659,11 +659,12 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 			dubbingDone := false
 
 			for !dubbingDone {
-				// Action constants: 0 = long-form, 1-999 = shorts (by index+1), 1000 = check status, 1001 = back
+				// Action constants: 0 = long-form, 1-999 = shorts (by index+1), 1000+ = actions
 				const (
 					actionDubbingLongForm    = 0
 					actionDubbingCheckStatus = 1000
 					actionDubbingBack        = 1001
+					actionDubbingTranslate   = 1002
 				)
 
 				// Helper to get status text for a dubbing key
@@ -737,6 +738,18 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 				}
 				if hasInProgress {
 					options = append(options, huh.NewOption("Check Status", actionDubbingCheckStatus))
+				}
+
+				// Always show translate option if there's a title to translate
+				if updatedVideo.GetUploadTitle() != "" {
+					translateLabel := "Translate Metadata"
+					// Check if already translated
+					if updatedVideo.Dubbing != nil {
+						if info, ok := updatedVideo.Dubbing["es"]; ok && info.Title != "" {
+							translateLabel = m.greenStyle.Render("Translate Metadata (done)")
+						}
+					}
+					options = append(options, huh.NewOption(translateLabel, actionDubbingTranslate))
 				}
 
 				options = append(options, huh.NewOption("Back", actionDubbingBack))
@@ -834,6 +847,69 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 					if err := yaml.WriteVideo(updatedVideo, updatedVideo.Path); err != nil {
 						fmt.Println(m.errorStyle.Render(fmt.Sprintf("Failed to save status: %v", err)))
 					}
+					videoToEdit = updatedVideo
+					continue
+				}
+
+				if selectedAction == actionDubbingTranslate {
+					// Translate metadata using AI
+					fmt.Println(m.normalStyle.Render("Translating metadata to Spanish..."))
+
+					title := updatedVideo.GetUploadTitle()
+					if title == "" {
+						fmt.Println(m.errorStyle.Render("No title available to translate. Please set a title first."))
+						continue
+					}
+
+					input := ai.VideoMetadataInput{
+						Title:       title,
+						Description: updatedVideo.Description,
+						Tags:        updatedVideo.Tags,
+						Timecodes:   updatedVideo.Timecodes,
+					}
+
+					ctx := context.Background()
+					output, err := ai.TranslateVideoMetadata(ctx, input, "Spanish")
+					if err != nil {
+						fmt.Println(m.errorStyle.Render(fmt.Sprintf("Translation failed: %v", err)))
+						continue
+					}
+
+					// Save translated fields to DubbingInfo
+					if updatedVideo.Dubbing == nil {
+						updatedVideo.Dubbing = make(map[string]storage.DubbingInfo)
+					}
+					info := updatedVideo.Dubbing["es"]
+					info.Title = output.Title
+					info.Description = output.Description
+					info.Tags = output.Tags
+					info.Timecodes = output.Timecodes
+					updatedVideo.Dubbing["es"] = info
+
+					// Save to YAML
+					yaml := storage.YAML{}
+					if err := yaml.WriteVideo(updatedVideo, updatedVideo.Path); err != nil {
+						fmt.Println(m.errorStyle.Render(fmt.Sprintf("Failed to save translations: %v", err)))
+						continue
+					}
+
+					fmt.Println(m.confirmationStyle.Render("Translation complete!"))
+					fmt.Println(m.normalStyle.Render(fmt.Sprintf("Title: %s", output.Title)))
+					if output.Description != "" {
+						// Show first 100 chars of description
+						descPreview := output.Description
+						if len(descPreview) > 100 {
+							descPreview = descPreview[:100] + "..."
+						}
+						fmt.Println(m.normalStyle.Render(fmt.Sprintf("Description: %s", descPreview)))
+					}
+					if output.Tags != "" {
+						fmt.Println(m.normalStyle.Render(fmt.Sprintf("Tags: %s", output.Tags)))
+					}
+					if output.Timecodes != "" {
+						fmt.Println(m.normalStyle.Render("Timecodes: translated"))
+					}
+
 					videoToEdit = updatedVideo
 					continue
 				}

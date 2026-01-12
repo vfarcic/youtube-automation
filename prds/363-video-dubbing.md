@@ -4,7 +4,7 @@
 **Status**: In Progress
 **Priority**: High
 **Created**: 2025-01-11
-**Last Updated**: 2025-01-12
+**Last Updated**: 2026-01-12
 **Depends On**: None
 
 ---
@@ -55,7 +55,7 @@ Integrate AI-powered video dubbing using ElevenLabs API with automatic metadata 
 - [x] ElevenLabs API integration: create dubbing job, poll status, download result
 - [x] Spanish dubbing works for local video files using automatic dubbing
 - [x] Test mode configuration (watermark + lower resolution + segment time control)
-- [ ] Claude AI translates title, description, and tags to Spanish
+- [x] Claude AI translates title, description, tags, and timecodes to Spanish
 - [ ] Upload dubbed video to separate Spanish YouTube channel
 - [ ] OAuth2 authentication for Spanish channel (separate credentials)
 - [x] Dubbing status persisted in video YAML (allows resumption)
@@ -95,14 +95,24 @@ func (c *Client) DownloadDubbedAudio(ctx, dubbingID, langCode, outputPath string
 
 #### 2. Translation Functions (`internal/ai/translation.go`)
 ```go
-// TranslateTitle translates a video title to target language
-func TranslateTitle(ctx, title, targetLang, langName string) (string, error)
+// VideoMetadataInput holds the input fields for translation
+type VideoMetadataInput struct {
+    Title       string `json:"title"`
+    Description string `json:"description"`
+    Tags        string `json:"tags"`
+    Timecodes   string `json:"timecodes"`
+}
 
-// TranslateDescription translates video description
-func TranslateDescription(ctx, description, targetLang, langName string) (string, error)
+// VideoMetadataOutput holds the translated fields
+type VideoMetadataOutput struct {
+    Title       string `json:"title"`
+    Description string `json:"description"`
+    Tags        string `json:"tags"`
+    Timecodes   string `json:"timecodes"`
+}
 
-// TranslateTags translates comma-separated tags
-func TranslateTags(ctx, tags, targetLang, langName string) (string, error)
+// TranslateVideoMetadata translates all metadata in a single API call
+func TranslateVideoMetadata(ctx context.Context, input VideoMetadataInput, targetLanguage string) (*VideoMetadataOutput, error)
 ```
 
 #### 3. Spanish Channel Upload (`internal/publishing/youtube_spanish.go`)
@@ -113,20 +123,22 @@ func UploadVideoToSpanishChannel(video *storage.Video, dubbingInfo *storage.Dubb
 
 #### 4. Storage Updates (`internal/storage/yaml.go`)
 ```go
+// DubbingInfo tracks dubbing status for a specific language.
+// The language code is the map key in Video.Dubbing (e.g., "es" for Spanish).
 type DubbingInfo struct {
-    LanguageCode    string `yaml:"languageCode"`
     DubbingID       string `yaml:"dubbingId,omitempty"`
     DubbedVideoPath string `yaml:"dubbedVideoPath,omitempty"`
-    TranslatedTitle string `yaml:"translatedTitle,omitempty"`
-    TranslatedDesc  string `yaml:"translatedDesc,omitempty"`
-    TranslatedTags  string `yaml:"translatedTags,omitempty"`
-    SpanishVideoId  string `yaml:"spanishVideoId,omitempty"`
-    DubbingStatus   string `yaml:"dubbingStatus,omitempty"`
+    Title           string `yaml:"title,omitempty"`           // Translated title
+    Description     string `yaml:"description,omitempty"`     // Translated description
+    Tags            string `yaml:"tags,omitempty"`            // Translated tags
+    Timecodes       string `yaml:"timecodes,omitempty"`       // Translated timecodes
+    UploadedVideoID string `yaml:"uploadedVideoId,omitempty"` // YouTube ID on target channel
+    DubbingStatus   string `yaml:"dubbingStatus,omitempty"`   // "", "dubbing", "dubbed", "failed"
     DubbingError    string `yaml:"dubbingError,omitempty"`
 }
 
-// Add to Video struct:
-Dubbing []DubbingInfo `yaml:"dubbing,omitempty"`
+// Video struct includes:
+Dubbing map[string]DubbingInfo `yaml:"dubbing,omitempty"` // Key = language code (e.g., "es")
 ```
 
 ### Configuration
@@ -181,11 +193,13 @@ spanishChannel:
 - [x] Confirm ElevenLabs API integration works end-to-end
 - [x] Fixed MIME type issue for .mov files (video/quicktime)
 
-**Phase 5: Translation Integration** ← Was Phase 2
-- Add translation functions to `internal/ai/`
-- Create prompt templates for title, description, tags
-- Use existing Claude provider
-- Unit tests with mock AI provider
+**Phase 5: Translation Integration** ✅
+- [x] Add `TranslateVideoMetadata()` function to `internal/ai/translation.go`
+- [x] Create `translate_metadata.md` prompt template (single call for all fields)
+- [x] Use existing Claude/Azure OpenAI provider
+- [x] Unit tests with mock AI provider (17 test cases)
+- [x] CLI integration: "Translate Metadata" option in Dubbing phase
+- [x] Progress counter updated to include translation step
 
 **Phase 6: Spanish Channel Setup** ← Was Phase 3
 - Create Spanish YouTube channel
@@ -256,13 +270,28 @@ spanishChannel:
 ## Milestones
 
 - [x] **ElevenLabs API Integration Working**: Create, poll, and download dubbing jobs
-- [ ] **Claude Translation Integration**: Title, description, tags translation working
+- [x] **Claude Translation Integration**: Title, description, tags, timecodes translation working
 - [ ] **Spanish YouTube Channel Configured**: Channel created, OAuth credentials set up
 - [ ] **Spanish Channel Upload Functional**: Dubbed video uploads with translated metadata
 - [ ] **CLI Menu Integration Complete**: Dubbing workflow in Publishing Details phase
 - [ ] **End-to-End Workflow Validated**: Full flow tested with real video
 
 ## Progress Log
+
+### 2025-01-12 (Update 5)
+- **Phase 5 Complete**: Translation Integration
+  - Created `internal/ai/translation.go` with `TranslateVideoMetadata()` function
+  - Single API call translates title, description, tags, and timecodes together (consistency + efficiency)
+  - Created `internal/ai/templates/translate_metadata.md` prompt template
+  - Prompt uses general principle with examples for technical term preservation
+  - Added `Timecodes` field to `DubbingInfo` struct
+  - Refactored field names: `title`, `description`, `tags`, `timecodes` (not `translatedTitle`, etc.)
+  - Comprehensive unit tests (17 test cases) covering special characters, code fences, errors
+  - CLI integration: "Translate Metadata" option in Dubbing phase menu
+  - Translation available anytime there's a title (not just after dubbing)
+  - Updated `CalculateDubbingProgress()` to include translation as a step
+  - User tested and confirmed working
+  - All tests passing, build verified
 
 ### 2025-01-12 (Update 4)
 - **Phase 3 & 4 Complete**: CLI Integration and Dubbing Validation
