@@ -56,6 +56,7 @@ func GetActionOptions() []huh.Option[int] {
 		actionEdit = iota
 		actionDelete
 		actionMoveFiles
+		actionArchive
 	)
 	const actionReturn = 99
 
@@ -63,6 +64,7 @@ func GetActionOptions() []huh.Option[int] {
 		huh.NewOption("Edit", actionEdit),
 		huh.NewOption("Delete", actionDelete),
 		huh.NewOption("Move Video", actionMoveFiles),
+		huh.NewOption("Archive", actionArchive),
 		huh.NewOption("Return", actionReturn),
 	}
 }

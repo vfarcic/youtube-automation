@@ -1104,3 +1104,221 @@ func TestVideoService_GetVideoManuscript_NonExistentFile(t *testing.T) {
 	assert.Contains(t, err.Error(), "failed to read manuscript file")
 	assert.Empty(t, content)
 }
+
+func TestVideoService_ArchiveVideo(t *testing.T) {
+	service, _, cleanup := setupTestVideoService(t)
+	defer cleanup()
+
+	// Create test videos with dates
+	_, err := service.CreateVideo("video-2024", "test-category", "2024-06-15T10:00")
+	require.NoError(t, err)
+	_, err = service.CreateVideo("video-2025", "test-category", "2025-01-20T14:00")
+	require.NoError(t, err)
+
+	tests := []struct {
+		name        string
+		videoName   string
+		category    string
+		date        string
+		expectError bool
+		errorMsg    string
+	}{
+		{
+			name:        "Valid archive 2024",
+			videoName:   "video-2024",
+			category:    "test-category",
+			date:        "2024-06-15T10:00",
+			expectError: false,
+		},
+		{
+			name:        "Valid archive 2025",
+			videoName:   "video-2025",
+			category:    "test-category",
+			date:        "2025-01-20T14:00",
+			expectError: false,
+		},
+		{
+			name:        "Empty name",
+			videoName:   "",
+			category:    "test-category",
+			date:        "2024-01-01T10:00",
+			expectError: true,
+			errorMsg:    "name and category are required",
+		},
+		{
+			name:        "Empty category",
+			videoName:   "some-video",
+			category:    "",
+			date:        "2024-01-01T10:00",
+			expectError: true,
+			errorMsg:    "name and category are required",
+		},
+		{
+			name:        "Empty date",
+			videoName:   "some-video",
+			category:    "test-category",
+			date:        "",
+			expectError: true,
+			errorMsg:    "video has no valid date",
+		},
+		{
+			name:        "Invalid short date",
+			videoName:   "some-video",
+			category:    "test-category",
+			date:        "202",
+			expectError: true,
+			errorMsg:    "video has no valid date",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := service.ArchiveVideo(tt.videoName, tt.category, tt.date)
+
+			if tt.expectError {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tt.errorMsg)
+			} else {
+				assert.NoError(t, err)
+
+				// Verify archive file was created
+				year := tt.date[:4]
+				archivePath := filepath.Join("index", year+".yaml")
+				assert.FileExists(t, archivePath)
+
+				// Verify video is in archive index
+				archivedIndex, err := service.readArchiveIndex(archivePath)
+				require.NoError(t, err)
+
+				found := false
+				for _, vi := range archivedIndex {
+					if vi.Name == tt.videoName && vi.Category == tt.category {
+						found = true
+						break
+					}
+				}
+				assert.True(t, found, "Video should be in archive index")
+
+				// Verify removed from main index
+				mainIndex, err := service.yamlStorage.GetIndex()
+				require.NoError(t, err)
+
+				for _, vi := range mainIndex {
+					assert.False(t,
+						vi.Name == tt.videoName && vi.Category == tt.category,
+						"Video should be removed from main index")
+				}
+			}
+		})
+	}
+}
+
+func TestVideoService_ArchiveVideo_MultipleToSameYear(t *testing.T) {
+	service, _, cleanup := setupTestVideoService(t)
+	defer cleanup()
+
+	// Create multiple test videos for the same year
+	_, err := service.CreateVideo("video-jan", "test-category", "2024-01-15T10:00")
+	require.NoError(t, err)
+	_, err = service.CreateVideo("video-jun", "test-category", "2024-06-20T14:00")
+	require.NoError(t, err)
+	_, err = service.CreateVideo("video-dec", "test-category", "2024-12-25T16:00")
+	require.NoError(t, err)
+
+	// Archive all three
+	err = service.ArchiveVideo("video-jan", "test-category", "2024-01-15T10:00")
+	require.NoError(t, err)
+	err = service.ArchiveVideo("video-jun", "test-category", "2024-06-20T14:00")
+	require.NoError(t, err)
+	err = service.ArchiveVideo("video-dec", "test-category", "2024-12-25T16:00")
+	require.NoError(t, err)
+
+	// Verify all three are in the same archive file
+	archivePath := filepath.Join("index", "2024.yaml")
+	assert.FileExists(t, archivePath)
+
+	archivedIndex, err := service.readArchiveIndex(archivePath)
+	require.NoError(t, err)
+	assert.Len(t, archivedIndex, 3)
+
+	expectedNames := []string{"video-jan", "video-jun", "video-dec"}
+	for _, expectedName := range expectedNames {
+		found := false
+		for _, vi := range archivedIndex {
+			if vi.Name == expectedName {
+				found = true
+				break
+			}
+		}
+		assert.True(t, found, "Video '%s' should be in archive", expectedName)
+	}
+
+	// Verify main index is empty
+	mainIndex, err := service.yamlStorage.GetIndex()
+	require.NoError(t, err)
+	assert.Len(t, mainIndex, 0, "Main index should be empty after archiving all videos")
+}
+
+func TestVideoService_ExtractYearFromDate(t *testing.T) {
+	tests := []struct {
+		name     string
+		date     string
+		expected string
+	}{
+		{"Full ISO date", "2024-06-15T10:00", "2024"},
+		{"Different year", "2025-01-20T14:30", "2025"},
+		{"Old year", "2020-12-31T23:59", "2020"},
+		{"Empty string", "", ""},
+		{"Too short", "202", ""},
+		{"Exactly 4 chars", "2024", "2024"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := extractYearFromDate(tt.date)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestVideoService_ArchiveVideo_LegacyUnsanitizedNames(t *testing.T) {
+	service, tempDir, cleanup := setupTestVideoService(t)
+	defer cleanup()
+
+	// Simulate a legacy index entry with unsanitized name (capitals, spaces)
+	legacyName := "AI for Devs"
+	sanitizedName := "ai-for-devs"
+	category := "test-category"
+	date := "2024-03-15T10:00"
+
+	// Create the video file with sanitized filename (as the system would expect)
+	videoContent := "name: " + legacyName + "\ndate: " + date
+	videoPath := filepath.Join(tempDir, "manuscript", category, sanitizedName+".yaml")
+	err := os.WriteFile(videoPath, []byte(videoContent), 0644)
+	require.NoError(t, err)
+
+	// Create a legacy index entry with unsanitized name
+	legacyIndex := []storage.VideoIndex{
+		{Name: legacyName, Category: category},
+	}
+	err = service.yamlStorage.WriteIndex(legacyIndex)
+	require.NoError(t, err)
+
+	// Archive using sanitized name (as the menu handler would pass)
+	err = service.ArchiveVideo(sanitizedName, category, date)
+	require.NoError(t, err)
+
+	// Verify the video was removed from main index
+	mainIndex, err := service.yamlStorage.GetIndex()
+	require.NoError(t, err)
+	assert.Len(t, mainIndex, 0, "Main index should be empty after archiving legacy entry")
+
+	// Verify the video is in the archive
+	archivePath := filepath.Join("index", "2024.yaml")
+	assert.FileExists(t, archivePath)
+
+	archivedIndex, err := service.readArchiveIndex(archivePath)
+	require.NoError(t, err)
+	assert.Len(t, archivedIndex, 1)
+	assert.Equal(t, sanitizedName, archivedIndex[0].Name)
+}

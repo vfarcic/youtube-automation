@@ -18,6 +18,7 @@ import (
 
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
+	"gopkg.in/yaml.v3"
 )
 
 // VideoService provides unified data operations for videos across CLI and API
@@ -347,6 +348,101 @@ func (s *VideoService) DeleteVideo(name, category string) error {
 	}
 
 	return s.yamlStorage.WriteIndex(updatedIndex)
+}
+
+// ArchiveVideo moves a video from index.yaml to index/[YEAR].yaml
+// The year is extracted from the provided date string (format: "2006-01-02T15:04")
+func (s *VideoService) ArchiveVideo(name, category, date string) error {
+	if name == "" || category == "" {
+		return fmt.Errorf("name and category are required")
+	}
+
+	// Extract year from date (format: "2006-01-02T15:04")
+	year := extractYearFromDate(date)
+	if year == "" {
+		return fmt.Errorf("video has no valid date, cannot archive")
+	}
+
+	// Ensure index/ directory exists
+	indexDir := "index"
+	if err := os.MkdirAll(indexDir, 0755); err != nil {
+		return fmt.Errorf("failed to create index directory: %w", err)
+	}
+
+	// Get or create archive index file path
+	archiveIndexPath := filepath.Join(indexDir, year+".yaml")
+
+	// Read existing archive index (or create empty if doesn't exist)
+	archivedIndex, err := s.readArchiveIndex(archiveIndexPath)
+	if err != nil {
+		return fmt.Errorf("failed to read archive index: %w", err)
+	}
+
+	// Add video to archived index
+	archivedIndex = append(archivedIndex, storage.VideoIndex{
+		Name:     name,
+		Category: category,
+	})
+
+	// Write archived index
+	if err := s.writeArchiveIndex(archiveIndexPath, archivedIndex); err != nil {
+		return fmt.Errorf("failed to write archive index: %w", err)
+	}
+
+	// Remove from main index.yaml
+	index, err := s.yamlStorage.GetIndex()
+	if err != nil {
+		return fmt.Errorf("failed to get index: %w", err)
+	}
+
+	// Sanitize the name for comparison since index may have unsanitized legacy names
+	sanitizedName := s.filesystem.SanitizeName(name)
+	var updatedIndex []storage.VideoIndex
+	for _, vi := range index {
+		if !(s.filesystem.SanitizeName(vi.Name) == sanitizedName && vi.Category == category) {
+			updatedIndex = append(updatedIndex, vi)
+		}
+	}
+
+	return s.yamlStorage.WriteIndex(updatedIndex)
+}
+
+// extractYearFromDate extracts the year from a date string in format "2006-01-02T15:04"
+func extractYearFromDate(dateStr string) string {
+	if len(dateStr) < 4 {
+		return ""
+	}
+	return dateStr[:4]
+}
+
+// readArchiveIndex reads an archive index file, returning empty slice if file doesn't exist
+func (s *VideoService) readArchiveIndex(path string) ([]storage.VideoIndex, error) {
+	var index []storage.VideoIndex
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return index, nil // New file, return empty slice
+		}
+		return nil, fmt.Errorf("failed to read archive index file %s: %w", path, err)
+	}
+
+	if err := yaml.Unmarshal(data, &index); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal archive index from %s: %w", path, err)
+	}
+
+	return index, nil
+}
+
+// writeArchiveIndex writes an archive index to a file
+func (s *VideoService) writeArchiveIndex(path string, vi []storage.VideoIndex) error {
+	data, err := yaml.Marshal(&vi)
+	if err != nil {
+		return fmt.Errorf("failed to marshal archive index: %w", err)
+	}
+	if err := os.WriteFile(path, data, 0644); err != nil {
+		return fmt.Errorf("failed to write archive index to file %s: %w", path, err)
+	}
+	return nil
 }
 
 // GetCategories returns available video categories

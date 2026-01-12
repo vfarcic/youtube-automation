@@ -45,6 +45,7 @@ const (
 	actionEdit = iota
 	actionDelete
 	actionMoveFiles
+	actionArchive
 )
 const actionReturn = 99
 

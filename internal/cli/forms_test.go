@@ -152,11 +152,11 @@ func TestGetCategories(t *testing.T) {
 func TestGetActionOptions(t *testing.T) {
 	options := GetActionOptions()
 
-	if len(options) != 4 {
-		t.Errorf("Expected 4 action options, got %d", len(options))
+	if len(options) != 5 {
+		t.Errorf("Expected 5 action options, got %d", len(options))
 	}
 
-	expectedActions := []string{"Edit", "Delete", "Move Video", "Return"}
+	expectedActions := []string{"Edit", "Delete", "Move Video", "Archive", "Return"}
 	for i, option := range options {
 		if i < len(expectedActions) {
 			if option.Key != expectedActions[i] {

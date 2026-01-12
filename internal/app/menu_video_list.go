@@ -300,6 +300,15 @@ func (m *MenuHandler) ChooseVideosAndHandleError(vi []storage.VideoIndex, phase 
 		} else {
 			fmt.Println(m.confirmationStyle.Render(fmt.Sprintf("Video '%s' files moved to %s", selectedVideo.Name, targetDir.Path)))
 		}
+	case actionArchive:
+		archived, errArchive := m.handleArchiveVideoActionAndHandleError(selectedVideo)
+		if errArchive != nil {
+			return fmt.Errorf("error archiving video: %w", errArchive)
+		}
+		if archived {
+			year := selectedVideo.Date[:4]
+			fmt.Println(m.confirmationStyle.Render(fmt.Sprintf("Video '%s' archived to index/%s.yaml", selectedVideo.Name, year)))
+		}
 	case actionReturn:
 		return nil
 	}
@@ -321,6 +330,28 @@ func (m *MenuHandler) handleDeleteVideoActionAndHandleError(selectedVideo storag
 	}
 
 	fmt.Println(m.orangeStyle.Render("Deletion cancelled."))
+	return false, nil
+}
+
+// handleArchiveVideoActionAndHandleError handles video archiving workflow
+func (m *MenuHandler) handleArchiveVideoActionAndHandleError(selectedVideo storage.Video) (bool, error) {
+	if selectedVideo.Date == "" || len(selectedVideo.Date) < 4 {
+		fmt.Println(m.errorStyle.Render("Cannot archive: video has no valid date"))
+		return false, nil
+	}
+
+	year := selectedVideo.Date[:4]
+	confirmMsg := fmt.Sprintf("Archive video '%s' to index/%s.yaml?", selectedVideo.Name, year)
+
+	confirmed := utils.ConfirmAction(confirmMsg, nil)
+	if confirmed {
+		if err := m.videoService.ArchiveVideo(selectedVideo.Name, selectedVideo.Category, selectedVideo.Date); err != nil {
+			return false, fmt.Errorf("failed to archive video: %w", err)
+		}
+		return true, nil
+	}
+
+	fmt.Println(m.orangeStyle.Render("Archive cancelled."))
 	return false, nil
 }
 
