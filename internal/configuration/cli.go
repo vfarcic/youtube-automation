@@ -29,6 +29,7 @@ type Settings struct {
 	Timing        TimingConfig          `yaml:"timing"`
 	Calendar      SettingsCalendar      `yaml:"calendar"`
 	Shorts        ShortsConfig          `yaml:"shorts"`
+	ElevenLabs    SettingsElevenLabs    `yaml:"elevenLabs"`
 }
 
 type SettingsEmail struct {
@@ -110,6 +111,16 @@ type ShortsConfig struct {
 	CandidateCount int `yaml:"candidateCount" json:"candidateCount"` // Number of Short candidates to generate (default: 10)
 }
 
+// SettingsElevenLabs holds ElevenLabs API configuration for video dubbing
+type SettingsElevenLabs struct {
+	APIKey              string `yaml:"apiKey"`              // API key (prefer ELEVENLABS_API_KEY env var)
+	TestMode            bool   `yaml:"testMode"`            // true = watermark + lower resolution (saves credits)
+	StartTime           int    `yaml:"startTime"`           // Start time in seconds (0 = beginning)
+	EndTime             int    `yaml:"endTime"`             // End time in seconds (0 = full video)
+	NumSpeakers         int    `yaml:"numSpeakers"`         // Number of speakers (default: 1)
+	DropBackgroundAudio bool   `yaml:"dropBackgroundAudio"` // Whether to drop background audio (default: false)
+}
+
 var GlobalSettings Settings
 
 func init() {
@@ -171,6 +182,17 @@ func init() {
 	if GlobalSettings.Shorts.CandidateCount == 0 {
 		GlobalSettings.Shorts.CandidateCount = 10
 	}
+
+	// ElevenLabs settings: load API key from environment variable
+	if envElevenLabsKey := os.Getenv("ELEVENLABS_API_KEY"); envElevenLabsKey != "" {
+		GlobalSettings.ElevenLabs.APIKey = envElevenLabsKey
+	}
+	// Default ElevenLabs settings for testing (saves credits)
+	if GlobalSettings.ElevenLabs.NumSpeakers == 0 {
+		GlobalSettings.ElevenLabs.NumSpeakers = 1
+	}
+	// Note: TestMode defaults to false (zero value), set to true in settings.yaml for testing
+	// Note: StartTime/EndTime default to 0 (full video)
 
 	// Calendar settings: enabled by default, set calendar.disabled: true to disable
 

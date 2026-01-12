@@ -155,39 +155,49 @@ spanishChannel:
 
 ### Implementation Phases
 
-**Phase 1: ElevenLabs Integration** ✅
+**Phase 1: ElevenLabs API Integration** ✅
 - [x] Create `internal/dubbing/` package
 - [x] Implement API client with create, status, download
-- [x] Add configuration for API key
 - [x] Unit tests with mock HTTP server (82.5% coverage)
 
-**Phase 2: Translation Integration**
-- Add translation functions to `internal/ai/`
-- Create prompt templates for title, description, tags
-- Use existing Claude provider
-- Unit tests with mock AI provider
+**Phase 2: ElevenLabs Configuration** ✅
+- [x] Add `SettingsElevenLabs` struct to configuration
+- [x] Add `elevenLabs:` section to settings.yaml
+- [x] Environment variable support (`ELEVENLABS_API_KEY`)
+- [x] Unit tests for config loading
 
-**Phase 3: Spanish Channel Setup**
-- Create Spanish YouTube channel
-- Generate separate OAuth credentials
-- Add Spanish channel config to settings.yaml
-- Implement separate OAuth flow (port 8091)
-
-**Phase 4: Upload Integration**
-- Implement `UploadVideoToSpanishChannel()`
-- Build Spanish descriptions with link to original
-- Store Spanish video ID in YAML
-
-**Phase 5: CLI Integration**
+**Phase 3: CLI Integration** ← Moved up to enable testing
 - Add dubbing section to Publishing Details phase
 - Context-sensitive menu (show relevant actions based on state)
 - Present dubbing options for both long-form video AND associated shorts (read from video YAML)
 - Handler functions for each action
 - Progress feedback during operations
 
-**Phase 6: Testing & Validation**
-- End-to-end testing with real ElevenLabs account
-- Validate dubbed audio quality
+**Phase 4: Dubbing Validation** ← New phase
+- Test dubbing with real video file
+- Validate dubbed audio quality and sync
+- Verify technical terms are pronounced correctly
+- Confirm ElevenLabs API integration works end-to-end
+
+**Phase 5: Translation Integration** ← Was Phase 2
+- Add translation functions to `internal/ai/`
+- Create prompt templates for title, description, tags
+- Use existing Claude provider
+- Unit tests with mock AI provider
+
+**Phase 6: Spanish Channel Setup** ← Was Phase 3
+- Create Spanish YouTube channel
+- Generate separate OAuth credentials
+- Add Spanish channel config to settings.yaml
+- Implement separate OAuth flow (port 8091)
+
+**Phase 7: Upload Integration** ← Was Phase 4
+- Implement `UploadVideoToSpanishChannel()`
+- Build Spanish descriptions with link to original
+- Store Spanish video ID in YAML
+
+**Phase 8: Final Testing & Validation** ← Was Phase 6
+- End-to-end testing of complete workflow
 - Test translation accuracy
 - Verify Spanish channel upload works
 
@@ -251,6 +261,23 @@ spanishChannel:
 - [ ] **End-to-End Workflow Validated**: Full flow tested with real video
 
 ## Progress Log
+
+### 2025-01-12 (Update 3)
+- **Decision**: Reordered implementation phases
+  - **Rationale**: Validate dubbing with real video before building translation on top
+  - **Change**: Moved CLI Integration (was Phase 5) to Phase 3, added explicit Dubbing Validation phase
+  - **New order**: API → Config → CLI → Validate Dubbing → Translation → Spanish Channel → Upload → Final Testing
+  - **Impact**: Ensures foundation is solid before building more features
+
+### 2025-01-12 (Update 2)
+- **ElevenLabs Configuration Complete**:
+  - Added `SettingsElevenLabs` struct to `internal/configuration/cli.go`
+  - Fields: APIKey, TestMode, StartTime, EndTime, NumSpeakers, DropBackgroundAudio
+  - Environment variable support: `ELEVENLABS_API_KEY`
+  - Default `numSpeakers: 1` applied automatically
+  - Added `elevenLabs:` section to `settings.yaml` with documentation
+  - Comprehensive unit tests (8 test cases) for config loading and serialization
+  - All tests passing, build verified
 
 ### 2025-01-12
 - **Phase 1 Complete**: ElevenLabs API Integration

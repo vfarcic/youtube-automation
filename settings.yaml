@@ -43,6 +43,16 @@ shorts:
   maxWords: 150        # Maximum word count for a Short segment
   candidateCount: 10   # Number of Short candidates AI should identify
 
+# Added for PRD #363: AI-Powered Video Dubbing
+# ElevenLabs API configuration for automatic video dubbing
+elevenLabs:
+  # apiKey: use ELEVENLABS_API_KEY env var (recommended)
+  testMode: true      # true = watermark + lower resolution (saves credits during testing)
+  startTime: 0        # Start time in seconds (0 = beginning)
+  endTime: 0          # End time in seconds (0 = full video, set to 60 for first-minute testing)
+  numSpeakers: 1      # Number of speakers in video (default: 1)
+  dropBackgroundAudio: false  # Keep background music/sound effects
+
 # Added for PRD #336: YouTube Timing Analytics & Optimization
 # This section stores AI-generated timing recommendations for video publishing
 # Run "Analyze → Timing" from the main menu to generate recommendations
