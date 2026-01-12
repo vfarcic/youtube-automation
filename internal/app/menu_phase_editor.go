@@ -915,27 +915,23 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 				}
 
 				// Start dubbing for long-form or a short
-				var videoPath string
+				var youtubeID string
 				var dubbingKey string
 
 				if selectedAction == actionDubbingLongForm {
-					videoPath = updatedVideo.UploadVideo
+					youtubeID = updatedVideo.VideoId
 					dubbingKey = "es"
 				} else if selectedAction >= 1 && selectedAction <= len(updatedVideo.Shorts) {
 					shortIdx := selectedAction - 1
-					videoPath = updatedVideo.Shorts[shortIdx].FilePath
+					youtubeID = updatedVideo.Shorts[shortIdx].YouTubeID
 					dubbingKey = fmt.Sprintf("es:short%d", selectedAction)
 				} else {
 					continue
 				}
 
-				// Validate video path
-				if videoPath == "" {
-					fmt.Println(m.errorStyle.Render("No video file path set."))
-					continue
-				}
-				if _, err := os.Stat(videoPath); os.IsNotExist(err) {
-					fmt.Println(m.errorStyle.Render(fmt.Sprintf("Video file not found: %s", videoPath)))
+				// Validate YouTube ID (video must be public on YouTube)
+				if youtubeID == "" {
+					fmt.Println(m.errorStyle.Render("Video must be published on YouTube first. Dubbing uses the YouTube URL."))
 					continue
 				}
 
@@ -955,10 +951,11 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 				}
 				client := dubbing.NewClient(apiKey, dubbingConfig)
 
-				fmt.Println(m.normalStyle.Render(fmt.Sprintf("Starting dubbing for %s...", dubbingKey)))
+				youtubeURL := fmt.Sprintf("https://www.youtube.com/watch?v=%s", youtubeID)
+				fmt.Println(m.normalStyle.Render(fmt.Sprintf("Starting dubbing for %s from YouTube...", dubbingKey)))
 
 				ctx := context.Background()
-				job, err := client.CreateDub(ctx, videoPath, "en", "es")
+				job, err := client.CreateDubFromURL(ctx, youtubeURL, "en", "es")
 				if err != nil {
 					fmt.Println(m.errorStyle.Render(fmt.Sprintf("Failed to start dubbing: %v", err)))
 					continue

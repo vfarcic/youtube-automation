@@ -1,19 +1,17 @@
 package dubbing
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"mime"
 	"mime/multipart"
 	"net/http"
-	"net/textproto"
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 )
 
 const (
@@ -25,7 +23,6 @@ var (
 	ErrDubbingFailed     = errors.New("dubbing job failed")
 	ErrDubbingInProgress = errors.New("dubbing still in progress")
 	ErrInvalidAPIKey     = errors.New("invalid API key")
-	ErrVideoNotFound     = errors.New("video file not found")
 	ErrDubbingNotFound   = errors.New("dubbing job not found")
 )
 
@@ -61,127 +58,71 @@ func NewClientWithHTTPClient(apiKey string, config Config, httpClient *http.Clie
 	}
 }
 
-// CreateDub initiates a dubbing job
-// POST /v1/dubbing with video file and target language
-func (c *Client) CreateDub(ctx context.Context, videoPath, sourceLang, targetLang string) (*DubbingJob, error) {
-	// Verify video file exists
-	if _, err := os.Stat(videoPath); os.IsNotExist(err) {
-		return nil, fmt.Errorf("%w: %s", ErrVideoNotFound, videoPath)
+// CreateDubFromURL initiates a dubbing job using a video URL (e.g., YouTube)
+// POST /v1/dubbing with URL and target language
+func (c *Client) CreateDubFromURL(ctx context.Context, videoURL, sourceLang, targetLang string) (*DubbingJob, error) {
+	// Create multipart form with URL instead of file
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+
+	// Add the video URL
+	if err := writer.WriteField("source_url", videoURL); err != nil {
+		return nil, fmt.Errorf("failed to write source_url: %w", err)
 	}
 
-	// Open the video file
-	file, err := os.Open(videoPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open video file: %w", err)
+	// Add target language
+	if err := writer.WriteField("target_lang", targetLang); err != nil {
+		return nil, fmt.Errorf("failed to write target_lang: %w", err)
 	}
-	defer file.Close()
 
-	// Create multipart form
-	pr, pw := io.Pipe()
-	writer := multipart.NewWriter(pw)
+	// Add source language if provided
+	if sourceLang != "" {
+		if err := writer.WriteField("source_lang", sourceLang); err != nil {
+			return nil, fmt.Errorf("failed to write source_lang: %w", err)
+		}
+	}
 
-	// Write form data in a goroutine to avoid blocking
-	errChan := make(chan error, 1)
-	go func() {
-		defer pw.Close()
-		defer writer.Close()
+	// Add number of speakers
+	numSpeakers := c.config.NumSpeakers
+	if numSpeakers <= 0 {
+		numSpeakers = 1
+	}
+	if err := writer.WriteField("num_speakers", strconv.Itoa(numSpeakers)); err != nil {
+		return nil, fmt.Errorf("failed to write num_speakers: %w", err)
+	}
 
-		// Add the video file with proper MIME type
-		filename := filepath.Base(videoPath)
-		mimeType := mime.TypeByExtension(filepath.Ext(videoPath))
-		if mimeType == "" {
-			// Fallback for common video types
-			ext := strings.ToLower(filepath.Ext(videoPath))
-			switch ext {
-			case ".mov":
-				mimeType = "video/quicktime"
-			case ".mp4":
-				mimeType = "video/mp4"
-			case ".avi":
-				mimeType = "video/x-msvideo"
-			case ".mkv":
-				mimeType = "video/x-matroska"
-			case ".webm":
-				mimeType = "video/webm"
-			default:
-				mimeType = "video/mp4" // Default to mp4
-			}
-		}
+	// Add drop_background_audio
+	if err := writer.WriteField("drop_background_audio", strconv.FormatBool(c.config.DropBackgroundAudio)); err != nil {
+		return nil, fmt.Errorf("failed to write drop_background_audio: %w", err)
+	}
 
-		h := make(textproto.MIMEHeader)
-		h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="file"; filename="%s"`, filename))
-		h.Set("Content-Type", mimeType)
+	// Add test mode settings
+	if err := writer.WriteField("watermark", strconv.FormatBool(c.config.TestMode)); err != nil {
+		return nil, fmt.Errorf("failed to write watermark: %w", err)
+	}
+	if err := writer.WriteField("highest_resolution", strconv.FormatBool(!c.config.TestMode)); err != nil {
+		return nil, fmt.Errorf("failed to write highest_resolution: %w", err)
+	}
 
-		part, err := writer.CreatePart(h)
-		if err != nil {
-			errChan <- fmt.Errorf("failed to create form file: %w", err)
-			return
+	// Add start/end time if specified
+	if c.config.StartTime > 0 {
+		if err := writer.WriteField("start_time", strconv.Itoa(c.config.StartTime)); err != nil {
+			return nil, fmt.Errorf("failed to write start_time: %w", err)
 		}
-		if _, err := io.Copy(part, file); err != nil {
-			errChan <- fmt.Errorf("failed to copy video file: %w", err)
-			return
+	}
+	if c.config.EndTime > 0 {
+		if err := writer.WriteField("end_time", strconv.Itoa(c.config.EndTime)); err != nil {
+			return nil, fmt.Errorf("failed to write end_time: %w", err)
 		}
+	}
 
-		// Add target language
-		if err := writer.WriteField("target_lang", targetLang); err != nil {
-			errChan <- fmt.Errorf("failed to write target_lang: %w", err)
-			return
-		}
-
-		// Add source language if provided
-		if sourceLang != "" {
-			if err := writer.WriteField("source_lang", sourceLang); err != nil {
-				errChan <- fmt.Errorf("failed to write source_lang: %w", err)
-				return
-			}
-		}
-
-		// Add number of speakers
-		numSpeakers := c.config.NumSpeakers
-		if numSpeakers <= 0 {
-			numSpeakers = 1
-		}
-		if err := writer.WriteField("num_speakers", strconv.Itoa(numSpeakers)); err != nil {
-			errChan <- fmt.Errorf("failed to write num_speakers: %w", err)
-			return
-		}
-
-		// Add drop_background_audio
-		if err := writer.WriteField("drop_background_audio", strconv.FormatBool(c.config.DropBackgroundAudio)); err != nil {
-			errChan <- fmt.Errorf("failed to write drop_background_audio: %w", err)
-			return
-		}
-
-		// Add test mode settings
-		if err := writer.WriteField("watermark", strconv.FormatBool(c.config.TestMode)); err != nil {
-			errChan <- fmt.Errorf("failed to write watermark: %w", err)
-			return
-		}
-		if err := writer.WriteField("highest_resolution", strconv.FormatBool(!c.config.TestMode)); err != nil {
-			errChan <- fmt.Errorf("failed to write highest_resolution: %w", err)
-			return
-		}
-
-		// Add start/end time if specified
-		if c.config.StartTime > 0 {
-			if err := writer.WriteField("start_time", strconv.Itoa(c.config.StartTime)); err != nil {
-				errChan <- fmt.Errorf("failed to write start_time: %w", err)
-				return
-			}
-		}
-		if c.config.EndTime > 0 {
-			if err := writer.WriteField("end_time", strconv.Itoa(c.config.EndTime)); err != nil {
-				errChan <- fmt.Errorf("failed to write end_time: %w", err)
-				return
-			}
-		}
-
-		errChan <- nil
-	}()
+	if err := writer.Close(); err != nil {
+		return nil, fmt.Errorf("failed to close multipart writer: %w", err)
+	}
 
 	// Create the request
 	url := c.baseURL + "/v1/dubbing"
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, pr)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, &body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -196,13 +137,8 @@ func (c *Client) CreateDub(ctx context.Context, videoPath, sourceLang, targetLan
 	}
 	defer resp.Body.Close()
 
-	// Check for errors from the goroutine
-	if writeErr := <-errChan; writeErr != nil {
-		return nil, writeErr
-	}
-
 	// Handle response
-	body, err := io.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
@@ -213,14 +149,16 @@ func (c *Client) CreateDub(ctx context.Context, videoPath, sourceLang, targetLan
 
 	if resp.StatusCode != http.StatusOK {
 		var errResp errorResponse
-		if json.Unmarshal(body, &errResp) == nil && errResp.Detail.Message != "" {
-			return nil, fmt.Errorf("dubbing request failed (status %d): %s", resp.StatusCode, errResp.Detail.Message)
+		if json.Unmarshal(respBody, &errResp) == nil {
+			if msg := errResp.GetMessage(); msg != "" {
+				return nil, fmt.Errorf("dubbing request failed (status %d): %s", resp.StatusCode, msg)
+			}
 		}
-		return nil, fmt.Errorf("dubbing request failed with status %d: %s", resp.StatusCode, string(body))
+		return nil, fmt.Errorf("dubbing request failed with status %d: %s", resp.StatusCode, string(respBody))
 	}
 
 	var createResp createDubbingResponse
-	if err := json.Unmarshal(body, &createResp); err != nil {
+	if err := json.Unmarshal(respBody, &createResp); err != nil {
 		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
 
@@ -265,8 +203,10 @@ func (c *Client) GetDubbingStatus(ctx context.Context, dubbingID string) (*Dubbi
 
 	if resp.StatusCode != http.StatusOK {
 		var errResp errorResponse
-		if json.Unmarshal(body, &errResp) == nil && errResp.Detail.Message != "" {
-			return nil, fmt.Errorf("get status failed (status %d): %s", resp.StatusCode, errResp.Detail.Message)
+		if json.Unmarshal(body, &errResp) == nil {
+			if msg := errResp.GetMessage(); msg != "" {
+				return nil, fmt.Errorf("get status failed (status %d): %s", resp.StatusCode, msg)
+			}
 		}
 		return nil, fmt.Errorf("get status failed with status %d: %s", resp.StatusCode, string(body))
 	}
@@ -326,6 +266,12 @@ func (c *Client) DownloadDubbedAudio(ctx context.Context, dubbingID, langCode, o
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("download failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	// Ensure output directory exists
+	outputDir := filepath.Dir(outputPath)
+	if err := os.MkdirAll(outputDir, 0755); err != nil {
+		return fmt.Errorf("failed to create output directory: %w", err)
 	}
 
 	// Create output file

@@ -91,17 +91,113 @@ func TestCreateDubbingResponse_JSONUnmarshal(t *testing.T) {
 }
 
 func TestErrorResponse_JSONUnmarshal(t *testing.T) {
-	jsonStr := `{"detail":{"status":"error","message":"Something went wrong"}}`
-
-	var resp errorResponse
-	if err := json.Unmarshal([]byte(jsonStr), &resp); err != nil {
-		t.Fatalf("failed to unmarshal: %v", err)
+	tests := []struct {
+		name        string
+		json        string
+		wantMessage string
+	}{
+		{
+			name:        "detail object with status and message",
+			json:        `{"detail":{"status":"error","message":"Something went wrong"}}`,
+			wantMessage: "error: Something went wrong",
+		},
+		{
+			name:        "detail object with message only",
+			json:        `{"detail":{"message":"Video not found"}}`,
+			wantMessage: "Video not found",
+		},
+		{
+			name:        "detail as string",
+			json:        `{"detail":"Access denied"}`,
+			wantMessage: "Access denied",
+		},
+		{
+			name:        "error field",
+			json:        `{"error":"Invalid URL format"}`,
+			wantMessage: "Invalid URL format",
+		},
+		{
+			name:        "message field",
+			json:        `{"message":"Rate limit exceeded"}`,
+			wantMessage: "Rate limit exceeded",
+		},
+		{
+			name:        "description field",
+			json:        `{"description":"Service unavailable"}`,
+			wantMessage: "Service unavailable",
+		},
+		{
+			name:        "status_code with message",
+			json:        `{"status_code":422,"message":"Unprocessable entity"}`,
+			wantMessage: "Unprocessable entity",
+		},
+		{
+			name:        "empty response",
+			json:        `{}`,
+			wantMessage: "",
+		},
+		{
+			name:        "priority: detail.message over error",
+			json:        `{"detail":{"message":"Primary error"},"error":"Secondary error"}`,
+			wantMessage: "Primary error",
+		},
 	}
 
-	if resp.Detail.Status != "error" {
-		t.Errorf("expected status 'error', got %q", resp.Detail.Status)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var resp errorResponse
+			if err := json.Unmarshal([]byte(tt.json), &resp); err != nil {
+				t.Fatalf("failed to unmarshal: %v", err)
+			}
+
+			got := resp.GetMessage()
+			if got != tt.wantMessage {
+				t.Errorf("GetMessage() = %q, want %q", got, tt.wantMessage)
+			}
+		})
 	}
-	if resp.Detail.Message != "Something went wrong" {
-		t.Errorf("expected message 'Something went wrong', got %q", resp.Detail.Message)
+}
+
+func TestErrorDetail_UnmarshalJSON(t *testing.T) {
+	tests := []struct {
+		name       string
+		json       string
+		wantStatus string
+		wantMsg    string
+		wantRaw    string
+	}{
+		{
+			name:       "object format",
+			json:       `{"status":"forbidden","message":"Access denied"}`,
+			wantStatus: "forbidden",
+			wantMsg:    "Access denied",
+			wantRaw:    "",
+		},
+		{
+			name:       "string format",
+			json:       `"Simple error message"`,
+			wantStatus: "",
+			wantMsg:    "",
+			wantRaw:    "Simple error message",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var detail errorDetail
+			if err := json.Unmarshal([]byte(tt.json), &detail); err != nil {
+				t.Fatalf("failed to unmarshal: %v", err)
+			}
+
+			if detail.Status != tt.wantStatus {
+				t.Errorf("Status = %q, want %q", detail.Status, tt.wantStatus)
+			}
+			if detail.Message != tt.wantMsg {
+				t.Errorf("Message = %q, want %q", detail.Message, tt.wantMsg)
+			}
+			if detail.Raw != tt.wantRaw {
+				t.Errorf("Raw = %q, want %q", detail.Raw, tt.wantRaw)
+			}
+		})
 	}
 }

@@ -66,7 +66,7 @@ Integrate AI-powered video dubbing using ElevenLabs API with automatic metadata 
 ### Nice to Have (Future)
 - [ ] Pronunciation dictionary for technical terms (if automatic dubbing mispronounces them)
 - [ ] Support for additional languages (Portuguese, German, French)
-- [ ] Dub directly from YouTube video ID (not just local files)
+- [x] Dub directly from YouTube video ID (**YouTube URL is now the only method** - local file upload removed)
 - [ ] Background polling for dubbing status
 - [ ] Batch dubbing for multiple videos
 - [ ] API endpoints for programmatic dubbing
@@ -78,17 +78,18 @@ Integrate AI-powered video dubbing using ElevenLabs API with automatic metadata 
 #### 1. ElevenLabs Client (`internal/dubbing/elevenlabs.go`)
 ```go
 // NewClient creates a new ElevenLabs API client
-func NewClient(apiKey string) *Client
+func NewClient(apiKey string, config Config) *Client
 
-// CreateDub initiates a dubbing job
-// POST /v1/dubbing with video file and target language
-func (c *Client) CreateDub(ctx, videoPath, sourceLang, targetLang string) (*DubbingJob, error)
+// CreateDubFromURL initiates a dubbing job using a YouTube URL
+// POST /v1/dubbing with source_url and target language
+// Video must be public on YouTube - ElevenLabs fetches directly from YouTube
+func (c *Client) CreateDubFromURL(ctx, youtubeURL, sourceLang, targetLang string) (*DubbingJob, error)
 
 // GetDubbingStatus checks job status
 // GET /v1/dubbing/{dubbing_id}
 func (c *Client) GetDubbingStatus(ctx, dubbingID string) (*DubbingJob, error)
 
-// DownloadDubbedAudio downloads the dubbed video
+// DownloadDubbedAudio downloads the dubbed video (auto-creates output directory)
 // GET /v1/dubbing/{dubbing_id}/audio/{language_code}
 func (c *Client) DownloadDubbedAudio(ctx, dubbingID, langCode, outputPath string) error
 ```
@@ -253,7 +254,8 @@ spanishChannel:
 ## Out of Scope
 
 - API mode endpoints (CLI-only for MVP)
-- Dubbing from YouTube video ID (local files only)
+- ~~Dubbing from YouTube video ID (local files only)~~ → **Implemented: YouTube URL is now the only method**
+- Dubbing from local files (removed - YouTube URL only)
 - Multiple languages (Spanish only for MVP)
 - Custom voice selection (use ElevenLabs auto-detect)
 - Background polling (user-triggered status checks)
@@ -286,6 +288,20 @@ spanishChannel:
 - [ ] **End-to-End Workflow Validated**: Full flow tested with real video
 
 ## Progress Log
+
+### 2026-01-12 (Update 7)
+- **YouTube URL Dubbing**: Switched from local file upload to YouTube URL
+  - Removed `CreateDub()` method (local file upload had issues with large files >1GB)
+  - Added `CreateDubFromURL()` method - ElevenLabs fetches directly from YouTube
+  - Videos must be published on YouTube before dubbing (public or unlisted)
+  - Both long-form videos AND shorts now use YouTube URL
+  - No file size limits, faster initiation (no upload wait)
+- **Improved Error Handling**: Better capture of ElevenLabs error responses
+  - Handles multiple error formats: `{"detail": {...}}`, `{"detail": "string"}`, `{"error": "..."}`, etc.
+  - `GetMessage()` method extracts best available error message
+- **Auto-create Output Directory**: `DownloadDubbedAudio()` now creates parent directories
+- **Comprehensive Tests**: Added tests for URL dubbing, error handling, directory creation
+- All tests passing, build verified
 
 ### 2026-01-12 (Update 6)
 - **Phase 6 Complete (Code)**: Spanish Channel Setup
@@ -390,8 +406,10 @@ spanishChannel:
 
 ## Notes
 
-- ElevenLabs API supports files up to 1GB and 2.5 hours
+- **Videos must be published on YouTube before dubbing** - ElevenLabs fetches directly from YouTube URL
+- Private/scheduled videos cannot be dubbed (must be public or unlisted)
 - Dubbing can take several minutes; async workflow required
 - Spanish channel should use port 8091 for OAuth callback (main channel uses 8090)
 - Keep dubbed video path adjacent to original (e.g., `video_es.mp4`)
 - Link to original English video in Spanish description for cross-promotion
+- Output directory is auto-created when downloading dubbed video
