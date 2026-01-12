@@ -1,6 +1,8 @@
 package video
 
 import (
+	"fmt"
+
 	"devopstoolkit/youtube-automation/internal/storage"
 	"devopstoolkit/youtube-automation/internal/workflow"
 	"strings"
@@ -77,7 +79,7 @@ func (m *Manager) CalculateOverallProgress(video storage.Video) (int, int) {
 	// Phase 4: Post-Production
 	editCompleted, editTotal := m.CalculatePostProductionProgress(video)
 
-	// Phase 5: Publishing Details
+	// Phase 5: Upload
 	publishCompleted, publishTotal := m.CalculatePublishingProgress(video)
 
 	// Phase 6: Post-Publish Details
@@ -284,6 +286,34 @@ func (m *Manager) CalculateAnalysisProgress(video storage.Video) (int, int) {
 	// Count titles that have share percentages filled (Share > 0)
 	for _, title := range video.Titles {
 		if title.Share > 0 {
+			completed++
+		}
+	}
+
+	return completed, total
+}
+
+// CalculateDubbingProgress calculates Dubbing phase progress on-the-fly
+// Tracks progress for Spanish dubbing (MVP): 1 long-form video + N shorts
+func (m *Manager) CalculateDubbingProgress(video storage.Video) (int, int) {
+	// Total = 1 (long-form) + number of shorts
+	total := 1 + len(video.Shorts)
+	completed := 0
+
+	// If no dubbing map exists, return 0/total
+	if video.Dubbing == nil {
+		return 0, total
+	}
+
+	// Check long-form video (key = "es")
+	if esInfo, ok := video.Dubbing["es"]; ok && esInfo.DubbingStatus == "dubbed" {
+		completed++
+	}
+
+	// Check each short (key = "es:shortN")
+	for i := range video.Shorts {
+		shortKey := fmt.Sprintf("es:short%d", i+1)
+		if shortInfo, ok := video.Dubbing[shortKey]; ok && shortInfo.DubbingStatus == "dubbed" {
 			completed++
 		}
 	}

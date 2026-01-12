@@ -53,15 +53,15 @@ Integrate AI-powered video dubbing using ElevenLabs API with automatic metadata 
 
 ### Must Have (MVP)
 - [x] ElevenLabs API integration: create dubbing job, poll status, download result
-- [ ] Spanish dubbing works for local video files using automatic dubbing
+- [x] Spanish dubbing works for local video files using automatic dubbing
 - [x] Test mode configuration (watermark + lower resolution + segment time control)
 - [ ] Claude AI translates title, description, and tags to Spanish
 - [ ] Upload dubbed video to separate Spanish YouTube channel
 - [ ] OAuth2 authentication for Spanish channel (separate credentials)
-- [ ] Dubbing status persisted in video YAML (allows resumption)
-- [ ] CLI integration in Publishing Details phase with options for both long-form and shorts
-- [ ] Configuration for ElevenLabs API key, test mode settings, and Spanish channel
-- [ ] Support dubbing associated shorts (discovered from video YAML)
+- [x] Dubbing status persisted in video YAML (allows resumption)
+- [x] CLI integration in Dubbing phase with options for both long-form and shorts
+- [x] Configuration for ElevenLabs API key, test mode settings, and Spanish channel
+- [x] Support dubbing associated shorts (discovered from video YAML)
 
 ### Nice to Have (Future)
 - [ ] Pronunciation dictionary for technical terms (if automatic dubbing mispronounces them)
@@ -166,18 +166,20 @@ spanishChannel:
 - [x] Environment variable support (`ELEVENLABS_API_KEY`)
 - [x] Unit tests for config loading
 
-**Phase 3: CLI Integration** ← Moved up to enable testing
-- Add dubbing section to Publishing Details phase
-- Context-sensitive menu (show relevant actions based on state)
-- Present dubbing options for both long-form video AND associated shorts (read from video YAML)
-- Handler functions for each action
-- Progress feedback during operations
+**Phase 3: CLI Integration** ✅
+- [x] Add dubbing as separate phase (renamed "Publishing Details" to "Upload")
+- [x] Context-sensitive menu (show relevant actions based on state)
+- [x] Present dubbing options for both long-form video AND associated shorts (read from video YAML)
+- [x] Handler functions for each action (start dubbing, check status, auto-download)
+- [x] Progress feedback during operations
+- [x] Progress counter shows X/Y (1 long-form + N shorts)
 
-**Phase 4: Dubbing Validation** ← New phase
-- Test dubbing with real video file
-- Validate dubbed audio quality and sync
-- Verify technical terms are pronounced correctly
-- Confirm ElevenLabs API integration works end-to-end
+**Phase 4: Dubbing Validation** ✅
+- [x] Test dubbing with real video file
+- [x] Validate dubbed audio quality and sync
+- [x] Verify technical terms are pronounced correctly
+- [x] Confirm ElevenLabs API integration works end-to-end
+- [x] Fixed MIME type issue for .mov files (video/quicktime)
 
 **Phase 5: Translation Integration** ← Was Phase 2
 - Add translation functions to `internal/ai/`
@@ -261,6 +263,18 @@ spanishChannel:
 - [ ] **End-to-End Workflow Validated**: Full flow tested with real video
 
 ## Progress Log
+
+### 2025-01-12 (Update 4)
+- **Phase 3 & 4 Complete**: CLI Integration and Dubbing Validation
+  - Added `DubbingInfo` struct and `Dubbing` map to Video storage
+  - Renamed "Publishing Details" to "Upload", added "Dubbing" phase below it
+  - Dubbing menu shows long-form video AND all associated shorts with status
+  - Context-sensitive actions: Start Dubbing, Check Status (auto-downloads when complete)
+  - Progress counter shows X/Y (1 long-form + N shorts)
+  - Added `CalculateDubbingProgress()` function to video manager
+  - Fixed MIME type detection for .mov files (video/quicktime)
+  - Successfully tested dubbing with real video file via ElevenLabs API
+  - All tests passing, build verified
 
 ### 2025-01-12 (Update 3)
 - **Decision**: Reordered implementation phases

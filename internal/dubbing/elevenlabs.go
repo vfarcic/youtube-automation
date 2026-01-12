@@ -6,11 +6,14 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"mime"
 	"mime/multipart"
 	"net/http"
+	"net/textproto"
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 )
 
 const (
@@ -83,8 +86,33 @@ func (c *Client) CreateDub(ctx context.Context, videoPath, sourceLang, targetLan
 		defer pw.Close()
 		defer writer.Close()
 
-		// Add the video file
-		part, err := writer.CreateFormFile("file", filepath.Base(videoPath))
+		// Add the video file with proper MIME type
+		filename := filepath.Base(videoPath)
+		mimeType := mime.TypeByExtension(filepath.Ext(videoPath))
+		if mimeType == "" {
+			// Fallback for common video types
+			ext := strings.ToLower(filepath.Ext(videoPath))
+			switch ext {
+			case ".mov":
+				mimeType = "video/quicktime"
+			case ".mp4":
+				mimeType = "video/mp4"
+			case ".avi":
+				mimeType = "video/x-msvideo"
+			case ".mkv":
+				mimeType = "video/x-matroska"
+			case ".webm":
+				mimeType = "video/webm"
+			default:
+				mimeType = "video/mp4" // Default to mp4
+			}
+		}
+
+		h := make(textproto.MIMEHeader)
+		h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="file"; filename="%s"`, filename))
+		h.Set("Content-Type", mimeType)
+
+		part, err := writer.CreatePart(h)
 		if err != nil {
 			errChan <- fmt.Errorf("failed to create form file: %w", err)
 			return

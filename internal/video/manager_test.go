@@ -1188,6 +1188,115 @@ func TestCalculateAnalysisProgress(t *testing.T) {
 	}
 }
 
+func TestCalculateDubbingProgress(t *testing.T) {
+	manager := video.NewManager(nil)
+
+	testCases := []struct {
+		name              string
+		video             storage.Video
+		expectedCompleted int
+		expectedTotal     int
+		description       string
+	}{
+		{
+			name:              "No_dubbing_map_no_shorts",
+			video:             storage.Video{},
+			expectedCompleted: 0,
+			expectedTotal:     1, // Just long-form
+			description:       "Video with no dubbing map and no shorts should return 0/1",
+		},
+		{
+			name: "No_dubbing_map_with_shorts",
+			video: storage.Video{
+				Shorts: []storage.Short{
+					{ID: "short1", Title: "Short 1"},
+					{ID: "short2", Title: "Short 2"},
+				},
+			},
+			expectedCompleted: 0,
+			expectedTotal:     3, // 1 long-form + 2 shorts
+			description:       "Video with no dubbing map but 2 shorts should return 0/3",
+		},
+		{
+			name: "Long_form_dubbed_no_shorts",
+			video: storage.Video{
+				Dubbing: map[string]storage.DubbingInfo{
+					"es": {DubbingID: "dub123", DubbingStatus: "dubbed"},
+				},
+			},
+			expectedCompleted: 1,
+			expectedTotal:     1,
+			description:       "Long-form dubbed, no shorts should be 1/1",
+		},
+		{
+			name: "Long_form_in_progress",
+			video: storage.Video{
+				Dubbing: map[string]storage.DubbingInfo{
+					"es": {DubbingID: "dub123", DubbingStatus: "dubbing"},
+				},
+			},
+			expectedCompleted: 0,
+			expectedTotal:     1,
+			description:       "Long-form in progress should be 0/1",
+		},
+		{
+			name: "Long_form_and_shorts_partial",
+			video: storage.Video{
+				Shorts: []storage.Short{
+					{ID: "short1", Title: "Short 1"},
+					{ID: "short2", Title: "Short 2"},
+					{ID: "short3", Title: "Short 3"},
+				},
+				Dubbing: map[string]storage.DubbingInfo{
+					"es":        {DubbingID: "dub1", DubbingStatus: "dubbed"},
+					"es:short1": {DubbingID: "dub2", DubbingStatus: "dubbed"},
+					"es:short2": {DubbingID: "dub3", DubbingStatus: "dubbing"}, // in progress
+					// short3 not started
+				},
+			},
+			expectedCompleted: 2, // long-form + short1
+			expectedTotal:     4, // 1 long-form + 3 shorts
+			description:       "Partial dubbing should count only completed",
+		},
+		{
+			name: "All_dubbed",
+			video: storage.Video{
+				Shorts: []storage.Short{
+					{ID: "short1", Title: "Short 1"},
+					{ID: "short2", Title: "Short 2"},
+				},
+				Dubbing: map[string]storage.DubbingInfo{
+					"es":        {DubbingID: "dub1", DubbingStatus: "dubbed"},
+					"es:short1": {DubbingID: "dub2", DubbingStatus: "dubbed"},
+					"es:short2": {DubbingID: "dub3", DubbingStatus: "dubbed"},
+				},
+			},
+			expectedCompleted: 3,
+			expectedTotal:     3,
+			description:       "All dubbed should be 3/3",
+		},
+		{
+			name: "Failed_dubbing_not_counted",
+			video: storage.Video{
+				Dubbing: map[string]storage.DubbingInfo{
+					"es": {DubbingID: "dub123", DubbingStatus: "failed", DubbingError: "Some error"},
+				},
+			},
+			expectedCompleted: 0,
+			expectedTotal:     1,
+			description:       "Failed dubbing should not count as completed",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			completed, total := manager.CalculateDubbingProgress(tc.video)
+			assert.Equal(t, tc.expectedCompleted, completed, "Completed count mismatch for %s", tc.description)
+			assert.Equal(t, tc.expectedTotal, total, "Total count mismatch for %s", tc.description)
+		})
+	}
+}
+
 // Note: countCompletedTasks and containsString are private methods, tested indirectly through other functions
 
 func TestGetVideoPhase_ErrorHandling(t *testing.T) {

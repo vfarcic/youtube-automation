@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -14,6 +15,7 @@ import (
 	"devopstoolkit/youtube-automation/internal/calendar"
 	"devopstoolkit/youtube-automation/internal/configuration"
 	"devopstoolkit/youtube-automation/internal/constants"
+	"devopstoolkit/youtube-automation/internal/dubbing"
 	"devopstoolkit/youtube-automation/internal/notification"
 	"devopstoolkit/youtube-automation/internal/platform"
 	"devopstoolkit/youtube-automation/internal/platform/bluesky"
@@ -35,6 +37,7 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 		defineCompleted, defineTotal := m.videoManager.CalculateDefinePhaseCompletion(videoToEdit)
 		editCompleted, editTotal := m.videoManager.CalculatePostProductionProgress(videoToEdit)
 		publishCompleted, publishTotal := m.videoManager.CalculatePublishingProgress(videoToEdit)
+		dubbingCompleted, dubbingTotal := m.videoManager.CalculateDubbingProgress(videoToEdit)
 		postPublishCompleted, postPublishTotal := m.videoManager.CalculatePostPublishProgress(videoToEdit)
 		analysisCompleted, analysisTotal := m.videoManager.CalculateAnalysisProgress(videoToEdit)
 
@@ -43,7 +46,8 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 			huh.NewOption(m.getEditPhaseOptionText(constants.PhaseTitleWorkProgress, workCompleted, workTotal), editPhaseWork),
 			huh.NewOption(m.getEditPhaseOptionText(constants.PhaseTitleDefinition, defineCompleted, defineTotal), editPhaseDefinition),
 			huh.NewOption(m.getEditPhaseOptionText(constants.PhaseTitlePostProduction, editCompleted, editTotal), editPhasePostProduction),
-			huh.NewOption(m.getEditPhaseOptionText(constants.PhaseTitlePublishingDetails, publishCompleted, publishTotal), editPhasePublishing),
+			huh.NewOption(m.getEditPhaseOptionText(constants.PhaseTitleUpload, publishCompleted, publishTotal), editPhasePublishing),
+			huh.NewOption(m.getEditPhaseOptionText(constants.PhaseTitleDubbing, dubbingCompleted, dubbingTotal), editPhaseDubbing),
 			huh.NewOption(m.getEditPhaseOptionText(constants.PhaseTitlePostPublish, postPublishCompleted, postPublishTotal), editPhasePostPublish),
 			huh.NewOption(m.getEditPhaseOptionText(constants.PhaseTitleAnalysis, analysisCompleted, analysisTotal), editPhaseAnalysis),
 			huh.NewOption("Return to Video List", actionReturn),
@@ -650,6 +654,265 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 				fmt.Println(m.orangeStyle.Render("Changes not saved for publishing."))
 			}
 
+		case editPhaseDubbing:
+			// Handle Dubbing phase - Spanish dubbing workflow for long-form and shorts
+			dubbingDone := false
+
+			for !dubbingDone {
+				// Action constants: 0 = long-form, 1-999 = shorts (by index+1), 1000 = check status, 1001 = back
+				const (
+					actionDubbingLongForm    = 0
+					actionDubbingCheckStatus = 1000
+					actionDubbingBack        = 1001
+				)
+
+				// Helper to get status text for a dubbing key
+				getDubbingStatus := func(key string) string {
+					if updatedVideo.Dubbing == nil {
+						return "Not started"
+					}
+					info, ok := updatedVideo.Dubbing[key]
+					if !ok || info.DubbingStatus == "" {
+						return "Not started"
+					}
+					switch info.DubbingStatus {
+					case "dubbing":
+						return "Dubbing..."
+					case "dubbed":
+						return "Dubbed"
+					case "failed":
+						return "Failed"
+					default:
+						return info.DubbingStatus
+					}
+				}
+
+				// Build status description
+				var statusLines []string
+				statusLines = append(statusLines, fmt.Sprintf("Long-form: %s", getDubbingStatus("es")))
+				for i, short := range updatedVideo.Shorts {
+					shortKey := fmt.Sprintf("es:short%d", i+1)
+					statusLines = append(statusLines, fmt.Sprintf("Short %d: \"%s\" [%s]", i+1, short.Title, getDubbingStatus(shortKey)))
+				}
+
+				var selectedAction int
+				var dubbingFormFields []huh.Field
+
+				dubbingFormFields = append(dubbingFormFields,
+					huh.NewNote().
+						Title("Spanish Dubbing").
+						Description(fmt.Sprintf("Video: %s\n\n%s", updatedVideo.Name, strings.Join(statusLines, "\n"))))
+
+				// Build options
+				options := []huh.Option[int]{}
+
+				// Long-form video option
+				longFormStatus := getDubbingStatus("es")
+				if longFormStatus == "Not started" || longFormStatus == "Failed" {
+					options = append(options, huh.NewOption("Dub Long-form Video", actionDubbingLongForm))
+				}
+
+				// Short options
+				for i, short := range updatedVideo.Shorts {
+					shortKey := fmt.Sprintf("es:short%d", i+1)
+					shortStatus := getDubbingStatus(shortKey)
+					if shortStatus == "Not started" || shortStatus == "Failed" {
+						label := fmt.Sprintf("Dub Short %d: \"%s\"", i+1, short.Title)
+						if len(label) > 50 {
+							label = label[:47] + "..."
+						}
+						options = append(options, huh.NewOption(label, i+1)) // shorts use index+1 as action
+					}
+				}
+
+				// Check if any dubbing is in progress
+				hasInProgress := false
+				if updatedVideo.Dubbing != nil {
+					for _, info := range updatedVideo.Dubbing {
+						if info.DubbingStatus == "dubbing" {
+							hasInProgress = true
+							break
+						}
+					}
+				}
+				if hasInProgress {
+					options = append(options, huh.NewOption("Check Status", actionDubbingCheckStatus))
+				}
+
+				options = append(options, huh.NewOption("Back", actionDubbingBack))
+
+				dubbingFormFields = append(dubbingFormFields,
+					huh.NewSelect[int]().
+						Title("Action").
+						Options(options...).
+						Value(&selectedAction))
+
+				dubbingForm := huh.NewForm(huh.NewGroup(dubbingFormFields...))
+
+				if err := dubbingForm.Run(); err != nil {
+					if errors.Is(err, huh.ErrUserAborted) {
+						fmt.Println(m.orangeStyle.Render("Dubbing cancelled."))
+						dubbingDone = true
+						continue
+					}
+					return fmt.Errorf("error in dubbing form: %w", err)
+				}
+
+				// Handle actions
+				if selectedAction == actionDubbingBack {
+					dubbingDone = true
+					continue
+				}
+
+				if selectedAction == actionDubbingCheckStatus {
+					// Check status for all in-progress jobs
+					apiKey := os.Getenv("ELEVENLABS_API_KEY")
+					if apiKey == "" {
+						fmt.Println(m.errorStyle.Render("ELEVENLABS_API_KEY environment variable not set."))
+						continue
+					}
+
+					client := dubbing.NewClient(apiKey, dubbing.Config{})
+					ctx := context.Background()
+
+					for key, info := range updatedVideo.Dubbing {
+						if info.DubbingStatus != "dubbing" {
+							continue
+						}
+
+						fmt.Println(m.normalStyle.Render(fmt.Sprintf("Checking %s...", key)))
+
+						job, err := client.GetDubbingStatus(ctx, info.DubbingID)
+						if err != nil {
+							fmt.Println(m.errorStyle.Render(fmt.Sprintf("Failed to check %s: %v", key, err)))
+							continue
+						}
+
+						info.DubbingStatus = job.Status
+						if job.Status == dubbing.StatusFailed {
+							info.DubbingError = job.Error
+							fmt.Println(m.errorStyle.Render(fmt.Sprintf("%s failed: %s", key, job.Error)))
+						} else if job.Status == dubbing.StatusDubbed {
+							fmt.Println(m.confirmationStyle.Render(fmt.Sprintf("%s complete! Downloading...", key)))
+
+							// Determine source file path for output naming
+							var sourcePath string
+							if key == "es" {
+								sourcePath = updatedVideo.UploadVideo
+							} else if strings.HasPrefix(key, "es:short") {
+								// Extract short index
+								shortIdxStr := strings.TrimPrefix(key, "es:short")
+								shortIdx, _ := strconv.Atoi(shortIdxStr)
+								if shortIdx > 0 && shortIdx <= len(updatedVideo.Shorts) {
+									sourcePath = updatedVideo.Shorts[shortIdx-1].FilePath
+								}
+							}
+
+							if sourcePath != "" {
+								dir := filepath.Dir(sourcePath)
+								ext := filepath.Ext(sourcePath)
+								base := strings.TrimSuffix(filepath.Base(sourcePath), ext)
+								outputPath := filepath.Join(dir, base+"_es"+ext)
+
+								err := client.DownloadDubbedAudio(ctx, info.DubbingID, "es", outputPath)
+								if err != nil {
+									fmt.Println(m.errorStyle.Render(fmt.Sprintf("Failed to download %s: %v", key, err)))
+								} else {
+									info.DubbedVideoPath = outputPath
+									fmt.Println(m.confirmationStyle.Render(fmt.Sprintf("Downloaded to: %s", outputPath)))
+								}
+							}
+						} else {
+							fmt.Println(m.normalStyle.Render(fmt.Sprintf("%s: %s", key, job.Status)))
+						}
+
+						updatedVideo.Dubbing[key] = info
+					}
+
+					// Save updated statuses
+					yaml := storage.YAML{}
+					if err := yaml.WriteVideo(updatedVideo, updatedVideo.Path); err != nil {
+						fmt.Println(m.errorStyle.Render(fmt.Sprintf("Failed to save status: %v", err)))
+					}
+					videoToEdit = updatedVideo
+					continue
+				}
+
+				// Start dubbing for long-form or a short
+				var videoPath string
+				var dubbingKey string
+
+				if selectedAction == actionDubbingLongForm {
+					videoPath = updatedVideo.UploadVideo
+					dubbingKey = "es"
+				} else if selectedAction >= 1 && selectedAction <= len(updatedVideo.Shorts) {
+					shortIdx := selectedAction - 1
+					videoPath = updatedVideo.Shorts[shortIdx].FilePath
+					dubbingKey = fmt.Sprintf("es:short%d", selectedAction)
+				} else {
+					continue
+				}
+
+				// Validate video path
+				if videoPath == "" {
+					fmt.Println(m.errorStyle.Render("No video file path set."))
+					continue
+				}
+				if _, err := os.Stat(videoPath); os.IsNotExist(err) {
+					fmt.Println(m.errorStyle.Render(fmt.Sprintf("Video file not found: %s", videoPath)))
+					continue
+				}
+
+				// Get API key and start dubbing
+				apiKey := os.Getenv("ELEVENLABS_API_KEY")
+				if apiKey == "" {
+					fmt.Println(m.errorStyle.Render("ELEVENLABS_API_KEY environment variable not set."))
+					continue
+				}
+
+				dubbingConfig := dubbing.Config{
+					TestMode:            m.settings.ElevenLabs.TestMode,
+					StartTime:           m.settings.ElevenLabs.StartTime,
+					EndTime:             m.settings.ElevenLabs.EndTime,
+					NumSpeakers:         m.settings.ElevenLabs.NumSpeakers,
+					DropBackgroundAudio: m.settings.ElevenLabs.DropBackgroundAudio,
+				}
+				client := dubbing.NewClient(apiKey, dubbingConfig)
+
+				fmt.Println(m.normalStyle.Render(fmt.Sprintf("Starting dubbing for %s...", dubbingKey)))
+
+				ctx := context.Background()
+				job, err := client.CreateDub(ctx, videoPath, "en", "es")
+				if err != nil {
+					fmt.Println(m.errorStyle.Render(fmt.Sprintf("Failed to start dubbing: %v", err)))
+					continue
+				}
+
+				// Initialize dubbing map if nil
+				if updatedVideo.Dubbing == nil {
+					updatedVideo.Dubbing = make(map[string]storage.DubbingInfo)
+				}
+
+				// Store dubbing info
+				updatedVideo.Dubbing[dubbingKey] = storage.DubbingInfo{
+					DubbingID:     job.DubbingID,
+					DubbingStatus: "dubbing",
+				}
+
+				// Save immediately
+				yaml := storage.YAML{}
+				if err := yaml.WriteVideo(updatedVideo, updatedVideo.Path); err != nil {
+					fmt.Println(m.errorStyle.Render(fmt.Sprintf("Failed to save dubbing info: %v", err)))
+					continue
+				}
+
+				fmt.Println(m.confirmationStyle.Render(fmt.Sprintf("Dubbing started! Job ID: %s", job.DubbingID)))
+				if job.ExpectedDuration > 0 {
+					fmt.Println(m.normalStyle.Render(fmt.Sprintf("Expected duration: %.0f seconds", job.ExpectedDuration)))
+				}
+				videoToEdit = updatedVideo
+			}
+
 		case editPhasePostPublish: // New case for Post-Publish Details
 			save := true
 			updatedVideo := videoToEdit                               // Work with a copy
@@ -925,6 +1188,4 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 		}
 		// Loop continues to allow editing other phases or returning
 	}
-
-	return nil
 }
