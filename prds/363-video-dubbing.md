@@ -1,10 +1,10 @@
 # PRD: AI-Powered Video Dubbing with ElevenLabs
 
 **Issue**: #363
-**Status**: Not Started
+**Status**: In Progress
 **Priority**: High
 **Created**: 2025-01-11
-**Last Updated**: 2025-01-11
+**Last Updated**: 2025-01-12
 **Depends On**: None
 
 ---
@@ -42,24 +42,26 @@ Integrate AI-powered video dubbing using ElevenLabs API with automatic metadata 
 **After (With This Feature)**:
 1. Creator publishes English video as normal
 2. Opens Publishing Details, selects "Start Spanish Dubbing"
-3. System initiates ElevenLabs automatic dubbing (async, can take minutes)
-4. Creator checks status later, downloads dubbed video when ready
-5. System translates title/description/tags using Claude AI
-6. Creator uploads to Spanish channel with one click
-7. Spanish video ID tracked in video YAML
+3. System shows dubbing options for long-form video AND any associated shorts
+4. System initiates ElevenLabs automatic dubbing (async, can take minutes)
+5. Creator checks status later, downloads dubbed video when ready
+6. System translates title/description/tags using Claude AI
+7. Creator uploads to Spanish channel with one click
+8. Spanish video ID tracked in video YAML (for both long-form and shorts)
 
 ## Success Criteria
 
 ### Must Have (MVP)
-- [ ] ElevenLabs API integration: create dubbing job, poll status, download result
+- [x] ElevenLabs API integration: create dubbing job, poll status, download result
 - [ ] Spanish dubbing works for local video files using automatic dubbing
-- [ ] Test mode configuration (watermark + lower resolution + segment time control)
+- [x] Test mode configuration (watermark + lower resolution + segment time control)
 - [ ] Claude AI translates title, description, and tags to Spanish
 - [ ] Upload dubbed video to separate Spanish YouTube channel
 - [ ] OAuth2 authentication for Spanish channel (separate credentials)
 - [ ] Dubbing status persisted in video YAML (allows resumption)
-- [ ] CLI integration in Publishing Details phase
+- [ ] CLI integration in Publishing Details phase with options for both long-form and shorts
 - [ ] Configuration for ElevenLabs API key, test mode settings, and Spanish channel
+- [ ] Support dubbing associated shorts (discovered from video YAML)
 
 ### Nice to Have (Future)
 - [ ] Pronunciation dictionary for technical terms (if automatic dubbing mispronounces them)
@@ -153,11 +155,11 @@ spanishChannel:
 
 ### Implementation Phases
 
-**Phase 1: ElevenLabs Integration**
-- Create `internal/dubbing/` package
-- Implement API client with create, status, download
-- Add configuration for API key
-- Unit tests with mock HTTP server
+**Phase 1: ElevenLabs Integration** ✅
+- [x] Create `internal/dubbing/` package
+- [x] Implement API client with create, status, download
+- [x] Add configuration for API key
+- [x] Unit tests with mock HTTP server (82.5% coverage)
 
 **Phase 2: Translation Integration**
 - Add translation functions to `internal/ai/`
@@ -179,6 +181,7 @@ spanishChannel:
 **Phase 5: CLI Integration**
 - Add dubbing section to Publishing Details phase
 - Context-sensitive menu (show relevant actions based on state)
+- Present dubbing options for both long-form video AND associated shorts (read from video YAML)
 - Handler functions for each action
 - Progress feedback during operations
 
@@ -240,7 +243,7 @@ spanishChannel:
 
 ## Milestones
 
-- [ ] **ElevenLabs API Integration Working**: Create, poll, and download dubbing jobs
+- [x] **ElevenLabs API Integration Working**: Create, poll, and download dubbing jobs
 - [ ] **Claude Translation Integration**: Title, description, tags translation working
 - [ ] **Spanish YouTube Channel Configured**: Channel created, OAuth credentials set up
 - [ ] **Spanish Channel Upload Functional**: Dubbed video uploads with translated metadata
@@ -248,6 +251,24 @@ spanishChannel:
 - [ ] **End-to-End Workflow Validated**: Full flow tested with real video
 
 ## Progress Log
+
+### 2025-01-12
+- **Phase 1 Complete**: ElevenLabs API Integration
+  - Created `internal/dubbing/` package with types and client
+  - Implemented all API methods: `CreateDub`, `GetDubbingStatus`, `DownloadDubbedAudio`
+  - Config struct supports: TestMode, StartTime/EndTime, NumSpeakers, DropBackgroundAudio
+  - Comprehensive unit tests with mock HTTP server (82.5% coverage)
+  - All tests passing, build verified
+- Technical decisions confirmed:
+  - Single base URL: `https://api.elevenlabs.io`
+  - No fixed HTTP timeout - use context for cancellation (supports 45min videos)
+  - No retry logic - return clear error messages
+
+### 2025-01-11 (Update 2)
+- **Decision**: Support dubbing for both long-form videos AND associated shorts
+  - **Rationale**: Videos often have shorts derived from them; users need to dub both for consistent Spanish channel content
+  - **Impact**: CLI must read video YAML to discover associated shorts and present dubbing options for all videos
+  - **Affects**: Phase 5 (CLI Integration) - must show options for long-form + shorts
 
 ### 2025-01-11
 - PRD created
