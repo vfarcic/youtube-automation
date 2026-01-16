@@ -665,6 +665,7 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 					actionDubbingCheckStatus = 1000
 					actionDubbingBack        = 1001
 					actionDubbingTranslate   = 1002
+					actionDubbingUpload      = 1003
 				)
 
 				// Helper to get status text for a dubbing key
@@ -750,6 +751,21 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 						}
 					}
 					options = append(options, huh.NewOption(translateLabel, actionDubbingTranslate))
+				}
+
+				// Show upload option when dubbed, has file, has title, and not yet uploaded
+				if updatedVideo.Dubbing != nil {
+					if info, ok := updatedVideo.Dubbing["es"]; ok {
+						canUpload := info.DubbingStatus == "dubbed" &&
+							info.DubbedVideoPath != "" &&
+							info.Title != "" &&
+							info.UploadedVideoID == ""
+						if canUpload {
+							options = append(options, huh.NewOption("Upload to YouTube", actionDubbingUpload))
+						} else if info.UploadedVideoID != "" {
+							options = append(options, huh.NewOption(m.greenStyle.Render("Upload to YouTube (done)"), actionDubbingUpload))
+						}
+					}
 				}
 
 				options = append(options, huh.NewOption("Back", actionDubbingBack))
@@ -909,6 +925,35 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 					if output.Timecodes != "" {
 						fmt.Println(m.normalStyle.Render("Timecodes: translated"))
 					}
+
+					videoToEdit = updatedVideo
+					continue
+				}
+
+				if selectedAction == actionDubbingUpload {
+					// Upload dubbed video to YouTube
+					fmt.Println(m.normalStyle.Render("Uploading dubbed video to YouTube..."))
+
+					videoID, err := publishing.UploadDubbedVideo(&updatedVideo, "es")
+					if err != nil {
+						fmt.Println(m.errorStyle.Render(fmt.Sprintf("Upload failed: %v", err)))
+						continue
+					}
+
+					// Save uploaded video ID
+					info := updatedVideo.Dubbing["es"]
+					info.UploadedVideoID = videoID
+					updatedVideo.Dubbing["es"] = info
+
+					// Save to YAML
+					yaml := storage.YAML{}
+					if err := yaml.WriteVideo(updatedVideo, updatedVideo.Path); err != nil {
+						fmt.Println(m.errorStyle.Render(fmt.Sprintf("Failed to save upload info: %v", err)))
+						continue
+					}
+
+					fmt.Println(m.confirmationStyle.Render(fmt.Sprintf("Upload complete! Video ID: %s", videoID)))
+					fmt.Println(m.normalStyle.Render(fmt.Sprintf("URL: %s", publishing.GetYouTubeURL(videoID))))
 
 					videoToEdit = updatedVideo
 					continue
