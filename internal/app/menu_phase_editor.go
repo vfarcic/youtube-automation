@@ -743,18 +743,20 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 					}
 				}
 
-				// Check if any dubbing is in progress
+				// Check if any dubbing is in progress or needs download retry
+				// (dubbed but missing DubbedVideoPath means download failed or was from YouTube URL)
 				hasInProgress := false
 				if updatedVideo.Dubbing != nil {
 					for _, info := range updatedVideo.Dubbing {
-						if info.DubbingStatus == "dubbing" {
+						if info.DubbingStatus == "dubbing" ||
+							(info.DubbingStatus == "dubbed" && info.DubbedVideoPath == "") {
 							hasInProgress = true
 							break
 						}
 					}
 				}
 				if hasInProgress {
-					options = append(options, huh.NewOption("Check Status", actionDubbingCheckStatus))
+					options = append(options, huh.NewOption("Check Status / Retry Download", actionDubbingCheckStatus))
 				}
 
 				// Always show translate option if there's a title to translate
@@ -1143,7 +1145,11 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 					fmt.Println(m.normalStyle.Render(fmt.Sprintf("  %s", localFilePath)))
 
 					// Check if compression will be needed
-					needsCompression, _ := dubbing.NeedsCompression(localFilePath)
+					needsCompression, compErr := dubbing.NeedsCompression(localFilePath)
+					if compErr != nil {
+						fmt.Println(m.errorStyle.Render(fmt.Sprintf("Failed to check file size: %v", compErr)))
+						continue
+					}
 					if needsCompression {
 						fmt.Println(m.normalStyle.Render("Step 1/2: Compressing video (file >1GB)... this may take a few minutes"))
 					} else {
