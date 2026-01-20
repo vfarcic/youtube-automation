@@ -2,13 +2,14 @@ package constants
 
 // Phase titles used throughout the application
 const (
-	PhaseTitleInitialDetails    = "Initial Details"
-	PhaseTitleWorkProgress      = "Work In Progress"
-	PhaseTitleDefinition        = "Definition"
-	PhaseTitlePostProduction    = "Post-Production"
-	PhaseTitlePublishingDetails = "Publishing Details"
-	PhaseTitlePostPublish       = "Post-Publish Details"
-	PhaseTitleAnalysis          = "Analysis"
+	PhaseTitleInitialDetails = "Initial Details"
+	PhaseTitleWorkProgress   = "Work In Progress"
+	PhaseTitleDefinition     = "Definition"
+	PhaseTitlePostProduction = "Post-Production"
+	PhaseTitleUpload         = "Upload"
+	PhaseTitleDubbing        = "Dubbing"
+	PhaseTitlePostPublish    = "Post-Publish Details"
+	PhaseTitleAnalysis       = "Analysis"
 )
 
 // Field titles used throughout the application - these must match the CLI form field titles

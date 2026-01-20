@@ -1188,6 +1188,149 @@ func TestCalculateAnalysisProgress(t *testing.T) {
 	}
 }
 
+func TestCalculateDubbingProgress(t *testing.T) {
+	manager := video.NewManager(nil)
+
+	testCases := []struct {
+		name              string
+		video             storage.Video
+		expectedCompleted int
+		expectedTotal     int
+		description       string
+	}{
+		{
+			name:              "No_dubbing_map_no_shorts",
+			video:             storage.Video{},
+			expectedCompleted: 0,
+			expectedTotal:     3, // 1 long-form + 1 translation + 1 upload
+			description:       "Video with no dubbing map and no shorts should return 0/3",
+		},
+		{
+			name: "No_dubbing_map_with_shorts",
+			video: storage.Video{
+				Shorts: []storage.Short{
+					{ID: "short1", Title: "Short 1"},
+					{ID: "short2", Title: "Short 2"},
+				},
+			},
+			expectedCompleted: 0,
+			expectedTotal:     5, // 1 long-form + 2 shorts + 1 translation + 1 upload
+			description:       "Video with no dubbing map but 2 shorts should return 0/5",
+		},
+		{
+			name: "Long_form_dubbed_no_shorts",
+			video: storage.Video{
+				Dubbing: map[string]storage.DubbingInfo{
+					"es": {DubbingID: "dub123", DubbingStatus: "dubbed"},
+				},
+			},
+			expectedCompleted: 1, // dubbed but not translated or uploaded
+			expectedTotal:     3, // 1 long-form + 1 translation + 1 upload
+			description:       "Long-form dubbed but not translated should be 1/3",
+		},
+		{
+			name: "Long_form_in_progress",
+			video: storage.Video{
+				Dubbing: map[string]storage.DubbingInfo{
+					"es": {DubbingID: "dub123", DubbingStatus: "dubbing"},
+				},
+			},
+			expectedCompleted: 0,
+			expectedTotal:     3, // 1 long-form + 1 translation + 1 upload
+			description:       "Long-form in progress should be 0/3",
+		},
+		{
+			name: "Long_form_and_shorts_partial",
+			video: storage.Video{
+				Shorts: []storage.Short{
+					{ID: "short1", Title: "Short 1"},
+					{ID: "short2", Title: "Short 2"},
+					{ID: "short3", Title: "Short 3"},
+				},
+				Dubbing: map[string]storage.DubbingInfo{
+					"es":        {DubbingID: "dub1", DubbingStatus: "dubbed"},
+					"es:short1": {DubbingID: "dub2", DubbingStatus: "dubbed"},
+					"es:short2": {DubbingID: "dub3", DubbingStatus: "dubbing"}, // in progress
+					// short3 not started
+				},
+			},
+			expectedCompleted: 2, // long-form + short1 (no translation or upload yet)
+			expectedTotal:     6, // 1 long-form + 3 shorts + 1 translation + 1 upload
+			description:       "Partial dubbing should count only completed",
+		},
+		{
+			name: "All_dubbed_not_translated",
+			video: storage.Video{
+				Shorts: []storage.Short{
+					{ID: "short1", Title: "Short 1"},
+					{ID: "short2", Title: "Short 2"},
+				},
+				Dubbing: map[string]storage.DubbingInfo{
+					"es":        {DubbingID: "dub1", DubbingStatus: "dubbed"},
+					"es:short1": {DubbingID: "dub2", DubbingStatus: "dubbed"},
+					"es:short2": {DubbingID: "dub3", DubbingStatus: "dubbed"},
+				},
+			},
+			expectedCompleted: 3, // all dubbed but not translated or uploaded
+			expectedTotal:     5, // 1 long-form + 2 shorts + 1 translation + 1 upload
+			description:       "All dubbed but not translated should be 3/5",
+		},
+		{
+			name: "All_dubbed_and_translated_not_uploaded",
+			video: storage.Video{
+				Shorts: []storage.Short{
+					{ID: "short1", Title: "Short 1"},
+					{ID: "short2", Title: "Short 2"},
+				},
+				Dubbing: map[string]storage.DubbingInfo{
+					"es":        {DubbingID: "dub1", DubbingStatus: "dubbed", Title: "Título traducido"},
+					"es:short1": {DubbingID: "dub2", DubbingStatus: "dubbed"},
+					"es:short2": {DubbingID: "dub3", DubbingStatus: "dubbed"},
+				},
+			},
+			expectedCompleted: 4, // all dubbed + translated but not uploaded
+			expectedTotal:     5, // 1 long-form + 2 shorts + 1 translation + 1 upload
+			description:       "All dubbed and translated but not uploaded should be 4/5",
+		},
+		{
+			name: "All_complete_with_upload",
+			video: storage.Video{
+				Shorts: []storage.Short{
+					{ID: "short1", Title: "Short 1"},
+					{ID: "short2", Title: "Short 2"},
+				},
+				Dubbing: map[string]storage.DubbingInfo{
+					"es":        {DubbingID: "dub1", DubbingStatus: "dubbed", Title: "Título traducido", UploadedVideoID: "vid123"},
+					"es:short1": {DubbingID: "dub2", DubbingStatus: "dubbed", UploadedVideoID: "vid456"},
+					"es:short2": {DubbingID: "dub3", DubbingStatus: "dubbed", UploadedVideoID: "vid789"},
+				},
+			},
+			expectedCompleted: 5, // all dubbed + translated + uploaded
+			expectedTotal:     5, // 1 long-form + 2 shorts + 1 translation + 1 upload
+			description:       "All dubbed, translated, and uploaded should be 5/5",
+		},
+		{
+			name: "Failed_dubbing_not_counted",
+			video: storage.Video{
+				Dubbing: map[string]storage.DubbingInfo{
+					"es": {DubbingID: "dub123", DubbingStatus: "failed", DubbingError: "Some error"},
+				},
+			},
+			expectedCompleted: 0,
+			expectedTotal:     3, // 1 long-form + 1 translation + 1 upload
+			description:       "Failed dubbing should not count as completed",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			completed, total := manager.CalculateDubbingProgress(tc.video)
+			assert.Equal(t, tc.expectedCompleted, completed, "Completed count mismatch for %s", tc.description)
+			assert.Equal(t, tc.expectedTotal, total, "Total count mismatch for %s", tc.description)
+		})
+	}
+}
+
 // Note: countCompletedTasks and containsString are private methods, tested indirectly through other functions
 
 func TestGetVideoPhase_ErrorHandling(t *testing.T) {

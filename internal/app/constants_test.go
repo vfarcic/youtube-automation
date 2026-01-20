@@ -11,7 +11,8 @@ func TestPhaseTitleConstants(t *testing.T) {
 		constants.PhaseTitleWorkProgress,
 		constants.PhaseTitleDefinition,
 		constants.PhaseTitlePostProduction,
-		constants.PhaseTitlePublishingDetails,
+		constants.PhaseTitleUpload,
+		constants.PhaseTitleDubbing,
 		constants.PhaseTitlePostPublish,
 	}
 
@@ -20,7 +21,8 @@ func TestPhaseTitleConstants(t *testing.T) {
 		"Work In Progress",
 		"Definition",
 		"Post-Production",
-		"Publishing Details",
+		"Upload",
+		"Dubbing",
 		"Post-Publish Details",
 	}
 
@@ -103,16 +105,17 @@ func TestErrorConstants(t *testing.T) {
 func TestConstantsUniqueness(t *testing.T) {
 	// Test that no constants have duplicate values (except where intentional)
 	phaseTitles := map[string]bool{
-		constants.PhaseTitleInitialDetails:    true,
-		constants.PhaseTitleWorkProgress:      true,
-		constants.PhaseTitleDefinition:        true,
-		constants.PhaseTitlePostProduction:    true,
-		constants.PhaseTitlePublishingDetails: true,
-		constants.PhaseTitlePostPublish:       true,
+		constants.PhaseTitleInitialDetails: true,
+		constants.PhaseTitleWorkProgress:   true,
+		constants.PhaseTitleDefinition:     true,
+		constants.PhaseTitlePostProduction: true,
+		constants.PhaseTitleUpload:         true,
+		constants.PhaseTitleDubbing:        true,
+		constants.PhaseTitlePostPublish:    true,
 	}
 
-	if len(phaseTitles) != 6 {
-		t.Errorf("Expected 6 unique phase titles, got %d", len(phaseTitles))
+	if len(phaseTitles) != 7 {
+		t.Errorf("Expected 7 unique phase titles, got %d", len(phaseTitles))
 	}
 
 	// Test some key field titles for uniqueness

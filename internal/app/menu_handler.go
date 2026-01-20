@@ -45,6 +45,7 @@ const (
 	actionEdit = iota
 	actionDelete
 	actionMoveFiles
+	actionArchive
 )
 const actionReturn = 99
 
@@ -54,7 +55,8 @@ const (
 	editPhaseWork
 	editPhaseDefinition
 	editPhasePostProduction
-	editPhasePublishing
+	editPhasePublishing // "Upload" phase
+	editPhaseDubbing    // "Dubbing" phase
 	editPhasePostPublish
 	editPhaseAnalysis
 	// actionReturn can be reused for returning from this sub-menu

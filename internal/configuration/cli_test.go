@@ -1141,6 +1141,352 @@ candidateCount: 12
 	})
 }
 
+// TestElevenLabsConfigDefaults tests that ElevenLabs config defaults are applied correctly
+func TestElevenLabsConfigDefaults(t *testing.T) {
+	tests := []struct {
+		name                        string
+		yamlContent                 string
+		envAPIKey                   string
+		expectedAPIKey              string
+		expectedTestMode            bool
+		expectedStartTime           int
+		expectedEndTime             int
+		expectedNumSpeakers         int
+		expectedDropBackgroundAudio bool
+	}{
+		{
+			name: "ElevenLabs config from YAML",
+			yamlContent: `
+elevenLabs:
+  apiKey: "yaml-api-key"
+  testMode: true
+  startTime: 10
+  endTime: 60
+  numSpeakers: 2
+  dropBackgroundAudio: true
+`,
+			envAPIKey:                   "",
+			expectedAPIKey:              "yaml-api-key",
+			expectedTestMode:            true,
+			expectedStartTime:           10,
+			expectedEndTime:             60,
+			expectedNumSpeakers:         2,
+			expectedDropBackgroundAudio: true,
+		},
+		{
+			name:                        "ElevenLabs config defaults when not in YAML",
+			yamlContent:                 ``, // Empty YAML
+			envAPIKey:                   "",
+			expectedAPIKey:              "",
+			expectedTestMode:            false, // bool default
+			expectedStartTime:           0,     // int default
+			expectedEndTime:             0,     // int default (0 = full video)
+			expectedNumSpeakers:         1,     // Default applied
+			expectedDropBackgroundAudio: false, // bool default
+		},
+		{
+			name: "ElevenLabs API key from environment overrides YAML",
+			yamlContent: `
+elevenLabs:
+  apiKey: "yaml-api-key"
+  testMode: true
+`,
+			envAPIKey:          "env-api-key",
+			expectedAPIKey:     "env-api-key",
+			expectedTestMode:   true,
+			expectedNumSpeakers: 1, // Default applied
+		},
+		{
+			name:                "ElevenLabs API key from environment when not in YAML",
+			yamlContent:         ``,
+			envAPIKey:           "env-only-key",
+			expectedAPIKey:      "env-only-key",
+			expectedNumSpeakers: 1, // Default applied
+		},
+		{
+			name: "ElevenLabs partial config - testMode only",
+			yamlContent: `
+elevenLabs:
+  testMode: true
+`,
+			envAPIKey:           "",
+			expectedAPIKey:      "",
+			expectedTestMode:    true,
+			expectedNumSpeakers: 1, // Default applied
+		},
+		{
+			name: "ElevenLabs numSpeakers zero uses default",
+			yamlContent: `
+elevenLabs:
+  numSpeakers: 0
+`,
+			envAPIKey:           "",
+			expectedNumSpeakers: 1, // Default applied for zero
+		},
+	}
+
+	// Save and restore environment
+	origAPIKey := os.Getenv("ELEVENLABS_API_KEY")
+	defer func() {
+		if origAPIKey == "" {
+			os.Unsetenv("ELEVENLABS_API_KEY")
+		} else {
+			os.Setenv("ELEVENLABS_API_KEY", origAPIKey)
+		}
+	}()
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Setup environment
+			if tt.envAPIKey != "" {
+				os.Setenv("ELEVENLABS_API_KEY", tt.envAPIKey)
+			} else {
+				os.Unsetenv("ELEVENLABS_API_KEY")
+			}
+
+			// Setup: Create a temporary settings.yaml
+			settingsDir := t.TempDir()
+
+			tmpfn := filepath.Join(settingsDir, "settings.yaml")
+			err := os.WriteFile(tmpfn, []byte(tt.yamlContent), 0644)
+			require.NoError(t, err)
+
+			// Change to temp directory
+			originalWD, err := os.Getwd()
+			require.NoError(t, err)
+			err = os.Chdir(settingsDir)
+			require.NoError(t, err)
+			defer os.Chdir(originalWD)
+
+			// Reset and load settings
+			testSettings := Settings{}
+			yamlFile, err := os.ReadFile("settings.yaml")
+			if err == nil {
+				yaml.Unmarshal(yamlFile, &testSettings)
+			}
+
+			// Apply environment variable (mimicking init() behavior)
+			if envKey := os.Getenv("ELEVENLABS_API_KEY"); envKey != "" {
+				testSettings.ElevenLabs.APIKey = envKey
+			}
+
+			// Apply defaults (mimicking init() behavior)
+			if testSettings.ElevenLabs.NumSpeakers == 0 {
+				testSettings.ElevenLabs.NumSpeakers = 1
+			}
+
+			// Assert
+			assert.Equal(t, tt.expectedAPIKey, testSettings.ElevenLabs.APIKey, "APIKey mismatch")
+			assert.Equal(t, tt.expectedTestMode, testSettings.ElevenLabs.TestMode, "TestMode mismatch")
+			assert.Equal(t, tt.expectedStartTime, testSettings.ElevenLabs.StartTime, "StartTime mismatch")
+			assert.Equal(t, tt.expectedEndTime, testSettings.ElevenLabs.EndTime, "EndTime mismatch")
+			assert.Equal(t, tt.expectedNumSpeakers, testSettings.ElevenLabs.NumSpeakers, "NumSpeakers mismatch")
+			assert.Equal(t, tt.expectedDropBackgroundAudio, testSettings.ElevenLabs.DropBackgroundAudio, "DropBackgroundAudio mismatch")
+		})
+	}
+}
+
+// TestElevenLabsConfigSerialization tests ElevenLabs config YAML serialization
+func TestElevenLabsConfigSerialization(t *testing.T) {
+	t.Run("ElevenLabs config serializes to YAML correctly", func(t *testing.T) {
+		config := SettingsElevenLabs{
+			APIKey:              "test-key",
+			TestMode:            true,
+			StartTime:           5,
+			EndTime:             120,
+			NumSpeakers:         2,
+			DropBackgroundAudio: true,
+		}
+
+		yamlData, err := yaml.Marshal(config)
+		require.NoError(t, err)
+
+		var parsed SettingsElevenLabs
+		err = yaml.Unmarshal(yamlData, &parsed)
+		require.NoError(t, err)
+
+		assert.Equal(t, config.APIKey, parsed.APIKey)
+		assert.Equal(t, config.TestMode, parsed.TestMode)
+		assert.Equal(t, config.StartTime, parsed.StartTime)
+		assert.Equal(t, config.EndTime, parsed.EndTime)
+		assert.Equal(t, config.NumSpeakers, parsed.NumSpeakers)
+		assert.Equal(t, config.DropBackgroundAudio, parsed.DropBackgroundAudio)
+	})
+
+	t.Run("ElevenLabs config deserializes from YAML correctly", func(t *testing.T) {
+		yamlContent := `
+apiKey: "deserialized-key"
+testMode: true
+startTime: 30
+endTime: 90
+numSpeakers: 1
+dropBackgroundAudio: false
+`
+		var config SettingsElevenLabs
+		err := yaml.Unmarshal([]byte(yamlContent), &config)
+		require.NoError(t, err)
+
+		assert.Equal(t, "deserialized-key", config.APIKey)
+		assert.Equal(t, true, config.TestMode)
+		assert.Equal(t, 30, config.StartTime)
+		assert.Equal(t, 90, config.EndTime)
+		assert.Equal(t, 1, config.NumSpeakers)
+		assert.Equal(t, false, config.DropBackgroundAudio)
+	})
+}
+
+// TestSpanishChannelConfigDefaults tests that Spanish channel config defaults are applied correctly
+func TestSpanishChannelConfigDefaults(t *testing.T) {
+	tests := []struct {
+		name                    string
+		yamlContent             string
+		expectedChannelID       string
+		expectedCredentialsFile string
+		expectedTokenFile       string
+		expectedCallbackPort    int
+	}{
+		{
+			name: "Spanish channel config from YAML",
+			yamlContent: `
+spanishChannel:
+  channelId: "UC_SPANISH_CHANNEL"
+  credentialsFile: "custom_spanish_secret.json"
+  tokenFile: "custom-spanish-token.json"
+  callbackPort: 8092
+`,
+			expectedChannelID:       "UC_SPANISH_CHANNEL",
+			expectedCredentialsFile: "custom_spanish_secret.json",
+			expectedTokenFile:       "custom-spanish-token.json",
+			expectedCallbackPort:    8092,
+		},
+		{
+			name:                    "Spanish channel config defaults when not in YAML",
+			yamlContent:             ``, // Empty YAML
+			expectedChannelID:       "",
+			expectedCredentialsFile: "client_secret_spanish.json",
+			expectedTokenFile:       "youtube-go-spanish.json",
+			expectedCallbackPort:    8091,
+		},
+		{
+			name: "Spanish channel partial config - channelId only",
+			yamlContent: `
+spanishChannel:
+  channelId: "UC_MY_CHANNEL"
+`,
+			expectedChannelID:       "UC_MY_CHANNEL",
+			expectedCredentialsFile: "client_secret_spanish.json", // Default
+			expectedTokenFile:       "youtube-go-spanish.json",    // Default
+			expectedCallbackPort:    8091,                         // Default
+		},
+		{
+			name: "Spanish channel partial config - port only",
+			yamlContent: `
+spanishChannel:
+  callbackPort: 8095
+`,
+			expectedChannelID:       "",
+			expectedCredentialsFile: "client_secret_spanish.json",
+			expectedTokenFile:       "youtube-go-spanish.json",
+			expectedCallbackPort:    8095,
+		},
+		{
+			name: "Spanish channel with zero port uses default",
+			yamlContent: `
+spanishChannel:
+  channelId: "UC_TEST"
+  callbackPort: 0
+`,
+			expectedChannelID:       "UC_TEST",
+			expectedCredentialsFile: "client_secret_spanish.json",
+			expectedTokenFile:       "youtube-go-spanish.json",
+			expectedCallbackPort:    8091, // Default applied for zero
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Setup: Create a temporary settings.yaml
+			settingsDir := t.TempDir()
+
+			tmpfn := filepath.Join(settingsDir, "settings.yaml")
+			err := os.WriteFile(tmpfn, []byte(tt.yamlContent), 0644)
+			require.NoError(t, err)
+
+			// Change to temp directory
+			originalWD, err := os.Getwd()
+			require.NoError(t, err)
+			err = os.Chdir(settingsDir)
+			require.NoError(t, err)
+			defer os.Chdir(originalWD)
+
+			// Reset and load settings
+			testSettings := Settings{}
+			yamlFile, err := os.ReadFile("settings.yaml")
+			if err == nil {
+				yaml.Unmarshal(yamlFile, &testSettings)
+			}
+
+			// Apply defaults (mimicking init() behavior)
+			if testSettings.SpanishChannel.CredentialsFile == "" {
+				testSettings.SpanishChannel.CredentialsFile = "client_secret_spanish.json"
+			}
+			if testSettings.SpanishChannel.TokenFile == "" {
+				testSettings.SpanishChannel.TokenFile = "youtube-go-spanish.json"
+			}
+			if testSettings.SpanishChannel.CallbackPort == 0 {
+				testSettings.SpanishChannel.CallbackPort = 8091
+			}
+
+			// Assert
+			assert.Equal(t, tt.expectedChannelID, testSettings.SpanishChannel.ChannelID, "ChannelID mismatch")
+			assert.Equal(t, tt.expectedCredentialsFile, testSettings.SpanishChannel.CredentialsFile, "CredentialsFile mismatch")
+			assert.Equal(t, tt.expectedTokenFile, testSettings.SpanishChannel.TokenFile, "TokenFile mismatch")
+			assert.Equal(t, tt.expectedCallbackPort, testSettings.SpanishChannel.CallbackPort, "CallbackPort mismatch")
+		})
+	}
+}
+
+// TestSpanishChannelConfigSerialization tests Spanish channel config YAML serialization
+func TestSpanishChannelConfigSerialization(t *testing.T) {
+	t.Run("Spanish channel config serializes to YAML correctly", func(t *testing.T) {
+		config := SettingsSpanishChannel{
+			ChannelID:       "UC_TEST_CHANNEL",
+			CredentialsFile: "test_secret.json",
+			TokenFile:       "test-token.json",
+			CallbackPort:    8093,
+		}
+
+		yamlData, err := yaml.Marshal(config)
+		require.NoError(t, err)
+
+		var parsed SettingsSpanishChannel
+		err = yaml.Unmarshal(yamlData, &parsed)
+		require.NoError(t, err)
+
+		assert.Equal(t, config.ChannelID, parsed.ChannelID)
+		assert.Equal(t, config.CredentialsFile, parsed.CredentialsFile)
+		assert.Equal(t, config.TokenFile, parsed.TokenFile)
+		assert.Equal(t, config.CallbackPort, parsed.CallbackPort)
+	})
+
+	t.Run("Spanish channel config deserializes from YAML correctly", func(t *testing.T) {
+		yamlContent := `
+channelId: "UC_DESERIALIZED"
+credentialsFile: "deser_secret.json"
+tokenFile: "deser-token.json"
+callbackPort: 8094
+`
+		var config SettingsSpanishChannel
+		err := yaml.Unmarshal([]byte(yamlContent), &config)
+		require.NoError(t, err)
+
+		assert.Equal(t, "UC_DESERIALIZED", config.ChannelID)
+		assert.Equal(t, "deser_secret.json", config.CredentialsFile)
+		assert.Equal(t, "deser-token.json", config.TokenFile)
+		assert.Equal(t, 8094, config.CallbackPort)
+	})
+}
+
 func TestSlackSettingsLoading(t *testing.T) {
 	// Define the YAML content for the test
 	slackYAMLContent := `
