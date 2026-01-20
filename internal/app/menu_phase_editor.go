@@ -659,13 +659,16 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 			dubbingDone := false
 
 			for !dubbingDone {
-				// Action constants: 0 = long-form, 1-999 = shorts (by index+1), 1000+ = actions
+				// Action constants: 0 = long-form, 1-999 = shorts dubbing (by index+1),
+				// 1000+ = general actions, 2000+ = upload shorts (2000 + index)
 				const (
-					actionDubbingLongForm    = 0
-					actionDubbingCheckStatus = 1000
-					actionDubbingBack        = 1001
-					actionDubbingTranslate   = 1002
-					actionDubbingUpload      = 1003
+					actionDubbingLongForm        = 0
+					actionDubbingCheckStatus     = 1000
+					actionDubbingBack            = 1001
+					actionDubbingTranslate       = 1002
+					actionDubbingUpload          = 1003
+					actionDubbingUploadAll       = 1004
+					actionDubbingUploadShortBase = 2000 // 2000 + shortIndex for uploading shorts
 				)
 
 				// Helper to get status text for a dubbing key
@@ -768,17 +771,57 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 					options = append(options, huh.NewOption(translateLabel, actionDubbingTranslate))
 				}
 
-				// Show upload option when dubbed, has file, has title, and not yet uploaded
+				// Show upload option when dubbed items exist
 				if updatedVideo.Dubbing != nil {
+					// Count uploadable items (dubbed + has file + not yet uploaded)
+					// Long-form also requires translated title
+					canUploadLongForm := false
+					uploadableShortCount := 0
+					allUploaded := true
+
 					if info, ok := updatedVideo.Dubbing["es"]; ok {
-						canUpload := info.DubbingStatus == "dubbed" &&
+						canUploadLongForm = info.DubbingStatus == "dubbed" &&
 							info.DubbedVideoPath != "" &&
 							info.Title != "" &&
 							info.UploadedVideoID == ""
-						if canUpload {
-							options = append(options, huh.NewOption("Upload to YouTube", actionDubbingUpload))
-						} else if info.UploadedVideoID != "" {
-							options = append(options, huh.NewOption(m.greenStyle.Render("Upload to YouTube (done)"), actionDubbingUpload))
+						if info.DubbingStatus == "dubbed" && info.UploadedVideoID == "" {
+							allUploaded = false
+						}
+					}
+
+					// Check shorts - no Title requirement (will use original title)
+					for i := range updatedVideo.Shorts {
+						shortKey := fmt.Sprintf("es:short%d", i+1)
+						if shortInfo, ok := updatedVideo.Dubbing[shortKey]; ok {
+							if shortInfo.DubbingStatus == "dubbed" &&
+								shortInfo.DubbedVideoPath != "" &&
+								shortInfo.UploadedVideoID == "" {
+								uploadableShortCount++
+								allUploaded = false
+							}
+						}
+					}
+
+					totalUploadable := 0
+					if canUploadLongForm {
+						totalUploadable++
+					}
+					totalUploadable += uploadableShortCount
+
+					if totalUploadable > 0 {
+						uploadAllLabel := fmt.Sprintf("Upload All to YouTube (%d items)", totalUploadable)
+						options = append(options, huh.NewOption(uploadAllLabel, actionDubbingUploadAll))
+					} else if !allUploaded {
+						// Some items dubbed but missing requirements (e.g., long-form missing translated title)
+						options = append(options, huh.NewOption("Upload All to YouTube (translate metadata first)", actionDubbingUploadAll))
+					} else {
+						// Check if anything was ever dubbed and uploaded
+						hasDubbedItems := false
+						if info, ok := updatedVideo.Dubbing["es"]; ok && info.DubbingStatus == "dubbed" {
+							hasDubbedItems = true
+						}
+						if hasDubbedItems && allUploaded {
+							options = append(options, huh.NewOption(m.greenStyle.Render("Upload All to YouTube (done)"), actionDubbingUploadAll))
 						}
 					}
 				}
@@ -883,7 +926,7 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 				}
 
 				if selectedAction == actionDubbingTranslate {
-					// Translate metadata using AI
+					// Translate metadata using AI (long-form + shorts)
 					fmt.Println(m.normalStyle.Render("Translating metadata to Spanish..."))
 
 					title := updatedVideo.GetUploadTitle()
@@ -892,11 +935,18 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 						continue
 					}
 
+					// Collect short titles for translation
+					var shortTitles []string
+					for _, short := range updatedVideo.Shorts {
+						shortTitles = append(shortTitles, short.Title)
+					}
+
 					input := ai.VideoMetadataInput{
 						Title:       title,
 						Description: updatedVideo.Description,
 						Tags:        updatedVideo.Tags,
 						Timecodes:   updatedVideo.Timecodes,
+						ShortTitles: shortTitles,
 					}
 
 					ctx := context.Background()
@@ -910,12 +960,25 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 					if updatedVideo.Dubbing == nil {
 						updatedVideo.Dubbing = make(map[string]storage.DubbingInfo)
 					}
+
+					// Save long-form translations
 					info := updatedVideo.Dubbing["es"]
 					info.Title = output.Title
 					info.Description = output.Description
 					info.Tags = output.Tags
 					info.Timecodes = output.Timecodes
 					updatedVideo.Dubbing["es"] = info
+
+					// Save translated short titles
+					for i, translatedTitle := range output.ShortTitles {
+						if i >= len(updatedVideo.Shorts) {
+							break
+						}
+						shortKey := fmt.Sprintf("es:short%d", i+1)
+						shortInfo := updatedVideo.Dubbing[shortKey]
+						shortInfo.Title = translatedTitle
+						updatedVideo.Dubbing[shortKey] = shortInfo
+					}
 
 					// Save to YAML
 					yaml := storage.YAML{}
@@ -940,14 +1003,89 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 					if output.Timecodes != "" {
 						fmt.Println(m.normalStyle.Render("Timecodes: translated"))
 					}
+					if len(output.ShortTitles) > 0 {
+						fmt.Println(m.normalStyle.Render(fmt.Sprintf("Short titles: %d translated", len(output.ShortTitles))))
+						for i, st := range output.ShortTitles {
+							fmt.Println(m.normalStyle.Render(fmt.Sprintf("  Short %d: %s", i+1, st)))
+						}
+					}
+
+					videoToEdit = updatedVideo
+					continue
+				}
+
+				if selectedAction == actionDubbingUploadAll {
+					// Upload all dubbed videos (long-form + shorts) sequentially
+					fmt.Println(m.normalStyle.Render("Uploading all dubbed videos to YouTube..."))
+					fmt.Println()
+
+					uploadCount := 0
+					failCount := 0
+
+					// Upload long-form if ready
+					if info, ok := updatedVideo.Dubbing["es"]; ok {
+						canUpload := info.DubbingStatus == "dubbed" &&
+							info.DubbedVideoPath != "" &&
+							info.Title != "" &&
+							info.UploadedVideoID == ""
+						if canUpload {
+							fmt.Println(m.normalStyle.Render("Uploading long-form video..."))
+							videoID, err := publishing.UploadDubbedVideo(&updatedVideo, "es")
+							if err != nil {
+								fmt.Println(m.errorStyle.Render(fmt.Sprintf("  Failed: %v", err)))
+								failCount++
+							} else {
+								info.UploadedVideoID = videoID
+								updatedVideo.Dubbing["es"] = info
+								fmt.Println(m.confirmationStyle.Render(fmt.Sprintf("  Done! ID: %s", videoID)))
+								uploadCount++
+							}
+						}
+					}
+
+					// Upload shorts if ready (no Title requirement - will use original title)
+					for i := range updatedVideo.Shorts {
+						shortKey := fmt.Sprintf("es:short%d", i+1)
+						if shortInfo, ok := updatedVideo.Dubbing[shortKey]; ok {
+							canUpload := shortInfo.DubbingStatus == "dubbed" &&
+								shortInfo.DubbedVideoPath != "" &&
+								shortInfo.UploadedVideoID == ""
+							if canUpload {
+								fmt.Println(m.normalStyle.Render(fmt.Sprintf("Uploading short %d...", i+1)))
+								videoID, err := publishing.UploadDubbedShort(&updatedVideo, i)
+								if err != nil {
+									fmt.Println(m.errorStyle.Render(fmt.Sprintf("  Failed: %v", err)))
+									failCount++
+								} else {
+									shortInfo.UploadedVideoID = videoID
+									updatedVideo.Dubbing[shortKey] = shortInfo
+									fmt.Println(m.confirmationStyle.Render(fmt.Sprintf("  Done! ID: %s", videoID)))
+									uploadCount++
+								}
+							}
+						}
+					}
+
+					// Save all changes to YAML
+					yaml := storage.YAML{}
+					if err := yaml.WriteVideo(updatedVideo, updatedVideo.Path); err != nil {
+						fmt.Println(m.errorStyle.Render(fmt.Sprintf("Failed to save upload info: %v", err)))
+					}
+
+					fmt.Println()
+					if failCount == 0 {
+						fmt.Println(m.confirmationStyle.Render(fmt.Sprintf("All uploads complete! %d videos uploaded.", uploadCount)))
+					} else {
+						fmt.Println(m.orangeStyle.Render(fmt.Sprintf("Uploads finished: %d succeeded, %d failed.", uploadCount, failCount)))
+					}
 
 					videoToEdit = updatedVideo
 					continue
 				}
 
 				if selectedAction == actionDubbingUpload {
-					// Upload dubbed video to YouTube
-					fmt.Println(m.normalStyle.Render("Uploading dubbed video to YouTube..."))
+					// Upload dubbed long-form video to YouTube
+					fmt.Println(m.normalStyle.Render("Uploading dubbed long-form video to YouTube..."))
 
 					videoID, err := publishing.UploadDubbedVideo(&updatedVideo, "es")
 					if err != nil {
@@ -968,6 +1106,38 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 					}
 
 					fmt.Println(m.confirmationStyle.Render(fmt.Sprintf("Upload complete! Video ID: %s", videoID)))
+					fmt.Println(m.normalStyle.Render(fmt.Sprintf("URL: %s", publishing.GetYouTubeURL(videoID))))
+
+					videoToEdit = updatedVideo
+					continue
+				}
+
+				// Handle upload dubbed shorts
+				if selectedAction >= actionDubbingUploadShortBase && selectedAction < actionDubbingUploadShortBase+len(updatedVideo.Shorts) {
+					shortIdx := selectedAction - actionDubbingUploadShortBase
+					shortKey := fmt.Sprintf("es:short%d", shortIdx+1)
+
+					fmt.Println(m.normalStyle.Render(fmt.Sprintf("Uploading dubbed short %d to YouTube...", shortIdx+1)))
+
+					videoID, err := publishing.UploadDubbedShort(&updatedVideo, shortIdx)
+					if err != nil {
+						fmt.Println(m.errorStyle.Render(fmt.Sprintf("Upload failed: %v", err)))
+						continue
+					}
+
+					// Save uploaded video ID
+					shortInfo := updatedVideo.Dubbing[shortKey]
+					shortInfo.UploadedVideoID = videoID
+					updatedVideo.Dubbing[shortKey] = shortInfo
+
+					// Save to YAML
+					yaml := storage.YAML{}
+					if err := yaml.WriteVideo(updatedVideo, updatedVideo.Path); err != nil {
+						fmt.Println(m.errorStyle.Render(fmt.Sprintf("Failed to save upload info: %v", err)))
+						continue
+					}
+
+					fmt.Println(m.confirmationStyle.Render(fmt.Sprintf("Short upload complete! Video ID: %s", videoID)))
 					fmt.Println(m.normalStyle.Render(fmt.Sprintf("URL: %s", publishing.GetYouTubeURL(videoID))))
 
 					videoToEdit = updatedVideo

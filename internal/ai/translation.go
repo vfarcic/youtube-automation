@@ -15,18 +15,20 @@ var translateMetadataTemplate string
 
 // VideoMetadataInput holds the input fields for translation.
 type VideoMetadataInput struct {
-	Title       string `json:"title"`
-	Description string `json:"description"`
-	Tags        string `json:"tags"`
-	Timecodes   string `json:"timecodes"`
+	Title       string   `json:"title"`
+	Description string   `json:"description"`
+	Tags        string   `json:"tags"`
+	Timecodes   string   `json:"timecodes"`
+	ShortTitles []string `json:"shortTitles,omitempty"` // Titles of YouTube Shorts to translate
 }
 
 // VideoMetadataOutput holds the translated fields.
 type VideoMetadataOutput struct {
-	Title       string `json:"title"`
-	Description string `json:"description"`
-	Tags        string `json:"tags"`
-	Timecodes   string `json:"timecodes"`
+	Title       string   `json:"title"`
+	Description string   `json:"description"`
+	Tags        string   `json:"tags"`
+	Timecodes   string   `json:"timecodes"`
+	ShortTitles []string `json:"shortTitles,omitempty"` // Translated Short titles (same order as input)
 }
 
 // translateMetadataTemplateData holds the data for the translation template.

@@ -294,10 +294,10 @@ func (m *Manager) CalculateAnalysisProgress(video storage.Video) (int, int) {
 }
 
 // CalculateDubbingProgress calculates Dubbing phase progress on-the-fly
-// Tracks progress for Spanish dubbing (MVP): 1 long-form video + N shorts + 1 translation
+// Tracks progress for Spanish dubbing (MVP): 1 long-form video + N shorts + 1 translation + 1 upload
 func (m *Manager) CalculateDubbingProgress(video storage.Video) (int, int) {
-	// Total = 1 (long-form) + number of shorts + 1 (translation)
-	total := 1 + len(video.Shorts) + 1
+	// Total = 1 (long-form) + number of shorts + 1 (translation) + 1 (upload)
+	total := 1 + len(video.Shorts) + 1 + 1
 	completed := 0
 
 	// If no dubbing map exists, return 0/total
@@ -320,6 +320,26 @@ func (m *Manager) CalculateDubbingProgress(video storage.Video) (int, int) {
 
 	// Check translation (complete when TranslatedTitle is set for long-form)
 	if esInfo, ok := video.Dubbing["es"]; ok && esInfo.Title != "" {
+		completed++
+	}
+
+	// Check upload (complete when all dubbed items have been uploaded)
+	// Long-form must be uploaded, plus all dubbed shorts
+	allUploaded := false
+	if esInfo, ok := video.Dubbing["es"]; ok && esInfo.DubbingStatus == "dubbed" && esInfo.UploadedVideoID != "" {
+		allUploaded = true
+		// Check all shorts that were dubbed are also uploaded
+		for i := range video.Shorts {
+			shortKey := fmt.Sprintf("es:short%d", i+1)
+			if shortInfo, ok := video.Dubbing[shortKey]; ok && shortInfo.DubbingStatus == "dubbed" {
+				if shortInfo.UploadedVideoID == "" {
+					allUploaded = false
+					break
+				}
+			}
+		}
+	}
+	if allUploaded {
 		completed++
 	}
 

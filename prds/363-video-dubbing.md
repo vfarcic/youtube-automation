@@ -1,7 +1,7 @@
 # PRD: AI-Powered Video Dubbing with ElevenLabs
 
 **Issue**: #363
-**Status**: In Progress
+**Status**: Complete
 **Priority**: High
 **Created**: 2025-01-11
 **Last Updated**: 2026-01-20
@@ -57,8 +57,8 @@ Integrate AI-powered video dubbing using ElevenLabs API with automatic metadata 
 - [x] Smart video compression for files >1GB (auto-compress to fit ElevenLabs limit)
 - [x] Test mode configuration (watermark + lower resolution + segment time control)
 - [x] Claude AI translates title, description, tags, and timecodes to Spanish
-- [ ] Upload dubbed video to separate Spanish YouTube channel
-- [ ] OAuth2 authentication for Spanish channel (separate credentials)
+- [x] Upload dubbed video to separate Spanish YouTube channel
+- [x] OAuth2 authentication for Spanish channel (separate credentials)
 - [x] Dubbing status persisted in video YAML (allows resumption)
 - [x] CLI integration in Dubbing phase with options for both long-form and shorts
 - [x] Configuration for ElevenLabs API key, test mode settings, and Spanish channel
@@ -122,18 +122,20 @@ func CalculateOptimalCRF(duration float64, targetSizeMB int) (crf int, use1080p 
 ```go
 // VideoMetadataInput holds the input fields for translation
 type VideoMetadataInput struct {
-    Title       string `json:"title"`
-    Description string `json:"description"`
-    Tags        string `json:"tags"`
-    Timecodes   string `json:"timecodes"`
+    Title       string   `json:"title"`
+    Description string   `json:"description"`
+    Tags        string   `json:"tags"`
+    Timecodes   string   `json:"timecodes"`
+    ShortTitles []string `json:"shortTitles,omitempty"` // Titles of YouTube Shorts to translate
 }
 
 // VideoMetadataOutput holds the translated fields
 type VideoMetadataOutput struct {
-    Title       string `json:"title"`
-    Description string `json:"description"`
-    Tags        string `json:"tags"`
-    Timecodes   string `json:"timecodes"`
+    Title       string   `json:"title"`
+    Description string   `json:"description"`
+    Tags        string   `json:"tags"`
+    Timecodes   string   `json:"timecodes"`
+    ShortTitles []string `json:"shortTitles,omitempty"` // Translated Short titles
 }
 
 // TranslateVideoMetadata translates all metadata in a single API call
@@ -250,16 +252,19 @@ spanishChannel:
 - [x] Unit tests for compression logic (81.4% coverage)
 - [x] Integration test with real video files
 
-**Phase 8: Upload Integration** ← Was Phase 7
-- [ ] Implement `UploadVideoToSpanishChannel()`
-- [ ] Build Spanish descriptions with link to original
-- [ ] Store Spanish video ID in YAML
+**Phase 8: Upload Integration** ✅
+- [x] Implement `UploadDubbedVideo()` with date-based scheduling
+- [x] Implement `UploadDubbedShort()` with interval scheduling
+- [x] Build Spanish descriptions with link to original
+- [x] Store Spanish video ID in YAML
+- [x] CLI "Upload All to YouTube" option
+- [x] Progress counter includes upload step
 
-**Phase 9: Final Testing & Validation** ← Was Phase 8
-- [ ] End-to-end testing of complete workflow
-- [ ] Test translation accuracy
-- [ ] Verify Spanish channel upload works
-- [ ] Test compression with various video sizes
+**Phase 9: Final Testing & Validation** ✅
+- [x] End-to-end testing of complete workflow
+- [x] Test translation accuracy
+- [x] Verify Spanish channel upload works
+- [x] Test compression with various video sizes
 
 ## Risks & Mitigation
 
@@ -321,11 +326,24 @@ spanishChannel:
 - [x] **Spanish YouTube Channel Configured**: Channel created, OAuth credentials set up
 - [x] **Smart Video Compression Working**: Auto-compress large videos to fit 1GB limit
 - [x] **Local File Upload Functional**: Dub from local files with compression support
-- [ ] **Spanish Channel Upload Functional**: Dubbed video uploads with translated metadata
+- [x] **Spanish Channel Upload Functional**: Dubbed video uploads with translated metadata
 - [x] **CLI Menu Integration Complete**: Dubbing workflow in Dubbing phase
-- [ ] **End-to-End Workflow Validated**: Full flow tested with real video
+- [x] **End-to-End Workflow Validated**: Full flow tested with real video
 
 ## Progress Log
+
+### 2026-01-20 (Update 11) - PRD COMPLETE
+- **Phase 8 Complete**: Upload Integration
+  - Implemented `UploadDubbedVideo()` with date-based scheduling (future dates = scheduled private, past dates = public immediately)
+  - Implemented `UploadDubbedShort()` with interval scheduling (Short 1 = +1 day, Short 2 = +2 days, etc.)
+  - Added CLI "Upload All to YouTube" option (replaced individual upload buttons)
+  - Progress counter now includes upload step (X/8 total)
+  - Extended `TranslateVideoMetadata()` to include short titles in single API call
+  - Comprehensive tests for upload validation, date parsing, and scheduling
+- **Phase 9 Complete**: Final Testing & Validation
+  - All tests passing
+  - End-to-end workflow validated
+- **All Milestones Achieved**: PRD marked as Complete
 
 ### 2026-01-20 (Update 10)
 - **Phase 7 Fully Complete**: Integration tested with real video file

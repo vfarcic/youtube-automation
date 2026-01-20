@@ -133,6 +133,33 @@ func TestTranslateVideoMetadata(t *testing.T) {
 			wantErr:           true,
 			expectedErrSubstr: "AI service unavailable",
 		},
+		{
+			name: "Translation with short titles",
+			input: VideoMetadataInput{
+				Title:       "Main Video Title",
+				Description: "Video description",
+				Tags:        "tag1, tag2",
+				Timecodes:   "0:00 Intro",
+				ShortTitles: []string{"Short 1: The First", "Short 2: The Second", "Short 3: The Third"},
+			},
+			targetLanguage: "Spanish",
+			mockResponse: `{
+				"title": "Título del Video Principal",
+				"description": "Descripción del video",
+				"tags": "etiqueta1, etiqueta2",
+				"timecodes": "0:00 Introducción",
+				"shortTitles": ["Short 1: El Primero", "Short 2: El Segundo", "Short 3: El Tercero"]
+			}`,
+			wantErr: false,
+			validateOutput: func(t *testing.T, output *VideoMetadataOutput) {
+				if len(output.ShortTitles) != 3 {
+					t.Errorf("Expected 3 short titles, got %d", len(output.ShortTitles))
+				}
+				if len(output.ShortTitles) > 0 && output.ShortTitles[0] == "" {
+					t.Error("Expected non-empty first short title")
+				}
+			},
+		},
 	}
 
 	for _, tt := range tests {

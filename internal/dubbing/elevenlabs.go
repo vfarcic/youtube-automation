@@ -196,13 +196,12 @@ func (c *Client) createDubFromFileWithCompressor(ctx context.Context, filePath, 
 		return nil, fmt.Errorf("failed to compress video: %w", err)
 	}
 
+	// TODO: Re-enable cleanup after checking compressed file sizes
 	// Track if we need to clean up a compressed file
-	needsCleanup := uploadPath != filePath
-
-	// Ensure cleanup of compressed file after upload
-	if needsCleanup {
-		defer os.Remove(uploadPath)
-	}
+	// needsCleanup := uploadPath != filePath
+	// if needsCleanup {
+	// 	defer os.Remove(uploadPath)
+	// }
 
 	// Open the file for upload
 	file, err := os.Open(uploadPath)

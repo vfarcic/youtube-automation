@@ -12,6 +12,8 @@ REQUIREMENTS:
 
 5. TIMECODES: Keep timestamps exactly as-is (e.g., "0:00", "2:30"). Translate only the label text after each timestamp.
 
+6. SHORT TITLES: If shortTitles array is present, translate each title naturally while keeping them catchy and short (max 100 characters each). Maintain the same array order.
+
 RESPONSE FORMAT:
 Return ONLY valid JSON matching the input structure. No markdown, no explanation.
 
