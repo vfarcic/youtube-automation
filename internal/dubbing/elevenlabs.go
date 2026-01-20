@@ -203,90 +203,109 @@ func (c *Client) createDubFromFileWithCompressor(ctx context.Context, filePath, 
 	// 	defer os.Remove(uploadPath)
 	// }
 
-	// Open the file for upload
-	file, err := os.Open(uploadPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open file: %w", err)
-	}
-	defer file.Close()
+	// Use io.Pipe for streaming upload to avoid loading entire file into memory
+	pr, pw := io.Pipe()
+	writer := multipart.NewWriter(pw)
+	contentType := writer.FormDataContentType()
 
-	// Create multipart form
-	var body bytes.Buffer
-	writer := multipart.NewWriter(&body)
+	// Channel for goroutine errors
+	errCh := make(chan error, 1)
 
-	// Add the video file
-	contentType := getMIMEType(uploadPath)
-	partHeader := make(map[string][]string)
-	partHeader["Content-Disposition"] = []string{fmt.Sprintf(`form-data; name="file"; filename="%s"`, filepath.Base(uploadPath))}
-	partHeader["Content-Type"] = []string{contentType}
+	// Write multipart form in a goroutine
+	go func() {
+		defer pw.Close()
+		defer writer.Close()
 
-	part, err := writer.CreatePart(partHeader)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create form file: %w", err)
-	}
-
-	if _, err := io.Copy(part, file); err != nil {
-		return nil, fmt.Errorf("failed to write file to form: %w", err)
-	}
-
-	// Add target language
-	if err := writer.WriteField("target_lang", targetLang); err != nil {
-		return nil, fmt.Errorf("failed to write target_lang: %w", err)
-	}
-
-	// Add source language if provided
-	if sourceLang != "" {
-		if err := writer.WriteField("source_lang", sourceLang); err != nil {
-			return nil, fmt.Errorf("failed to write source_lang: %w", err)
+		// Open the file for upload
+		file, err := os.Open(uploadPath)
+		if err != nil {
+			errCh <- fmt.Errorf("failed to open file: %w", err)
+			return
 		}
-	}
+		defer file.Close()
 
-	// Add number of speakers
-	numSpeakers := c.config.NumSpeakers
-	if numSpeakers <= 0 {
-		numSpeakers = 1
-	}
-	if err := writer.WriteField("num_speakers", strconv.Itoa(numSpeakers)); err != nil {
-		return nil, fmt.Errorf("failed to write num_speakers: %w", err)
-	}
+		// Add the video file
+		mimeType := getMIMEType(uploadPath)
+		partHeader := make(map[string][]string)
+		partHeader["Content-Disposition"] = []string{fmt.Sprintf(`form-data; name="file"; filename="%s"`, filepath.Base(uploadPath))}
+		partHeader["Content-Type"] = []string{mimeType}
 
-	// Add drop_background_audio
-	if err := writer.WriteField("drop_background_audio", strconv.FormatBool(c.config.DropBackgroundAudio)); err != nil {
-		return nil, fmt.Errorf("failed to write drop_background_audio: %w", err)
-	}
-
-	// Add test mode settings
-	if err := writer.WriteField("watermark", strconv.FormatBool(c.config.TestMode)); err != nil {
-		return nil, fmt.Errorf("failed to write watermark: %w", err)
-	}
-	if err := writer.WriteField("highest_resolution", strconv.FormatBool(!c.config.TestMode)); err != nil {
-		return nil, fmt.Errorf("failed to write highest_resolution: %w", err)
-	}
-
-	// Add start/end time if specified
-	if c.config.StartTime > 0 {
-		if err := writer.WriteField("start_time", strconv.Itoa(c.config.StartTime)); err != nil {
-			return nil, fmt.Errorf("failed to write start_time: %w", err)
+		part, err := writer.CreatePart(partHeader)
+		if err != nil {
+			errCh <- fmt.Errorf("failed to create form file: %w", err)
+			return
 		}
-	}
-	if c.config.EndTime > 0 {
-		if err := writer.WriteField("end_time", strconv.Itoa(c.config.EndTime)); err != nil {
-			return nil, fmt.Errorf("failed to write end_time: %w", err)
+
+		if _, err := io.Copy(part, file); err != nil {
+			errCh <- fmt.Errorf("failed to write file to form: %w", err)
+			return
 		}
-	}
 
-	if err := writer.Close(); err != nil {
-		return nil, fmt.Errorf("failed to close multipart writer: %w", err)
-	}
+		// Add target language
+		if err := writer.WriteField("target_lang", targetLang); err != nil {
+			errCh <- fmt.Errorf("failed to write target_lang: %w", err)
+			return
+		}
 
-	// Create the request
+		// Add source language if provided
+		if sourceLang != "" {
+			if err := writer.WriteField("source_lang", sourceLang); err != nil {
+				errCh <- fmt.Errorf("failed to write source_lang: %w", err)
+				return
+			}
+		}
+
+		// Add number of speakers
+		numSpeakers := c.config.NumSpeakers
+		if numSpeakers <= 0 {
+			numSpeakers = 1
+		}
+		if err := writer.WriteField("num_speakers", strconv.Itoa(numSpeakers)); err != nil {
+			errCh <- fmt.Errorf("failed to write num_speakers: %w", err)
+			return
+		}
+
+		// Add drop_background_audio
+		if err := writer.WriteField("drop_background_audio", strconv.FormatBool(c.config.DropBackgroundAudio)); err != nil {
+			errCh <- fmt.Errorf("failed to write drop_background_audio: %w", err)
+			return
+		}
+
+		// Add test mode settings
+		if err := writer.WriteField("watermark", strconv.FormatBool(c.config.TestMode)); err != nil {
+			errCh <- fmt.Errorf("failed to write watermark: %w", err)
+			return
+		}
+		if err := writer.WriteField("highest_resolution", strconv.FormatBool(!c.config.TestMode)); err != nil {
+			errCh <- fmt.Errorf("failed to write highest_resolution: %w", err)
+			return
+		}
+
+		// Add start/end time if specified
+		if c.config.StartTime > 0 {
+			if err := writer.WriteField("start_time", strconv.Itoa(c.config.StartTime)); err != nil {
+				errCh <- fmt.Errorf("failed to write start_time: %w", err)
+				return
+			}
+		}
+		if c.config.EndTime > 0 {
+			if err := writer.WriteField("end_time", strconv.Itoa(c.config.EndTime)); err != nil {
+				errCh <- fmt.Errorf("failed to write end_time: %w", err)
+				return
+			}
+		}
+
+		errCh <- nil
+	}()
+
+	// Create the request with pipe reader as body (streams data)
 	url := c.baseURL + "/v1/dubbing"
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, &body)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, pr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	req.Header.Set("Content-Type", writer.FormDataContentType())
+	req.Header.Set("Content-Type", contentType)
 	req.Header.Set("xi-api-key", c.apiKey)
 
 	// Execute the request
@@ -295,6 +314,11 @@ func (c *Client) createDubFromFileWithCompressor(ctx context.Context, filePath, 
 		return nil, fmt.Errorf("failed to execute request: %w", err)
 	}
 	defer resp.Body.Close()
+
+	// Check for write errors from the goroutine
+	if writeErr := <-errCh; writeErr != nil {
+		return nil, writeErr
+	}
 
 	// Handle response
 	respBody, err := io.ReadAll(resp.Body)

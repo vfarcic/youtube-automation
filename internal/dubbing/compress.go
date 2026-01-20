@@ -125,7 +125,9 @@ func GetVideoInfoWithExecutor(ctx context.Context, filePath string, executor Com
 	// Parse duration
 	var duration float64
 	if probeResult.Format.Duration != "" {
-		fmt.Sscanf(probeResult.Format.Duration, "%f", &duration)
+		if n, _ := fmt.Sscanf(probeResult.Format.Duration, "%f", &duration); n != 1 {
+			return nil, fmt.Errorf("failed to parse duration: %s", probeResult.Format.Duration)
+		}
 	}
 
 	// Find video stream dimensions

@@ -8,7 +8,7 @@ type Config struct {
 	TestMode            bool // true = watermark + lower resolution (saves credits)
 	StartTime           int  // Start time in seconds (0 = beginning)
 	EndTime             int  // End time in seconds (0 = full video)
-	NumSpeakers         int  // Number of speakers (default: 1)
+	NumSpeakers         int  // Number of speakers (Go zero value is 0; default of 1 applied by config layer)
 	DropBackgroundAudio bool // Whether to drop background audio (default: false)
 }
 
@@ -57,6 +57,11 @@ type errorDetail struct {
 
 // UnmarshalJSON handles both {"detail": "string"} and {"detail": {...}} formats
 func (e *errorDetail) UnmarshalJSON(data []byte) error {
+	// Reset fields to avoid leaking data from previous unmarshals
+	e.Raw = ""
+	e.Status = ""
+	e.Message = ""
+
 	// Try as string first
 	var s string
 	if err := json.Unmarshal(data, &s); err == nil {

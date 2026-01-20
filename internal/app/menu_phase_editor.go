@@ -666,7 +666,6 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 					actionDubbingCheckStatus     = 1000
 					actionDubbingBack            = 1001
 					actionDubbingTranslate       = 1002
-					actionDubbingUpload          = 1003
 					actionDubbingUploadAll       = 1004
 					actionDubbingUploadShortBase = 2000 // 2000 + shortIndex for uploading shorts
 				)
@@ -889,7 +888,11 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 							} else if strings.HasPrefix(key, "es:short") {
 								// Extract short index
 								shortIdxStr := strings.TrimPrefix(key, "es:short")
-								shortIdx, _ := strconv.Atoi(shortIdxStr)
+								shortIdx, parseErr := strconv.Atoi(shortIdxStr)
+								if parseErr != nil {
+									fmt.Println(m.errorStyle.Render(fmt.Sprintf("Invalid short key format: %s", key)))
+									continue
+								}
 								if shortIdx > 0 && shortIdx <= len(updatedVideo.Shorts) {
 									sourcePath = updatedVideo.Shorts[shortIdx-1].FilePath
 								}
@@ -1078,35 +1081,6 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 					} else {
 						fmt.Println(m.orangeStyle.Render(fmt.Sprintf("Uploads finished: %d succeeded, %d failed.", uploadCount, failCount)))
 					}
-
-					videoToEdit = updatedVideo
-					continue
-				}
-
-				if selectedAction == actionDubbingUpload {
-					// Upload dubbed long-form video to YouTube
-					fmt.Println(m.normalStyle.Render("Uploading dubbed long-form video to YouTube..."))
-
-					videoID, err := publishing.UploadDubbedVideo(&updatedVideo, "es")
-					if err != nil {
-						fmt.Println(m.errorStyle.Render(fmt.Sprintf("Upload failed: %v", err)))
-						continue
-					}
-
-					// Save uploaded video ID
-					info := updatedVideo.Dubbing["es"]
-					info.UploadedVideoID = videoID
-					updatedVideo.Dubbing["es"] = info
-
-					// Save to YAML
-					yaml := storage.YAML{}
-					if err := yaml.WriteVideo(updatedVideo, updatedVideo.Path); err != nil {
-						fmt.Println(m.errorStyle.Render(fmt.Sprintf("Failed to save upload info: %v", err)))
-						continue
-					}
-
-					fmt.Println(m.confirmationStyle.Render(fmt.Sprintf("Upload complete! Video ID: %s", videoID)))
-					fmt.Println(m.normalStyle.Render(fmt.Sprintf("URL: %s", publishing.GetYouTubeURL(videoID))))
 
 					videoToEdit = updatedVideo
 					continue

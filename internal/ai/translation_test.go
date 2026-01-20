@@ -110,6 +110,20 @@ func TestTranslateVideoMetadata(t *testing.T) {
 			},
 		},
 		{
+			name: "Partial input - only short titles",
+			input: VideoMetadataInput{
+				ShortTitles: []string{"Short 1", "Short 2"},
+			},
+			targetLanguage: "Spanish",
+			mockResponse:   `{"title": "", "description": "", "tags": "", "timecodes": "", "shortTitles": ["Corto 1", "Corto 2"]}`,
+			wantErr:        false,
+			validateOutput: func(t *testing.T, output *VideoMetadataOutput) {
+				if len(output.ShortTitles) != 2 {
+					t.Errorf("Expected 2 short titles, got %d", len(output.ShortTitles))
+				}
+			},
+		},
+		{
 			name:              "AI returns empty response",
 			input:             validInput,
 			targetLanguage:    "Spanish",

@@ -46,8 +46,8 @@ func TranslateVideoMetadata(ctx context.Context, input VideoMetadataInput, targe
 	}
 
 	// Check if there's anything to translate
-	if input.Title == "" && input.Description == "" && input.Tags == "" && input.Timecodes == "" {
-		return nil, fmt.Errorf("at least one field (title, description, tags, or timecodes) must be provided")
+	if input.Title == "" && input.Description == "" && input.Tags == "" && input.Timecodes == "" && len(input.ShortTitles) == 0 {
+		return nil, fmt.Errorf("at least one field (title, description, tags, timecodes, or shortTitles) must be provided")
 	}
 
 	provider, err := GetAIProvider()

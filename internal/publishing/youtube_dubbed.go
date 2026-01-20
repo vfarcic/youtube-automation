@@ -287,7 +287,7 @@ func calculateShortPublishStatus(mainVideoDate string, shortIndex int) (privacyS
 	if shortDate.After(time.Now()) {
 		// Future date - schedule it with random hour/minute like original shorts
 		schedules := CalculateShortsSchedule(parsedDate, shortIndex+1)
-		if len(schedules) > 0 {
+		if len(schedules) > shortIndex {
 			return "private", FormatScheduleISO(schedules[shortIndex])
 		}
 		return "private", FormatScheduleISO(shortDate)
