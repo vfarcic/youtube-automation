@@ -4,7 +4,7 @@
 **Status**: In Progress
 **Priority**: High
 **Created**: 2025-01-11
-**Last Updated**: 2026-01-12
+**Last Updated**: 2026-01-20
 **Depends On**: None
 
 ---
@@ -54,6 +54,7 @@ Integrate AI-powered video dubbing using ElevenLabs API with automatic metadata 
 ### Must Have (MVP)
 - [x] ElevenLabs API integration: create dubbing job, poll status, download result
 - [x] Spanish dubbing works for local video files using automatic dubbing
+- [x] Smart video compression for files >1GB (auto-compress to fit ElevenLabs limit)
 - [x] Test mode configuration (watermark + lower resolution + segment time control)
 - [x] Claude AI translates title, description, tags, and timecodes to Spanish
 - [ ] Upload dubbed video to separate Spanish YouTube channel
@@ -66,7 +67,7 @@ Integrate AI-powered video dubbing using ElevenLabs API with automatic metadata 
 ### Nice to Have (Future)
 - [ ] Pronunciation dictionary for technical terms (if automatic dubbing mispronounces them)
 - [ ] Support for additional languages (Portuguese, German, French)
-- [x] Dub directly from YouTube video ID (**YouTube URL is now the only method** - local file upload removed)
+- [x] Dub directly from YouTube URL (fallback option - may have reliability issues)
 - [ ] Background polling for dubbing status
 - [ ] Batch dubbing for multiple videos
 - [ ] API endpoints for programmatic dubbing
@@ -80,9 +81,14 @@ Integrate AI-powered video dubbing using ElevenLabs API with automatic metadata 
 // NewClient creates a new ElevenLabs API client
 func NewClient(apiKey string, config Config) *Client
 
-// CreateDubFromURL initiates a dubbing job using a YouTube URL
+// CreateDubFromFile initiates a dubbing job using a local video file
+// POST /v1/dubbing with multipart file upload
+// Automatically compresses video if >1GB using smart compression algorithm
+func (c *Client) CreateDubFromFile(ctx, filePath, sourceLang, targetLang string) (*DubbingJob, error)
+
+// CreateDubFromURL initiates a dubbing job using a YouTube URL (fallback option)
 // POST /v1/dubbing with source_url and target language
-// Video must be public on YouTube - ElevenLabs fetches directly from YouTube
+// Note: May have reliability issues due to YouTube/ElevenLabs restrictions
 func (c *Client) CreateDubFromURL(ctx, youtubeURL, sourceLang, targetLang string) (*DubbingJob, error)
 
 // GetDubbingStatus checks job status
@@ -92,6 +98,24 @@ func (c *Client) GetDubbingStatus(ctx, dubbingID string) (*DubbingJob, error)
 // DownloadDubbedAudio downloads the dubbed video (auto-creates output directory)
 // GET /v1/dubbing/{dubbing_id}/audio/{language_code}
 func (c *Client) DownloadDubbedAudio(ctx, dubbingID, langCode, outputPath string) error
+```
+
+#### 1b. Video Compression (`internal/dubbing/compress.go`)
+```go
+// CompressForDubbing compresses video to fit under 1GB limit while maximizing quality
+// Algorithm:
+//   - If video ≤ 1GB → return original path (no compression needed)
+//   - If video > 1GB and duration ≤ 25 min → 4K at dynamic CRF (calculated to target ~900MB)
+//   - If video > 1GB and duration > 25 min → 1080p at CRF 26
+func CompressForDubbing(ctx context.Context, inputPath string) (outputPath string, err error)
+
+// GetVideoInfo returns video metadata (duration, size, resolution)
+func GetVideoInfo(filePath string) (*VideoInfo, error)
+
+// CalculateOptimalCRF determines the best CRF value to hit target size while maintaining quality
+// CRF range: 23 (high quality) to 30 (more compression)
+// If calculated CRF > 30, switches to 1080p instead
+func CalculateOptimalCRF(duration float64, targetSizeMB int) (crf int, use1080p bool)
 ```
 
 #### 2. Translation Functions (`internal/ai/translation.go`)
@@ -217,15 +241,25 @@ spanishChannel:
 - [x] **MANUAL**: Download credentials as `client_secret_spanish.json`
 - [x] **MANUAL**: Fill in `channelId` in settings.yaml
 
-**Phase 7: Upload Integration** ← Was Phase 4
-- Implement `UploadVideoToSpanishChannel()`
-- Build Spanish descriptions with link to original
-- Store Spanish video ID in YAML
+**Phase 7: Video Compression** ✅
+- [x] Create `internal/dubbing/compress.go` module
+- [x] Implement `GetVideoInfo()` using FFprobe
+- [x] Implement `CalculateOptimalCRF()` algorithm
+- [x] Implement `CompressForDubbing()` using FFmpeg
+- [x] Add `CreateDubFromFile()` method with auto-compression
+- [x] Unit tests for compression logic (81.4% coverage)
+- [x] Integration test with real video files
 
-**Phase 8: Final Testing & Validation** ← Was Phase 6
-- End-to-end testing of complete workflow
-- Test translation accuracy
-- Verify Spanish channel upload works
+**Phase 8: Upload Integration** ← Was Phase 7
+- [ ] Implement `UploadVideoToSpanishChannel()`
+- [ ] Build Spanish descriptions with link to original
+- [ ] Store Spanish video ID in YAML
+
+**Phase 9: Final Testing & Validation** ← Was Phase 8
+- [ ] End-to-end testing of complete workflow
+- [ ] Test translation accuracy
+- [ ] Verify Spanish channel upload works
+- [ ] Test compression with various video sizes
 
 ## Risks & Mitigation
 
@@ -237,6 +271,9 @@ spanishChannel:
 | OAuth complexity (2 channels) | Medium | Medium | Separate credential files; different callback ports |
 | Translation accuracy | Medium | Medium | Review translations before upload; use quality prompts |
 | ElevenLabs API changes | Low | Low | Version-pin API; monitor changelog |
+| FFmpeg not installed | Medium | Low | Check for FFmpeg at startup; provide clear error message |
+| YouTube URL unreliable | Medium | High | Use local file upload as primary; YouTube URL as fallback |
+| Large file compression time | Low | Medium | Show progress; compression is one-time per video |
 
 ## Dependencies
 
@@ -250,12 +287,11 @@ spanishChannel:
 - ElevenLabs Dubbing API (new)
 - YouTube Data API v3 (existing)
 - Claude AI / Azure OpenAI (existing)
+- FFmpeg (new - for video compression)
 
 ## Out of Scope
 
 - API mode endpoints (CLI-only for MVP)
-- ~~Dubbing from YouTube video ID (local files only)~~ → **Implemented: YouTube URL is now the only method**
-- Dubbing from local files (removed - YouTube URL only)
 - Multiple languages (Spanish only for MVP)
 - Custom voice selection (use ElevenLabs auto-detect)
 - Background polling (user-triggered status checks)
@@ -282,12 +318,58 @@ spanishChannel:
 
 - [x] **ElevenLabs API Integration Working**: Create, poll, and download dubbing jobs
 - [x] **Claude Translation Integration**: Title, description, tags, timecodes translation working
-- [ ] **Spanish YouTube Channel Configured**: Channel created, OAuth credentials set up
+- [x] **Spanish YouTube Channel Configured**: Channel created, OAuth credentials set up
+- [x] **Smart Video Compression Working**: Auto-compress large videos to fit 1GB limit
+- [x] **Local File Upload Functional**: Dub from local files with compression support
 - [ ] **Spanish Channel Upload Functional**: Dubbed video uploads with translated metadata
-- [ ] **CLI Menu Integration Complete**: Dubbing workflow in Publishing Details phase
+- [x] **CLI Menu Integration Complete**: Dubbing workflow in Dubbing phase
 - [ ] **End-to-End Workflow Validated**: Full flow tested with real video
 
 ## Progress Log
+
+### 2026-01-20 (Update 10)
+- **Phase 7 Fully Complete**: Integration tested with real video file
+- **CLI Improvements**: Enhanced dubbing workflow UX
+  - Menu now shows `[Local]` or `[YouTube]` indicator next to each video option
+  - Shows source type before user selects, so they know what will happen
+  - Local file is tried first if it exists, falls back to YouTube URL
+  - Clear step-by-step progress messages:
+    - "Step 1/2: Compressing video (file >1GB)..." for large files
+    - "Step 1/1: Uploading to ElevenLabs..." for small files
+  - Updated `menu_phase_editor.go` with `getSourceLabel()` helper function
+- User tested end-to-end with real .mov file - confirmed working
+
+### 2026-01-20 (Update 9)
+- **Phase 7 Complete**: Video Compression Implementation
+  - Created `internal/dubbing/compress.go` with smart compression algorithm
+  - `VideoInfo` struct for video metadata (duration, size, resolution)
+  - `GetVideoInfo()` extracts metadata using FFprobe JSON output
+  - `CalculateOptimalCRF()` determines optimal CRF to hit target size:
+    - Videos ≤1GB: no compression needed
+    - Videos >1GB & ≤25min: 4K at dynamic CRF (target ~900MB)
+    - Videos >1GB & >25min: 1080p at CRF 26
+  - `CompressForDubbing()` orchestrates compression decision and FFmpeg execution
+  - `CommandExecutor` interface for testability (mock FFprobe/FFmpeg in tests)
+  - Added `CreateDubFromFile()` method to `elevenlabs.go` with auto-compression
+  - `getMIMEType()` helper for proper content-type detection
+  - Compressed files cleaned up after successful upload
+  - Created `internal/dubbing/compress_test.go` with comprehensive tests
+  - 81.4% test coverage for dubbing package
+  - All tests passing, build verified
+
+### 2026-01-20 (Update 8)
+- **Decision**: Add local file upload with smart compression (YouTube URL kept as fallback)
+  - **Rationale**: ElevenLabs has reliability issues fetching videos from YouTube due to platform restrictions
+  - **Change**: Add `CreateDubFromFile()` method alongside existing `CreateDubFromURL()`
+  - **Smart Compression Algorithm**:
+    - If video ≤ 1GB → upload as-is, no compression needed
+    - If video > 1GB and duration ≤ ~25 min → compress to 4K at dynamic CRF (maximize quality under 1GB)
+    - If video > 1GB and duration > ~25 min → compress to 1080p at CRF 26 (clean quality)
+  - **Testing Results** (with real videos):
+    - 44.5 min 4K video (17GB) → 1080p @ CRF 26 → ~620MB (clean quality)
+    - 17.6 min 4K video (4.9GB) → 4K @ CRF 24 → ~794MB (excellent quality)
+  - **Impact**: New `internal/dubbing/compress.go` module needed
+  - **Dependencies**: Requires FFmpeg installed on system
 
 ### 2026-01-12 (Update 7)
 - **YouTube URL Dubbing**: Switched from local file upload to YouTube URL
@@ -406,10 +488,13 @@ spanishChannel:
 
 ## Notes
 
-- **Videos must be published on YouTube before dubbing** - ElevenLabs fetches directly from YouTube URL
-- Private/scheduled videos cannot be dubbed (must be public or unlisted)
+- **Two dubbing methods available**: Local file upload (primary) and YouTube URL (fallback)
+- **Local file upload**: Recommended method; videos >1GB are auto-compressed to fit ElevenLabs 1GB limit
+- **YouTube URL**: May have reliability issues due to YouTube/ElevenLabs platform restrictions; kept as fallback
+- **Smart compression**: Maximizes quality within 1GB limit (4K for short videos, 1080p for long videos)
 - Dubbing can take several minutes; async workflow required
 - Spanish channel should use port 8091 for OAuth callback (main channel uses 8090)
 - Keep dubbed video path adjacent to original (e.g., `video_es.mp4`)
 - Link to original English video in Spanish description for cross-promotion
 - Output directory is auto-created when downloading dubbed video
+- Compressed videos stored temporarily; cleaned up after dubbing completes

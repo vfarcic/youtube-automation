@@ -708,10 +708,24 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 				// Build options
 				options := []huh.Option[int]{}
 
+				// Helper to determine source type
+				getSourceLabel := func(localPath, youtubeID string) string {
+					if localPath != "" {
+						if _, err := os.Stat(localPath); err == nil {
+							return "[Local]"
+						}
+					}
+					if youtubeID != "" {
+						return "[YouTube]"
+					}
+					return "[No source]"
+				}
+
 				// Long-form video option
 				longFormStatus := getDubbingStatus("es")
 				if longFormStatus == "Not started" || longFormStatus == "Failed" {
-					options = append(options, huh.NewOption("Dub Long-form Video", actionDubbingLongForm))
+					sourceLabel := getSourceLabel(updatedVideo.UploadVideo, updatedVideo.VideoId)
+					options = append(options, huh.NewOption(fmt.Sprintf("Dub Long-form Video %s", sourceLabel), actionDubbingLongForm))
 				}
 
 				// Short options
@@ -719,9 +733,10 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 					shortKey := fmt.Sprintf("es:short%d", i+1)
 					shortStatus := getDubbingStatus(shortKey)
 					if shortStatus == "Not started" || shortStatus == "Failed" {
-						label := fmt.Sprintf("Dub Short %d: \"%s\"", i+1, short.Title)
-						if len(label) > 50 {
-							label = label[:47] + "..."
+						sourceLabel := getSourceLabel(short.FilePath, short.YouTubeID)
+						label := fmt.Sprintf("Dub Short %d %s: \"%s\"", i+1, sourceLabel, short.Title)
+						if len(label) > 60 {
+							label = label[:57] + "..."
 						}
 						options = append(options, huh.NewOption(label, i+1)) // shorts use index+1 as action
 					}
@@ -961,22 +976,33 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 
 				// Start dubbing for long-form or a short
 				var youtubeID string
+				var localFilePath string
 				var dubbingKey string
 
 				if selectedAction == actionDubbingLongForm {
 					youtubeID = updatedVideo.VideoId
+					localFilePath = updatedVideo.UploadVideo
 					dubbingKey = "es"
 				} else if selectedAction >= 1 && selectedAction <= len(updatedVideo.Shorts) {
 					shortIdx := selectedAction - 1
 					youtubeID = updatedVideo.Shorts[shortIdx].YouTubeID
+					localFilePath = updatedVideo.Shorts[shortIdx].FilePath
 					dubbingKey = fmt.Sprintf("es:short%d", selectedAction)
 				} else {
 					continue
 				}
 
-				// Validate YouTube ID (video must be public on YouTube)
-				if youtubeID == "" {
-					fmt.Println(m.errorStyle.Render("Video must be published on YouTube first. Dubbing uses the YouTube URL."))
+				// Check if local file exists
+				useLocalFile := false
+				if localFilePath != "" {
+					if _, err := os.Stat(localFilePath); err == nil {
+						useLocalFile = true
+					}
+				}
+
+				// Validate we have either local file or YouTube ID
+				if !useLocalFile && youtubeID == "" {
+					fmt.Println(m.errorStyle.Render("No local video file found and video not published on YouTube. Please provide a local file path or publish to YouTube first."))
 					continue
 				}
 
@@ -996,11 +1022,35 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 				}
 				client := dubbing.NewClient(apiKey, dubbingConfig)
 
-				youtubeURL := fmt.Sprintf("https://www.youtube.com/watch?v=%s", youtubeID)
-				fmt.Println(m.normalStyle.Render(fmt.Sprintf("Starting dubbing for %s from YouTube...", dubbingKey)))
-
 				ctx := context.Background()
-				job, err := client.CreateDubFromURL(ctx, youtubeURL, "en", "es")
+				var job *dubbing.DubbingJob
+				var err error
+
+				if useLocalFile {
+					// Try local file first (with auto-compression for files >1GB)
+					fmt.Println(m.normalStyle.Render(fmt.Sprintf("Dubbing %s from local file:", dubbingKey)))
+					fmt.Println(m.normalStyle.Render(fmt.Sprintf("  %s", localFilePath)))
+
+					// Check if compression will be needed
+					needsCompression, _ := dubbing.NeedsCompression(localFilePath)
+					if needsCompression {
+						fmt.Println(m.normalStyle.Render("Step 1/2: Compressing video (file >1GB)... this may take a few minutes"))
+					} else {
+						fmt.Println(m.normalStyle.Render("Step 1/1: Uploading to ElevenLabs..."))
+					}
+
+					job, err = client.CreateDubFromFile(ctx, localFilePath, "en", "es")
+
+					if err == nil && needsCompression {
+						fmt.Println(m.confirmationStyle.Render("Compression complete, upload finished."))
+					}
+				} else {
+					// Fall back to YouTube URL
+					youtubeURL := fmt.Sprintf("https://www.youtube.com/watch?v=%s", youtubeID)
+					fmt.Println(m.normalStyle.Render(fmt.Sprintf("Starting dubbing for %s from YouTube...", dubbingKey)))
+					job, err = client.CreateDubFromURL(ctx, youtubeURL, "en", "es")
+				}
+
 				if err != nil {
 					fmt.Println(m.errorStyle.Render(fmt.Sprintf("Failed to start dubbing: %v", err)))
 					continue
