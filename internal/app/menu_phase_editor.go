@@ -863,7 +863,10 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 					ctx := context.Background()
 
 					for key, info := range updatedVideo.Dubbing {
-						if info.DubbingStatus != "dubbing" {
+						// Process entries that are in progress OR completed but missing the downloaded file
+						needsCheck := info.DubbingStatus == "dubbing"
+						needsRetry := info.DubbingStatus == "dubbed" && info.DubbedVideoPath == ""
+						if !needsCheck && !needsRetry {
 							continue
 						}
 
@@ -912,6 +915,44 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 									info.DubbedVideoPath = outputPath
 									fmt.Println(m.confirmationStyle.Render(fmt.Sprintf("Downloaded to: %s", outputPath)))
 								}
+							} else {
+								fmt.Println(m.orangeStyle.Render(fmt.Sprintf("Cannot download %s: no local source file path configured (dubbing was from YouTube URL)", key)))
+							}
+						} else if needsRetry {
+							// Entry is "dubbed" but missing file - try to download
+							fmt.Println(m.normalStyle.Render(fmt.Sprintf("Retrying download for %s...", key)))
+
+							// Determine source file path for output naming
+							var sourcePath string
+							if key == "es" {
+								sourcePath = updatedVideo.UploadVideo
+							} else if strings.HasPrefix(key, "es:short") {
+								shortIdxStr := strings.TrimPrefix(key, "es:short")
+								shortIdx, parseErr := strconv.Atoi(shortIdxStr)
+								if parseErr != nil {
+									fmt.Println(m.errorStyle.Render(fmt.Sprintf("Invalid short key format: %s", key)))
+									continue
+								}
+								if shortIdx > 0 && shortIdx <= len(updatedVideo.Shorts) {
+									sourcePath = updatedVideo.Shorts[shortIdx-1].FilePath
+								}
+							}
+
+							if sourcePath != "" {
+								dir := filepath.Dir(sourcePath)
+								ext := filepath.Ext(sourcePath)
+								base := strings.TrimSuffix(filepath.Base(sourcePath), ext)
+								outputPath := filepath.Join(dir, base+"_es"+ext)
+
+								err := client.DownloadDubbedAudio(ctx, info.DubbingID, "es", outputPath)
+								if err != nil {
+									fmt.Println(m.errorStyle.Render(fmt.Sprintf("Failed to download %s: %v", key, err)))
+								} else {
+									info.DubbedVideoPath = outputPath
+									fmt.Println(m.confirmationStyle.Render(fmt.Sprintf("Downloaded to: %s", outputPath)))
+								}
+							} else {
+								fmt.Println(m.orangeStyle.Render(fmt.Sprintf("Cannot download %s: no local source file path configured (dubbing was from YouTube URL)", key)))
 							}
 						} else {
 							fmt.Println(m.normalStyle.Render(fmt.Sprintf("%s: %s", key, job.Status)))
