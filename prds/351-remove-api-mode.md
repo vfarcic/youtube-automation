@@ -1,9 +1,9 @@
 # PRD: Remove Unused API Mode
 
 **Issue**: #351
-**Status**: Draft
+**Status**: In Progress
 **Created**: 2025-11-29
-**Last Updated**: 2025-11-29
+**Last Updated**: 2026-01-21
 
 ## Problem Statement
 
@@ -36,14 +36,14 @@ Completely remove all API-related code, configuration, documentation, and tests.
 ## Success Criteria
 
 ### Must Have
-- [ ] Complete removal of `internal/api/` directory
+- [x] Complete removal of `internal/api/` directory
 - [ ] Removal of API-related CLI flags (`--api-enabled`, `--api-port`)
 - [ ] Removal of API-related configuration from `settings.yaml` (if any)
 - [ ] Removal of all API documentation (`docs/api-manual-testing.md`, API sections in README, CLAUDE.md)
-- [ ] Cleanup of main.go to remove API server initialization
+- [x] Cleanup of main.go to remove API server initialization
 - [ ] Service layer remains functional for CLI usage
 - [ ] All existing CLI functionality works after removal
-- [ ] All tests pass after removal
+- [x] All tests pass after removal
 - [ ] No broken references or imports remain
 
 ### Should Have
@@ -139,11 +139,11 @@ Completely remove all API-related code, configuration, documentation, and tests.
 ## Milestones
 
 ### 1. API Code Removal
-- [ ] Remove entire `internal/api/` directory
-- [ ] Remove API imports from `main.go`
-- [ ] Remove API server initialization logic
-- [ ] Fix resulting compilation errors
-- **Validation**: Code compiles without API references
+- [x] Remove entire `internal/api/` directory
+- [x] Remove API imports from `main.go`
+- [x] Remove API server initialization logic
+- [x] Fix resulting compilation errors
+- **Validation**: Code compiles without API references ✅
 
 ### 2. Configuration & Flag Cleanup
 - [ ] Remove API flags from CLI configuration
@@ -245,6 +245,13 @@ None - can be completed independently
 
 ## Progress Log
 
+### 2026-01-21
+- **Milestone 1 Complete**: API Code Removal
+  - Removed entire `internal/api/` directory (5 files)
+  - Simplified `main.go`: removed API import, `startAPIServer()` function, and conditional logic
+  - Removed 7 unused imports from main.go
+  - All tests pass, code compiles successfully
+
 ### 2025-11-29
 - PRD created
 - GitHub issue #351 opened
@@ -253,4 +260,4 @@ None - can be completed independently
 
 ---
 
-**Next Steps**: Begin implementation with Milestone 1 (API Code Removal)
+**Next Steps**: Milestone 2 - Configuration & Flag Cleanup
