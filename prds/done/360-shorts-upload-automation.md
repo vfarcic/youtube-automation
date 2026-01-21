@@ -1,10 +1,11 @@
 # PRD: Shorts Upload Automation
 
 **Issue**: #360
-**Status**: Not Started
+**Status**: Complete
 **Priority**: Medium
 **Created**: 2025-12-16
-**Last Updated**: 2025-12-16
+**Last Updated**: 2026-01-21
+**Completed**: 2026-01-21
 **Depends On**: PRD #339 (AI Shorts Identification) - MVP Complete
 
 ---
@@ -59,20 +60,20 @@ Automate the Shorts upload workflow with:
 ## Success Criteria
 
 ### Must Have (MVP)
-- [ ] Scheduling calculator computes publish dates (1-day intervals from main video date)
-- [ ] Each Short gets randomized publish time (0-23 hours, 0-59 minutes)
-- [ ] CLI "Upload Shorts" workflow shows pending Shorts
-- [ ] User can provide file path for each pending Short
-- [ ] User can skip individual Shorts during upload
-- [ ] Shorts uploaded to YouTube with scheduled publish date
-- [ ] Short descriptions include link to main video
-- [ ] YouTubeID stored in YAML after successful upload
-- [ ] Validation: file paths exist before starting upload
+- [x] Scheduling calculator computes publish dates (1-day intervals from main video date)
+- [x] Each Short gets randomized publish time (0-23 hours, 0-59 minutes)
+- [x] CLI "Upload Shorts" workflow shows pending Shorts
+- [x] User can provide file path for each pending Short
+- [x] User can skip individual Shorts during upload
+- [x] Shorts uploaded to YouTube with scheduled publish date
+- [x] Short descriptions include link to main video
+- [x] YouTubeID stored in YAML after successful upload
+- [x] Validation: file paths exist before starting upload
 
 ### Nice to Have (Future)
 - [ ] API endpoints for programmatic upload
 - [ ] Retry failed uploads
-- [ ] Progress indicator during batch upload
+- [x] Progress indicator during batch upload
 - [ ] Custom description template per Short
 
 ## Technical Scope
@@ -200,12 +201,12 @@ No new configuration needed. Hard-coded values from PRD #339 design decisions:
 
 ## Milestones
 
-- [ ] **Scheduling Calculator Working**: Computes 1-day intervals with randomized times
-- [ ] **CLI Upload Workflow Functional**: File path input, skip support, validation
-- [ ] **YouTube Upload Integration**: Shorts upload with scheduling and descriptions
-- [ ] **YouTubeID Tracking**: IDs stored in YAML after successful upload
-- [ ] **Feature Tested & Validated**: End-to-end testing complete
-- [ ] **Feature Launched**: Available in production
+- [x] **Scheduling Calculator Working**: Computes 1-day intervals with randomized times
+- [x] **CLI Upload Workflow Functional**: File path input, skip support, validation
+- [x] **YouTube Upload Integration**: Shorts upload with scheduling and descriptions
+- [x] **YouTubeID Tracking**: IDs stored in YAML after successful upload
+- [x] **Feature Tested & Validated**: End-to-end testing complete
+- [x] **Feature Launched**: Available in production
 
 ## Progress Log
 
@@ -215,10 +216,31 @@ No new configuration needed. Hard-coded values from PRD #339 design decisions:
 - Scope defined based on pending items from PRD #339
 - Waiting for validation of PRD #339 MVP before implementation
 
+### 2026-01-21
+- PRD closed as complete
+- Feature was implemented as part of PRD #339 work (PR #361)
+- All MVP requirements satisfied
+
 ---
+
+## Implementation Summary
+
+This PRD was implemented alongside PRD #339. The following components were built:
+
+| Component | Location | Description |
+|-----------|----------|-------------|
+| `CalculateShortsSchedule()` | `internal/publishing/scheduler.go` | Computes 1-day intervals with randomized times |
+| `FormatScheduleISO()` | `internal/publishing/scheduler.go` | Formats dates for YouTube API |
+| `UploadShort()` | `internal/publishing/youtube.go:561` | Uploads single Short with scheduling |
+| `BuildShortDescription()` | `internal/publishing/youtube.go:628` | Generates description with main video link |
+| Upload Shorts UI | `internal/app/menu_phase_editor.go:494` | "Upload Shorts" button in publishing phase |
+| Batch upload workflow | `internal/app/menu_phase_editor.go:587-643` | File validation, scheduling, batch upload |
+
+**Tests:**
+- `internal/publishing/scheduler_test.go` - Comprehensive scheduling tests
+- `internal/publishing/youtube_test.go` - Upload validation tests
 
 ## Notes
 
-- This PRD intentionally waits for real-world validation of PRD #339's AI identification feature
-- Learnings from manual uploads will inform design decisions
-- Keep scope minimal for MVP; enhance based on actual usage patterns
+- Feature was naturally incorporated during PRD #339 implementation
+- All core requirements met: scheduling, batch upload, descriptions, tracking
