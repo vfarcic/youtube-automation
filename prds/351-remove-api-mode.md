@@ -3,7 +3,7 @@
 **Issue**: #351
 **Status**: In Progress
 **Created**: 2025-11-29
-**Last Updated**: 2026-01-21
+**Last Updated**: 2026-01-22
 
 ## Problem Statement
 
@@ -37,19 +37,19 @@ Completely remove all API-related code, configuration, documentation, and tests.
 
 ### Must Have
 - [x] Complete removal of `internal/api/` directory
-- [ ] Removal of API-related CLI flags (`--api-enabled`, `--api-port`)
-- [ ] Removal of API-related configuration from `settings.yaml` (if any)
+- [x] Removal of API-related CLI flags (`--api-enabled`, `--api-port`)
+- [x] Removal of API-related configuration from `settings.yaml` (if any)
 - [ ] Removal of all API documentation (`docs/api-manual-testing.md`, API sections in README, CLAUDE.md)
 - [x] Cleanup of main.go to remove API server initialization
-- [ ] Service layer remains functional for CLI usage
-- [ ] All existing CLI functionality works after removal
+- [x] Service layer remains functional for CLI usage
+- [x] All existing CLI functionality works after removal
 - [x] All tests pass after removal
-- [ ] No broken references or imports remain
+- [x] No broken references or imports remain
 
 ### Should Have
 - [ ] Simplification of service layer if it was primarily for API/CLI abstraction
-- [ ] Code coverage maintained at 80% or higher
-- [ ] Git history preserved (no force pushes or history rewriting)
+- [x] Code coverage maintained at 80% or higher
+- [x] Git history preserved (no force pushes or history rewriting)
 
 ### Could Have
 - [ ] Refactoring opportunities identified during removal
@@ -146,10 +146,10 @@ Completely remove all API-related code, configuration, documentation, and tests.
 - **Validation**: Code compiles without API references ✅
 
 ### 2. Configuration & Flag Cleanup
-- [ ] Remove API flags from CLI configuration
-- [ ] Remove API settings from `settings.yaml` (if any)
+- [x] Remove API flags from CLI configuration
+- [x] Remove API settings from `settings.yaml` (if any)
 - [ ] Update configuration documentation
-- **Validation**: CLI runs without API flags; no API config remains
+- **Validation**: CLI runs without API flags; no API config remains ✅
 
 ### 3. Documentation Cleanup
 - [ ] Remove `docs/api-manual-testing.md`
@@ -245,6 +245,16 @@ None - can be completed independently
 
 ## Progress Log
 
+### 2026-01-22
+- **Milestone 2 Complete**: Configuration & Flag Cleanup
+  - Removed `SettingsAPI` struct from `cli.go`
+  - Removed `API` field from `Settings` struct
+  - Removed `--api-port` and `--api-enabled` CLI flags
+  - Removed default API settings block
+  - Removed `api:` section from `settings.yaml`
+  - Verified no dead code remains (go vet passes, no orphaned references)
+  - All tests pass, CLI runs without API flags
+
 ### 2026-01-21
 - **Milestone 1 Complete**: API Code Removal
   - Removed entire `internal/api/` directory (5 files)
@@ -260,4 +270,4 @@ None - can be completed independently
 
 ---
 
-**Next Steps**: Milestone 2 - Configuration & Flag Cleanup
+**Next Steps**: Milestone 3 - Documentation Cleanup
