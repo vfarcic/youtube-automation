@@ -16,11 +16,8 @@ go build -o youtube-release ./cmd/youtube-automation
 # Build for all platforms
 make build
 
-# Run CLI mode (default)
+# Run CLI mode
 ./youtube-release
-
-# Run API server mode
-./youtube-release --api-enabled --api-port 8080
 
 # Clean build artifacts
 make clean
@@ -62,7 +59,7 @@ make bump-major    # Bump major version
 ## Architecture Overview
 
 ### Core System Design
-The YouTube Automation Tool is built around a **phase-based video lifecycle management system** with both CLI and REST API interfaces. Videos progress through 6 distinct phases from idea to post-publish activities.
+The YouTube Automation Tool is built around a **phase-based video lifecycle management system** with a CLI interface. Videos progress through 6 distinct phases from idea to post-publish activities.
 
 ### Key Architectural Components
 
@@ -71,10 +68,9 @@ The YouTube Automation Tool is built around a **phase-based video lifecycle mana
 - **Phase 7**: Sponsored/Blocked videos (special handling)
 - Each phase has specific completion criteria and field requirements
 
-#### 2. Multi-Interface Architecture
+#### 2. CLI Architecture
 - **CLI Mode**: Interactive terminal interface with huh forms (`internal/app/`)
-- **API Mode**: REST server for programmatic access (`internal/api/`)
-- **Shared Core**: Common business logic in `internal/service/` and `internal/storage/`
+- **Core Logic**: Business logic in `internal/service/` and `internal/storage/`
 
 #### 3. Field Completion System
 Uses reflection-based completion tracking via struct tags in `internal/storage/yaml.go`:
@@ -90,7 +86,6 @@ Completion criteria: `filled_only`, `true_only`, `false_only`, `conditional_spon
 
 #### 4. AI Content Generation
 - Integrated Azure OpenAI for titles, descriptions, tags, and tweets
-- Two API approaches: traditional (JSON payload) and optimized (URL parameters)
 - Located in `internal/ai/` with individual modules per content type
 
 #### 5. Publishing Integration
@@ -110,9 +105,9 @@ Completion criteria: `filled_only`, `true_only`, `false_only`, `conditional_spon
 - Individual YAML files per video with complete metadata
 
 #### 2. Service Layer (`internal/service/`)
-- `VideoService`: Unified data operations for CLI and API
+- `VideoService`: Unified data operations for CLI
 - Handles CRUD operations, phase transitions, manuscript processing
-- Abstracts storage details from interfaces
+- Abstracts storage details from the interface
 
 #### 3. Business Logic Layer
 - **Aspect System** (`internal/aspect/`): Dynamic form generation and completion tracking
@@ -121,8 +116,7 @@ Completion criteria: `filled_only`, `true_only`, `false_only`, `conditional_spon
 
 #### 4. Interface Layer
 - **CLI**: Menu-driven interface with phase-specific forms
-- **API**: RESTful endpoints mirroring CLI functionality
-- **Shared Validation**: Both interfaces use identical business rules
+- **Validation**: Business rules enforced through service layer
 
 ### Configuration System
 - `settings.yaml` for global configuration
@@ -150,16 +144,15 @@ When adding new functionality, consider which phase(s) it affects and update:
 - Aspect definitions for dynamic forms
 - Phase transition logic in video manager
 
-#### 2. Interface Consistency
-Both CLI and API should provide identical functionality:
-- Share business logic through service layer
-- Use same validation rules and error handling
-- Maintain feature parity between interfaces
+#### 2. Service Layer Usage
+CLI functionality uses the service layer for business logic:
+- Business logic centralized in service layer
+- Consistent validation rules and error handling
+- Clean separation between UI and data operations
 
 #### 3. AI Integration Pattern
 When adding new AI features:
 - Create dedicated module in `internal/ai/`
-- Provide both traditional (JSON) and optimized (URL params) API endpoints
 - Include proper error handling and retry logic
 
 #### 4. Analytics Pattern (Shared Fetcher)

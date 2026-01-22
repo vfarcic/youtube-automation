@@ -39,7 +39,7 @@ Completely remove all API-related code, configuration, documentation, and tests.
 - [x] Complete removal of `internal/api/` directory
 - [x] Removal of API-related CLI flags (`--api-enabled`, `--api-port`)
 - [x] Removal of API-related configuration from `settings.yaml` (if any)
-- [ ] Removal of all API documentation (`docs/api-manual-testing.md`, API sections in README, CLAUDE.md)
+- [x] Removal of all API documentation (`docs/api-manual-testing.md`, API sections in README, CLAUDE.md)
 - [x] Cleanup of main.go to remove API server initialization
 - [x] Service layer remains functional for CLI usage
 - [x] All existing CLI functionality works after removal
@@ -148,15 +148,15 @@ Completely remove all API-related code, configuration, documentation, and tests.
 ### 2. Configuration & Flag Cleanup
 - [x] Remove API flags from CLI configuration
 - [x] Remove API settings from `settings.yaml` (if any)
-- [ ] Update configuration documentation
+- [x] Update configuration documentation
 - **Validation**: CLI runs without API flags; no API config remains ✅
 
 ### 3. Documentation Cleanup
-- [ ] Remove `docs/api-manual-testing.md`
-- [ ] Remove API sections from `README.md`
-- [ ] Remove API architecture sections from `CLAUDE.md`
-- [ ] Update all examples to show CLI-only usage
-- **Validation**: No API documentation remains; docs are CLI-focused
+- [x] Remove `docs/api-manual-testing.md`
+- [x] Remove API sections from `README.md`
+- [x] Remove API architecture sections from `CLAUDE.md`
+- [x] Update all examples to show CLI-only usage
+- **Validation**: No API documentation remains; docs are CLI-focused ✅
 
 ### 4. Service Layer Review & Simplification
 - [ ] Review `internal/service/video_service.go` for API-specific code
@@ -246,6 +246,13 @@ None - can be completed independently
 ## Progress Log
 
 ### 2026-01-22
+- **Milestone 3 Complete**: Documentation Cleanup
+  - Deleted `docs/api-manual-testing.md` (1,678 lines of API testing documentation)
+  - Deleted `docs/api-optimization-deployment.md` (303 lines of API deployment docs)
+  - Updated `README.md`: removed API mode section, endpoints, frontend integration (~300 lines)
+  - Updated `CLAUDE.md`: removed API server commands, multi-interface architecture, API patterns
+  - All documentation now CLI-focused with no API references
+
 - **Milestone 2 Complete**: Configuration & Flag Cleanup
   - Removed `SettingsAPI` struct from `cli.go`
   - Removed `API` field from `Settings` struct
@@ -270,4 +277,4 @@ None - can be completed independently
 
 ---
 
-**Next Steps**: Milestone 3 - Documentation Cleanup
+**Next Steps**: Milestone 4 - Service Layer Review & Simplification
