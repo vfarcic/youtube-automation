@@ -47,7 +47,7 @@ Completely remove all API-related code, configuration, documentation, and tests.
 - [x] No broken references or imports remain
 
 ### Should Have
-- [ ] Simplification of service layer if it was primarily for API/CLI abstraction
+- [x] Simplification of service layer if it was primarily for API/CLI abstraction
 - [x] Code coverage maintained at 80% or higher
 - [x] Git history preserved (no force pushes or history rewriting)
 
@@ -159,18 +159,18 @@ Completely remove all API-related code, configuration, documentation, and tests.
 - **Validation**: No API documentation remains; docs are CLI-focused ✅
 
 ### 4. Service Layer Review & Simplification
-- [ ] Review `internal/service/video_service.go` for API-specific code
-- [ ] Remove or simplify API-specific logic
-- [ ] Ensure all CLI functionality remains intact
-- [ ] Update service tests if needed
-- **Validation**: Service layer works correctly for CLI; no API artifacts remain
+- [x] Review `internal/service/video_service.go` for API-specific code
+- [x] Remove or simplify API-specific logic
+- [x] Ensure all CLI functionality remains intact
+- [x] Update service tests if needed
+- **Validation**: Service layer works correctly for CLI; no API artifacts remain ✅
 
 ### 5. Testing & Validation
-- [ ] Run full test suite (all tests pass)
+- [x] Run full test suite (all tests pass)
 - [ ] Manual CLI testing of all features
-- [ ] Verify test coverage ≥80%
-- [ ] Check for unused imports or orphaned code
-- [ ] Update any broken tests
+- [x] Verify test coverage ≥80%
+- [x] Check for unused imports or orphaned code
+- [x] Update any broken tests
 - **Validation**: All tests pass, CLI works perfectly, coverage maintained
 
 ## Dependencies
@@ -246,6 +246,22 @@ None - can be completed independently
 ## Progress Log
 
 ### 2026-01-22
+- **Milestone 4 Complete**: Service Layer Review & Simplification
+  - Reviewed `internal/service/video_service.go` for API-specific code
+  - Removed `GetAllVideos()` method (~33 lines) - explicitly designed for API requests
+  - Removed `UpdateVideoPhase()` and 4 supporting methods (~290 lines of reflection-based API field mapping)
+  - Removed unused `reflect` import
+  - Removed ~350 lines of tests for deleted API-specific methods
+  - Updated `TestVideoService_SanitizedNamesIntegration` to use `GetVideosByPhase()` instead of removed `GetAllVideos()`
+  - All tests pass, coverage at 83.6% (above 80% threshold)
+  - Total: ~650 lines of API-specific code removed from service layer
+
+- **Milestone 5 Partial**: Testing & Validation (automated items complete)
+  - Full test suite passes
+  - Coverage verified at 83.6%
+  - No unused imports or orphaned code (go vet passes)
+  - Manual CLI testing still pending
+
 - **Milestone 3 Complete**: Documentation Cleanup
   - Deleted `docs/api-manual-testing.md` (1,678 lines of API testing documentation)
   - Deleted `docs/api-optimization-deployment.md` (303 lines of API deployment docs)
@@ -277,4 +293,4 @@ None - can be completed independently
 
 ---
 
-**Next Steps**: Milestone 4 - Service Layer Review & Simplification
+**Next Steps**: Milestone 5 - Manual CLI testing of all features (final item)
