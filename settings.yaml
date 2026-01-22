@@ -27,11 +27,6 @@ videoDefaults:
   language: "en"
   audioLanguage: "en"
 
-# Added for PRD: REST API Configuration
-api:
-  port: 8080
-  enabled: false
-
 slack:
   targetChannelIDs:
     - "C0123EXAMPLE1" # Placeholder: e.g., #announcements
