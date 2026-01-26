@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -28,114 +29,85 @@ func (m *MockCommandExecutor) ExecuteCommandWithStderr(ctx context.Context, name
 	return nil, nil, nil
 }
 
-func TestCalculateOptimalCRF(t *testing.T) {
+func TestCalculateCompressionParams(t *testing.T) {
 	tests := []struct {
-		name          string
-		durationSec   float64
-		currentSizeMB float64
-		targetSizeMB  int
-		wantCRF       int
-		wantUse1080p  bool
+		name             string
+		durationSec      float64
+		targetSizeBytes  int64
+		wantUse1080p     bool
+		wantMinBitrate   int // minimum expected bitrate
+		wantMaxBitrate   int // maximum expected bitrate
 	}{
 		{
-			name:          "small file no compression needed",
-			durationSec:   600, // 10 min
-			currentSizeMB: 500,
-			targetSizeMB:  900,
-			wantCRF:       MinCRF,
-			wantUse1080p:  false,
+			name:            "short video high bitrate keeps 4K",
+			durationSec:     600, // 10 min
+			targetSizeBytes: 900 * 1024 * 1024,
+			wantUse1080p:    false,
+			wantMinBitrate:  10000000, // ~10+ Mbps for 10 min video at 900MB
+			wantMaxBitrate:  15000000,
 		},
 		{
-			name:          "moderate compression 2x ratio",
-			durationSec:   600, // 10 min
-			currentSizeMB: 1800,
-			targetSizeMB:  900,
-			wantCRF:       29, // 23 + 6 (log2(2) * 6)
-			wantUse1080p:  false,
+			name:            "medium video moderate bitrate keeps 4K",
+			durationSec:     1800, // 30 min
+			targetSizeBytes: 900 * 1024 * 1024,
+			wantUse1080p:    false,
+			wantMinBitrate:  3500000, // ~4 Mbps for 30 min video at 900MB
+			wantMaxBitrate:  5000000,
 		},
 		{
-			name:          "high compression 4x ratio",
-			durationSec:   600, // 10 min
-			currentSizeMB: 3600,
-			targetSizeMB:  900,
-			wantCRF:       DefaultCRF1080p,
-			wantUse1080p:  true, // CRF would be 35, exceeds max
+			name:            "long video low bitrate uses 1080p",
+			durationSec:     7200, // 2 hours
+			targetSizeBytes: 900 * 1024 * 1024,
+			wantUse1080p:    true, // below 2 Mbps threshold
+			wantMinBitrate:  800000,
+			wantMaxBitrate:  1200000,
 		},
 		{
-			name:          "long video always 1080p",
-			durationSec:   1800, // 30 min (> 25 min threshold)
-			currentSizeMB: 1000,
-			targetSizeMB:  900,
-			wantCRF:       DefaultCRF1080p,
-			wantUse1080p:  true,
+			name:            "very long video very low bitrate uses 1080p",
+			durationSec:     14400, // 4 hours
+			targetSizeBytes: 900 * 1024 * 1024,
+			wantUse1080p:    true,
+			wantMinBitrate:  300000,
+			wantMaxBitrate:  600000,
 		},
 		{
-			name:          "exactly at 25 min threshold",
-			durationSec:   1500, // exactly 25 min
-			currentSizeMB: 1800,
-			targetSizeMB:  900,
-			wantCRF:       29,
-			wantUse1080p:  false,
-		},
-		{
-			name:          "just over 25 min threshold",
-			durationSec:   1501, // just over 25 min
-			currentSizeMB: 1800,
-			targetSizeMB:  900,
-			wantCRF:       DefaultCRF1080p,
-			wantUse1080p:  true,
-		},
-		{
-			name:          "very large file needs 1080p",
-			durationSec:   900, // 15 min
-			currentSizeMB: 17000,
-			targetSizeMB:  900,
-			wantCRF:       DefaultCRF1080p,
-			wantUse1080p:  true,
-		},
-		{
-			name:          "borderline compression 1.5x ratio",
-			durationSec:   600,
-			currentSizeMB: 1350,
-			targetSizeMB:  900,
-			wantCRF:       26, // 23 + ~3 (log2(1.5) * 6)
-			wantUse1080p:  false,
+			name:            "1 hour video borderline uses 1080p",
+			durationSec:     3600, // 1 hour - bitrate ~2 Mbps, borderline
+			targetSizeBytes: 900 * 1024 * 1024,
+			wantUse1080p:    true, // just under 2 Mbps threshold
+			wantMinBitrate:  1800000,
+			wantMaxBitrate:  2100000,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotCRF, gotUse1080p := CalculateOptimalCRF(tt.durationSec, tt.currentSizeMB, tt.targetSizeMB)
+			params := CalculateCompressionParams(tt.durationSec, tt.targetSizeBytes)
 
-			if gotUse1080p != tt.wantUse1080p {
-				t.Errorf("use1080p = %v, want %v", gotUse1080p, tt.wantUse1080p)
+			if params.Use1080p != tt.wantUse1080p {
+				t.Errorf("Use1080p = %v, want %v", params.Use1080p, tt.wantUse1080p)
 			}
 
-			if gotCRF != tt.wantCRF {
-				t.Errorf("crf = %d, want %d", gotCRF, tt.wantCRF)
+			if params.VideoBitrate < tt.wantMinBitrate || params.VideoBitrate > tt.wantMaxBitrate {
+				t.Errorf("VideoBitrate = %d, want between %d and %d", params.VideoBitrate, tt.wantMinBitrate, tt.wantMaxBitrate)
 			}
 		})
 	}
 }
 
-func TestLog2(t *testing.T) {
-	tests := []struct {
-		input float64
-		want  float64
-	}{
-		{1, 0},
-		{2, 1},
-		{4, 2},
-		{8, 3},
-		{0, 0},
-		{-1, 0},
-	}
+func TestCalculateCompressionParams_BitrateCalculation(t *testing.T) {
+	// Test the exact bitrate calculation
+	// For 900MB target and 1800 seconds (30 min):
+	// Total bitrate = (900 * 1024 * 1024 * 8) / 1800 = 4,194,304 bps
+	// Video bitrate = 4,194,304 - 128,000 = 4,066,304 bps
 
-	for _, tt := range tests {
-		got := log2(tt.input)
-		if got != tt.want {
-			t.Errorf("log2(%f) = %f, want %f", tt.input, got, tt.want)
-		}
+	params := CalculateCompressionParams(1800, 900*1024*1024)
+
+	expectedTotalBitrate := int((float64(900*1024*1024) * 8) / 1800)
+	expectedVideoBitrate := expectedTotalBitrate - AudioBitrate
+
+	if params.VideoBitrate != expectedVideoBitrate {
+		t.Errorf("VideoBitrate = %d, want %d", params.VideoBitrate, expectedVideoBitrate)
 	}
 }
 
@@ -271,13 +243,13 @@ func TestGetVideoInfoWithExecutor(t *testing.T) {
 
 func TestCompressForDubbingWithExecutor(t *testing.T) {
 	tests := []struct {
-		name               string
-		fileSize           int64
-		ffprobeOutput      string
-		ffmpegErr          error
-		wantCompressed     bool
-		wantErr            bool
-		wantErrType        error
+		name                 string
+		fileSize             int64
+		ffprobeOutput        string
+		ffmpegErr            error
+		wantCompressed       bool
+		wantErr              bool
+		wantErrType          error
 		createCompressedFile bool
 	}{
 		{
@@ -342,18 +314,20 @@ func TestCompressForDubbingWithExecutor(t *testing.T) {
 			}
 			f.Close()
 
+			ffmpegCallCount := 0
 			mock := &MockCommandExecutor{
 				ExecuteCommandFunc: func(ctx context.Context, name string, args ...string) ([]byte, error) {
 					// ffprobe call
 					return []byte(tt.ffprobeOutput), nil
 				},
 				ExecuteCommandWithStderrFunc: func(ctx context.Context, name string, args ...string) ([]byte, []byte, error) {
-					// ffmpeg call
+					// ffmpeg call (two-pass, so called twice)
+					ffmpegCallCount++
 					if tt.ffmpegErr != nil {
 						return nil, []byte("error output"), tt.ffmpegErr
 					}
-					// Create the compressed output file if requested
-					if tt.createCompressedFile {
+					// Create the compressed output file on second pass
+					if tt.createCompressedFile && ffmpegCallCount == 2 {
 						outputPath := filepath.Join(tmpDir, "input_compressed.mp4")
 						// Create a file under 1GB
 						f, _ := os.Create(outputPath)
@@ -394,7 +368,124 @@ func TestCompressForDubbingWithExecutor(t *testing.T) {
 	}
 }
 
-func TestCompressForDubbingWithExecutor_LongVideo(t *testing.T) {
+func TestCompressForDubbingWithExecutor_TwoPassEncoding(t *testing.T) {
+	tmpDir := t.TempDir()
+	inputPath := filepath.Join(tmpDir, "video.mp4")
+
+	// Create a 2GB file
+	f, _ := os.Create(inputPath)
+	f.Truncate(2 * 1024 * 1024 * 1024)
+	f.Close()
+
+	var ffmpegCalls [][]string
+	mock := &MockCommandExecutor{
+		ExecuteCommandFunc: func(ctx context.Context, name string, args ...string) ([]byte, error) {
+			// Return a 10 min video (short enough for 4K)
+			return []byte(`{
+				"format": {"duration": "600", "size": "2147483648"},
+				"streams": [{"width": 3840, "height": 2160}]
+			}`), nil
+		},
+		ExecuteCommandWithStderrFunc: func(ctx context.Context, name string, args ...string) ([]byte, []byte, error) {
+			ffmpegCalls = append(ffmpegCalls, args)
+			// Create compressed file on second call
+			if len(ffmpegCalls) == 2 {
+				outputPath := filepath.Join(tmpDir, "video_compressed.mp4")
+				f, _ := os.Create(outputPath)
+				f.Truncate(800 * 1024 * 1024)
+				f.Close()
+			}
+			return nil, nil, nil
+		},
+	}
+
+	_, err := CompressForDubbingWithExecutor(context.Background(), inputPath, mock)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Verify two-pass encoding
+	if len(ffmpegCalls) != 2 {
+		t.Fatalf("expected 2 ffmpeg calls (two-pass), got %d", len(ffmpegCalls))
+	}
+
+	// Verify pass 1 uses -pass 1 and outputs to /dev/null
+	pass1Found := false
+	nullOutputFound := false
+	for i, arg := range ffmpegCalls[0] {
+		if arg == "-pass" && i+1 < len(ffmpegCalls[0]) && ffmpegCalls[0][i+1] == "1" {
+			pass1Found = true
+		}
+		if arg == "/dev/null" {
+			nullOutputFound = true
+		}
+	}
+	if !pass1Found {
+		t.Error("pass 1 did not include -pass 1")
+	}
+	if !nullOutputFound {
+		t.Error("pass 1 did not output to /dev/null")
+	}
+
+	// Verify pass 2 uses -pass 2
+	pass2Found := false
+	for i, arg := range ffmpegCalls[1] {
+		if arg == "-pass" && i+1 < len(ffmpegCalls[1]) && ffmpegCalls[1][i+1] == "2" {
+			pass2Found = true
+		}
+	}
+	if !pass2Found {
+		t.Error("pass 2 did not include -pass 2")
+	}
+}
+
+func TestCompressForDubbingWithExecutor_4KPreserved(t *testing.T) {
+	tmpDir := t.TempDir()
+	inputPath := filepath.Join(tmpDir, "short_4k.mp4")
+
+	// Create a 2GB file
+	f, _ := os.Create(inputPath)
+	f.Truncate(2 * 1024 * 1024 * 1024)
+	f.Close()
+
+	var ffmpegArgs []string
+	mock := &MockCommandExecutor{
+		ExecuteCommandFunc: func(ctx context.Context, name string, args ...string) ([]byte, error) {
+			// Return a 10 min 4K video - should preserve 4K at ~12 Mbps
+			return []byte(`{
+				"format": {"duration": "600", "size": "2147483648"},
+				"streams": [{"width": 3840, "height": 2160}]
+			}`), nil
+		},
+		ExecuteCommandWithStderrFunc: func(ctx context.Context, name string, args ...string) ([]byte, []byte, error) {
+			ffmpegArgs = args // Capture second pass args
+			outputPath := filepath.Join(tmpDir, "short_4k_compressed.mp4")
+			f, _ := os.Create(outputPath)
+			f.Truncate(800 * 1024 * 1024)
+			f.Close()
+			return nil, nil, nil
+		},
+	}
+
+	outputPath, err := CompressForDubbingWithExecutor(context.Background(), inputPath, mock)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Verify 4K is preserved (no scale filter)
+	for _, arg := range ffmpegArgs {
+		if strings.Contains(arg, "scale=1920:1080") {
+			t.Error("short 4K video should NOT be downscaled to 1080p")
+		}
+	}
+
+	expectedPath := filepath.Join(tmpDir, "short_4k_compressed.mp4")
+	if outputPath != expectedPath {
+		t.Errorf("outputPath = %s, want %s", outputPath, expectedPath)
+	}
+}
+
+func TestCompressForDubbingWithExecutor_LongVideoDownscaled(t *testing.T) {
 	tmpDir := t.TempDir()
 	inputPath := filepath.Join(tmpDir, "long_video.mp4")
 
@@ -406,15 +497,14 @@ func TestCompressForDubbingWithExecutor_LongVideo(t *testing.T) {
 	var ffmpegArgs []string
 	mock := &MockCommandExecutor{
 		ExecuteCommandFunc: func(ctx context.Context, name string, args ...string) ([]byte, error) {
-			// Return a 30 min video (over 25 min threshold)
+			// Return a 2 hour video - bitrate ~1 Mbps, should downscale
 			return []byte(`{
-				"format": {"duration": "1800", "size": "2147483648"},
+				"format": {"duration": "7200", "size": "2147483648"},
 				"streams": [{"width": 3840, "height": 2160}]
 			}`), nil
 		},
 		ExecuteCommandWithStderrFunc: func(ctx context.Context, name string, args ...string) ([]byte, []byte, error) {
 			ffmpegArgs = args
-			// Create compressed file
 			outputPath := filepath.Join(tmpDir, "long_video_compressed.mp4")
 			f, _ := os.Create(outputPath)
 			f.Truncate(600 * 1024 * 1024)
@@ -438,7 +528,7 @@ func TestCompressForDubbingWithExecutor_LongVideo(t *testing.T) {
 		}
 	}
 	if !foundScale {
-		t.Error("expected 1080p scaling for long video")
+		t.Error("expected 1080p scaling for long video with low bitrate")
 	}
 
 	expectedPath := filepath.Join(tmpDir, "long_video_compressed.mp4")
@@ -551,20 +641,14 @@ func TestConstants(t *testing.T) {
 	if MaxFileSizeBytes != 1024*1024*1024 {
 		t.Errorf("MaxFileSizeBytes = %d, want 1GB", MaxFileSizeBytes)
 	}
-	if TargetSizeMB != 900 {
-		t.Errorf("TargetSizeMB = %d, want 900", TargetSizeMB)
+	if TargetSizeBytes != 900*1024*1024 {
+		t.Errorf("TargetSizeBytes = %d, want 900MB", TargetSizeBytes)
 	}
-	if MaxDurationFor4K != 25*60 {
-		t.Errorf("MaxDurationFor4K = %d, want 1500 (25 min)", MaxDurationFor4K)
+	if AudioBitrate != 128000 {
+		t.Errorf("AudioBitrate = %d, want 128000", AudioBitrate)
 	}
-	if DefaultCRF1080p != 26 {
-		t.Errorf("DefaultCRF1080p = %d, want 26", DefaultCRF1080p)
-	}
-	if MinCRF != 23 {
-		t.Errorf("MinCRF = %d, want 23", MinCRF)
-	}
-	if MaxCRF != 30 {
-		t.Errorf("MaxCRF = %d, want 30", MaxCRF)
+	if MinVideoBitrate != 500000 {
+		t.Errorf("MinVideoBitrate = %d, want 500000", MinVideoBitrate)
 	}
 }
 
@@ -591,5 +675,19 @@ func TestVideoInfoStruct(t *testing.T) {
 	}
 	if info.FilePath != "/path/to/video.mp4" {
 		t.Errorf("FilePath = %s, want /path/to/video.mp4", info.FilePath)
+	}
+}
+
+func TestCompressionParamsStruct(t *testing.T) {
+	params := CompressionParams{
+		VideoBitrate: 5000000,
+		Use1080p:     false,
+	}
+
+	if params.VideoBitrate != 5000000 {
+		t.Errorf("VideoBitrate = %d, want 5000000", params.VideoBitrate)
+	}
+	if params.Use1080p != false {
+		t.Errorf("Use1080p = %v, want false", params.Use1080p)
 	}
 }

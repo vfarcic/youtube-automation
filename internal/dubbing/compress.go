@@ -15,16 +15,12 @@ import (
 const (
 	// MaxFileSizeBytes is the ElevenLabs file size limit (1GB)
 	MaxFileSizeBytes = 1024 * 1024 * 1024
-	// TargetSizeMB is the target compressed size (~900MB to stay safely under 1GB)
-	TargetSizeMB = 900
-	// MaxDurationFor4K is the max duration (seconds) where 4K compression is attempted
-	MaxDurationFor4K = 25 * 60 // 25 minutes
-	// DefaultCRF1080p is the CRF used for 1080p compression
-	DefaultCRF1080p = 26
-	// MinCRF is the minimum CRF (highest quality)
-	MinCRF = 23
-	// MaxCRF is the maximum CRF before switching to 1080p
-	MaxCRF = 30
+	// TargetSizeBytes is the target compressed size (~900MB to stay safely under 1GB)
+	TargetSizeBytes = 900 * 1024 * 1024
+	// AudioBitrate is the audio bitrate in bits per second
+	AudioBitrate = 128000
+	// MinVideoBitrate is the minimum video bitrate (500 kbps) below which we downscale
+	MinVideoBitrate = 500000
 )
 
 // Errors returned by compression functions
@@ -149,55 +145,46 @@ func GetVideoInfoWithExecutor(ctx context.Context, filePath string, executor Com
 	}, nil
 }
 
-// CalculateOptimalCRF determines the best CRF value to hit target size while maintaining quality
-// CRF range: 23 (high quality) to 30 (more compression)
-// Returns crf value and whether to use 1080p instead of 4K
-func CalculateOptimalCRF(durationSec float64, currentSizeMB float64, targetSizeMB int) (crf int, use1080p bool) {
-	// For longer videos, always use 1080p
-	if durationSec > MaxDurationFor4K {
-		return DefaultCRF1080p, true
-	}
-
-	// Calculate compression ratio needed
-	compressionRatio := currentSizeMB / float64(targetSizeMB)
-
-	// Estimate CRF based on compression ratio
-	// CRF increases logarithmically with compression ratio
-	// Each +6 CRF roughly halves the file size
-	if compressionRatio <= 1 {
-		return MinCRF, false // No compression needed, use high quality
-	}
-
-	// Calculate CRF: start at 23, add based on how much compression is needed
-	// log2(compressionRatio) * 6 gives us the CRF increase needed
-	crfIncrease := int(log2(compressionRatio) * 6)
-	crf = MinCRF + crfIncrease
-
-	// If CRF would exceed max, switch to 1080p
-	if crf > MaxCRF {
-		return DefaultCRF1080p, true
-	}
-
-	return crf, false
+// CompressionParams holds the parameters for video compression
+type CompressionParams struct {
+	VideoBitrate int  // bits per second
+	Use1080p     bool // whether to downscale to 1080p
 }
 
-// log2 calculates log base 2
-func log2(x float64) float64 {
-	if x <= 0 {
-		return 0
+// CalculateCompressionParams determines the optimal bitrate and resolution to hit target size
+// Prefers original resolution (4K) and only downscales if bitrate would be too low for quality
+func CalculateCompressionParams(durationSec float64, targetSizeBytes int64) CompressionParams {
+	// Calculate total bitrate needed for target size
+	// bitrate = (size_in_bits) / duration_seconds
+	totalBitrate := int((float64(targetSizeBytes) * 8) / durationSec)
+
+	// Subtract audio bitrate to get video bitrate
+	videoBitrate := totalBitrate - AudioBitrate
+
+	// If video bitrate is too low for acceptable 4K quality, downscale to 1080p
+	// 1080p looks good at lower bitrates than 4K
+	if videoBitrate < MinVideoBitrate {
+		// Even for 1080p, use whatever bitrate we can get
+		return CompressionParams{
+			VideoBitrate: videoBitrate,
+			Use1080p:     true,
+		}
 	}
-	// log2(x) = ln(x) / ln(2)
-	// Using approximation: count how many times we can divide by 2
-	result := 0.0
-	for x >= 2 {
-		x /= 2
-		result++
+
+	// For 4K, we want at least ~2 Mbps for decent quality
+	// If bitrate is below 2 Mbps, 1080p will look better than low-bitrate 4K
+	const min4KBitrate = 2000000 // 2 Mbps
+	if videoBitrate < min4KBitrate {
+		return CompressionParams{
+			VideoBitrate: videoBitrate,
+			Use1080p:     true,
+		}
 	}
-	// Add fractional part
-	if x > 1 {
-		result += (x - 1)
+
+	return CompressionParams{
+		VideoBitrate: videoBitrate,
+		Use1080p:     false,
 	}
-	return result
 }
 
 // CompressForDubbing compresses video to fit under 1GB limit while maximizing quality
@@ -207,6 +194,7 @@ func CompressForDubbing(ctx context.Context, inputPath string) (string, error) {
 }
 
 // CompressForDubbingWithExecutor compresses video using a custom executor (for testing)
+// Uses two-pass bitrate encoding to maximize quality while hitting target size
 func CompressForDubbingWithExecutor(ctx context.Context, inputPath string, executor CommandExecutor) (string, error) {
 	// Get video info
 	info, err := GetVideoInfoWithExecutor(ctx, inputPath, executor)
@@ -219,76 +207,78 @@ func CompressForDubbingWithExecutor(ctx context.Context, inputPath string, execu
 		return inputPath, nil
 	}
 
-	// Calculate compression parameters
-	currentSizeMB := float64(info.Size) / (1024 * 1024)
-	crf, use1080p := CalculateOptimalCRF(info.Duration, currentSizeMB, TargetSizeMB)
+	// Calculate compression parameters (bitrate-based for precise size control)
+	params := CalculateCompressionParams(info.Duration, TargetSizeBytes)
 
 	// Build output path
 	ext := filepath.Ext(inputPath)
 	baseName := strings.TrimSuffix(filepath.Base(inputPath), ext)
 	outputPath := filepath.Join(filepath.Dir(inputPath), baseName+"_compressed.mp4")
 
-	// Build FFmpeg arguments
-	args := []string{
+	// Create temp directory for two-pass log files
+	tempDir := filepath.Dir(inputPath)
+	passLogFile := filepath.Join(tempDir, "ffmpeg2pass")
+
+	// Two-pass encoding for best quality at target bitrate
+	// Pass 1: Analyze video (output to null)
+	pass1Args := []string{
+		"-y",
 		"-i", inputPath,
 		"-c:v", "libx264",
-		"-crf", fmt.Sprintf("%d", crf),
+		"-b:v", fmt.Sprintf("%d", params.VideoBitrate),
 		"-preset", "medium",
-		"-c:a", "aac",
-		"-b:a", "128k",
+		"-pass", "1",
+		"-passlogfile", passLogFile,
+		"-an", // No audio in first pass
 	}
 
-	// Add resolution scaling if using 1080p
-	if use1080p {
-		args = append(args, "-vf", "scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2")
+	if params.Use1080p {
+		pass1Args = append(pass1Args, "-vf", "scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2")
 	}
 
-	// Add output file (overwrite if exists)
-	args = append(args, "-y", outputPath)
+	// Output to null device for first pass
+	pass1Args = append(pass1Args, "-f", "null", "/dev/null")
 
-	// Execute FFmpeg
-	_, stderr, err := executor.ExecuteCommandWithStderr(ctx, "ffmpeg", args...)
+	_, stderr, err := executor.ExecuteCommandWithStderr(ctx, "ffmpeg", pass1Args...)
 	if err != nil {
 		if isCommandNotFound(err) {
 			return "", ErrFFmpegNotFound
 		}
-		return "", fmt.Errorf("%w: %s", ErrCompressionFailed, string(stderr))
+		return "", fmt.Errorf("%w (pass 1): %s", ErrCompressionFailed, string(stderr))
 	}
 
-	// Verify output file exists and is under the limit
-	outputInfo, err := os.Stat(outputPath)
-	if err != nil {
-		return "", fmt.Errorf("compressed file not created: %w", err)
-	}
-
-	if outputInfo.Size() > MaxFileSizeBytes {
-		// Compression didn't achieve target - try again with 1080p if we haven't already
-		if !use1080p {
-			os.Remove(outputPath) // Clean up failed attempt
-			return compressTo1080p(ctx, inputPath, outputPath, executor)
-		}
-		// Already tried 1080p, return what we have (it's closer to the limit)
-	}
-
-	return outputPath, nil
-}
-
-// compressTo1080p forces 1080p compression when 4K compression didn't achieve target
-func compressTo1080p(ctx context.Context, inputPath, outputPath string, executor CommandExecutor) (string, error) {
-	args := []string{
+	// Pass 2: Actual encoding with target bitrate
+	pass2Args := []string{
+		"-y",
 		"-i", inputPath,
 		"-c:v", "libx264",
-		"-crf", fmt.Sprintf("%d", DefaultCRF1080p),
+		"-b:v", fmt.Sprintf("%d", params.VideoBitrate),
 		"-preset", "medium",
-		"-vf", "scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2",
+		"-pass", "2",
+		"-passlogfile", passLogFile,
 		"-c:a", "aac",
 		"-b:a", "128k",
-		"-y", outputPath,
 	}
 
-	_, stderr, err := executor.ExecuteCommandWithStderr(ctx, "ffmpeg", args...)
+	if params.Use1080p {
+		pass2Args = append(pass2Args, "-vf", "scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2")
+	}
+
+	pass2Args = append(pass2Args, outputPath)
+
+	_, stderr, err = executor.ExecuteCommandWithStderr(ctx, "ffmpeg", pass2Args...)
+	// Clean up pass log files regardless of outcome
+	os.Remove(passLogFile + "-0.log")
+	os.Remove(passLogFile + "-0.log.mbtree")
+
 	if err != nil {
-		return "", fmt.Errorf("%w: %s", ErrCompressionFailed, string(stderr))
+		return "", fmt.Errorf("%w (pass 2): %s", ErrCompressionFailed, string(stderr))
+	}
+
+	// Verify output file exists
+	_, err = os.Stat(outputPath)
+	if err != nil {
+		return "", fmt.Errorf("compressed file not created: %w", err)
 	}
 
 	return outputPath, nil
