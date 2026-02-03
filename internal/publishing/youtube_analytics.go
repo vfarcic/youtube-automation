@@ -506,3 +506,245 @@ func isShort(duration string) bool {
 	totalSeconds := hours*3600 + minutes*60 + seconds
 	return totalSeconds <= 60
 }
+
+// ChannelDemographics holds age and gender distribution data for sponsor page analytics
+type ChannelDemographics struct {
+	AgeGroups []AgeGroupData
+	Gender    []GenderData
+}
+
+// AgeGroupData represents viewer percentage for a specific age group
+type AgeGroupData struct {
+	AgeGroup   string  // "age13-17", "age18-24", "age25-34", "age35-44", "age45-54", "age55-64", "age65-"
+	Percentage float64 // viewerPercentage (0-100)
+}
+
+// GenderData represents viewer percentage for a specific gender
+type GenderData struct {
+	Gender     string  // "male", "female", "user_specified"
+	Percentage float64 // viewerPercentage (0-100)
+}
+
+// GeographicDistribution holds top countries by views
+type GeographicDistribution struct {
+	Countries []CountryData
+}
+
+// CountryData represents view data for a specific country
+type CountryData struct {
+	CountryCode string  // ISO 3166-1 alpha-2 code (e.g., "US", "GB", "IN")
+	Views       int64   // Total views from this country
+	Percentage  float64 // Percentage of total views (calculated)
+}
+
+// ChannelStatistics holds channel-level metrics from YouTube Data API
+type ChannelStatistics struct {
+	SubscriberCount   int64
+	TotalViews        int64
+	VideoCount        int64
+	HiddenSubscribers bool // true if channel hides subscriber count
+}
+
+// GetChannelDemographics fetches age and gender distribution from YouTube Analytics API.
+// Data is aggregated over the last 90 days for statistical significance.
+//
+// Returns:
+//   - ChannelDemographics: Age and gender distribution data
+//   - error: Any error encountered during the API call
+func GetChannelDemographics(ctx context.Context) (ChannelDemographics, error) {
+	client := getClient(ctx)
+
+	analyticsService, err := youtubeanalytics.NewService(ctx, option.WithHTTPClient(client))
+	if err != nil {
+		return ChannelDemographics{}, fmt.Errorf("failed to create YouTube Analytics service: %w", err)
+	}
+
+	// Use last 90 days for statistical significance
+	endDate := time.Now()
+	startDate := endDate.AddDate(0, 0, -90)
+	startDateStr := startDate.Format("2006-01-02")
+	endDateStr := endDate.Format("2006-01-02")
+
+	channelID := configuration.GlobalSettings.YouTube.ChannelId
+	if channelID == "" {
+		return ChannelDemographics{}, fmt.Errorf("YouTube channel ID not configured in settings.yaml")
+	}
+
+	// Fetch demographics data with ageGroup and gender dimensions
+	analyticsCall := analyticsService.Reports.Query().
+		Ids("channel==" + channelID).
+		StartDate(startDateStr).
+		EndDate(endDateStr).
+		Dimensions("ageGroup,gender").
+		Metrics("viewerPercentage")
+
+	response, err := analyticsCall.Do()
+	if err != nil {
+		return ChannelDemographics{}, fmt.Errorf("failed to fetch demographics data: %w", err)
+	}
+
+	demographics := ChannelDemographics{
+		AgeGroups: []AgeGroupData{},
+		Gender:    []GenderData{},
+	}
+
+	if response.Rows == nil || len(response.Rows) == 0 {
+		return demographics, nil
+	}
+
+	// Aggregate data by age group and gender
+	ageGroupTotals := make(map[string]float64)
+	genderTotals := make(map[string]float64)
+
+	for _, row := range response.Rows {
+		if len(row) < 3 {
+			continue
+		}
+
+		ageGroup, _ := row[0].(string)
+		gender, _ := row[1].(string)
+		percentage, _ := row[2].(float64)
+
+		ageGroupTotals[ageGroup] += percentage
+		genderTotals[gender] += percentage
+	}
+
+	// Convert maps to slices
+	for ageGroup, percentage := range ageGroupTotals {
+		demographics.AgeGroups = append(demographics.AgeGroups, AgeGroupData{
+			AgeGroup:   ageGroup,
+			Percentage: percentage,
+		})
+	}
+
+	for gender, percentage := range genderTotals {
+		demographics.Gender = append(demographics.Gender, GenderData{
+			Gender:     gender,
+			Percentage: percentage,
+		})
+	}
+
+	return demographics, nil
+}
+
+// GetGeographicDistribution fetches top countries by views from YouTube Analytics API.
+// Returns the top 10 countries by view count over the last 90 days.
+//
+// Returns:
+//   - GeographicDistribution: Top countries with view counts and percentages
+//   - error: Any error encountered during the API call
+func GetGeographicDistribution(ctx context.Context) (GeographicDistribution, error) {
+	client := getClient(ctx)
+
+	analyticsService, err := youtubeanalytics.NewService(ctx, option.WithHTTPClient(client))
+	if err != nil {
+		return GeographicDistribution{}, fmt.Errorf("failed to create YouTube Analytics service: %w", err)
+	}
+
+	// Use last 90 days for statistical significance
+	endDate := time.Now()
+	startDate := endDate.AddDate(0, 0, -90)
+	startDateStr := startDate.Format("2006-01-02")
+	endDateStr := endDate.Format("2006-01-02")
+
+	channelID := configuration.GlobalSettings.YouTube.ChannelId
+	if channelID == "" {
+		return GeographicDistribution{}, fmt.Errorf("YouTube channel ID not configured in settings.yaml")
+	}
+
+	// Fetch geographic data with country dimension, sorted by views descending
+	analyticsCall := analyticsService.Reports.Query().
+		Ids("channel==" + channelID).
+		StartDate(startDateStr).
+		EndDate(endDateStr).
+		Dimensions("country").
+		Metrics("views").
+		Sort("-views").
+		MaxResults(10)
+
+	response, err := analyticsCall.Do()
+	if err != nil {
+		return GeographicDistribution{}, fmt.Errorf("failed to fetch geographic data: %w", err)
+	}
+
+	distribution := GeographicDistribution{
+		Countries: []CountryData{},
+	}
+
+	if response.Rows == nil || len(response.Rows) == 0 {
+		return distribution, nil
+	}
+
+	// Calculate total views for percentage calculation
+	var totalViews int64
+	for _, row := range response.Rows {
+		if len(row) >= 2 {
+			views := int64(row[1].(float64))
+			totalViews += views
+		}
+	}
+
+	// Parse country data
+	for _, row := range response.Rows {
+		if len(row) < 2 {
+			continue
+		}
+
+		countryCode, _ := row[0].(string)
+		views := int64(row[1].(float64))
+
+		var percentage float64
+		if totalViews > 0 {
+			percentage = float64(views) / float64(totalViews) * 100
+		}
+
+		distribution.Countries = append(distribution.Countries, CountryData{
+			CountryCode: countryCode,
+			Views:       views,
+			Percentage:  percentage,
+		})
+	}
+
+	return distribution, nil
+}
+
+// GetChannelStatistics fetches channel-level statistics from YouTube Data API.
+// Returns subscriber count, total views, and video count.
+//
+// Returns:
+//   - ChannelStatistics: Channel statistics data
+//   - error: Any error encountered during the API call
+func GetChannelStatistics(ctx context.Context) (ChannelStatistics, error) {
+	client := getClient(ctx)
+
+	youtubeService, err := youtube.NewService(ctx, option.WithHTTPClient(client))
+	if err != nil {
+		return ChannelStatistics{}, fmt.Errorf("failed to create YouTube service: %w", err)
+	}
+
+	channelID := configuration.GlobalSettings.YouTube.ChannelId
+	if channelID == "" {
+		return ChannelStatistics{}, fmt.Errorf("YouTube channel ID not configured in settings.yaml")
+	}
+
+	// Fetch channel statistics
+	channelsCall := youtubeService.Channels.List([]string{"statistics"}).Id(channelID)
+	response, err := channelsCall.Do()
+	if err != nil {
+		return ChannelStatistics{}, fmt.Errorf("failed to fetch channel statistics: %w", err)
+	}
+
+	if len(response.Items) == 0 {
+		return ChannelStatistics{}, fmt.Errorf("channel not found: %s", channelID)
+	}
+
+	channel := response.Items[0]
+	stats := channel.Statistics
+
+	return ChannelStatistics{
+		SubscriberCount:   int64(stats.SubscriberCount),
+		TotalViews:        int64(stats.ViewCount),
+		VideoCount:        int64(stats.VideoCount),
+		HiddenSubscribers: stats.HiddenSubscriberCount,
+	}, nil
+}

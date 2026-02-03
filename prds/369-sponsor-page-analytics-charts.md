@@ -65,7 +65,7 @@ Mermaid charts embedded in markdown with marker-based section replacement:
 
 ## Milestones
 
-- [ ] **M1: Data fetching** - YouTube Analytics API calls for demographics, geography, and channel stats working
+- [x] **M1: Data fetching** - YouTube Analytics API calls for demographics, geography, and channel stats working
 - [ ] **M2: Chart generation** - Mermaid pie/bar chart generation functions implemented
 - [ ] **M3: Sponsor page update** - Marker-based section replacement working
 - [ ] **M4: CLI menu integration** - "Analyze → Sponsor Page" menu option functional
