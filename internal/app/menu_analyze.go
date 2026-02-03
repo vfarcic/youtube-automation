@@ -21,6 +21,7 @@ func (m *MenuHandler) HandleAnalyzeMenu() error {
 				Options(
 					huh.NewOption("Titles (fetch video analytics)", 0),
 					huh.NewOption("Timing (generate publish time recommendations)", 1),
+					huh.NewOption("Sponsor Page (update analytics charts)", 2),
 					huh.NewOption("Back", actionReturn),
 				).
 				Value(&selectedOption),
@@ -37,6 +38,8 @@ func (m *MenuHandler) HandleAnalyzeMenu() error {
 		return m.HandleAnalyzeTitles()
 	case 1:
 		return m.HandleAnalyzeTiming()
+	case 2:
+		return m.HandleAnalyzeSponsorPage()
 	case actionReturn:
 		return nil
 	}
@@ -218,6 +221,66 @@ func (m *MenuHandler) HandleAnalyzeTiming() error {
 		fmt.Println(m.normalStyle.Render("  2. Use 'Apply Random Timing' button when editing videos"))
 		fmt.Println(m.normalStyle.Render("  3. Re-run analysis in 3-6 months to evolve recommendations"))
 	}
+
+	return nil
+}
+
+// HandleAnalyzeSponsorPage fetches YouTube analytics and updates the Hugo sponsor page with charts
+func (m *MenuHandler) HandleAnalyzeSponsorPage() error {
+	fmt.Println(m.normalStyle.Render("Fetching channel analytics from YouTube..."))
+	fmt.Println(m.normalStyle.Render("This may take a moment and might require re-authentication."))
+
+	ctx := context.Background()
+
+	// Fetch demographics data
+	fmt.Println(m.normalStyle.Render("  Fetching demographics..."))
+	demographics, err := publishing.GetChannelDemographics(ctx)
+	if err != nil {
+		fmt.Println(m.errorStyle.Render(fmt.Sprintf("Failed to fetch demographics: %v", err)))
+		return err
+	}
+	fmt.Println(m.greenStyle.Render("  ✓ Demographics data retrieved"))
+
+	// Fetch geographic distribution
+	fmt.Println(m.normalStyle.Render("  Fetching geographic distribution..."))
+	geography, err := publishing.GetGeographicDistribution(ctx)
+	if err != nil {
+		fmt.Println(m.errorStyle.Render(fmt.Sprintf("Failed to fetch geographic data: %v", err)))
+		return err
+	}
+	fmt.Println(m.greenStyle.Render("  ✓ Geographic data retrieved"))
+
+	// Fetch channel statistics
+	fmt.Println(m.normalStyle.Render("  Fetching channel statistics..."))
+	stats, err := publishing.GetChannelStatistics(ctx)
+	if err != nil {
+		fmt.Println(m.errorStyle.Render(fmt.Sprintf("Failed to fetch channel statistics: %v", err)))
+		return err
+	}
+	fmt.Println(m.greenStyle.Render("  ✓ Channel statistics retrieved"))
+
+	// Generate the analytics section with Mermaid charts
+	fmt.Println(m.normalStyle.Render("Generating Mermaid charts..."))
+	section := publishing.GenerateSponsorAnalyticsSection(demographics, geography, stats)
+
+	// Update the sponsor page
+	fmt.Println(m.normalStyle.Render("Updating sponsor page..."))
+	if err := publishing.UpdateSponsorPageAnalytics(section); err != nil {
+		fmt.Println(m.errorStyle.Render(fmt.Sprintf("Failed to update sponsor page: %v", err)))
+		return err
+	}
+
+	// Success feedback
+	pagePath := publishing.GetSponsorPagePath()
+	fmt.Println("")
+	fmt.Println(m.greenStyle.Render("✓ Sponsor page updated successfully!"))
+	fmt.Println("")
+	fmt.Println(m.normalStyle.Render(fmt.Sprintf("Updated file: %s", pagePath)))
+	fmt.Println("")
+	fmt.Println(m.normalStyle.Render("Next steps:"))
+	fmt.Println(m.normalStyle.Render("  1. Review the changes in the Hugo sponsor page"))
+	fmt.Println(m.normalStyle.Render("  2. Commit and deploy the Hugo site"))
+	fmt.Println(m.normalStyle.Render("  3. Re-run monthly to keep analytics current"))
 
 	return nil
 }

@@ -22,11 +22,11 @@ Build a feature that:
 
 ## Success Criteria
 
-- [ ] Demographics data (age groups, gender) displayed as Mermaid pie charts
-- [ ] Geographic distribution (top countries) displayed as Mermaid bar chart
-- [ ] Channel statistics (subscribers, total views, avg views/video) displayed in a table
-- [ ] Sponsor page preserves existing pricing content when updated
-- [ ] CLI menu option available under "Analyze" menu
+- [x] Demographics data (age groups, gender) displayed as Mermaid pie charts
+- [x] Geographic distribution (top countries) displayed as Mermaid bar chart
+- [x] Channel statistics (subscribers, total views, avg views/video) displayed in a table
+- [x] Sponsor page preserves existing pricing content when updated
+- [x] CLI menu option available under "Analyze" menu
 - [ ] CLI flag (`--sponsor-charts`) enables non-interactive automation
 - [ ] 80% test coverage maintained for new code
 
@@ -68,7 +68,7 @@ Mermaid charts embedded in markdown with marker-based section replacement:
 - [x] **M1: Data fetching** - YouTube Analytics API calls for demographics, geography, and channel stats working
 - [x] **M2: Chart generation** - Mermaid pie/bar chart generation functions implemented
 - [x] **M3: Sponsor page update** - Marker-based section replacement working
-- [ ] **M4: CLI menu integration** - "Analyze → Sponsor Page" menu option functional
+- [x] **M4: CLI menu integration** - "Analyze → Sponsor Page" menu option functional
 - [ ] **M5: CLI flag automation** - `--sponsor-charts` flag for non-interactive runs
 - [ ] **M6: Tests complete** - 80% coverage with unit tests for all new functions
 - [ ] **M7: End-to-end validation** - Full workflow tested with real API credentials
