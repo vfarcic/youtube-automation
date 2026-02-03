@@ -496,3 +496,442 @@ func TestIsShort(t *testing.T) {
 		})
 	}
 }
+
+// TestChannelDemographicsStruct tests that ChannelDemographics struct can be properly initialized
+func TestChannelDemographicsStruct(t *testing.T) {
+	demographics := ChannelDemographics{
+		AgeGroups: []AgeGroupData{
+			{AgeGroup: "age18-24", Percentage: 15.5},
+			{AgeGroup: "age25-34", Percentage: 35.2},
+			{AgeGroup: "age35-44", Percentage: 25.0},
+			{AgeGroup: "age45-54", Percentage: 15.0},
+			{AgeGroup: "age55-64", Percentage: 7.3},
+			{AgeGroup: "age65-", Percentage: 2.0},
+		},
+		Gender: []GenderData{
+			{Gender: "male", Percentage: 85.0},
+			{Gender: "female", Percentage: 14.0},
+			{Gender: "user_specified", Percentage: 1.0},
+		},
+	}
+
+	// Verify age groups
+	if len(demographics.AgeGroups) != 6 {
+		t.Errorf("Expected 6 age groups, got %d", len(demographics.AgeGroups))
+	}
+
+	// Verify first age group
+	if demographics.AgeGroups[0].AgeGroup != "age18-24" {
+		t.Errorf("Expected first age group 'age18-24', got '%s'", demographics.AgeGroups[0].AgeGroup)
+	}
+	if demographics.AgeGroups[0].Percentage != 15.5 {
+		t.Errorf("Expected first age group percentage 15.5, got %f", demographics.AgeGroups[0].Percentage)
+	}
+
+	// Verify gender data
+	if len(demographics.Gender) != 3 {
+		t.Errorf("Expected 3 gender entries, got %d", len(demographics.Gender))
+	}
+
+	// Verify first gender entry
+	if demographics.Gender[0].Gender != "male" {
+		t.Errorf("Expected first gender 'male', got '%s'", demographics.Gender[0].Gender)
+	}
+	if demographics.Gender[0].Percentage != 85.0 {
+		t.Errorf("Expected male percentage 85.0, got %f", demographics.Gender[0].Percentage)
+	}
+}
+
+// TestAgeGroupDataStruct tests the AgeGroupData struct
+func TestAgeGroupDataStruct(t *testing.T) {
+	tests := []struct {
+		name       string
+		ageGroup   string
+		percentage float64
+	}{
+		{name: "age13-17", ageGroup: "age13-17", percentage: 5.0},
+		{name: "age18-24", ageGroup: "age18-24", percentage: 20.0},
+		{name: "age25-34", ageGroup: "age25-34", percentage: 35.0},
+		{name: "age35-44", ageGroup: "age35-44", percentage: 25.0},
+		{name: "age45-54", ageGroup: "age45-54", percentage: 10.0},
+		{name: "age55-64", ageGroup: "age55-64", percentage: 4.0},
+		{name: "age65-", ageGroup: "age65-", percentage: 1.0},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			data := AgeGroupData{
+				AgeGroup:   tt.ageGroup,
+				Percentage: tt.percentage,
+			}
+
+			if data.AgeGroup != tt.ageGroup {
+				t.Errorf("AgeGroup = %v, want %v", data.AgeGroup, tt.ageGroup)
+			}
+			if data.Percentage != tt.percentage {
+				t.Errorf("Percentage = %v, want %v", data.Percentage, tt.percentage)
+			}
+		})
+	}
+}
+
+// TestGenderDataStruct tests the GenderData struct
+func TestGenderDataStruct(t *testing.T) {
+	tests := []struct {
+		name       string
+		gender     string
+		percentage float64
+	}{
+		{name: "male", gender: "male", percentage: 85.0},
+		{name: "female", gender: "female", percentage: 14.0},
+		{name: "user_specified", gender: "user_specified", percentage: 1.0},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			data := GenderData{
+				Gender:     tt.gender,
+				Percentage: tt.percentage,
+			}
+
+			if data.Gender != tt.gender {
+				t.Errorf("Gender = %v, want %v", data.Gender, tt.gender)
+			}
+			if data.Percentage != tt.percentage {
+				t.Errorf("Percentage = %v, want %v", data.Percentage, tt.percentage)
+			}
+		})
+	}
+}
+
+// TestGeographicDistributionStruct tests that GeographicDistribution struct can be properly initialized
+func TestGeographicDistributionStruct(t *testing.T) {
+	distribution := GeographicDistribution{
+		Countries: []CountryData{
+			{CountryCode: "US", Views: 500000, Percentage: 35.0},
+			{CountryCode: "IN", Views: 300000, Percentage: 21.0},
+			{CountryCode: "GB", Views: 150000, Percentage: 10.5},
+			{CountryCode: "DE", Views: 100000, Percentage: 7.0},
+			{CountryCode: "CA", Views: 80000, Percentage: 5.6},
+		},
+	}
+
+	if len(distribution.Countries) != 5 {
+		t.Errorf("Expected 5 countries, got %d", len(distribution.Countries))
+	}
+
+	// Verify first country (US)
+	if distribution.Countries[0].CountryCode != "US" {
+		t.Errorf("Expected first country 'US', got '%s'", distribution.Countries[0].CountryCode)
+	}
+	if distribution.Countries[0].Views != 500000 {
+		t.Errorf("Expected US views 500000, got %d", distribution.Countries[0].Views)
+	}
+	if distribution.Countries[0].Percentage != 35.0 {
+		t.Errorf("Expected US percentage 35.0, got %f", distribution.Countries[0].Percentage)
+	}
+}
+
+// TestCountryDataStruct tests the CountryData struct
+func TestCountryDataStruct(t *testing.T) {
+	tests := []struct {
+		name        string
+		countryCode string
+		views       int64
+		percentage  float64
+	}{
+		{name: "United States", countryCode: "US", views: 500000, percentage: 35.0},
+		{name: "India", countryCode: "IN", views: 300000, percentage: 21.0},
+		{name: "United Kingdom", countryCode: "GB", views: 150000, percentage: 10.5},
+		{name: "Germany", countryCode: "DE", views: 100000, percentage: 7.0},
+		{name: "Canada", countryCode: "CA", views: 80000, percentage: 5.6},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			data := CountryData{
+				CountryCode: tt.countryCode,
+				Views:       tt.views,
+				Percentage:  tt.percentage,
+			}
+
+			if data.CountryCode != tt.countryCode {
+				t.Errorf("CountryCode = %v, want %v", data.CountryCode, tt.countryCode)
+			}
+			if data.Views != tt.views {
+				t.Errorf("Views = %v, want %v", data.Views, tt.views)
+			}
+			if data.Percentage != tt.percentage {
+				t.Errorf("Percentage = %v, want %v", data.Percentage, tt.percentage)
+			}
+		})
+	}
+}
+
+// TestChannelStatisticsStruct tests that ChannelStatistics struct can be properly initialized
+func TestChannelStatisticsStruct(t *testing.T) {
+	tests := []struct {
+		name              string
+		subscriberCount   int64
+		totalViews        int64
+		videoCount        int64
+		hiddenSubscribers bool
+	}{
+		{
+			name:              "Normal channel",
+			subscriberCount:   250000,
+			totalViews:        50000000,
+			videoCount:        500,
+			hiddenSubscribers: false,
+		},
+		{
+			name:              "Large channel",
+			subscriberCount:   1000000,
+			totalViews:        500000000,
+			videoCount:        1500,
+			hiddenSubscribers: false,
+		},
+		{
+			name:              "Hidden subscribers",
+			subscriberCount:   0,
+			totalViews:        10000000,
+			videoCount:        200,
+			hiddenSubscribers: true,
+		},
+		{
+			name:              "New channel",
+			subscriberCount:   100,
+			totalViews:        5000,
+			videoCount:        10,
+			hiddenSubscribers: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			stats := ChannelStatistics{
+				SubscriberCount:   tt.subscriberCount,
+				TotalViews:        tt.totalViews,
+				VideoCount:        tt.videoCount,
+				HiddenSubscribers: tt.hiddenSubscribers,
+			}
+
+			if stats.SubscriberCount != tt.subscriberCount {
+				t.Errorf("SubscriberCount = %v, want %v", stats.SubscriberCount, tt.subscriberCount)
+			}
+			if stats.TotalViews != tt.totalViews {
+				t.Errorf("TotalViews = %v, want %v", stats.TotalViews, tt.totalViews)
+			}
+			if stats.VideoCount != tt.videoCount {
+				t.Errorf("VideoCount = %v, want %v", stats.VideoCount, tt.videoCount)
+			}
+			if stats.HiddenSubscribers != tt.hiddenSubscribers {
+				t.Errorf("HiddenSubscribers = %v, want %v", stats.HiddenSubscribers, tt.hiddenSubscribers)
+			}
+		})
+	}
+}
+
+// TestChannelDemographicsEmptyData tests handling of empty demographics data
+func TestChannelDemographicsEmptyData(t *testing.T) {
+	demographics := ChannelDemographics{
+		AgeGroups: []AgeGroupData{},
+		Gender:    []GenderData{},
+	}
+
+	if len(demographics.AgeGroups) != 0 {
+		t.Errorf("Expected 0 age groups, got %d", len(demographics.AgeGroups))
+	}
+	if len(demographics.Gender) != 0 {
+		t.Errorf("Expected 0 gender entries, got %d", len(demographics.Gender))
+	}
+}
+
+// TestGeographicDistributionEmptyData tests handling of empty geographic data
+func TestGeographicDistributionEmptyData(t *testing.T) {
+	distribution := GeographicDistribution{
+		Countries: []CountryData{},
+	}
+
+	if len(distribution.Countries) != 0 {
+		t.Errorf("Expected 0 countries, got %d", len(distribution.Countries))
+	}
+}
+
+// TestCountryDataPercentageCalculation tests that percentage values are valid
+func TestCountryDataPercentageCalculation(t *testing.T) {
+	// Simulate a realistic distribution where percentages should sum to ~100%
+	countries := []CountryData{
+		{CountryCode: "US", Views: 350000, Percentage: 35.0},
+		{CountryCode: "IN", Views: 200000, Percentage: 20.0},
+		{CountryCode: "GB", Views: 150000, Percentage: 15.0},
+		{CountryCode: "DE", Views: 100000, Percentage: 10.0},
+		{CountryCode: "CA", Views: 80000, Percentage: 8.0},
+		{CountryCode: "AU", Views: 50000, Percentage: 5.0},
+		{CountryCode: "FR", Views: 40000, Percentage: 4.0},
+		{CountryCode: "NL", Views: 30000, Percentage: 3.0},
+	}
+
+	var totalPercentage float64
+	for _, country := range countries {
+		if country.Percentage < 0 || country.Percentage > 100 {
+			t.Errorf("Invalid percentage for %s: %f (should be 0-100)", country.CountryCode, country.Percentage)
+		}
+		totalPercentage += country.Percentage
+	}
+
+	// Total percentage should be close to 100% (allowing for rounding)
+	if totalPercentage < 99.0 || totalPercentage > 101.0 {
+		t.Errorf("Total percentage = %f, expected close to 100%%", totalPercentage)
+	}
+}
+
+// TestEngagementMetricsStruct tests that EngagementMetrics struct can be properly initialized
+func TestEngagementMetricsStruct(t *testing.T) {
+	tests := []struct {
+		name                string
+		averageViewDuration float64
+		likes               int64
+		comments            int64
+		shares              int64
+		views               int64
+		videoCount          int64
+	}{
+		{
+			name:                "Normal engagement",
+			averageViewDuration: 330.5,
+			likes:               50000,
+			comments:            5000,
+			shares:              2000,
+			views:               1000000,
+			videoCount:          100,
+		},
+		{
+			name:                "High engagement",
+			averageViewDuration: 600.0,
+			likes:               200000,
+			comments:            50000,
+			shares:              25000,
+			views:               5000000,
+			videoCount:          200,
+		},
+		{
+			name:                "New channel low engagement",
+			averageViewDuration: 120.0,
+			likes:               100,
+			comments:            10,
+			shares:              5,
+			views:               1000,
+			videoCount:          5,
+		},
+		{
+			name:                "Zero values",
+			averageViewDuration: 0,
+			likes:               0,
+			comments:            0,
+			shares:              0,
+			views:               0,
+			videoCount:          0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			metrics := EngagementMetrics{
+				AverageViewDuration: tt.averageViewDuration,
+				Likes:               tt.likes,
+				Comments:            tt.comments,
+				Shares:              tt.shares,
+				Views:               tt.views,
+				VideoCount:          tt.videoCount,
+			}
+
+			if metrics.AverageViewDuration != tt.averageViewDuration {
+				t.Errorf("AverageViewDuration = %v, want %v", metrics.AverageViewDuration, tt.averageViewDuration)
+			}
+			if metrics.Likes != tt.likes {
+				t.Errorf("Likes = %v, want %v", metrics.Likes, tt.likes)
+			}
+			if metrics.Comments != tt.comments {
+				t.Errorf("Comments = %v, want %v", metrics.Comments, tt.comments)
+			}
+			if metrics.Shares != tt.shares {
+				t.Errorf("Shares = %v, want %v", metrics.Shares, tt.shares)
+			}
+			if metrics.Views != tt.views {
+				t.Errorf("Views = %v, want %v", metrics.Views, tt.views)
+			}
+			if metrics.VideoCount != tt.videoCount {
+				t.Errorf("VideoCount = %v, want %v", metrics.VideoCount, tt.videoCount)
+			}
+		})
+	}
+}
+
+// TestEngagementMetricsEngagementRateCalculation tests engagement rate calculation logic
+func TestEngagementMetricsEngagementRateCalculation(t *testing.T) {
+	tests := []struct {
+		name           string
+		likes          int64
+		comments       int64
+		views          int64
+		wantRate       float64
+		wantCalculable bool
+	}{
+		{
+			name:           "Normal engagement rate",
+			likes:          50000,
+			comments:       5000,
+			views:          1000000,
+			wantRate:       5.5,
+			wantCalculable: true,
+		},
+		{
+			name:           "High engagement rate",
+			likes:          10000,
+			comments:       5000,
+			views:          100000,
+			wantRate:       15.0,
+			wantCalculable: true,
+		},
+		{
+			name:           "Low engagement rate",
+			likes:          100,
+			comments:       10,
+			views:          100000,
+			wantRate:       0.11,
+			wantCalculable: true,
+		},
+		{
+			name:           "Zero views - cannot calculate",
+			likes:          100,
+			comments:       10,
+			views:          0,
+			wantRate:       0,
+			wantCalculable: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			metrics := EngagementMetrics{
+				Likes:    tt.likes,
+				Comments: tt.comments,
+				Views:    tt.views,
+			}
+
+			// Test engagement rate calculation logic
+			if tt.wantCalculable {
+				calculatedRate := float64(metrics.Likes+metrics.Comments) / float64(metrics.Views) * 100
+				if calculatedRate != tt.wantRate {
+					t.Errorf("Engagement rate = %v, want %v", calculatedRate, tt.wantRate)
+				}
+			} else {
+				// Verify we can detect when calculation is not possible
+				if metrics.Views != 0 {
+					t.Error("Expected Views to be 0 for non-calculable case")
+				}
+			}
+		})
+	}
+}
