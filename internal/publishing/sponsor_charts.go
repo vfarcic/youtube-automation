@@ -182,12 +182,6 @@ func GenerateChannelStatsTable(stats ChannelStatistics) string {
 	sb.WriteString(fmt.Sprintf("| Total Views | %s |\n", formatNumber(stats.TotalViews)))
 	sb.WriteString(fmt.Sprintf("| Videos | %s |\n", formatNumber(stats.VideoCount)))
 
-	// Average views per video
-	if stats.VideoCount > 0 {
-		avgViews := stats.TotalViews / stats.VideoCount
-		sb.WriteString(fmt.Sprintf("| Avg Views/Video | %s |\n", formatNumber(avgViews)))
-	}
-
 	return sb.String()
 }
 
@@ -207,6 +201,12 @@ func GenerateEngagementTable(metrics EngagementMetrics) string {
 	var sb strings.Builder
 	sb.WriteString("| Metric | Value |\n")
 	sb.WriteString("|--------|-------|\n")
+
+	// Average views per video (excludes shorts)
+	if metrics.VideoCount > 0 {
+		avgViews := metrics.Views / metrics.VideoCount
+		sb.WriteString(fmt.Sprintf("| Avg Views/Video | %s |\n", formatNumber(avgViews)))
+	}
 
 	sb.WriteString(fmt.Sprintf("| Avg Watch Time | %s |\n", formatDuration(metrics.AverageViewDuration)))
 	sb.WriteString(fmt.Sprintf("| Likes | %s |\n", formatNumber(metrics.Likes)))

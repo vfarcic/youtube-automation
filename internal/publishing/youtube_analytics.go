@@ -552,6 +552,7 @@ type EngagementMetrics struct {
 	Comments            int64   // Total comments in period
 	Shares              int64   // Total shares in period
 	Views               int64   // Total views in period (for calculating rates)
+	VideoCount          int64   // Number of regular videos (excludes shorts)
 }
 
 // GetChannelDemographics fetches age and gender distribution from YouTube Analytics API.
@@ -831,6 +832,35 @@ func GetEngagementMetrics(ctx context.Context) (EngagementMetrics, error) {
 			metrics.Views = int64(val)
 		}
 		break // Only need the VIDEO_ON_DEMAND row
+	}
+
+	// Second query: Get video count by content type
+	// Query with video dimension to count unique videos
+	videoCountCall := analyticsService.Reports.Query().
+		Ids("channel==" + channelID).
+		StartDate(startDateStr).
+		EndDate(endDateStr).
+		Dimensions("video,creatorContentType").
+		Metrics("views").
+		MaxResults(1000) // Should be enough for most channels
+
+	videoResponse, err := videoCountCall.Do()
+	if err != nil {
+		// Non-fatal: we can still return other metrics
+		return metrics, nil
+	}
+
+	// Count VIDEO_ON_DEMAND videos
+	if videoResponse.Rows != nil {
+		for _, row := range videoResponse.Rows {
+			if len(row) < 2 {
+				continue
+			}
+			contentType, ok := row[1].(string)
+			if ok && contentType == "VIDEO_ON_DEMAND" {
+				metrics.VideoCount++
+			}
+		}
 	}
 
 	return metrics, nil

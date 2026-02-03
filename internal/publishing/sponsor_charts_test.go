@@ -384,7 +384,6 @@ func TestGenerateChannelStatsTable(t *testing.T) {
 				"| Subscribers | 150,000 |",
 				"| Total Views | 25,000,000 |",
 				"| Videos | 450 |",
-				"| Avg Views/Video | 55,555 |",
 			},
 		},
 		{
@@ -478,9 +477,11 @@ func TestGenerateEngagementTable(t *testing.T) {
 				Comments:            5000,
 				Shares:              2000,
 				Views:               1000000,
+				VideoCount:          100,
 			},
 			wantContains: []string{
 				"| Metric | Value |",
+				"| Avg Views/Video | 10,000 |",
 				"| Avg Watch Time | 5m 30s |",
 				"| Likes | 50,000 |",
 				"| Comments | 5,000 |",
@@ -496,6 +497,7 @@ func TestGenerateEngagementTable(t *testing.T) {
 				Comments:            100,
 				Shares:              50,
 				Views:               0,
+				VideoCount:          0,
 			},
 			wantContains: []string{
 				"| Avg Watch Time | 2m 0s |",
@@ -503,6 +505,7 @@ func TestGenerateEngagementTable(t *testing.T) {
 			},
 			wantExcludes: []string{
 				"| Engagement Rate |",
+				"| Avg Views/Video |",
 			},
 		},
 		{
@@ -513,8 +516,10 @@ func TestGenerateEngagementTable(t *testing.T) {
 				Comments:            10,
 				Shares:              5,
 				Views:               1000,
+				VideoCount:          10,
 			},
 			wantContains: []string{
+				"| Avg Views/Video | 100 |",
 				"| Avg Watch Time | 45s |",
 				"| Likes | 100 |",
 				"| Engagement Rate | 11.00% |",
