@@ -2,6 +2,7 @@ package publishing
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 )
@@ -78,27 +79,67 @@ func formatNumber(n int64) string {
 	return result.String()
 }
 
-// GenerateAgeDistributionChart creates a Mermaid pie chart for age group distribution.
+// ageGroupOrder defines the display order for age groups
+var ageGroupOrder = map[string]int{
+	"age13-17": 0,
+	"age18-24": 1,
+	"age25-34": 2,
+	"age35-44": 3,
+	"age45-54": 4,
+	"age55-64": 5,
+	"age65-":   6,
+}
+
+// GenerateAgeDistributionChart creates a Mermaid bar chart for age group distribution.
 // Returns empty string if no data is available.
 func GenerateAgeDistributionChart(demographics ChannelDemographics) string {
 	if len(demographics.AgeGroups) == 0 {
 		return ""
 	}
 
-	var sb strings.Builder
-	sb.WriteString("```mermaid\n")
-	sb.WriteString("pie showData title Age Distribution\n")
+	// Sort age groups by logical order
+	sortedAgeGroups := make([]AgeGroupData, len(demographics.AgeGroups))
+	copy(sortedAgeGroups, demographics.AgeGroups)
+	sort.Slice(sortedAgeGroups, func(i, j int) bool {
+		return ageGroupOrder[sortedAgeGroups[i].AgeGroup] < ageGroupOrder[sortedAgeGroups[j].AgeGroup]
+	})
 
-	for _, ag := range demographics.AgeGroups {
+	// Build labels and values arrays
+	var labels []string
+	var values []string
+	maxPercentage := 0.0
+
+	for _, ag := range sortedAgeGroups {
 		// Skip very small percentages
 		if ag.Percentage < 0.5 {
 			continue
 		}
-		label := formatAgeGroup(ag.AgeGroup)
-		sb.WriteString(fmt.Sprintf("    \"%s\" : %.1f\n", label, ag.Percentage))
+		labels = append(labels, formatAgeGroup(ag.AgeGroup))
+		values = append(values, fmt.Sprintf("%.1f", ag.Percentage))
+		if ag.Percentage > maxPercentage {
+			maxPercentage = ag.Percentage
+		}
 	}
 
+	if len(labels) == 0 {
+		return ""
+	}
+
+	// Round up max percentage for y-axis
+	yAxisMax := int((maxPercentage/10)+1) * 10
+	if yAxisMax < 10 {
+		yAxisMax = 10
+	}
+
+	var sb strings.Builder
+	sb.WriteString("```mermaid\n")
+	sb.WriteString("xychart-beta horizontal\n")
+	sb.WriteString("    title \"Age Distribution\"\n")
+	sb.WriteString(fmt.Sprintf("    x-axis [%s]\n", strings.Join(labels, ", ")))
+	sb.WriteString(fmt.Sprintf("    y-axis \"Percentage\" 0 --> %d\n", yAxisMax))
+	sb.WriteString(fmt.Sprintf("    bar [%s]\n", strings.Join(values, ", ")))
 	sb.WriteString("```")
+
 	return sb.String()
 }
 
@@ -229,10 +270,10 @@ func GenerateSponsorAnalyticsSection(demographics ChannelDemographics, distribut
 
 	sb.WriteString("<!-- SPONSOR_ANALYTICS_START -->\n")
 	sb.WriteString("## Channel Analytics\n\n")
-	sb.WriteString(fmt.Sprintf("*Last updated: %s. Data from the preceding 90 days.*\n\n", time.Now().Format("January 2, 2006")))
+	sb.WriteString(fmt.Sprintf("*Last updated: %s.*\n\n", time.Now().Format("January 2, 2006")))
 
-	// Channel Statistics
-	sb.WriteString("### Overview\n\n")
+	// Channel Statistics (lifetime)
+	sb.WriteString("### Overview (All Time)\n\n")
 	sb.WriteString(GenerateChannelStatsTable(stats))
 	sb.WriteString("\n")
 
@@ -241,7 +282,7 @@ func GenerateSponsorAnalyticsSection(demographics ChannelDemographics, distribut
 	genderChart := GenerateGenderDistributionChart(demographics)
 
 	if ageChart != "" || genderChart != "" {
-		sb.WriteString("### Audience Demographics\n\n")
+		sb.WriteString("### Audience Demographics (Last 90 Days)\n\n")
 
 		if ageChart != "" {
 			sb.WriteString(ageChart)
@@ -257,14 +298,14 @@ func GenerateSponsorAnalyticsSection(demographics ChannelDemographics, distribut
 	// Geography section
 	geoChart := GenerateGeographyChart(distribution)
 	if geoChart != "" {
-		sb.WriteString("### Geographic Distribution\n\n")
+		sb.WriteString("### Geographic Distribution (Last 90 Days)\n\n")
 		sb.WriteString(geoChart)
 		sb.WriteString("\n\n")
 	}
 
 	// Engagement section (excludes Shorts for accurate sponsor metrics)
 	if engagement.Views > 0 || engagement.Likes > 0 {
-		sb.WriteString("### Engagement (Regular Videos Only)\n\n")
+		sb.WriteString("### Engagement (Last 90 Days, Regular Videos Only)\n\n")
 		sb.WriteString(GenerateEngagementTable(engagement))
 		sb.WriteString("\n")
 	}

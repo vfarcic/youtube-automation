@@ -803,7 +803,7 @@ func GetEngagementMetrics(ctx context.Context) (EngagementMetrics, error) {
 		return metrics, nil
 	}
 
-	// Filter for VIDEO_ON_DEMAND rows only (excludes SHORTS, LIVE_STREAM, STORY)
+	// Filter for videoOnDemand rows only (excludes shorts, liveStream)
 	// Row format: [creatorContentType, averageViewDuration, likes, comments, shares, views]
 	for _, row := range response.Rows {
 		if len(row) < 6 {
@@ -811,7 +811,7 @@ func GetEngagementMetrics(ctx context.Context) (EngagementMetrics, error) {
 		}
 
 		contentType, ok := row[0].(string)
-		if !ok || contentType != "VIDEO_ON_DEMAND" {
+		if !ok || contentType != "videoOnDemand" {
 			continue
 		}
 
@@ -857,7 +857,7 @@ func GetEngagementMetrics(ctx context.Context) (EngagementMetrics, error) {
 				continue
 			}
 			contentType, ok := row[1].(string)
-			if ok && contentType == "VIDEO_ON_DEMAND" {
+			if ok && contentType == "videoOnDemand" {
 				metrics.VideoCount++
 			}
 		}

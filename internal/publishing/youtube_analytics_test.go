@@ -785,3 +785,153 @@ func TestCountryDataPercentageCalculation(t *testing.T) {
 		t.Errorf("Total percentage = %f, expected close to 100%%", totalPercentage)
 	}
 }
+
+// TestEngagementMetricsStruct tests that EngagementMetrics struct can be properly initialized
+func TestEngagementMetricsStruct(t *testing.T) {
+	tests := []struct {
+		name                string
+		averageViewDuration float64
+		likes               int64
+		comments            int64
+		shares              int64
+		views               int64
+		videoCount          int64
+	}{
+		{
+			name:                "Normal engagement",
+			averageViewDuration: 330.5,
+			likes:               50000,
+			comments:            5000,
+			shares:              2000,
+			views:               1000000,
+			videoCount:          100,
+		},
+		{
+			name:                "High engagement",
+			averageViewDuration: 600.0,
+			likes:               200000,
+			comments:            50000,
+			shares:              25000,
+			views:               5000000,
+			videoCount:          200,
+		},
+		{
+			name:                "New channel low engagement",
+			averageViewDuration: 120.0,
+			likes:               100,
+			comments:            10,
+			shares:              5,
+			views:               1000,
+			videoCount:          5,
+		},
+		{
+			name:                "Zero values",
+			averageViewDuration: 0,
+			likes:               0,
+			comments:            0,
+			shares:              0,
+			views:               0,
+			videoCount:          0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			metrics := EngagementMetrics{
+				AverageViewDuration: tt.averageViewDuration,
+				Likes:               tt.likes,
+				Comments:            tt.comments,
+				Shares:              tt.shares,
+				Views:               tt.views,
+				VideoCount:          tt.videoCount,
+			}
+
+			if metrics.AverageViewDuration != tt.averageViewDuration {
+				t.Errorf("AverageViewDuration = %v, want %v", metrics.AverageViewDuration, tt.averageViewDuration)
+			}
+			if metrics.Likes != tt.likes {
+				t.Errorf("Likes = %v, want %v", metrics.Likes, tt.likes)
+			}
+			if metrics.Comments != tt.comments {
+				t.Errorf("Comments = %v, want %v", metrics.Comments, tt.comments)
+			}
+			if metrics.Shares != tt.shares {
+				t.Errorf("Shares = %v, want %v", metrics.Shares, tt.shares)
+			}
+			if metrics.Views != tt.views {
+				t.Errorf("Views = %v, want %v", metrics.Views, tt.views)
+			}
+			if metrics.VideoCount != tt.videoCount {
+				t.Errorf("VideoCount = %v, want %v", metrics.VideoCount, tt.videoCount)
+			}
+		})
+	}
+}
+
+// TestEngagementMetricsEngagementRateCalculation tests engagement rate calculation logic
+func TestEngagementMetricsEngagementRateCalculation(t *testing.T) {
+	tests := []struct {
+		name           string
+		likes          int64
+		comments       int64
+		views          int64
+		wantRate       float64
+		wantCalculable bool
+	}{
+		{
+			name:           "Normal engagement rate",
+			likes:          50000,
+			comments:       5000,
+			views:          1000000,
+			wantRate:       5.5,
+			wantCalculable: true,
+		},
+		{
+			name:           "High engagement rate",
+			likes:          10000,
+			comments:       5000,
+			views:          100000,
+			wantRate:       15.0,
+			wantCalculable: true,
+		},
+		{
+			name:           "Low engagement rate",
+			likes:          100,
+			comments:       10,
+			views:          100000,
+			wantRate:       0.11,
+			wantCalculable: true,
+		},
+		{
+			name:           "Zero views - cannot calculate",
+			likes:          100,
+			comments:       10,
+			views:          0,
+			wantRate:       0,
+			wantCalculable: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			metrics := EngagementMetrics{
+				Likes:    tt.likes,
+				Comments: tt.comments,
+				Views:    tt.views,
+			}
+
+			// Test engagement rate calculation logic
+			if tt.wantCalculable {
+				calculatedRate := float64(metrics.Likes+metrics.Comments) / float64(metrics.Views) * 100
+				if calculatedRate != tt.wantRate {
+					t.Errorf("Engagement rate = %v, want %v", calculatedRate, tt.wantRate)
+				}
+			} else {
+				// Verify we can detect when calculation is not possible
+				if metrics.Views != 0 {
+					t.Error("Expected Views to be 0 for non-calculable case")
+				}
+			}
+		})
+	}
+}

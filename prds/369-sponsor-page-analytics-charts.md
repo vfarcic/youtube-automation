@@ -10,7 +10,7 @@ Build a feature that:
 1. Fetches YouTube Analytics data (demographics, geographic distribution, channel statistics)
 2. Generates Mermaid charts (pie charts for demographics, bar charts for geography)
 3. Automatically updates the Hugo sponsor page with the generated charts
-4. Supports both interactive (CLI menu) and automated (CLI flag) execution for periodic updates
+4. Supports interactive execution via CLI menu
 
 ## User Stories
 
@@ -18,7 +18,6 @@ Build a feature that:
 
 2. **As a channel owner**, I want to automatically update sponsor page analytics so the information stays current without manual effort.
 
-3. **As a channel owner**, I want to run analytics updates via cron/GitHub Actions so the sponsor page can be refreshed on a schedule.
 
 ## Success Criteria
 
@@ -27,7 +26,6 @@ Build a feature that:
 - [x] Channel statistics (subscribers, total views, avg views/video) displayed in a table
 - [x] Sponsor page preserves existing pricing content when updated
 - [x] CLI menu option available under "Analyze" menu
-- [ ] CLI flag (`--sponsor-charts`) enables non-interactive automation
 - [ ] 80% test coverage maintained for new code
 
 ## Technical Approach
@@ -60,7 +58,6 @@ Mermaid charts embedded in markdown with marker-based section replacement:
 | `internal/publishing/sponsor_charts.go` | **New** - Mermaid chart generation |
 | `internal/publishing/sponsor_page.go` | **New** - Sponsor page update logic |
 | `internal/app/menu_analyze.go` | Add menu option and handler |
-| `cmd/youtube-automation/main.go` | Add `--sponsor-charts` flag |
 | Test files | Coverage for all new code |
 
 ## Milestones
@@ -69,9 +66,8 @@ Mermaid charts embedded in markdown with marker-based section replacement:
 - [x] **M2: Chart generation** - Mermaid pie/bar chart generation functions implemented
 - [x] **M3: Sponsor page update** - Marker-based section replacement working
 - [x] **M4: CLI menu integration** - "Analyze → Sponsor Page" menu option functional
-- [ ] **M5: CLI flag automation** - `--sponsor-charts` flag for non-interactive runs
-- [ ] **M6: Tests complete** - 80% coverage with unit tests for all new functions
-- [ ] **M7: End-to-end validation** - Full workflow tested with real API credentials
+- [ ] **M5: Tests complete** - 80% coverage with unit tests for all new functions
+- [x] **M6: End-to-end validation** - Full workflow tested with real API credentials
 
 ## Risks & Mitigations
 

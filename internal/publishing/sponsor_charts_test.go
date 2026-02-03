@@ -131,10 +131,10 @@ func TestGenerateAgeDistributionChart(t *testing.T) {
 			},
 			wantContains: []string{
 				"```mermaid",
-				"pie showData title Age Distribution",
-				`"18-24" : 25.5`,
-				`"25-34" : 42.3`,
-				`"35-44" : 18.2`,
+				"xychart-beta horizontal",
+				`title "Age Distribution"`,
+				"x-axis [18-24, 25-34, 35-44]",
+				"bar [25.5, 42.3, 18.2]",
 				"```",
 			},
 			wantEmpty: false,
@@ -147,7 +147,8 @@ func TestGenerateAgeDistributionChart(t *testing.T) {
 				},
 			},
 			wantContains: []string{
-				`"65+" : 5.0`,
+				"x-axis [65+]",
+				"bar [5.0]",
 			},
 			wantEmpty: false,
 		},
@@ -160,7 +161,8 @@ func TestGenerateAgeDistributionChart(t *testing.T) {
 				},
 			},
 			wantContains: []string{
-				`"18-24" : 25.0`,
+				"x-axis [18-24]",
+				"bar [25.0]",
 			},
 			wantEmpty: false,
 		},
@@ -586,15 +588,14 @@ func TestGenerateSponsorAnalyticsSection(t *testing.T) {
 				"<!-- SPONSOR_ANALYTICS_START -->",
 				"## Channel Analytics",
 				"*Last updated:",
-				"Data from the preceding 90 days.*",
-				"### Overview",
+				"### Overview (All Time)",
 				"| Subscribers | 100,000 |",
-				"### Audience Demographics",
-				"pie showData title Age Distribution",
-				"pie showData title Gender Distribution",
-				"### Geographic Distribution",
+				"### Audience Demographics (Last 90 Days)",
 				"xychart-beta horizontal",
-				"### Engagement (Regular Videos Only)",
+				"pie showData title Gender Distribution",
+				"### Geographic Distribution (Last 90 Days)",
+				"xychart-beta horizontal",
+				"### Engagement (Last 90 Days, Regular Videos Only)",
 				"| Avg Watch Time |",
 				"| Likes |",
 				"<!-- SPONSOR_ANALYTICS_END -->",
@@ -619,8 +620,8 @@ func TestGenerateSponsorAnalyticsSection(t *testing.T) {
 			engagement: EngagementMetrics{},
 			wantContains: []string{
 				"<!-- SPONSOR_ANALYTICS_START -->",
-				"### Overview",
-				"### Geographic Distribution",
+				"### Overview (All Time)",
+				"### Geographic Distribution (Last 90 Days)",
 				"<!-- SPONSOR_ANALYTICS_END -->",
 			},
 		},
@@ -643,8 +644,8 @@ func TestGenerateSponsorAnalyticsSection(t *testing.T) {
 			engagement: EngagementMetrics{},
 			wantContains: []string{
 				"<!-- SPONSOR_ANALYTICS_START -->",
-				"### Overview",
-				"### Audience Demographics",
+				"### Overview (All Time)",
+				"### Audience Demographics (Last 90 Days)",
 				"<!-- SPONSOR_ANALYTICS_END -->",
 			},
 		},
@@ -661,10 +662,10 @@ func TestGenerateSponsorAnalyticsSection(t *testing.T) {
 			}
 
 			// Verify sections are properly excluded when data is empty
-			if tt.name == "section without demographics" && strings.Contains(result, "### Audience Demographics") {
+			if tt.name == "section without demographics" && strings.Contains(result, "### Audience Demographics (Last 90 Days)") {
 				t.Error("result should not contain Audience Demographics section when no data")
 			}
-			if tt.name == "section without geography" && strings.Contains(result, "### Geographic Distribution") {
+			if tt.name == "section without geography" && strings.Contains(result, "### Geographic Distribution (Last 90 Days)") {
 				t.Error("result should not contain Geographic Distribution section when no data")
 			}
 		})
