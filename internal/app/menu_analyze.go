@@ -259,9 +259,18 @@ func (m *MenuHandler) HandleAnalyzeSponsorPage() error {
 	}
 	fmt.Println(m.greenStyle.Render("  ✓ Channel statistics retrieved"))
 
+	// Fetch engagement metrics
+	fmt.Println(m.normalStyle.Render("  Fetching engagement metrics..."))
+	engagement, err := publishing.GetEngagementMetrics(ctx)
+	if err != nil {
+		fmt.Println(m.errorStyle.Render(fmt.Sprintf("Failed to fetch engagement metrics: %v", err)))
+		return err
+	}
+	fmt.Println(m.greenStyle.Render("  ✓ Engagement metrics retrieved"))
+
 	// Generate the analytics section with Mermaid charts
 	fmt.Println(m.normalStyle.Render("Generating Mermaid charts..."))
-	section := publishing.GenerateSponsorAnalyticsSection(demographics, geography, stats)
+	section := publishing.GenerateSponsorAnalyticsSection(demographics, geography, stats, engagement)
 
 	// Update the sponsor page
 	fmt.Println(m.normalStyle.Render("Updating sponsor page..."))

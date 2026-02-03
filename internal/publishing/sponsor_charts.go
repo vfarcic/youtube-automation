@@ -3,6 +3,7 @@ package publishing
 import (
 	"fmt"
 	"strings"
+	"time"
 )
 
 // countryCodeToName maps ISO 3166-1 alpha-2 codes to readable country names.
@@ -181,17 +182,54 @@ func GenerateChannelStatsTable(stats ChannelStatistics) string {
 	sb.WriteString(fmt.Sprintf("| Total Views | %s |\n", formatNumber(stats.TotalViews)))
 	sb.WriteString(fmt.Sprintf("| Videos | %s |\n", formatNumber(stats.VideoCount)))
 
+	// Average views per video
+	if stats.VideoCount > 0 {
+		avgViews := stats.TotalViews / stats.VideoCount
+		sb.WriteString(fmt.Sprintf("| Avg Views/Video | %s |\n", formatNumber(avgViews)))
+	}
+
+	return sb.String()
+}
+
+// formatDuration converts seconds to a human-readable format (e.g., "5m 30s")
+func formatDuration(seconds float64) string {
+	totalSeconds := int(seconds)
+	minutes := totalSeconds / 60
+	secs := totalSeconds % 60
+	if minutes > 0 {
+		return fmt.Sprintf("%dm %ds", minutes, secs)
+	}
+	return fmt.Sprintf("%ds", secs)
+}
+
+// GenerateEngagementTable creates a markdown table with engagement metrics.
+func GenerateEngagementTable(metrics EngagementMetrics) string {
+	var sb strings.Builder
+	sb.WriteString("| Metric | Value |\n")
+	sb.WriteString("|--------|-------|\n")
+
+	sb.WriteString(fmt.Sprintf("| Avg Watch Time | %s |\n", formatDuration(metrics.AverageViewDuration)))
+	sb.WriteString(fmt.Sprintf("| Likes | %s |\n", formatNumber(metrics.Likes)))
+	sb.WriteString(fmt.Sprintf("| Comments | %s |\n", formatNumber(metrics.Comments)))
+	sb.WriteString(fmt.Sprintf("| Shares | %s |\n", formatNumber(metrics.Shares)))
+
+	// Calculate engagement rate if we have views
+	if metrics.Views > 0 {
+		engagementRate := float64(metrics.Likes+metrics.Comments) / float64(metrics.Views) * 100
+		sb.WriteString(fmt.Sprintf("| Engagement Rate | %.2f%% |\n", engagementRate))
+	}
+
 	return sb.String()
 }
 
 // GenerateSponsorAnalyticsSection combines all charts into a complete markdown section
 // with markers for replacement in the Hugo sponsor page.
-func GenerateSponsorAnalyticsSection(demographics ChannelDemographics, distribution GeographicDistribution, stats ChannelStatistics) string {
+func GenerateSponsorAnalyticsSection(demographics ChannelDemographics, distribution GeographicDistribution, stats ChannelStatistics, engagement EngagementMetrics) string {
 	var sb strings.Builder
 
 	sb.WriteString("<!-- SPONSOR_ANALYTICS_START -->\n")
 	sb.WriteString("## Channel Analytics\n\n")
-	sb.WriteString("*Data from the last 90 days, updated automatically.*\n\n")
+	sb.WriteString(fmt.Sprintf("*Last updated: %s. Data covers regular videos from the preceding 90 days (excludes Shorts).*\n\n", time.Now().Format("January 2, 2006")))
 
 	// Channel Statistics
 	sb.WriteString("### Overview\n\n")
@@ -221,6 +259,13 @@ func GenerateSponsorAnalyticsSection(demographics ChannelDemographics, distribut
 	if geoChart != "" {
 		sb.WriteString("### Geographic Distribution\n\n")
 		sb.WriteString(geoChart)
+		sb.WriteString("\n\n")
+	}
+
+	// Engagement section
+	if engagement.Views > 0 || engagement.Likes > 0 {
+		sb.WriteString("### Engagement\n\n")
+		sb.WriteString(GenerateEngagementTable(engagement))
 		sb.WriteString("\n")
 	}
 

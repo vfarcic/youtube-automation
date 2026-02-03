@@ -384,6 +384,7 @@ func TestGenerateChannelStatsTable(t *testing.T) {
 				"| Subscribers | 150,000 |",
 				"| Total Views | 25,000,000 |",
 				"| Videos | 450 |",
+				"| Avg Views/Video | 55,555 |",
 			},
 		},
 		{
@@ -438,12 +439,115 @@ func TestGenerateChannelStatsTable(t *testing.T) {
 	}
 }
 
+func TestFormatDuration(t *testing.T) {
+	tests := []struct {
+		name     string
+		seconds  float64
+		expected string
+	}{
+		{name: "zero seconds", seconds: 0, expected: "0s"},
+		{name: "only seconds", seconds: 45, expected: "45s"},
+		{name: "one minute", seconds: 60, expected: "1m 0s"},
+		{name: "minutes and seconds", seconds: 330, expected: "5m 30s"},
+		{name: "many minutes", seconds: 754, expected: "12m 34s"},
+		{name: "fractional seconds", seconds: 123.7, expected: "2m 3s"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := formatDuration(tt.seconds)
+			if result != tt.expected {
+				t.Errorf("formatDuration(%v) = %q, want %q", tt.seconds, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestGenerateEngagementTable(t *testing.T) {
+	tests := []struct {
+		name         string
+		metrics      EngagementMetrics
+		wantContains []string
+		wantExcludes []string
+	}{
+		{
+			name: "full engagement data",
+			metrics: EngagementMetrics{
+				AverageViewDuration: 330.5,
+				Likes:               50000,
+				Comments:            5000,
+				Shares:              2000,
+				Views:               1000000,
+			},
+			wantContains: []string{
+				"| Metric | Value |",
+				"| Avg Watch Time | 5m 30s |",
+				"| Likes | 50,000 |",
+				"| Comments | 5,000 |",
+				"| Shares | 2,000 |",
+				"| Engagement Rate | 5.50% |",
+			},
+		},
+		{
+			name: "no views - no engagement rate",
+			metrics: EngagementMetrics{
+				AverageViewDuration: 120,
+				Likes:               1000,
+				Comments:            100,
+				Shares:              50,
+				Views:               0,
+			},
+			wantContains: []string{
+				"| Avg Watch Time | 2m 0s |",
+				"| Likes | 1,000 |",
+			},
+			wantExcludes: []string{
+				"| Engagement Rate |",
+			},
+		},
+		{
+			name: "small numbers",
+			metrics: EngagementMetrics{
+				AverageViewDuration: 45,
+				Likes:               100,
+				Comments:            10,
+				Shares:              5,
+				Views:               1000,
+			},
+			wantContains: []string{
+				"| Avg Watch Time | 45s |",
+				"| Likes | 100 |",
+				"| Engagement Rate | 11.00% |",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := GenerateEngagementTable(tt.metrics)
+
+			for _, want := range tt.wantContains {
+				if !strings.Contains(result, want) {
+					t.Errorf("result should contain %q, got:\n%s", want, result)
+				}
+			}
+
+			for _, exclude := range tt.wantExcludes {
+				if strings.Contains(result, exclude) {
+					t.Errorf("result should not contain %q, got:\n%s", exclude, result)
+				}
+			}
+		})
+	}
+}
+
 func TestGenerateSponsorAnalyticsSection(t *testing.T) {
 	tests := []struct {
 		name         string
 		demographics ChannelDemographics
 		distribution GeographicDistribution
 		stats        ChannelStatistics
+		engagement   EngagementMetrics
 		wantContains []string
 	}{
 		{
@@ -466,10 +570,18 @@ func TestGenerateSponsorAnalyticsSection(t *testing.T) {
 				TotalViews:      5000000,
 				VideoCount:      300,
 			},
+			engagement: EngagementMetrics{
+				AverageViewDuration: 300,
+				Likes:               50000,
+				Comments:            5000,
+				Shares:              2000,
+				Views:               1000000,
+			},
 			wantContains: []string{
 				"<!-- SPONSOR_ANALYTICS_START -->",
 				"## Channel Analytics",
-				"*Data from the last 90 days, updated automatically.*",
+				"*Last updated:",
+				"Data covers regular videos from the preceding 90 days (excludes Shorts).*",
 				"### Overview",
 				"| Subscribers | 100,000 |",
 				"### Audience Demographics",
@@ -477,6 +589,9 @@ func TestGenerateSponsorAnalyticsSection(t *testing.T) {
 				"pie showData title Gender Distribution",
 				"### Geographic Distribution",
 				"xychart-beta horizontal",
+				"### Engagement",
+				"| Avg Watch Time |",
+				"| Likes |",
 				"<!-- SPONSOR_ANALYTICS_END -->",
 			},
 		},
@@ -496,6 +611,7 @@ func TestGenerateSponsorAnalyticsSection(t *testing.T) {
 				TotalViews:      2000000,
 				VideoCount:      100,
 			},
+			engagement: EngagementMetrics{},
 			wantContains: []string{
 				"<!-- SPONSOR_ANALYTICS_START -->",
 				"### Overview",
@@ -519,6 +635,7 @@ func TestGenerateSponsorAnalyticsSection(t *testing.T) {
 				TotalViews:      2000000,
 				VideoCount:      100,
 			},
+			engagement: EngagementMetrics{},
 			wantContains: []string{
 				"<!-- SPONSOR_ANALYTICS_START -->",
 				"### Overview",
@@ -530,7 +647,7 @@ func TestGenerateSponsorAnalyticsSection(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := GenerateSponsorAnalyticsSection(tt.demographics, tt.distribution, tt.stats)
+			result := GenerateSponsorAnalyticsSection(tt.demographics, tt.distribution, tt.stats, tt.engagement)
 
 			for _, want := range tt.wantContains {
 				if !strings.Contains(result, want) {

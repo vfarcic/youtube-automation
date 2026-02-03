@@ -545,6 +545,15 @@ type ChannelStatistics struct {
 	HiddenSubscribers bool // true if channel hides subscriber count
 }
 
+// EngagementMetrics holds engagement data from YouTube Analytics API
+type EngagementMetrics struct {
+	AverageViewDuration float64 // Average view duration in seconds
+	Likes               int64   // Total likes in period
+	Comments            int64   // Total comments in period
+	Shares              int64   // Total shares in period
+	Views               int64   // Total views in period (for calculating rates)
+}
+
 // GetChannelDemographics fetches age and gender distribution from YouTube Analytics API.
 // Data is aggregated over the last 90 days for statistical significance.
 //
@@ -570,11 +579,12 @@ func GetChannelDemographics(ctx context.Context) (ChannelDemographics, error) {
 		return ChannelDemographics{}, fmt.Errorf("YouTube channel ID not configured in settings.yaml")
 	}
 
-	// Fetch demographics data with ageGroup and gender dimensions
+	// Fetch demographics data with ageGroup and gender dimensions (excluding shorts)
 	analyticsCall := analyticsService.Reports.Query().
 		Ids("channel==" + channelID).
 		StartDate(startDateStr).
 		EndDate(endDateStr).
+		Filters("creatorContentType==VIDEO_ON_DEMAND").
 		Dimensions("ageGroup,gender").
 		Metrics("viewerPercentage")
 
@@ -652,11 +662,12 @@ func GetGeographicDistribution(ctx context.Context) (GeographicDistribution, err
 		return GeographicDistribution{}, fmt.Errorf("YouTube channel ID not configured in settings.yaml")
 	}
 
-	// Fetch geographic data with country dimension, sorted by views descending
+	// Fetch geographic data with country dimension, sorted by views descending (excluding shorts)
 	analyticsCall := analyticsService.Reports.Query().
 		Ids("channel==" + channelID).
 		StartDate(startDateStr).
 		EndDate(endDateStr).
+		Filters("creatorContentType==VIDEO_ON_DEMAND").
 		Dimensions("country").
 		Metrics("views").
 		Sort("-views").
@@ -747,4 +758,71 @@ func GetChannelStatistics(ctx context.Context) (ChannelStatistics, error) {
 		VideoCount:        int64(stats.VideoCount),
 		HiddenSubscribers: stats.HiddenSubscriberCount,
 	}, nil
+}
+
+// GetEngagementMetrics fetches engagement data from YouTube Analytics API.
+// Data is aggregated over the last 90 days.
+//
+// Returns:
+//   - EngagementMetrics: Engagement metrics including avg view duration, likes, comments, shares
+//   - error: Any error encountered during the API call
+func GetEngagementMetrics(ctx context.Context) (EngagementMetrics, error) {
+	client := getClient(ctx)
+
+	analyticsService, err := youtubeanalytics.NewService(ctx, option.WithHTTPClient(client))
+	if err != nil {
+		return EngagementMetrics{}, fmt.Errorf("failed to create YouTube Analytics service: %w", err)
+	}
+
+	// Use last 90 days to match other analytics
+	endDate := time.Now()
+	startDate := endDate.AddDate(0, 0, -90)
+	startDateStr := startDate.Format("2006-01-02")
+	endDateStr := endDate.Format("2006-01-02")
+
+	channelID := configuration.GlobalSettings.YouTube.ChannelId
+	if channelID == "" {
+		return EngagementMetrics{}, fmt.Errorf("YouTube channel ID not configured in settings.yaml")
+	}
+
+	// Fetch engagement metrics (excluding shorts for accurate sponsor metrics)
+	analyticsCall := analyticsService.Reports.Query().
+		Ids("channel==" + channelID).
+		StartDate(startDateStr).
+		EndDate(endDateStr).
+		Filters("creatorContentType==VIDEO_ON_DEMAND").
+		Metrics("averageViewDuration,likes,comments,shares,views")
+
+	response, err := analyticsCall.Do()
+	if err != nil {
+		return EngagementMetrics{}, fmt.Errorf("failed to fetch engagement metrics: %w", err)
+	}
+
+	metrics := EngagementMetrics{}
+
+	if response.Rows == nil || len(response.Rows) == 0 {
+		return metrics, nil
+	}
+
+	// Response should have one row with all metrics
+	row := response.Rows[0]
+	if len(row) >= 5 {
+		if val, ok := row[0].(float64); ok {
+			metrics.AverageViewDuration = val
+		}
+		if val, ok := row[1].(float64); ok {
+			metrics.Likes = int64(val)
+		}
+		if val, ok := row[2].(float64); ok {
+			metrics.Comments = int64(val)
+		}
+		if val, ok := row[3].(float64); ok {
+			metrics.Shares = int64(val)
+		}
+		if val, ok := row[4].(float64); ok {
+			metrics.Views = int64(val)
+		}
+	}
+
+	return metrics, nil
 }
