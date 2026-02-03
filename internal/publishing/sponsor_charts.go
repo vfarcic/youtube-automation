@@ -229,7 +229,7 @@ func GenerateSponsorAnalyticsSection(demographics ChannelDemographics, distribut
 
 	sb.WriteString("<!-- SPONSOR_ANALYTICS_START -->\n")
 	sb.WriteString("## Channel Analytics\n\n")
-	sb.WriteString(fmt.Sprintf("*Last updated: %s. Data covers regular videos from the preceding 90 days (excludes Shorts).*\n\n", time.Now().Format("January 2, 2006")))
+	sb.WriteString(fmt.Sprintf("*Last updated: %s. Data from the preceding 90 days.*\n\n", time.Now().Format("January 2, 2006")))
 
 	// Channel Statistics
 	sb.WriteString("### Overview\n\n")
@@ -262,9 +262,9 @@ func GenerateSponsorAnalyticsSection(demographics ChannelDemographics, distribut
 		sb.WriteString("\n\n")
 	}
 
-	// Engagement section
+	// Engagement section (excludes Shorts for accurate sponsor metrics)
 	if engagement.Views > 0 || engagement.Likes > 0 {
-		sb.WriteString("### Engagement\n\n")
+		sb.WriteString("### Engagement (Regular Videos Only)\n\n")
 		sb.WriteString(GenerateEngagementTable(engagement))
 		sb.WriteString("\n")
 	}

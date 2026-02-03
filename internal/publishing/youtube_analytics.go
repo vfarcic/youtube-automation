@@ -579,12 +579,11 @@ func GetChannelDemographics(ctx context.Context) (ChannelDemographics, error) {
 		return ChannelDemographics{}, fmt.Errorf("YouTube channel ID not configured in settings.yaml")
 	}
 
-	// Fetch demographics data with ageGroup and gender dimensions (excluding shorts)
+	// Fetch demographics data with ageGroup and gender dimensions
 	analyticsCall := analyticsService.Reports.Query().
 		Ids("channel==" + channelID).
 		StartDate(startDateStr).
 		EndDate(endDateStr).
-		Filters("creatorContentType==VIDEO_ON_DEMAND").
 		Dimensions("ageGroup,gender").
 		Metrics("viewerPercentage")
 
@@ -662,12 +661,11 @@ func GetGeographicDistribution(ctx context.Context) (GeographicDistribution, err
 		return GeographicDistribution{}, fmt.Errorf("YouTube channel ID not configured in settings.yaml")
 	}
 
-	// Fetch geographic data with country dimension, sorted by views descending (excluding shorts)
+	// Fetch geographic data with country dimension, sorted by views descending
 	analyticsCall := analyticsService.Reports.Query().
 		Ids("channel==" + channelID).
 		StartDate(startDateStr).
 		EndDate(endDateStr).
-		Filters("creatorContentType==VIDEO_ON_DEMAND").
 		Dimensions("country").
 		Metrics("views").
 		Sort("-views").
