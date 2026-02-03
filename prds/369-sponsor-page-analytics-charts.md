@@ -7,8 +7,8 @@ Potential sponsors evaluating the DevOps Toolkit YouTube channel need current au
 ## Solution Overview
 
 Build a feature that:
-1. Fetches YouTube Analytics data (demographics, geographic distribution, channel statistics)
-2. Generates Mermaid charts (pie charts for demographics, bar charts for geography)
+1. Fetches YouTube Analytics data (demographics, geographic distribution, channel statistics, engagement metrics)
+2. Generates Mermaid charts (bar chart for age distribution, pie chart for gender, bar chart for geography)
 3. Automatically updates the Hugo sponsor page with the generated charts
 4. Supports interactive execution via CLI menu
 
@@ -21,12 +21,12 @@ Build a feature that:
 
 ## Success Criteria
 
-- [x] Demographics data (age groups, gender) displayed as Mermaid pie charts
+- [x] Demographics data (age groups as bar chart, gender as pie chart) displayed as Mermaid charts
 - [x] Geographic distribution (top countries) displayed as Mermaid bar chart
 - [x] Channel statistics (subscribers, total views, avg views/video) displayed in a table
 - [x] Sponsor page preserves existing pricing content when updated
 - [x] CLI menu option available under "Analyze" menu
-- [ ] 80% test coverage maintained for new code
+- [x] 80% test coverage maintained for new code (sponsor_charts.go: 93-100%, sponsor_page.go: 87-100%)
 
 ## Technical Approach
 
@@ -66,7 +66,7 @@ Mermaid charts embedded in markdown with marker-based section replacement:
 - [x] **M2: Chart generation** - Mermaid pie/bar chart generation functions implemented
 - [x] **M3: Sponsor page update** - Marker-based section replacement working
 - [x] **M4: CLI menu integration** - "Analyze → Sponsor Page" menu option functional
-- [ ] **M5: Tests complete** - 80% coverage with unit tests for all new functions
+- [x] **M5: Tests complete** - 80% coverage with unit tests for all new functions
 - [x] **M6: End-to-end validation** - Full workflow tested with real API credentials
 
 ## Risks & Mitigations
