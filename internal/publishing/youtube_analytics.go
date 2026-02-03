@@ -783,12 +783,12 @@ func GetEngagementMetrics(ctx context.Context) (EngagementMetrics, error) {
 		return EngagementMetrics{}, fmt.Errorf("YouTube channel ID not configured in settings.yaml")
 	}
 
-	// Fetch engagement metrics (excluding shorts for accurate sponsor metrics)
+	// Fetch engagement metrics with creatorContentType dimension to filter out shorts
 	analyticsCall := analyticsService.Reports.Query().
 		Ids("channel==" + channelID).
 		StartDate(startDateStr).
 		EndDate(endDateStr).
-		Filters("creatorContentType==VIDEO_ON_DEMAND").
+		Dimensions("creatorContentType").
 		Metrics("averageViewDuration,likes,comments,shares,views")
 
 	response, err := analyticsCall.Do()
@@ -802,24 +802,35 @@ func GetEngagementMetrics(ctx context.Context) (EngagementMetrics, error) {
 		return metrics, nil
 	}
 
-	// Response should have one row with all metrics
-	row := response.Rows[0]
-	if len(row) >= 5 {
-		if val, ok := row[0].(float64); ok {
+	// Filter for VIDEO_ON_DEMAND rows only (excludes SHORTS, LIVE_STREAM, STORY)
+	// Row format: [creatorContentType, averageViewDuration, likes, comments, shares, views]
+	for _, row := range response.Rows {
+		if len(row) < 6 {
+			continue
+		}
+
+		contentType, ok := row[0].(string)
+		if !ok || contentType != "VIDEO_ON_DEMAND" {
+			continue
+		}
+
+		// Found VIDEO_ON_DEMAND row - extract metrics
+		if val, ok := row[1].(float64); ok {
 			metrics.AverageViewDuration = val
 		}
-		if val, ok := row[1].(float64); ok {
+		if val, ok := row[2].(float64); ok {
 			metrics.Likes = int64(val)
 		}
-		if val, ok := row[2].(float64); ok {
+		if val, ok := row[3].(float64); ok {
 			metrics.Comments = int64(val)
 		}
-		if val, ok := row[3].(float64); ok {
+		if val, ok := row[4].(float64); ok {
 			metrics.Shares = int64(val)
 		}
-		if val, ok := row[4].(float64); ok {
+		if val, ok := row[5].(float64); ok {
 			metrics.Views = int64(val)
 		}
+		break // Only need the VIDEO_ON_DEMAND row
 	}
 
 	return metrics, nil
