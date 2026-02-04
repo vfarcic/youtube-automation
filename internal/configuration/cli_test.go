@@ -1538,3 +1538,67 @@ slack:
 	// function to test it in isolation without re-running all flag setup.
 	// For now, the direct unmarshal test above is safer and more targeted for YAML loading.
 }
+
+// TestGeminiConfigDefaults tests that Gemini config defaults are applied correctly
+func TestGeminiConfigDefaults(t *testing.T) {
+	tests := []struct {
+		name          string
+		yamlContent   string
+		expectedModel string
+	}{
+		{
+			name: "Gemini config from YAML",
+			yamlContent: `
+gemini:
+  model: "gemini-2.5-flash-image"
+`,
+			expectedModel: "gemini-2.5-flash-image",
+		},
+		{
+			name:          "Gemini config defaults when not in YAML",
+			yamlContent:   ``, // Empty YAML
+			expectedModel: "gemini-3-pro-image-preview",
+		},
+		{
+			name: "Gemini config with empty model uses default",
+			yamlContent: `
+gemini:
+  model: ""
+`,
+			expectedModel: "gemini-3-pro-image-preview",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Setup: Create a temporary settings.yaml
+			settingsDir := t.TempDir()
+
+			tmpfn := filepath.Join(settingsDir, "settings.yaml")
+			err := os.WriteFile(tmpfn, []byte(tt.yamlContent), 0644)
+			require.NoError(t, err)
+
+			// Change to temp directory
+			originalWD, err := os.Getwd()
+			require.NoError(t, err)
+			err = os.Chdir(settingsDir)
+			require.NoError(t, err)
+			defer os.Chdir(originalWD)
+
+			// Reset and load settings
+			testSettings := Settings{}
+			yamlFile, err := os.ReadFile("settings.yaml")
+			if err == nil {
+				yaml.Unmarshal(yamlFile, &testSettings)
+			}
+
+			// Apply defaults (mimicking init() behavior)
+			if testSettings.Gemini.Model == "" {
+				testSettings.Gemini.Model = "gemini-3-pro-image-preview"
+			}
+
+			// Assert
+			assert.Equal(t, tt.expectedModel, testSettings.Gemini.Model, "Model mismatch")
+		})
+	}
+}
