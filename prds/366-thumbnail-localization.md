@@ -1,10 +1,10 @@
 # PRD: AI-Powered Thumbnail Localization with Google Nano Banana
 
 **Issue**: #366
-**Status**: Not Started
+**Status**: In Progress
 **Priority**: Medium
 **Created**: 2026-01-21
-**Last Updated**: 2026-01-21
+**Last Updated**: 2026-02-04
 **Depends On**: #363 (Video Dubbing - Complete)
 
 ---
@@ -43,23 +43,23 @@ Integrate Google's Nano Banana API to automatically generate localized thumbnail
 2. System reads English thumbnail path and Tagline from YAML
 3. System calls Nano Banana API with specific replacement instruction
 4. Localized thumbnail saved automatically with language suffix
-5. Creator verifies result (one-time visual check)
-6. Selects "Upload Thumbnail" to push to dubbed video on YouTube
+5. **Thumbnail auto-opens in default image viewer** for instant visual verification
+6. Creator verifies result, then selects "Upload Thumbnail" to push to dubbed video on YouTube
 7. Process works for all supported dubbing languages
 
 ## Success Criteria
 
 ### Must Have (MVP)
-- [ ] Google Gemini API client for image generation (`internal/thumbnail/gemini.go`)
+- [x] Google Gemini API client for image generation (`internal/thumbnail/gemini.go`)
 - [ ] Generate localized thumbnail from English original + tagline
 - [ ] Support same languages as dubbing (Spanish initially, extensible)
 - [ ] Save generated thumbnail as `[ORIGINAL_NAME]-[lang].[EXT]`
 - [ ] Store localized thumbnail path in `DubbingInfo` struct
-- [ ] CLI option "Generate Thumbnail" in Dubbing menu
+- [ ] CLI option "Generate Thumbnail" in Dubbing menu (auto-opens result for preview)
 - [ ] CLI option "Upload Thumbnail" for dubbed videos
 - [ ] Upload thumbnail to correct YouTube video using existing `Thumbnails.Set` API
-- [ ] Configuration for Gemini API key and model selection
-- [ ] Unit tests with mocked Gemini API
+- [x] Configuration for Gemini API key and model selection
+- [x] Unit tests with mocked Gemini API
 
 ### Nice to Have (Future)
 - [ ] Batch generation for all languages at once
@@ -72,28 +72,36 @@ Integrate Google's Nano Banana API to automatically generate localized thumbnail
 
 ### Core Components
 
-#### 1. Gemini Client (`internal/thumbnail/gemini.go`)
+#### 1. Gemini Client (`internal/thumbnail/gemini.go`) ✅ IMPLEMENTED
 ```go
 // Config holds Gemini API configuration
 type Config struct {
-    APIKey    string
-    Model     string // "gemini-2.5-flash-image" or "gemini-3-pro-image-preview"
-    MaxTokens int
+    APIKey string
+    Model  string // "gemini-3-pro-image-preview" (default) or "gemini-2.5-flash-image"
 }
 
 // Client is the Google Gemini API client for image generation
 type Client struct {
     config     Config
     httpClient *http.Client
+    baseURL    string
 }
 
-// NewClient creates a new Gemini client
-func NewClient(config Config) *Client
+// NewClient creates a new Gemini client (reads GEMINI_API_KEY env var)
+func NewClient() (*Client, error)
+
+// NewClientWithHTTPClient creates a client with injectable HTTP client (for testing)
+func NewClientWithHTTPClient(config Config, httpClient *http.Client, baseURL string) *Client
 
 // GenerateLocalizedThumbnail generates a thumbnail with translated text
-// Takes original image, source text (tagline), and target language
+// Takes original image, source text (tagline), and target language code
+// Gemini handles translation + image generation in a single call
 // Returns the generated image bytes
 func (c *Client) GenerateLocalizedThumbnail(ctx context.Context, imagePath, tagline, targetLang string) ([]byte, error)
+
+// Helper functions
+func GetLanguageName(langCode string) string      // Returns full language name
+func IsSupportedLanguage(langCode string) bool    // Checks if language is supported
 ```
 
 #### 2. Thumbnail Service (`internal/thumbnail/service.go`)
@@ -105,6 +113,10 @@ func LocalizeThumbnail(ctx context.Context, client *Client, video *storage.Video
 // GetLocalizedThumbnailPath constructs the output path for a localized thumbnail
 // e.g., "/path/to/thumbnail.png" + "es" -> "/path/to/thumbnail-es.png"
 func GetLocalizedThumbnailPath(originalPath, langCode string) string
+
+// OpenInDefaultViewer opens a file in the OS default application
+// Cross-platform: macOS (open), Linux (xdg-open), Windows (start)
+func OpenInDefaultViewer(filePath string) error
 ```
 
 #### 3. YouTube Thumbnail Upload (`internal/publishing/youtube.go`)
@@ -125,12 +137,12 @@ type DubbingInfo struct {
 
 ### Prompt Strategy
 
-The key insight: we have the **exact tagline text** from YAML, so the prompt can be very specific:
+The key insight: we have the **exact tagline text** from YAML, so the prompt can be very specific. Gemini handles both translation and image generation in a single call - no need for a separate translation step.
 
 ```
 You are given a YouTube thumbnail image. The image contains the text: "[ENGLISH_TAGLINE]"
 
-Replace ONLY that text with the [TARGET_LANGUAGE] translation: "[TRANSLATED_TAGLINE]"
+Translate that text to [TARGET_LANGUAGE] and replace it in the image.
 
 Keep everything else exactly the same:
 - Same colors, fonts, and styling
@@ -141,13 +153,15 @@ Keep everything else exactly the same:
 Generate the modified image.
 ```
 
-### Configuration
+**Why single-step translation**: Gemini can translate the text as part of image generation, eliminating the need for a separate AI call to pre-translate the tagline. This simplifies the architecture and reduces API costs.
+
+### Configuration ✅ IMPLEMENTED
 
 **settings.yaml additions:**
 ```yaml
 gemini:
   # apiKey: use GEMINI_API_KEY env var
-  model: "gemini-2.5-flash-image"  # or "gemini-3-pro-image-preview" for better quality
+  model: "gemini-3-pro-image-preview"  # default (pro for better text quality), or "gemini-2.5-flash-image" for speed
 ```
 
 ### CLI Integration
@@ -179,6 +193,7 @@ Progress: 7/8 complete
 - Path construction for localized thumbnails
 - Read tagline from video YAML
 - Save generated image to disk
+- Implement `OpenInDefaultViewer()` for cross-platform preview (macOS: `open`, Linux: `xdg-open`, Windows: `start`)
 - Unit tests for service layer
 
 **Phase 3: Storage Updates**
@@ -233,7 +248,7 @@ Progress: 7/8 complete
 - Automatic text detection/OCR (we have tagline in YAML)
 - Thumbnail design or creation (agency handles this)
 - Multi-text thumbnails (only tagline is tracked)
-- Real-time preview in CLI
+- ~~Real-time preview in CLI~~ (Replaced by auto-open in default image viewer)
 
 ## Validation Strategy
 
@@ -253,7 +268,7 @@ Progress: 7/8 complete
 
 ## Milestones
 
-- [ ] **Gemini API Integration Working**: Can generate images via API
+- [x] **Gemini API Integration Working**: Can generate images via API
 - [ ] **Thumbnail Generation Functional**: Localized thumbnails saved correctly
 - [ ] **Storage Integration Complete**: ThumbnailPath persisted in YAML
 - [ ] **CLI Menu Integration**: Generate and Upload options available
@@ -262,6 +277,27 @@ Progress: 7/8 complete
 - [ ] **End-to-End Workflow Validated**: Full flow tested with real thumbnails
 
 ## Progress Log
+
+### 2026-02-04
+- **Phase 1 Complete**: Gemini API Integration
+  - Created `internal/thumbnail/gemini.go` - Gemini API client (165 lines)
+  - Created `internal/thumbnail/gemini_test.go` - Unit tests (36 tests, 92.3% coverage)
+  - Added `SettingsGemini` to `internal/configuration/cli.go`
+  - Default model: `gemini-3-pro-image-preview` (pro for better text quality)
+  - API key via `GEMINI_API_KEY` environment variable
+  - Supported languages: es, pt, de, fr, it, ja, ko, zh
+
+- **Design Decision**: Let Gemini handle translation directly
+  - **Rationale**: Gemini can translate text as part of image generation, eliminating the need for a separate AI translation call
+  - **Impact**: Simpler architecture (one API call instead of two), reduced costs, Gemini has visual context for appropriate translation
+  - **Code Impact**: `GenerateLocalizedThumbnail()` signature simplified - no translated tagline parameter needed
+  - Updated prompt strategy to use single-step translation approach
+
+- **Design Decision**: Auto-open generated thumbnails for visual verification
+  - **Rationale**: User needs to visually inspect generated thumbnail quality before uploading; eliminates manual file navigation
+  - **Impact**: Better UX - instant feedback loop after generation
+  - **Code Impact**: Added `OpenInDefaultViewer()` function to service layer; cross-platform support (macOS/Linux/Windows)
+  - Updated user journey step 5 and "Out of Scope" section (real-time CLI preview no longer needed)
 
 ### 2026-01-21
 - PRD created
@@ -285,5 +321,5 @@ Progress: 7/8 complete
 - No template/source files available - agency delivers finished images only
 - Tagline is the only text tracked in YAML; complex multi-text thumbnails not supported
 - "Good enough" quality acceptable for secondary language channels
-- Consider caching translations to avoid re-generating same text
+- ~~Consider caching translations to avoid re-generating same text~~ (Not needed - Gemini translates inline)
 - Gemini API supports image input + text prompt for editing workflows

@@ -30,6 +30,7 @@ type Settings struct {
 	Shorts         ShortsConfig           `yaml:"shorts"`
 	ElevenLabs     SettingsElevenLabs     `yaml:"elevenLabs"`
 	SpanishChannel SettingsSpanishChannel `yaml:"spanishChannel"`
+	Gemini         SettingsGemini         `yaml:"gemini"`
 }
 
 type SettingsEmail struct {
@@ -124,6 +125,11 @@ type SettingsSpanishChannel struct {
 	CallbackPort    int    `yaml:"callbackPort"`    // OAuth callback port (default: 8091)
 }
 
+// SettingsGemini holds Google Gemini API configuration for thumbnail localization
+type SettingsGemini struct {
+	Model string `yaml:"model"` // Image generation model (default: gemini-3-pro-image-preview)
+}
+
 var GlobalSettings Settings
 
 func init() {
@@ -199,6 +205,11 @@ func init() {
 	}
 	if GlobalSettings.SpanishChannel.CallbackPort == 0 {
 		GlobalSettings.SpanishChannel.CallbackPort = 8091
+	}
+
+	// Gemini defaults (API key loaded via GEMINI_API_KEY env var at runtime)
+	if GlobalSettings.Gemini.Model == "" {
+		GlobalSettings.Gemini.Model = "gemini-3-pro-image-preview"
 	}
 
 	// Calendar settings: enabled by default, set calendar.disabled: true to disable
