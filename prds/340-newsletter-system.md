@@ -4,7 +4,7 @@
 **Status**: Planning
 **Priority**: Medium
 **Created**: 2025-11-11
-**Last Updated**: 2025-11-11
+**Last Updated**: 2026-02-04
 
 ---
 
@@ -58,7 +58,7 @@ Implement an automated newsletter system that:
 2. System waits configured delay (e.g., 48 hours)
 3. AI generates newsletter content (summary, takeaways, etc.)
 4. System formats newsletter using template
-5. Newsletter sent via ESP (Mailchimp, SendGrid, etc.)
+5. Newsletter sent via ESP (Kit, Mailchimp, etc.)
 6. Newsletter includes video link, AI summary, and CTA
 7. Subscribers get value-add content in their inbox
 8. System tracks newsletter send status in video YAML
@@ -67,7 +67,7 @@ Implement an automated newsletter system that:
 
 ### Must Have (MVP)
 - [ ] Newsletter automatically sent after configurable delay (settings.yaml)
-- [ ] Integration with at least one ESP (to be decided: Mailchimp, SendGrid, or ConvertKit)
+- [ ] Integration with Kit (formerly ConvertKit) as primary ESP
 - [ ] AI-generated content included in newsletter (summary, takeaways, or highlights)
 - [ ] Newsletter template includes video metadata (title, description, thumbnail, link)
 - [ ] Newsletter send status tracked in video YAML
@@ -109,10 +109,10 @@ Implement an automated newsletter system that:
   }
   ```
 
-- Provider implementations (start with one, expand later):
-  - `MailchimpProvider` (if Mailchimp chosen)
-  - `SendGridProvider` (if SendGrid chosen)
-  - `ConvertKitProvider` (if ConvertKit chosen)
+- Provider implementations (start with Kit, expand later):
+  - `KitProvider` (primary - formerly ConvertKit)
+  - `MailchimpProvider` (future option)
+  - `SendGridProvider` (future option - note: no free tier)
 
 #### 2. Newsletter Content Generator (`internal/newsletter/`)
 - `GenerateNewsletterContent()` function
@@ -155,25 +155,21 @@ Implement an automated newsletter system that:
   ```yaml
   newsletter:
     enabled: true
-    provider: "mailchimp"  # or "sendgrid", "convertkit"
+    provider: "kit"  # primary choice; alternatives: "mailchimp"
     delay_hours: 48
     from_name: "Your Channel Name"
     from_email: "newsletter@yourdomain.com"
     reply_to: "reply@yourdomain.com"
 
     # Provider-specific config
-    mailchimp:
+    kit:  # formerly ConvertKit - recommended for creators
+      api_key: "KIT_API_KEY"  # from env var
+      api_secret: "KIT_API_SECRET"  # from env var
+
+    mailchimp:  # alternative - limited free tier (500 contacts, no scheduling)
       api_key: "MAILCHIMP_API_KEY"  # from env var
       list_id: "your-list-id"
       template_id: "optional-template-id"
-
-    sendgrid:
-      api_key: "SENDGRID_API_KEY"  # from env var
-      sender_id: "your-sender-id"
-
-    convertkit:
-      api_key: "CONVERTKIT_API_KEY"  # from env var
-      form_id: "your-form-id"
   ```
 
 #### 6. Scheduling System (`internal/scheduler/`)
@@ -240,21 +236,68 @@ Implement an automated newsletter system that:
 
 ## Open Questions to Discuss During Implementation
 
-### 1. ESP Provider Selection
-**Options**:
-- **Mailchimp**: Most popular, generous free tier (500 subscribers, 1K emails/month), excellent deliverability
-- **SendGrid**: Developer-friendly, transactional focus, 100 emails/day free, better for high volume
-- **ConvertKit**: Creator-focused, superior automation, but more expensive ($9/mo minimum)
+### 1. Subscriber Acquisition Strategy ⏳ BLOCKING
+**This is the most critical question.** Without a viable subscriber acquisition plan, there is no point building the newsletter system.
 
-**Recommendation**: Start with **SendGrid** for developer experience and API quality, but build interface to allow switching.
+**Problem**: Newsletter is only valuable with subscribers. Need to define how to attract and grow the subscriber base before investing in implementation.
+
+**Potential Tactics**:
+
+| Channel | Tactic | Effort | Expected Impact |
+|---------|--------|--------|-----------------|
+| **In-Video** | Verbal CTA ("link in description") | Low | Medium |
+| **In-Video** | End screen overlay with signup link | Low | Medium |
+| **In-Video** | Pinned comment with signup link | Low | Low-Medium |
+| **Description** | Consistent newsletter section in all videos | Low | Medium |
+| **Hugo Blog** | Signup form on blog posts | Medium | Medium |
+| **Hugo Blog** | Popup/banner for first-time visitors | Medium | Medium-High |
+
+**Lead Magnet Options** (value exchange for signup):
+- **Early access**: Videos 24-48 hours before public release
+- **Extended content**: Bonus material cut from videos
+- **Resource lists**: Tools, configs, code samples from videos
+- **Behind-the-scenes**: Production notes, upcoming content previews
+
+**Best Practices for Tech/DevOps Audience**:
+- Exclusive code/configs have highest conversion
+- "No spam, just videos" promise reduces friction
+- One CTA per video (don't compete with like/subscribe)
+- Email-only signup (no name required)
 
 **Discussion Topics**:
-- Current subscriber count (impacts free tier feasibility)
-- Budget considerations
-- Existing ESP accounts or preferences
-- Future automation needs
+- Which lead magnet resonates most with your audience?
+- Comfortable with early access model?
+- Hugo blog signup form implementation priority?
+- Acceptable promotion frequency in videos?
 
-### 2. AI-Generated Content Scope
+**Go/No-Go Criteria**: Must have a concrete acquisition plan with at least one lead magnet before proceeding with implementation.
+
+---
+
+### 2. ESP Provider Selection ✅ RESOLVED
+**Decision**: Use **Kit** (formerly ConvertKit) as the primary ESP.
+
+**Rationale** (decided 2026-02-03):
+- **SendGrid eliminated free tier** in May 2025 - no longer viable for cost-free MVP
+- **Mailchimp free tier limitations**: 500 contacts (shrinking to 250), no scheduling on free plan, Mailchimp branding required
+- **Kit free tier is best**: 10K subscribers, unlimited emails, scheduling supported, creator-focused
+
+**Updated Comparison** (as of 2026):
+| Provider | Free Tier | Scheduling | Notes |
+|----------|-----------|------------|-------|
+| Kit | 10K subs, unlimited emails | ✅ Yes | Best for creators, basic editor |
+| Mailchimp | 500 subs (→250), 1K emails/mo | ❌ No | Requires branding, shrinking limits |
+| SendGrid | ❌ None (retired May 2025) | N/A | 60-day trial only |
+
+**Known Kit Limitations**:
+- Basic email editor (no drag-and-drop)
+- Single automation sequence on free tier
+- Some deliverability complaints (shared IP issues)
+- Price increased Sept 2025 for paid tiers
+
+**Fallback Option**: If Kit deliverability proves problematic, consider **Buttondown** ($9/mo for unlimited) as a developer-friendly alternative.
+
+### 3. AI-Generated Content Scope
 **Options for Newsletter Content**:
 - **Minimal**: Just video title + link with brief AI summary (fastest to implement)
 - **Standard**: Summary + 3-5 key takeaways (good balance)
@@ -267,7 +310,7 @@ Implement an automated newsletter system that:
 - How much reading subscribers prefer
 - Newsletter frequency (affects acceptable length)
 
-### 3. Subscriber Management Strategy
+### 4. Subscriber Management Strategy
 **Options**:
 - **ESP-Only**: All subscriber management in ESP platform (simplest)
 - **Hybrid**: Basic tracking in tool, management in ESP
@@ -280,7 +323,7 @@ Implement an automated newsletter system that:
 - Need for subscriber segmentation
 - Multi-list management (e.g., different lists per video category)
 
-### 4. Scheduling Architecture
+### 5. Scheduling Architecture
 **Options**:
 - **Cron Job**: Separate script runs periodically to check eligible videos
 - **Built-in Scheduler**: Background goroutine in main process
@@ -293,7 +336,7 @@ Implement an automated newsletter system that:
 - CLI vs API mode usage patterns
 - Infrastructure preferences
 
-### 5. Newsletter Template Design
+### 6. Newsletter Template Design
 **Options**:
 - **ESP Templates**: Use ESP's template builder (less control, easier to maintain)
 - **Custom HTML**: Full control, requires frontend development
@@ -311,7 +354,7 @@ Implement an automated newsletter system that:
 | Risk | Impact | Probability | Mitigation |
 |------|--------|-------------|------------|
 | Poor email deliverability | High | Medium | Use reputable ESP; implement SPF/DKIM/DMARC |
-| Subscriber list growth slow | Medium | Medium | Include signup links in videos; promote newsletter |
+| Subscriber list growth slow | High | Medium | **BLOCKING**: See Question #1; must resolve before implementation |
 | Newsletter content too generic | High | Medium | Iterate on AI prompts; A/B test; gather feedback |
 | ESP API rate limits exceeded | High | Low | Implement retry logic; respect rate limits |
 | Configuration complexity overwhelms users | Medium | Medium | Provide setup wizard; good defaults |
@@ -332,9 +375,8 @@ Implement an automated newsletter system that:
 
 ### New External Dependencies
 - ESP SDK/client library:
-  - `github.com/mailchimp/mailchimp-marketing-go` (if Mailchimp)
-  - `github.com/sendgrid/sendgrid-go` (if SendGrid)
-  - ConvertKit Go SDK (if ConvertKit - may need to build wrapper)
+  - Kit API v4 (REST API - no official Go SDK, will build wrapper)
+  - `github.com/mailchimp/mailchimp-marketing-go` (future option)
 
 ## Out of Scope
 
@@ -390,7 +432,9 @@ Implement an automated newsletter system that:
 
 ## Milestones
 
-- [ ] **ESP Provider Selected & Integrated**: Research complete, provider chosen, API connection working
+- [ ] **⚠️ Subscriber Acquisition Plan Approved**: Concrete strategy with lead magnet selected (BLOCKING - must complete before implementation)
+- [x] **ESP Provider Selected**: Kit (formerly ConvertKit) chosen based on free tier analysis (2026-02-03)
+- [ ] **ESP Provider Integrated**: Kit API connection working
 - [ ] **AI Content Generation Working**: Newsletter summaries, takeaways, and subject lines generated successfully
 - [ ] **Template System Built**: HTML and plain text templates rendering correctly with all variables
 - [ ] **Scheduling System Operational**: Background process reliably identifies and sends newsletters at correct times
@@ -403,6 +447,26 @@ Implement an automated newsletter system that:
 
 ## Progress Log
 
+### 2026-02-04
+- **Elevated "Subscriber Acquisition Strategy" to Open Question #1 (BLOCKING)**
+  - Rationale: Without subscribers, there's no point building the newsletter system
+  - Added Go/No-Go criteria: must have concrete acquisition plan before implementation
+- Documented potential tactics: in-video CTAs, description links, Hugo blog integration
+- Documented lead magnet options: early access, extended content, resource lists
+- Added best practices for tech/DevOps audience
+- Updated risk table: "Subscriber list growth slow" now marked High impact, BLOCKING
+
+### 2026-02-03
+- **ESP Provider Decision**: Selected Kit (formerly ConvertKit) as primary ESP
+  - SendGrid no longer viable (free tier retired May 2025)
+  - Mailchimp free tier too limited (no scheduling, shrinking limits)
+  - Kit offers 10K subscribers free with unlimited emails and scheduling
+- **Scope Confirmation**: 500 subscribers sufficient for MVP
+- Updated PRD with current ESP pricing/features research
+- Added user sentiment analysis from Reddit/Trustpilot reviews
+- Identified Kit limitations: basic editor, deliverability concerns, Sept 2025 price hike
+- Added Buttondown as fallback option if Kit proves problematic
+
 ### 2025-11-11
 - PRD created
 - GitHub issue #340 opened
@@ -413,18 +477,20 @@ Implement an automated newsletter system that:
 
 ## Notes
 
-### ESP Provider Comparison Summary
+### ESP Provider Comparison Summary (Updated 2026-02)
 
-| Feature | Mailchimp | SendGrid | ConvertKit |
-|---------|-----------|----------|------------|
-| **Free Tier** | 500 subs, 1K emails/mo | 100 emails/day | None ($9/mo min) |
-| **Pricing** | $13/mo (500 subs) | $19.95/mo (50K/mo) | $9/mo (300 subs) |
-| **Best For** | Beginners, marketing | Developers, scale | Creators, automation |
-| **API Quality** | Good | Excellent | Good |
-| **Deliverability** | Excellent | Excellent | Very Good |
-| **Templates** | Built-in builder | Code-based | Built-in builder |
-| **Analytics** | Comprehensive | Good | Comprehensive |
-| **Learning Curve** | Low | Medium | Low |
+| Feature | Kit (ConvertKit) | Mailchimp | SendGrid |
+|---------|------------------|-----------|----------|
+| **Free Tier** | ✅ 10K subs, unlimited emails | 500 subs (→250), 1K emails/mo | ❌ None (retired May 2025) |
+| **Scheduling** | ✅ Yes | ❌ Not on free | N/A |
+| **Best For** | Creators, newsletters | Beginners (small lists) | Developers (paid only) |
+| **API Quality** | Good (REST, no Go SDK) | Good | Excellent |
+| **Deliverability** | Mixed reviews (shared IP) | Good | Excellent |
+| **Templates** | Basic text-focused | Built-in builder | Code-based |
+| **Branding** | Minimal | Required on free | N/A |
+| **User Sentiment** | Divided (simple vs scale) | "Outgrow it" complaints | Account suspension issues |
+
+**Note**: This comparison was updated after research in Feb 2026. The original Nov 2025 comparison is outdated.
 
 ### Content Strategy Recommendations
 
