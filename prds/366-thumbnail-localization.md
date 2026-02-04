@@ -54,7 +54,7 @@ Integrate Google's Nano Banana API to automatically generate localized thumbnail
 - [x] Generate localized thumbnail from English original + tagline
 - [x] Support same languages as dubbing (Spanish initially, extensible)
 - [x] Save generated thumbnail as `[ORIGINAL_NAME]-[lang].[EXT]`
-- [ ] Store localized thumbnail path in `DubbingInfo` struct
+- [x] Store localized thumbnail path in `DubbingInfo` struct
 - [ ] CLI option "Generate Thumbnail" in Dubbing menu (auto-opens result for preview)
 - [ ] CLI option "Upload Thumbnail" for dubbed videos
 - [ ] Upload thumbnail to correct YouTube video using existing `Thumbnails.Set` API
@@ -278,7 +278,7 @@ Progress: 7/8 complete
 
 - [x] **Gemini API Integration Working**: Can generate images via API
 - [x] **Thumbnail Generation Functional**: Localized thumbnails saved correctly
-- [ ] **Storage Integration Complete**: ThumbnailPath persisted in YAML
+- [x] **Storage Integration Complete**: ThumbnailPath persisted in YAML
 - [ ] **CLI Menu Integration**: Generate and Upload options available
 - [ ] **YouTube Upload Working**: Thumbnails uploaded to dubbed videos
 - [ ] **Model Comparison Complete**: Recommendation documented for default model
@@ -316,6 +316,16 @@ Progress: 7/8 complete
   - `OpenInDefaultViewer()` cross-platform preview (macOS: open, Linux: xdg-open, Windows: cmd /c start)
   - `ThumbnailGenerator` interface enables mocking for tests
   - Test coverage: 90.4% for thumbnail package (57 tests total)
+
+- **Phase 3 Complete**: Storage Updates
+  - Added `ThumbnailPath` field to `DubbingInfo` struct in `internal/storage/yaml.go`
+  - Field uses `omitempty` for both YAML and JSON serialization
+  - Added 5 unit tests in `internal/storage/yaml_test.go`:
+    - DubbingInfo YAML serialization with ThumbnailPath
+    - ThumbnailPath omitted when empty (omitempty works)
+    - DubbingInfo JSON serialization with ThumbnailPath
+    - Video with Dubbing map persists and loads correctly
+    - Video without Dubbing loads with nil map
 
 ### 2026-01-21
 - PRD created
