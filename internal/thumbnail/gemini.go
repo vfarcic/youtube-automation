@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"devopstoolkit/youtube-automation/internal/configuration"
 )
@@ -112,7 +113,7 @@ func NewClient() (*Client, error) {
 			APIKey: apiKey,
 			Model:  model,
 		},
-		httpClient: &http.Client{},
+		httpClient: &http.Client{Timeout: 30 * time.Second},
 		baseURL:    defaultBaseURL,
 	}, nil
 }

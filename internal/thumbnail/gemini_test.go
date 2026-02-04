@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"devopstoolkit/youtube-automation/internal/configuration"
 )
@@ -144,6 +145,11 @@ func TestNewClient(t *testing.T) {
 
 			if client.config.Model != tt.wantModel {
 				t.Errorf("NewClient() model = %v, want %v", client.config.Model, tt.wantModel)
+			}
+
+			// Verify HTTP client has timeout set
+			if client.httpClient.Timeout != 30*time.Second {
+				t.Errorf("NewClient() httpClient.Timeout = %v, want %v", client.httpClient.Timeout, 30*time.Second)
 			}
 		})
 	}
