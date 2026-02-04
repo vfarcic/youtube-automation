@@ -167,8 +167,10 @@ func UploadDubbedVideo(video *storage.Video, langCode string) (string, error) {
 				thumbnailResp, thumbnailErr := thumbnailCall.Media(thumbnailFile).Do()
 				if thumbnailErr != nil {
 					fmt.Printf("Warning: could not upload thumbnail: %v\n", thumbnailErr)
-				} else {
+				} else if len(thumbnailResp.Items) > 0 && thumbnailResp.Items[0].Default != nil {
 					fmt.Printf("Thumbnail uploaded, URL: %s\n", thumbnailResp.Items[0].Default.Url)
+				} else {
+					fmt.Printf("Thumbnail uploaded successfully\n")
 				}
 			}
 		}
