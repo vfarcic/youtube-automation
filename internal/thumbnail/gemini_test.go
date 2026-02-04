@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -311,8 +312,8 @@ func TestGenerateLocalizedThumbnail(t *testing.T) {
 					t.Errorf("expected error, got nil")
 					return
 				}
-				if tt.wantErrType != nil && !strings.Contains(err.Error(), tt.wantErrType.Error()) {
-					t.Errorf("error = %v, want error containing %v", err, tt.wantErrType)
+				if tt.wantErrType != nil && !errors.Is(err, tt.wantErrType) {
+					t.Errorf("error = %v, want error wrapping %v", err, tt.wantErrType)
 				}
 				return
 			}
@@ -344,8 +345,8 @@ func TestGenerateLocalizedThumbnail_ImageNotFound(t *testing.T) {
 		return
 	}
 
-	if !strings.Contains(err.Error(), ErrImageReadFailed.Error()) {
-		t.Errorf("error = %v, want error containing %v", err, ErrImageReadFailed)
+	if !errors.Is(err, ErrImageReadFailed) {
+		t.Errorf("error = %v, want error wrapping %v", err, ErrImageReadFailed)
 	}
 }
 
