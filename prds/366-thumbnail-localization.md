@@ -44,8 +44,9 @@ Integrate Google's Nano Banana API to automatically generate localized thumbnail
 3. System calls Nano Banana API with specific replacement instruction
 4. Localized thumbnail saved automatically with language suffix
 5. **Thumbnail auto-opens in default image viewer** for instant visual verification
-6. Creator verifies result, then selects "Upload Thumbnail" to push to dubbed video on YouTube
-7. Process works for all supported dubbing languages
+6. Creator verifies result, then selects "Upload All to YouTube"
+7. **Thumbnail automatically uploads with the dubbed video** (same pattern as English videos)
+8. Process works for all supported dubbing languages
 
 ## Success Criteria
 
@@ -55,9 +56,8 @@ Integrate Google's Nano Banana API to automatically generate localized thumbnail
 - [x] Support same languages as dubbing (Spanish initially, extensible)
 - [x] Save generated thumbnail as `[ORIGINAL_NAME]-[lang].[EXT]`
 - [x] Store localized thumbnail path in `DubbingInfo` struct
-- [ ] CLI option "Generate Thumbnail" in Dubbing menu (auto-opens result for preview)
-- [ ] CLI option "Upload Thumbnail" for dubbed videos
-- [ ] Upload thumbnail to correct YouTube video using existing `Thumbnails.Set` API
+- [x] CLI option "Generate Thumbnail" in Dubbing menu (auto-opens result for preview)
+- [x] Upload thumbnail to correct YouTube video using existing `Thumbnails.Set` API (auto-uploads with dubbed video)
 - [x] Configuration for Gemini API key and model selection
 - [x] Unit tests with mocked Gemini API
 
@@ -172,21 +172,22 @@ gemini:
   model: "gemini-3-pro-image-preview"  # default (pro for better text quality), or "gemini-2.5-flash-image" for speed
 ```
 
-### CLI Integration
+### CLI Integration ✅ IMPLEMENTED
 
-Add to Dubbing phase menu (after dubbing actions):
+Added to Dubbing phase menu:
 
 ```
 == Dubbing: My Video ==
 Progress: 7/8 complete
 
-[ ] Generate Thumbnail (es)     <- New
-[ ] Upload Thumbnail (es)       <- New (only shown if thumbnail exists)
+[ ] Generate Thumbnail (es)     <- Shows when video has thumbnail + tagline
 [x] Start Dubbing
 [x] Check Status
 [x] Translate Metadata
-[x] Upload to YouTube
+[x] Upload to YouTube            <- Now auto-uploads thumbnail if ThumbnailPath is set
 ```
+
+**Design Decision**: Thumbnail uploads automatically during `UploadDubbedVideo()` rather than as a separate menu option. This follows the same pattern as English videos and simplifies the workflow.
 
 ### Implementation Phases
 
@@ -279,8 +280,8 @@ Progress: 7/8 complete
 - [x] **Gemini API Integration Working**: Can generate images via API
 - [x] **Thumbnail Generation Functional**: Localized thumbnails saved correctly
 - [x] **Storage Integration Complete**: ThumbnailPath persisted in YAML
-- [ ] **CLI Menu Integration**: Generate and Upload options available
-- [ ] **YouTube Upload Working**: Thumbnails uploaded to dubbed videos
+- [x] **CLI Menu Integration**: Generate Thumbnail option available, auto-opens preview
+- [x] **YouTube Upload Working**: Thumbnails auto-upload with dubbed videos
 - [ ] **Model Comparison Complete**: Recommendation documented for default model
 - [ ] **End-to-End Workflow Validated**: Full flow tested with real thumbnails
 
@@ -326,6 +327,19 @@ Progress: 7/8 complete
     - DubbingInfo JSON serialization with ThumbnailPath
     - Video with Dubbing map persists and loads correctly
     - Video without Dubbing loads with nil map
+
+- **Phase 4 Complete**: CLI Integration
+  - Added `actionDubbingGenerateThumbnail` constant to `internal/app/menu_phase_editor.go`
+  - "Generate Thumbnail (es)" menu option appears when video has thumbnail + tagline
+  - Shows green "(done)" indicator when `ThumbnailPath` is already set
+  - Action handler: creates Gemini client → generates thumbnail → saves path to YAML → opens preview
+  - Manual testing confirmed working
+
+- **Phase 5 Complete**: YouTube Upload Integration
+  - Modified `UploadDubbedVideo()` in `internal/publishing/youtube_dubbed.go`
+  - Thumbnail auto-uploads after video upload if `ThumbnailPath` is set
+  - Follows same pattern as English videos (consistent UX)
+  - **Design Decision**: No separate "Upload Thumbnail" menu option - simpler workflow
 
 ### 2026-01-21
 - PRD created

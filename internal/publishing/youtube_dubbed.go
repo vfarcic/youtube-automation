@@ -154,6 +154,26 @@ func UploadDubbedVideo(video *storage.Video, langCode string) (string, error) {
 	} else {
 		fmt.Printf("Dubbed video uploaded and made public! Video ID: %v\n", response.Id)
 	}
+
+	// Upload localized thumbnail if available (same pattern as English videos)
+	if dubbingInfo.ThumbnailPath != "" {
+		if _, statErr := os.Stat(dubbingInfo.ThumbnailPath); statErr == nil {
+			thumbnailFile, openErr := os.Open(dubbingInfo.ThumbnailPath)
+			if openErr != nil {
+				fmt.Printf("Warning: could not open thumbnail file %s: %v\n", dubbingInfo.ThumbnailPath, openErr)
+			} else {
+				defer thumbnailFile.Close()
+				thumbnailCall := service.Thumbnails.Set(response.Id)
+				thumbnailResp, thumbnailErr := thumbnailCall.Media(thumbnailFile).Do()
+				if thumbnailErr != nil {
+					fmt.Printf("Warning: could not upload thumbnail: %v\n", thumbnailErr)
+				} else {
+					fmt.Printf("Thumbnail uploaded, URL: %s\n", thumbnailResp.Items[0].Default.Url)
+				}
+			}
+		}
+	}
+
 	return response.Id, nil
 }
 

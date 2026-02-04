@@ -22,6 +22,7 @@ import (
 	"devopstoolkit/youtube-automation/internal/publishing"
 	"devopstoolkit/youtube-automation/internal/slack"
 	"devopstoolkit/youtube-automation/internal/storage"
+	"devopstoolkit/youtube-automation/internal/thumbnail"
 
 	"github.com/charmbracelet/huh"
 )
@@ -662,11 +663,12 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 				// Action constants: 0 = long-form, 1-999 = shorts dubbing (by index+1),
 				// 1000+ = general actions, 2000+ = upload shorts (2000 + index)
 				const (
-					actionDubbingLongForm    = 0
-					actionDubbingCheckStatus = 1000
-					actionDubbingBack        = 1001
-					actionDubbingTranslate   = 1002
-					actionDubbingUploadAll   = 1004
+					actionDubbingLongForm          = 0
+					actionDubbingCheckStatus       = 1000
+					actionDubbingBack              = 1001
+					actionDubbingTranslate         = 1002
+					actionDubbingUploadAll         = 1004
+					actionDubbingGenerateThumbnail = 1005
 				)
 
 				// Helper to get status text for a dubbing key
@@ -769,6 +771,33 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 						}
 					}
 					options = append(options, huh.NewOption(translateLabel, actionDubbingTranslate))
+				}
+
+				// Show generate thumbnail option if video has a thumbnail and tagline
+				if updatedVideo.Tagline != "" {
+					// Check if video has a thumbnail (either in ThumbnailVariants or legacy field)
+					hasThumbnail := false
+					if len(updatedVideo.ThumbnailVariants) > 0 {
+						for _, v := range updatedVideo.ThumbnailVariants {
+							if v.Path != "" {
+								hasThumbnail = true
+								break
+							}
+						}
+					} else if updatedVideo.Thumbnail != "" {
+						hasThumbnail = true
+					}
+
+					if hasThumbnail {
+						thumbnailLabel := "Generate Thumbnail (es)"
+						// Check if already generated
+						if updatedVideo.Dubbing != nil {
+							if info, ok := updatedVideo.Dubbing["es"]; ok && info.ThumbnailPath != "" {
+								thumbnailLabel = m.greenStyle.Render("Generate Thumbnail (es) (done)")
+							}
+						}
+						options = append(options, huh.NewOption(thumbnailLabel, actionDubbingGenerateThumbnail))
+					}
 				}
 
 				// Show upload option when dubbed items exist
@@ -1053,6 +1082,53 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 						for i, st := range output.ShortTitles {
 							fmt.Println(m.normalStyle.Render(fmt.Sprintf("  Short %d: %s", i+1, st)))
 						}
+					}
+
+					videoToEdit = updatedVideo
+					continue
+				}
+
+				if selectedAction == actionDubbingGenerateThumbnail {
+					// Generate localized thumbnail using Gemini AI
+					fmt.Println(m.normalStyle.Render("Generating localized thumbnail..."))
+
+					// Create Gemini client
+					geminiClient, err := thumbnail.NewClient()
+					if err != nil {
+						fmt.Println(m.errorStyle.Render(fmt.Sprintf("Failed to create Gemini client: %v", err)))
+						continue
+					}
+
+					// Generate the thumbnail
+					ctx := context.Background()
+					outputPath, err := thumbnail.LocalizeThumbnail(ctx, geminiClient, &updatedVideo, "es")
+					if err != nil {
+						fmt.Println(m.errorStyle.Render(fmt.Sprintf("Failed to generate thumbnail: %v", err)))
+						continue
+					}
+
+					// Update DubbingInfo with thumbnail path
+					if updatedVideo.Dubbing == nil {
+						updatedVideo.Dubbing = make(map[string]storage.DubbingInfo)
+					}
+					info := updatedVideo.Dubbing["es"]
+					info.ThumbnailPath = outputPath
+					updatedVideo.Dubbing["es"] = info
+
+					// Save to YAML
+					yaml := storage.YAML{}
+					if err := yaml.WriteVideo(updatedVideo, updatedVideo.Path); err != nil {
+						fmt.Println(m.errorStyle.Render(fmt.Sprintf("Failed to save thumbnail path: %v", err)))
+						continue
+					}
+
+					fmt.Println(m.confirmationStyle.Render(fmt.Sprintf("Thumbnail generated: %s", outputPath)))
+
+					// Open in default viewer for preview
+					if err := thumbnail.OpenInDefaultViewer(outputPath); err != nil {
+						fmt.Println(m.orangeStyle.Render(fmt.Sprintf("Could not open preview: %v", err)))
+					} else {
+						fmt.Println(m.normalStyle.Render("Opening thumbnail for preview..."))
 					}
 
 					videoToEdit = updatedVideo
