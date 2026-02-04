@@ -51,9 +51,9 @@ Integrate Google's Nano Banana API to automatically generate localized thumbnail
 
 ### Must Have (MVP)
 - [x] Google Gemini API client for image generation (`internal/thumbnail/gemini.go`)
-- [ ] Generate localized thumbnail from English original + tagline
-- [ ] Support same languages as dubbing (Spanish initially, extensible)
-- [ ] Save generated thumbnail as `[ORIGINAL_NAME]-[lang].[EXT]`
+- [x] Generate localized thumbnail from English original + tagline
+- [x] Support same languages as dubbing (Spanish initially, extensible)
+- [x] Save generated thumbnail as `[ORIGINAL_NAME]-[lang].[EXT]`
 - [ ] Store localized thumbnail path in `DubbingInfo` struct
 - [ ] CLI option "Generate Thumbnail" in Dubbing menu (auto-opens result for preview)
 - [ ] CLI option "Upload Thumbnail" for dubbed videos
@@ -104,19 +104,27 @@ func GetLanguageName(langCode string) string      // Returns full language name
 func IsSupportedLanguage(langCode string) bool    // Checks if language is supported
 ```
 
-#### 2. Thumbnail Service (`internal/thumbnail/service.go`)
+#### 2. Thumbnail Service (`internal/thumbnail/service.go`) ✅ IMPLEMENTED
 ```go
 // LocalizeThumbnail generates and saves a localized thumbnail
 // Returns the path to the saved thumbnail
-func LocalizeThumbnail(ctx context.Context, client *Client, video *storage.Video, langCode string) (string, error)
+func LocalizeThumbnail(ctx context.Context, generator ThumbnailGenerator, video *storage.Video, langCode string) (string, error)
 
 // GetLocalizedThumbnailPath constructs the output path for a localized thumbnail
 // e.g., "/path/to/thumbnail.png" + "es" -> "/path/to/thumbnail-es.png"
 func GetLocalizedThumbnailPath(originalPath, langCode string) string
 
+// GetOriginalThumbnailPath extracts thumbnail path from video (handles ThumbnailVariants and legacy field)
+func GetOriginalThumbnailPath(video *storage.Video) (string, error)
+
 // OpenInDefaultViewer opens a file in the OS default application
 // Cross-platform: macOS (open), Linux (xdg-open), Windows (start)
 func OpenInDefaultViewer(filePath string) error
+
+// ThumbnailGenerator interface for mocking in tests
+type ThumbnailGenerator interface {
+    GenerateLocalizedThumbnail(ctx context.Context, imagePath, tagline, targetLang string) ([]byte, error)
+}
 ```
 
 #### 3. YouTube Thumbnail Upload (`internal/publishing/youtube.go`)
@@ -269,7 +277,7 @@ Progress: 7/8 complete
 ## Milestones
 
 - [x] **Gemini API Integration Working**: Can generate images via API
-- [ ] **Thumbnail Generation Functional**: Localized thumbnails saved correctly
+- [x] **Thumbnail Generation Functional**: Localized thumbnails saved correctly
 - [ ] **Storage Integration Complete**: ThumbnailPath persisted in YAML
 - [ ] **CLI Menu Integration**: Generate and Upload options available
 - [ ] **YouTube Upload Working**: Thumbnails uploaded to dubbed videos
@@ -298,6 +306,16 @@ Progress: 7/8 complete
   - **Impact**: Better UX - instant feedback loop after generation
   - **Code Impact**: Added `OpenInDefaultViewer()` function to service layer; cross-platform support (macOS/Linux/Windows)
   - Updated user journey step 5 and "Out of Scope" section (real-time CLI preview no longer needed)
+
+- **Phase 2 Complete**: Thumbnail Generation Logic
+  - Created `internal/thumbnail/service.go` - service layer (137 lines)
+  - Created `internal/thumbnail/service_test.go` - unit tests (415 lines, 35+ test cases)
+  - `LocalizeThumbnail()` orchestrates generation, saving, and returns output path
+  - `GetLocalizedThumbnailPath()` constructs language-suffixed paths (e.g., `thumbnail-es.png`)
+  - `GetOriginalThumbnailPath()` handles ThumbnailVariants (new) and Thumbnail (legacy) fields
+  - `OpenInDefaultViewer()` cross-platform preview (macOS: open, Linux: xdg-open, Windows: cmd /c start)
+  - `ThumbnailGenerator` interface enables mocking for tests
+  - Test coverage: 90.4% for thumbnail package (57 tests total)
 
 ### 2026-01-21
 - PRD created
