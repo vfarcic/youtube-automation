@@ -775,20 +775,8 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 
 				// Show generate thumbnail option if video has a thumbnail and tagline
 				if updatedVideo.Tagline != "" {
-					// Check if video has a thumbnail (either in ThumbnailVariants or legacy field)
-					hasThumbnail := false
-					if len(updatedVideo.ThumbnailVariants) > 0 {
-						for _, v := range updatedVideo.ThumbnailVariants {
-							if v.Path != "" {
-								hasThumbnail = true
-								break
-							}
-						}
-					} else if updatedVideo.Thumbnail != "" {
-						hasThumbnail = true
-					}
-
-					if hasThumbnail {
+					// Check if video has a thumbnail using the service function
+					if _, thumbnailErr := thumbnail.GetOriginalThumbnailPath(&updatedVideo); thumbnailErr == nil {
 						thumbnailLabel := "Generate Thumbnail (es)"
 						// Check if already generated
 						if updatedVideo.Dubbing != nil {
