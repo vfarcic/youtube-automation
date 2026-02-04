@@ -65,6 +65,7 @@ type DubbingInfo struct {
 	UploadedVideoID string `yaml:"uploadedVideoId,omitempty" json:"uploadedVideoId,omitempty"` // YouTube video ID on target channel
 	DubbingStatus   string `yaml:"dubbingStatus,omitempty" json:"dubbingStatus,omitempty"`     // Status: "", "dubbing", "dubbed", "failed"
 	DubbingError    string `yaml:"dubbingError,omitempty" json:"dubbingError,omitempty"`       // Error message if dubbing failed
+	ThumbnailPath   string `yaml:"thumbnailPath,omitempty" json:"thumbnailPath,omitempty"`     // Path to localized thumbnail
 }
 
 // Video represents all data associated with a video project.
