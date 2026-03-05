@@ -1,7 +1,7 @@
 # PRD: HTTP API and React Frontend for Video Management
 
 **Issue**: #372
-**Status**: Planning
+**Status**: In Progress
 **Priority**: Medium
 **Created**: 2026-03-05
 
@@ -46,12 +46,12 @@ The existing **aspect system** (`internal/aspect/`) already generates typed fiel
 - [ ] API exposes aspect metadata for dynamic form rendering
 - [ ] API serves AI content generation (titles, description, tags, tweets)
 - [ ] API serves publishing operations (YouTube upload, Hugo blog post)
-- [ ] React frontend renders phase dashboard with video counts
+- [x] React frontend renders phase dashboard with video counts
 - [ ] Frontend dynamically renders aspect-based editing forms from API metadata
 - [ ] Frontend shows progress tracking per aspect and overall
 - [ ] Frontend supports AI content generation with apply-to-field UX
-- [ ] API protected by bearer token auth (env var, disabled when unset)
-- [ ] Go server embeds and serves the built frontend (single binary deployment)
+- [x] API protected by bearer token auth (env var, disabled when unset)
+- [x] Go server embeds and serves the built frontend (single binary deployment)
 - [ ] Helm chart deploys backend + frontend to Kubernetes
 - [ ] GHA builds and pushes container images to ghcr.io
 - [ ] 80% test coverage on API handlers
@@ -249,7 +249,8 @@ Add `sync.RWMutex` in storage layer for index operations and per-video writes. A
 - [x] **API Foundation + Video CRUD**: chi router, middleware, error handling, all video lifecycle endpoints, categories, health check. Tests passing.
 - [x] **Aspect Metadata + Video Editing API**: Aspect metadata endpoints, 7 aspect-specific PATCH endpoints, progress endpoints, manuscript/animations endpoints. Tests passing.
 - [x] **Bearer Token Authentication**: `API_TOKEN` env var middleware, constant-time comparison, `/health` always public, empty token = disabled. Tests passing.
-- [ ] **Frontend Foundation + Phase Dashboard**: Vite + React + TypeScript project, API client layer, app layout with sidebar, phase overview dashboard, video list per phase, video detail (read-only). Go server serves embedded frontend.
+- [x] **Frontend Foundation + Phase Dashboard**: Vite + React + TypeScript project, API client layer, app layout with sidebar, phase overview dashboard, video list per phase, video detail (read-only). Go server serves embedded frontend. Auth screen mandatory on load.
+- [ ] **Git Sync for YAML Data**: Server clones/pulls a configured Git repo on startup, auto-commits and pushes on data mutations. Required because YAML data lives in a GitHub repo.
 - [ ] **Dynamic Form Rendering + Video Editing UI**: DynamicForm component, all field renderers, aspect tab navigation, PATCH updates, completion badges, progress bars, video create/delete/archive actions.
 - [ ] **AI Content Generation**: All 12 AI API endpoints, SSE infrastructure for long-running operations, frontend AI panel with suggestion display and "apply" action.
 - [ ] **Publishing + Social Media**: YouTube upload, Hugo blog, shorts upload, dubbed upload, transcript fetch endpoints. Social media posting endpoints. Frontend publishing panel with upload progress.
@@ -297,3 +298,23 @@ Add `sync.RWMutex` in storage layer for index operations and per-video writes. A
   - Auth disabled when token empty (backwards compatible, local dev friendly)
   - 9 tests (7 unit + 2 integration): valid/invalid/missing/malformed tokens, auth disabled, health public, CORS preflight
   - All tests pass with `-race`
+- **Milestone 4 complete**: Frontend Foundation + Phase Dashboard
+  - Scaffolded `web/` with Vite + React + TypeScript + Tailwind CSS v4
+  - API client layer: `ApiError` class, Bearer token from localStorage, TanStack Query hooks (`usePhases`, `useVideosList`, `useVideo`, `useVideoProgress`)
+  - Zustand UI store for sidebar/phase state
+  - Layout: fixed sidebar (240px) with phase navigation + main content area
+  - Phase Dashboard: responsive grid (4/2/1 cols) of phase cards with counts and color accents
+  - Video List: table with name, category, date, progress bars; click navigates to detail
+  - Video Detail: read-only fields grouped by aspect (Init, Work, Define, Edit, Publish, Post-Publish) with per-aspect and overall progress bars
+  - Auth screen: mandatory on load when no token in localStorage, re-triggered on 401
+  - Routing: `/` → Dashboard, `/phases/:id` → Video List, `/videos/:category/:name` → Detail
+  - SPA fallback handler in Go: serves static files from embedded FS, falls back to index.html for client-side routes
+  - `internal/frontend/embed.go` with `//go:embed all:dist` for single-binary deployment
+  - Build targets: `make frontend-build`, `make build-local-full` / `just frontend-build`, `just build-full`
+  - 16 frontend tests (Vitest + Testing Library + MSW): dashboard, video list, video detail, API client, Zustand store
+  - 4 Go SPA handler tests: static files, client-side route fallback, API routes unaffected, nil FS
+  - All tests pass
+- **Design decisions**:
+  - **Git sync needed**: YAML data lives in a GitHub repo. Server must clone/pull on startup and auto-commit/push on data mutations. New `git` section in `settings.yaml` for repo URL, branch, credentials. This is the next milestone before Dynamic Form Rendering.
+  - **API token in settings.yaml**: Added `SettingsAPI` struct with `api.token` field as fallback. Precedence: `--api-token` flag > `API_TOKEN` env var > `settings.yaml`.
+  - **Auth screen mandatory**: Frontend always shows token input on first load when no token in localStorage. Also re-shows on 401 responses.

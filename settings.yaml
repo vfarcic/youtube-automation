@@ -19,6 +19,8 @@ hugo:
   path: ../devopstoolkit-live/
 youtube:
   channelId: UCfz8x0lVzJpb_dgWm9kPVrw
+api:
+  token: "TestToken"
 bluesky:
   identifier: vfarcic.bsky.social
   url: https://bsky.social/xrpc

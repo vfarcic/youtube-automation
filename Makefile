@@ -86,4 +86,13 @@ bump-major:
 	$(eval NEXT_VERSION := $(shell echo $(CURRENT_VERSION) | awk -F'[v.]' '{printf "v%d.0.0", $$2+1}'))
 	$(call BUMP_AND_TAG,$(CURRENT_VERSION),major,$(NEXT_VERSION))
 
-.PHONY: build build-local clean test
+# Build the frontend (npm install + build) and copy to Go embed directory
+frontend-build:
+	cd web && npm install && npm run build
+	rm -rf internal/frontend/dist
+	cp -r web/dist internal/frontend/dist
+
+# Build the full binary with embedded frontend
+build-local-full: frontend-build build-local
+
+.PHONY: build build-local clean test frontend-build build-local-full

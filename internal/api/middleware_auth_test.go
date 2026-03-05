@@ -85,7 +85,7 @@ func TestHealthPublicWhileAPIRequiresAuth(t *testing.T) {
 	env := setupTestEnv(t)
 
 	// Override: create a server with auth enabled
-	srv := NewServer(env.server.videoService, env.server.videoManager, env.server.aspectService, env.server.filesystem, "test-token")
+	srv := NewServer(env.server.videoService, env.server.videoManager, env.server.aspectService, env.server.filesystem, "test-token", nil)
 
 	// Health endpoint should be accessible without auth
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
@@ -116,7 +116,7 @@ func TestHealthPublicWhileAPIRequiresAuth(t *testing.T) {
 func TestCORSPreflightPassesWithoutAuth(t *testing.T) {
 	env := setupTestEnv(t)
 
-	srv := NewServer(env.server.videoService, env.server.videoManager, env.server.aspectService, env.server.filesystem, "test-token")
+	srv := NewServer(env.server.videoService, env.server.videoManager, env.server.aspectService, env.server.filesystem, "test-token", nil)
 
 	req := httptest.NewRequest(http.MethodOptions, "/api/videos", nil)
 	req.Header.Set("Origin", "http://localhost:3000")

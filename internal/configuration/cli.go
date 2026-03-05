@@ -39,6 +39,11 @@ type Settings struct {
 	ElevenLabs     SettingsElevenLabs     `yaml:"elevenLabs"`
 	SpanishChannel SettingsSpanishChannel `yaml:"spanishChannel"`
 	Gemini         SettingsGemini         `yaml:"gemini"`
+	API            SettingsAPI            `yaml:"api"`
+}
+
+type SettingsAPI struct {
+	Token string `yaml:"token"`
 }
 
 type SettingsEmail struct {

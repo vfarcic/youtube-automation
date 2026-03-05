@@ -37,8 +37,12 @@ func GetServePort() int {
 }
 
 // GetAPIToken returns the configured API authentication token.
+// Priority: --api-token flag > API_TOKEN env var > settings.yaml api.token
 func GetAPIToken() string {
-	return apiToken
+	if apiToken != "" {
+		return apiToken
+	}
+	return GlobalSettings.API.Token
 }
 
 // IsServeMode returns true when the serve subcommand was invoked.

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io/fs"
 	"os"
 
 	"devopstoolkit/youtube-automation/internal/api"
@@ -9,6 +10,7 @@ import (
 	"devopstoolkit/youtube-automation/internal/aspect"
 	"devopstoolkit/youtube-automation/internal/configuration"
 	"devopstoolkit/youtube-automation/internal/filesystem"
+	"devopstoolkit/youtube-automation/internal/frontend"
 	"devopstoolkit/youtube-automation/internal/platform/bluesky"
 	"devopstoolkit/youtube-automation/internal/service"
 	"devopstoolkit/youtube-automation/internal/video"
@@ -33,7 +35,8 @@ func main() {
 		videoService := service.NewVideoService("index.yaml", fsOps, videoManager)
 		aspectSvc := aspect.NewService()
 
-		srv := api.NewServer(videoService, videoManager, aspectSvc, fsOps, configuration.GetAPIToken())
+		distFS, _ := fs.Sub(frontend.DistFS, "dist")
+		srv := api.NewServer(videoService, videoManager, aspectSvc, fsOps, configuration.GetAPIToken(), distFS)
 		if err := srv.Start(configuration.GetServeHost(), configuration.GetServePort()); err != nil {
 			fmt.Fprintf(os.Stderr, "Server error: %v\n", err)
 			os.Exit(1)

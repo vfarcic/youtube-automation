@@ -3,8 +3,10 @@ package api
 import (
 	"context"
 	"fmt"
+	"io/fs"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"devopstoolkit/youtube-automation/internal/aspect"
 	"devopstoolkit/youtube-automation/internal/filesystem"
@@ -23,10 +25,13 @@ type Server struct {
 	aspectService *aspect.Service
 	filesystem    *filesystem.Operations
 	apiToken      string
+	frontendFS    fs.FS
 }
 
 // NewServer creates a new API server wired to the given service and manager.
-func NewServer(videoService *service.VideoService, videoManager *video.Manager, aspectService *aspect.Service, fsOps *filesystem.Operations, apiToken string) *Server {
+// frontendFS should be the sub-directory containing the built frontend (e.g. the "dist" folder).
+// Pass nil to disable frontend serving.
+func NewServer(videoService *service.VideoService, videoManager *video.Manager, aspectService *aspect.Service, fsOps *filesystem.Operations, apiToken string, frontendFS fs.FS) *Server {
 	s := &Server{
 		router:        chi.NewRouter(),
 		videoService:  videoService,
@@ -34,6 +39,7 @@ func NewServer(videoService *service.VideoService, videoManager *video.Manager, 
 		aspectService: aspectService,
 		filesystem:    fsOps,
 		apiToken:      apiToken,
+		frontendFS:    frontendFS,
 	}
 	s.setupMiddleware()
 	s.setupRoutes()
@@ -75,6 +81,37 @@ func (s *Server) setupRoutes() {
 			r.Get("/{videoName}/animations", s.handleGetVideoAnimations)
 		})
 	})
+
+	// SPA fallback: serve frontend static files, fall back to index.html
+	if s.frontendFS != nil {
+		s.router.Get("/*", s.spaHandler())
+	}
+}
+
+// spaHandler returns an http.HandlerFunc that serves static files from the
+// embedded frontend FS. Non-file paths (client-side routes) receive index.html.
+func (s *Server) spaHandler() http.HandlerFunc {
+	fileServer := http.FileServer(http.FS(s.frontendFS))
+	return func(w http.ResponseWriter, r *http.Request) {
+		path := strings.TrimPrefix(r.URL.Path, "/")
+
+		// Try to open the file from the embedded FS
+		f, err := s.frontendFS.Open(path)
+		if err == nil {
+			f.Close()
+			fileServer.ServeHTTP(w, r)
+			return
+		}
+
+		// File not found — serve index.html for client-side routing
+		indexFile, err := fs.ReadFile(s.frontendFS, "index.html")
+		if err != nil {
+			http.Error(w, "index.html not found", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Write(indexFile)
+	}
 }
 
 // Start begins listening on the given host and port.

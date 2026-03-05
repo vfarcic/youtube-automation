@@ -24,6 +24,15 @@ run:
 test:
   go test ./... -cover
 
+# Build the frontend (npm install + build) and copy to Go embed directory
+frontend-build:
+  cd web && npm install && npm run build
+  rm -rf internal/frontend/dist
+  cp -r web/dist internal/frontend/dist
+
+# Build the full binary with embedded frontend
+build-full: frontend-build build-local
+
 # Clean build artifacts
 clean:
   rm -f youtube-release
