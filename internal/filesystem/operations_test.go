@@ -10,6 +10,40 @@ import (
 func TestNewOperations(t *testing.T) {
 	ops := NewOperations()
 	assert.NotNil(t, ops, "NewOperations should return a non-nil Operations struct")
+	assert.Equal(t, "manuscript", ops.GetBaseDir(), "Default base dir should be 'manuscript'")
+}
+
+func TestNewOperationsWithBaseDir(t *testing.T) {
+	tests := []struct {
+		name    string
+		baseDir string
+	}{
+		{"custom path", "/data/repo/manuscript"},
+		{"relative path", "./tmp/manuscript"},
+		{"simple path", "content"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ops := NewOperationsWithBaseDir(tt.baseDir)
+			assert.NotNil(t, ops)
+			assert.Equal(t, tt.baseDir, ops.GetBaseDir())
+		})
+	}
+}
+
+func TestGetDirPath_CustomBaseDir(t *testing.T) {
+	ops := NewOperationsWithBaseDir("/data/content")
+
+	result := ops.GetDirPath("devops")
+	assert.Equal(t, "/data/content/devops", result)
+}
+
+func TestGetFilePath_CustomBaseDir(t *testing.T) {
+	ops := NewOperationsWithBaseDir("/data/content")
+
+	result := ops.GetFilePath("devops", "my-video", "yaml")
+	assert.Equal(t, "/data/content/devops/my-video.yaml", result)
 }
 
 func TestGetDirPath(t *testing.T) {

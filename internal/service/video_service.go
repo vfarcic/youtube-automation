@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"log/slog"
 	"math/rand/v2"
 	"os"
 	"path/filepath"
@@ -26,6 +27,7 @@ type VideoService struct {
 	yamlStorage  *storage.YAML
 	filesystem   *filesystem.Operations
 	videoManager *video.Manager
+	onMutate     func(message string) error
 }
 
 // NewVideoService creates a new video service
@@ -35,6 +37,21 @@ func NewVideoService(indexPath string, filesystem *filesystem.Operations, videoM
 		yamlStorage:  storage.NewYAML(indexPath),
 		filesystem:   filesystem,
 		videoManager: videoManager,
+	}
+}
+
+// SetOnMutate registers a callback that is invoked after successful data mutations
+func (s *VideoService) SetOnMutate(fn func(message string) error) {
+	s.onMutate = fn
+}
+
+// notifyMutation calls the onMutate callback if set; errors are logged but not propagated
+func (s *VideoService) notifyMutation(message string) {
+	if s.onMutate == nil {
+		return
+	}
+	if err := s.onMutate(message); err != nil {
+		slog.Error("git sync failed after mutation", "message", message, "error", err)
 	}
 }
 
@@ -153,6 +170,7 @@ FIXME:
 		return storage.VideoIndex{}, fmt.Errorf("failed to write index: %w", err)
 	}
 
+	s.notifyMutation(fmt.Sprintf("create video: %s/%s", category, sanitizedName))
 	return vi, nil
 }
 
@@ -264,12 +282,17 @@ func (s *VideoService) GetVideo(name, category string) (storage.Video, error) {
 }
 
 // UpdateVideo updates a video's data
-func (s *VideoService) UpdateVideo(video storage.Video) error {
-	if video.Path == "" {
+func (s *VideoService) UpdateVideo(v storage.Video) error {
+	if v.Path == "" {
 		return fmt.Errorf("video path is required")
 	}
 
-	return s.yamlStorage.WriteVideo(video, video.Path)
+	if err := s.yamlStorage.WriteVideo(v, v.Path); err != nil {
+		return err
+	}
+
+	s.notifyMutation(fmt.Sprintf("update video: %s", v.Path))
+	return nil
 }
 
 // DeleteVideo deletes a video and its associated files
@@ -312,7 +335,12 @@ func (s *VideoService) DeleteVideo(name, category string) error {
 		}
 	}
 
-	return s.yamlStorage.WriteIndex(updatedIndex)
+	if err := s.yamlStorage.WriteIndex(updatedIndex); err != nil {
+		return err
+	}
+
+	s.notifyMutation(fmt.Sprintf("delete video: %s/%s", category, name))
+	return nil
 }
 
 // ArchiveVideo moves a video from index.yaml to index/[YEAR].yaml
@@ -369,7 +397,12 @@ func (s *VideoService) ArchiveVideo(name, category, date string) error {
 		}
 	}
 
-	return s.yamlStorage.WriteIndex(updatedIndex)
+	if err := s.yamlStorage.WriteIndex(updatedIndex); err != nil {
+		return err
+	}
+
+	s.notifyMutation(fmt.Sprintf("archive video: %s/%s", category, name))
+	return nil
 }
 
 // extractYearFromDate extracts the year from a date string in format "2006-01-02T15:04"
@@ -413,7 +446,7 @@ func (s *VideoService) writeArchiveIndex(path string, vi []storage.VideoIndex) e
 // GetCategories returns available video categories
 func (s *VideoService) GetCategories() ([]Category, error) {
 	var availableDirs []Category
-	manuscriptPath := "manuscript"
+	manuscriptPath := s.filesystem.GetBaseDir()
 
 	files, err := os.ReadDir(manuscriptPath)
 	if err != nil {
@@ -473,6 +506,7 @@ func (s *VideoService) MoveVideo(name, category, targetDir string) error {
 		return fmt.Errorf("failed to update index: %w", err)
 	}
 
+	s.notifyMutation(fmt.Sprintf("move video: %s/%s to %s", category, name, targetDir))
 	return nil
 }
 

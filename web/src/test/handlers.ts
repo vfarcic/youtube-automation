@@ -2,14 +2,14 @@ import { http, HttpResponse } from 'msw';
 import type { PhaseInfo, VideoListItem, VideoResponse, OverallProgressResponse } from '../api/types';
 
 export const mockPhases: PhaseInfo[] = [
-  { id: 0, name: 'Ideas', count: 3 },
-  { id: 1, name: 'Started', count: 2 },
-  { id: 2, name: 'Material Done', count: 1 },
-  { id: 3, name: 'Edit Requested', count: 4 },
-  { id: 4, name: 'Publish Pending', count: 0 },
-  { id: 5, name: 'Published', count: 10 },
-  { id: 6, name: 'Delayed', count: 1 },
-  { id: 7, name: 'Sponsored', count: 2 },
+  { id: 0, name: 'Published', count: 10 },
+  { id: 1, name: 'Publish Pending', count: 0 },
+  { id: 2, name: 'Edit Requested', count: 4 },
+  { id: 3, name: 'Material Done', count: 1 },
+  { id: 4, name: 'Started', count: 2 },
+  { id: 5, name: 'Delayed', count: 1 },
+  { id: 6, name: 'Sponsored', count: 2 },
+  { id: 7, name: 'Ideas', count: 3 },
 ];
 
 export const mockVideoList: VideoListItem[] = [

@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-const baseDir = "manuscript/"
+const defaultBaseDir = "manuscript"
 
 // sanitizeFileName removes or replaces characters that are typically invalid in file names.
 func sanitizeFileName(name string) string {
@@ -33,18 +33,30 @@ func sanitizeFileName(name string) string {
 }
 
 // Operations handles file and directory path operations
-type Operations struct{}
+type Operations struct {
+	baseDir string
+}
 
-// NewOperations creates a new filesystem operations handler
+// NewOperations creates a new filesystem operations handler with the default base directory ("manuscript")
 func NewOperations() *Operations {
-	return &Operations{}
+	return &Operations{baseDir: defaultBaseDir}
+}
+
+// NewOperationsWithBaseDir creates a new filesystem operations handler with a custom base directory
+func NewOperationsWithBaseDir(baseDir string) *Operations {
+	return &Operations{baseDir: baseDir}
+}
+
+// GetBaseDir returns the configured base directory
+func (o *Operations) GetBaseDir() string {
+	return o.baseDir
 }
 
 // GetDirPath generates the directory path for a given category
 func (o *Operations) GetDirPath(category string) string {
 	// Category name is already sanitized by replacing spaces with hyphens and lowercasing
 	sanitizedCategory := strings.ReplaceAll(strings.ToLower(category), " ", "-")
-	return fmt.Sprintf("%s%s", baseDir, sanitizedCategory)
+	return fmt.Sprintf("%s/%s", o.baseDir, sanitizedCategory)
 }
 
 // SanitizeName applies the same sanitization logic used for filenames
@@ -67,7 +79,7 @@ func (o *Operations) GetFilePath(category, name, extension string) string {
 	// Name is expected to already be sanitized at the service level
 	// No additional sanitization needed here
 
-	return filepath.Join("manuscript", sanitizedCategory, name+"."+extension)
+	return filepath.Join(o.baseDir, sanitizedCategory, name+"."+extension)
 }
 
 // GetAnimations extracts animation cues and section titles from the specified markdown file.

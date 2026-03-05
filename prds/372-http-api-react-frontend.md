@@ -250,7 +250,7 @@ Add `sync.RWMutex` in storage layer for index operations and per-video writes. A
 - [x] **Aspect Metadata + Video Editing API**: Aspect metadata endpoints, 7 aspect-specific PATCH endpoints, progress endpoints, manuscript/animations endpoints. Tests passing.
 - [x] **Bearer Token Authentication**: `API_TOKEN` env var middleware, constant-time comparison, `/health` always public, empty token = disabled. Tests passing.
 - [x] **Frontend Foundation + Phase Dashboard**: Vite + React + TypeScript project, API client layer, app layout with sidebar, phase overview dashboard, video list per phase, video detail (read-only). Go server serves embedded frontend. Auth screen mandatory on load.
-- [ ] **Git Sync for YAML Data**: Server clones/pulls a configured Git repo on startup, auto-commits and pushes on data mutations. Required because YAML data lives in a GitHub repo.
+- [x] **Git Sync for YAML Data**: Server clones/pulls a configured Git repo on startup, auto-commits and pushes on data mutations. Required because YAML data lives in a GitHub repo.
 - [ ] **Dynamic Form Rendering + Video Editing UI**: DynamicForm component, all field renderers, aspect tab navigation, PATCH updates, completion badges, progress bars, video create/delete/archive actions.
 - [ ] **AI Content Generation**: All 12 AI API endpoints, SSE infrastructure for long-running operations, frontend AI panel with suggestion display and "apply" action.
 - [ ] **Publishing + Social Media**: YouTube upload, Hugo blog, shorts upload, dubbed upload, transcript fetch endpoints. Social media posting endpoints. Frontend publishing panel with upload progress.
@@ -318,3 +318,15 @@ Add `sync.RWMutex` in storage layer for index operations and per-video writes. A
   - **Git sync needed**: YAML data lives in a GitHub repo. Server must clone/pull on startup and auto-commit/push on data mutations. New `git` section in `settings.yaml` for repo URL, branch, credentials. This is the next milestone before Dynamic Form Rendering.
   - **API token in settings.yaml**: Added `SettingsAPI` struct with `api.token` field as fallback. Precedence: `--api-token` flag > `API_TOKEN` env var > `settings.yaml`.
   - **Auth screen mandatory**: Frontend always shows token input on first load when no token in localStorage. Also re-shows on 401 responses.
+- **Milestone 5 complete**: Git Sync for YAML Data
+  - Created `internal/git/sync.go`: `SyncManager` with `CommandExecutor` interface, `InitialSync()` (clone or pull), `CommitAndPush()` (add → status → commit → pull --rebase → push), token injection into HTTPS URLs, mutex serialization, token redaction in error output
+  - Created `internal/git/sync_test.go`: 10 tests (clone vs pull, skip-when-clean, push failure, token URL injection, output sanitization)
+  - Updated `internal/filesystem/operations.go`: configurable `baseDir` field, `NewOperationsWithBaseDir()`, `GetBaseDir()` getter, replaced hardcoded `"manuscript"` references
+  - Updated `internal/configuration/serve.go`: `--data-dir` flag with `DATA_DIR` env var fallback (default `./tmp`), `GetDataDir()` getter
+  - Updated `internal/configuration/cli.go`: `SettingsGit` struct (`RepoURL`, `Branch`, `Token`), env var overrides (`GIT_REPO_URL`, `GIT_BRANCH`, `GIT_TOKEN`), default branch `"main"`
+  - Updated `internal/service/video_service.go`: `onMutate` callback field, `SetOnMutate()`, `notifyMutation()` (logs errors, doesn't fail requests), called after `CreateVideo`/`UpdateVideo`/`DeleteVideo`/`ArchiveVideo`/`MoveVideo`; fixed `GetCategories()` hardcoded `"manuscript"` path
+  - Updated `cmd/youtube-automation/main.go`: serve mode wiring — reads `dataDir`, creates `SyncManager` if git configured (fatal on clone/pull failure), `NewOperationsWithBaseDir(dataDir/manuscript)`, index path `dataDir/index.yaml`, registers `CommitAndPush` as onMutate callback
+  - 6 new onMutate tests in `video_service_test.go`, 4 new filesystem tests
+  - Verified with real data: cloned `vfarcic/devops-catalog`, served phase dashboard with correct counts
+  - All tests pass (`go test ./...`)
+- **Bug fix**: Frontend phase ID→name mapping was inverted in `web/src/lib/constants.ts` (e.g., id=0 showed "Ideas" instead of "Published"). Corrected to match backend `workflow/constants.go`. Updated mock test data in `web/src/test/handlers.ts`.

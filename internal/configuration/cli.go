@@ -40,10 +40,18 @@ type Settings struct {
 	SpanishChannel SettingsSpanishChannel `yaml:"spanishChannel"`
 	Gemini         SettingsGemini         `yaml:"gemini"`
 	API            SettingsAPI            `yaml:"api"`
+	Git            SettingsGit            `yaml:"git"`
 }
 
 type SettingsAPI struct {
 	Token string `yaml:"token"`
+}
+
+// SettingsGit holds git sync configuration for the data repository
+type SettingsGit struct {
+	RepoURL string `yaml:"repoURL"`
+	Branch  string `yaml:"branch"`
+	Token   string `yaml:"token"`
 }
 
 type SettingsEmail struct {
@@ -223,6 +231,20 @@ func init() {
 	// Gemini defaults (API key loaded via GEMINI_API_KEY env var at runtime)
 	if GlobalSettings.Gemini.Model == "" {
 		GlobalSettings.Gemini.Model = "gemini-3-pro-image-preview"
+	}
+
+	// Git sync defaults — env vars override settings.yaml
+	if envGitRepo := os.Getenv("GIT_REPO_URL"); envGitRepo != "" {
+		GlobalSettings.Git.RepoURL = envGitRepo
+	}
+	if envGitBranch := os.Getenv("GIT_BRANCH"); envGitBranch != "" {
+		GlobalSettings.Git.Branch = envGitBranch
+	}
+	if GlobalSettings.Git.Branch == "" {
+		GlobalSettings.Git.Branch = "main"
+	}
+	if envGitToken := os.Getenv("GIT_TOKEN"); envGitToken != "" {
+		GlobalSettings.Git.Token = envGitToken
 	}
 
 	// Calendar settings: enabled by default, set calendar.disabled: true to disable
