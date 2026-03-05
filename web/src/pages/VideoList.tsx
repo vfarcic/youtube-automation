@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useVideosList } from '../api/hooks';
 import { ProgressBar } from '../components/ProgressBar';
+import { CreateVideoDialog } from '../components/CreateVideoDialog';
 import { PHASE_NAMES } from '../lib/constants';
 import { formatDate, parseVideoId } from '../lib/utils';
 
@@ -9,6 +11,7 @@ export function VideoList() {
   const phase = phaseId !== undefined ? Number(phaseId) : undefined;
   const { data: videos, isLoading, error } = useVideosList(phase);
   const navigate = useNavigate();
+  const [showCreate, setShowCreate] = useState(false);
 
   const phaseName = phase !== undefined
     ? (PHASE_NAMES[phase] ?? `Phase ${phase}`)
@@ -24,7 +27,16 @@ export function VideoList() {
 
   return (
     <div>
-      <h2 className="text-xl font-bold text-gray-900 mb-4">{phaseName}</h2>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-bold text-gray-900">{phaseName}</h2>
+        <button
+          type="button"
+          onClick={() => setShowCreate(true)}
+          className="px-4 py-1.5 text-sm bg-blue-500 text-white rounded hover:bg-blue-600"
+        >
+          Create Video
+        </button>
+      </div>
       {!videos || videos.length === 0 ? (
         <p className="text-gray-400">No videos in this phase.</p>
       ) : (
@@ -68,6 +80,7 @@ export function VideoList() {
           </table>
         </div>
       )}
+      <CreateVideoDialog open={showCreate} onClose={() => setShowCreate(false)} />
     </div>
   );
 }

@@ -138,3 +138,67 @@ export interface OverallProgressResponse {
   overall: ProgressInfo;
   aspects: AspectProgressInfo[];
 }
+
+export interface SelectOption {
+  label: string;
+  value: unknown;
+}
+
+export interface AspectFieldUIHints {
+  inputType: string;
+  placeholder: string;
+  helpText: string;
+  rows?: number;
+  charLimit?: number;
+  multiline: boolean;
+  options?: SelectOption[];
+  attributes?: Record<string, unknown>;
+}
+
+export interface AspectFieldValidationHints {
+  required: boolean;
+  minLength?: number;
+  maxLength?: number;
+  pattern?: string;
+  patternDesc?: string;
+  min?: number;
+  max?: number;
+}
+
+export interface FieldOptions {
+  values?: string[];
+}
+
+export interface AspectField {
+  name: string;
+  fieldName: string;
+  type: string;
+  required: boolean;
+  order: number;
+  description: string;
+  options?: FieldOptions;
+  uiHints?: AspectFieldUIHints;
+  validationHints?: AspectFieldValidationHints;
+  defaultValue?: unknown;
+  completionCriteria: string;
+}
+
+export interface AspectMetadata {
+  key: string;
+  title: string;
+  description: string;
+  endpoint: string;
+  icon: string;
+  order: number;
+  fields: AspectField[];
+}
+
+export interface AspectsResponse {
+  aspects: AspectMetadata[];
+}
+
+export interface CreateVideoRequest {
+  name: string;
+  category: string;
+  date?: string;
+}

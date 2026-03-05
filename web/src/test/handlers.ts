@@ -1,5 +1,11 @@
 import { http, HttpResponse } from 'msw';
-import type { PhaseInfo, VideoListItem, VideoResponse, OverallProgressResponse } from '../api/types';
+import type {
+  PhaseInfo,
+  VideoListItem,
+  VideoResponse,
+  OverallProgressResponse,
+  AspectsResponse,
+} from '../api/types';
 
 export const mockPhases: PhaseInfo[] = [
   { id: 0, name: 'Published', count: 10 },
@@ -100,18 +106,106 @@ export const mockVideo: VideoResponse = {
 export const mockProgress: OverallProgressResponse = {
   overall: { completed: 3, total: 29 },
   aspects: [
-    { aspectKey: 'initialDetails', title: 'Initial Details', completed: 2, total: 4 },
-    { aspectKey: 'workProgress', title: 'Work Progress', completed: 1, total: 7 },
+    { aspectKey: 'initial-details', title: 'Initial Details', completed: 2, total: 4 },
+    { aspectKey: 'work-progress', title: 'Work Progress', completed: 1, total: 7 },
     { aspectKey: 'definition', title: 'Definition', completed: 0, total: 5 },
-    { aspectKey: 'postProduction', title: 'Post Production', completed: 0, total: 3 },
+    { aspectKey: 'post-production', title: 'Post Production', completed: 0, total: 3 },
     { aspectKey: 'publishing', title: 'Publishing', completed: 0, total: 4 },
-    { aspectKey: 'postPublish', title: 'Post Publish', completed: 0, total: 6 },
+    { aspectKey: 'post-publish', title: 'Post Publish', completed: 0, total: 6 },
+  ],
+};
+
+export const mockAspects: AspectsResponse = {
+  aspects: [
+    {
+      key: 'initial-details',
+      title: 'Initial Details',
+      description: 'Basic video information',
+      endpoint: '/api/videos/{videoName}/initial-details',
+      icon: 'info',
+      order: 1,
+      fields: [
+        {
+          name: 'Project Name',
+          fieldName: 'projectName',
+          type: 'string',
+          required: true,
+          order: 1,
+          description: 'Name of the project',
+          completionCriteria: 'filled_only',
+          uiHints: { inputType: 'text', placeholder: 'Enter project name', helpText: 'The project name', multiline: false },
+        },
+        {
+          name: 'Date',
+          fieldName: 'date',
+          type: 'date',
+          required: false,
+          order: 2,
+          description: 'Scheduled date',
+          completionCriteria: 'filled_only',
+          uiHints: { inputType: 'date', placeholder: '', helpText: '', multiline: false },
+        },
+        {
+          name: 'Delayed',
+          fieldName: 'delayed',
+          type: 'boolean',
+          required: false,
+          order: 3,
+          description: 'Whether the video is delayed',
+          completionCriteria: 'false_only',
+          uiHints: { inputType: 'checkbox', placeholder: '', helpText: '', multiline: false },
+        },
+      ],
+    },
+    {
+      key: 'work-progress',
+      title: 'Work Progress',
+      description: 'Track work items',
+      endpoint: '/api/videos/{videoName}/work-progress',
+      icon: 'hammer',
+      order: 2,
+      fields: [
+        {
+          name: 'Screen Recording',
+          fieldName: 'screen',
+          type: 'boolean',
+          required: false,
+          order: 1,
+          description: 'Screen recording done',
+          completionCriteria: 'true_only',
+          uiHints: { inputType: 'checkbox', placeholder: '', helpText: '', multiline: false },
+        },
+        {
+          name: 'Description',
+          fieldName: 'description',
+          type: 'text',
+          required: false,
+          order: 2,
+          description: 'Video description',
+          completionCriteria: 'filled_only',
+          uiHints: { inputType: 'textarea', placeholder: 'Enter description', helpText: 'Full video description', multiline: true, rows: 5 },
+        },
+      ],
+    },
   ],
 };
 
 export const handlers = [
   http.get('/api/videos/phases', () => HttpResponse.json(mockPhases)),
   http.get('/api/videos/list', () => HttpResponse.json(mockVideoList)),
-  http.get('/api/videos/:videoName', () => HttpResponse.json(mockVideo)),
   http.get('/api/videos/:videoName/progress', () => HttpResponse.json(mockProgress)),
+  http.get('/api/videos/:videoName', () => HttpResponse.json(mockVideo)),
+  http.get('/api/aspects', () => HttpResponse.json(mockAspects)),
+  http.patch('/api/videos/:videoName', async ({ request }) => {
+    const body = await request.json();
+    return HttpResponse.json({ ...mockVideo, ...(body as object) });
+  }),
+  http.post('/api/videos', async ({ request }) => {
+    const body = (await request.json()) as { name: string; category: string; date?: string };
+    return HttpResponse.json(
+      { ...mockVideo, name: body.name, category: body.category, id: `${body.category}/${body.name}` },
+      { status: 201 },
+    );
+  }),
+  http.delete('/api/videos/:videoName', () => new HttpResponse(null, { status: 204 })),
 ];

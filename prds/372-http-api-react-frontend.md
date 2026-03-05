@@ -42,13 +42,13 @@ The existing **aspect system** (`internal/aspect/`) already generates typed fiel
 ## Success Criteria
 
 ### Must Have (MVP)
-- [ ] HTTP API serves all video lifecycle operations (CRUD, phase, progress)
-- [ ] API exposes aspect metadata for dynamic form rendering
+- [x] HTTP API serves all video lifecycle operations (CRUD, phase, progress)
+- [x] API exposes aspect metadata for dynamic form rendering
 - [ ] API serves AI content generation (titles, description, tags, tweets)
 - [ ] API serves publishing operations (YouTube upload, Hugo blog post)
 - [x] React frontend renders phase dashboard with video counts
-- [ ] Frontend dynamically renders aspect-based editing forms from API metadata
-- [ ] Frontend shows progress tracking per aspect and overall
+- [x] Frontend dynamically renders aspect-based editing forms from API metadata
+- [x] Frontend shows progress tracking per aspect and overall
 - [ ] Frontend supports AI content generation with apply-to-field UX
 - [x] API protected by bearer token auth (env var, disabled when unset)
 - [x] Go server embeds and serves the built frontend (single binary deployment)
@@ -251,7 +251,7 @@ Add `sync.RWMutex` in storage layer for index operations and per-video writes. A
 - [x] **Bearer Token Authentication**: `API_TOKEN` env var middleware, constant-time comparison, `/health` always public, empty token = disabled. Tests passing.
 - [x] **Frontend Foundation + Phase Dashboard**: Vite + React + TypeScript project, API client layer, app layout with sidebar, phase overview dashboard, video list per phase, video detail (read-only). Go server serves embedded frontend. Auth screen mandatory on load.
 - [x] **Git Sync for YAML Data**: Server clones/pulls a configured Git repo on startup, auto-commits and pushes on data mutations. Required because YAML data lives in a GitHub repo.
-- [ ] **Dynamic Form Rendering + Video Editing UI**: DynamicForm component, all field renderers, aspect tab navigation, PATCH updates, completion badges, progress bars, video create/delete/archive actions.
+- [x] **Dynamic Form Rendering + Video Editing UI**: DynamicForm component, all field renderers, aspect tab navigation, PATCH updates, completion badges, progress bars, video create/delete actions.
 - [ ] **AI Content Generation**: All 12 AI API endpoints, SSE infrastructure for long-running operations, frontend AI panel with suggestion display and "apply" action.
 - [ ] **Publishing + Social Media**: YouTube upload, Hugo blog, shorts upload, dubbed upload, transcript fetch endpoints. Social media posting endpoints. Frontend publishing panel with upload progress.
 - [ ] **Analytics Dashboard**: Video analytics, title analysis, timing recommendations, channel stats endpoints. Frontend analytics views.
@@ -330,3 +330,38 @@ Add `sync.RWMutex` in storage layer for index operations and per-video writes. A
   - Verified with real data: cloned `vfarcic/devops-catalog`, served phase dashboard with correct counts
   - All tests pass (`go test ./...`)
 - **Bug fix**: Frontend phase ID→name mapping was inverted in `web/src/lib/constants.ts` (e.g., id=0 showed "Ideas" instead of "Published"). Corrected to match backend `workflow/constants.go`. Updated mock test data in `web/src/test/handlers.ts`.
+- **Milestone 6 complete**: Dynamic Form Rendering + Video Editing UI
+  - **Bug fix**: `ASPECT_LABELS` in `web/src/lib/constants.ts` used camelCase keys (`initialDetails`) but backend returns kebab-case (`initial-details`). Fixed to match backend. Also fixed mock data in `web/src/test/handlers.ts`.
+  - Added `patch()` to `web/src/api/client.ts`
+  - Added 8 TypeScript interfaces in `web/src/api/types.ts`: `SelectOption`, `AspectFieldUIHints`, `AspectFieldValidationHints`, `FieldOptions`, `AspectField`, `AspectMetadata`, `AspectsResponse`, `CreateVideoRequest`
+  - Added 4 hooks in `web/src/api/hooks.ts`: `useAspects()` (5min staleTime), `usePatchVideo()`, `useCreateVideo()`, `useDeleteVideo()` — all invalidate relevant queries on success
+  - Created `web/src/components/forms/` with 8 components: `FieldLabel`, `TextInput`, `TextArea`, `Toggle`, `DateInput`, `NumberInput`, `SelectInput`, `DynamicForm` + barrel export
+  - `DynamicForm`: renders fields from aspect metadata sorted by order, tracks dirty state via diff, sends only changed fields on save, supports dot-notation paths (e.g., `sponsorship.amount`), `key={aspect.key}` resets state when switching tabs
+  - Rewrote `web/src/pages/VideoDetail.tsx`: tab bar for 7 aspects with progress badges (completed/total), active tab renders `DynamicForm`, save/error feedback, delete button with inline confirmation dialog
+  - Created `web/src/components/CreateVideoDialog.tsx`: modal with name, category (required), date (optional), navigates to new video on success
+  - Updated `web/src/pages/VideoList.tsx`: added "Create Video" button that opens dialog
+  - Updated `web/src/test/handlers.ts`: fixed mock aspect keys to kebab-case, added `mockAspects` data, added MSW handlers for GET aspects, PATCH/POST/DELETE videos
+  - Created `web/src/test/FieldRenderers.test.tsx` (9 tests): each input type renders correctly
+  - Created `web/src/test/DynamicForm.test.tsx` (6 tests): field rendering, dirty tracking, save sends only changed fields, reset, dot-notation
+  - Updated `web/src/test/VideoDetail.test.tsx` (9 tests): tabs from metadata, tab switching, save triggers PATCH, delete confirmation, delete navigates away
+  - 37 frontend tests pass, all backend tests pass
+
+### 2026-03-06
+- **UX polish**: Added colored completion indicators to aspect tabs (green=complete, yellow=partial, gray=none) and field labels (red dot for incomplete fields). Helps quickly spot what's missing.
+- **Bug fix**: Array/object field values (e.g., thumbnail variants) rendered as `[object Object]`. Fixed with JSON serialization for non-primitive values.
+- **Frontend-evaluated completion**: Fields now evaluate `completionCriteria` (`filled_only`, `true_only`, `false_only`, `no_fixme`, `empty_or_filled`) client-side to show live completion status as users edit.
+- Updated PRD checkboxes: marked 4 more Must Have items complete (API CRUD, aspect metadata, dynamic forms, progress tracking). 8/13 Must Have items done (62%).
+
+### How to Run for Manual Testing
+
+The server reads `settings.yaml` from the **current working directory**. To run with real data from `devops-catalog`:
+
+```bash
+# Build with frontend embedded
+make build-local-full
+
+# Run from the devops-catalog directory (where settings.yaml lives)
+cd ../devops-catalog && /path/to/youtube-automation/youtube-release serve
+```
+
+The server starts at `http://localhost:8080`. The frontend is embedded in the binary and served automatically.

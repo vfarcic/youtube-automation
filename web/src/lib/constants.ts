@@ -32,11 +32,11 @@ export const PHASE_ACCENT_COLORS: Record<number, string> = {
 };
 
 export const ASPECT_LABELS: Record<string, string> = {
-  initialDetails: 'Initial Details',
-  workProgress: 'Work Progress',
-  definition: 'Definition',
-  postProduction: 'Post Production',
-  publishing: 'Publishing',
-  postPublish: 'Post Publish',
-  analysis: 'Analysis',
+  'initial-details': 'Initial Details',
+  'work-progress': 'Work Progress',
+  'definition': 'Definition',
+  'post-production': 'Post Production',
+  'publishing': 'Publishing',
+  'post-publish': 'Post Publish',
+  'analysis': 'Analysis',
 };
