@@ -17,6 +17,14 @@ var RootCmd = &cobra.Command{
 	Run:   func(cmd *cobra.Command, args []string) {},
 }
 
+// requiredFlags collects flag names that must be set in CLI mode.
+var requiredFlags []string
+
+// markRequired records a flag as required (validated at run-time, not at init-time).
+func markRequired(name string) {
+	requiredFlags = append(requiredFlags, name)
+}
+
 type Settings struct {
 	Email          SettingsEmail          `yaml:"email"`
 	AI             SettingsAI             `yaml:"ai"`
@@ -216,23 +224,23 @@ func init() {
 
 	// Check required fields and environment variables
 	if GlobalSettings.Email.From == "" {
-		RootCmd.MarkFlagRequired("email-from")
+		markRequired("email-from")
 	}
 	if GlobalSettings.Email.ThumbnailTo == "" {
-		RootCmd.MarkFlagRequired("email-thumbnail-to")
+		markRequired("email-thumbnail-to")
 	}
 	if GlobalSettings.Email.EditTo == "" {
-		RootCmd.MarkFlagRequired("email-edit-to")
+		markRequired("email-edit-to")
 	}
 	if GlobalSettings.Email.FinanceTo == "" {
-		RootCmd.MarkFlagRequired("email-finance-to")
+		markRequired("email-finance-to")
 	}
 
 	// Check environment variables
 	if envPassword := os.Getenv("EMAIL_PASSWORD"); envPassword != "" {
 		GlobalSettings.Email.Password = envPassword
 	} else if GlobalSettings.Email.Password == "" {
-		RootCmd.MarkFlagRequired("email-password")
+		markRequired("email-password")
 	}
 
 	// Default to azure provider for backward compatibility
@@ -244,17 +252,17 @@ func init() {
 	switch GlobalSettings.AI.Provider {
 	case "azure":
 		if GlobalSettings.AI.Azure.Endpoint == "" {
-			RootCmd.MarkFlagRequired("ai-endpoint")
+			markRequired("ai-endpoint")
 		}
 
 		if envAIKey := os.Getenv("AI_KEY"); envAIKey != "" {
 			GlobalSettings.AI.Azure.Key = envAIKey
 		} else if GlobalSettings.AI.Azure.Key == "" {
-			RootCmd.MarkFlagRequired("ai-key")
+			markRequired("ai-key")
 		}
 
 		if GlobalSettings.AI.Azure.Deployment == "" {
-			RootCmd.MarkFlagRequired("ai-deployment")
+			markRequired("ai-deployment")
 		}
 
 		// Default API version if not set
@@ -266,7 +274,7 @@ func init() {
 		if envAnthropicKey := os.Getenv("ANTHROPIC_API_KEY"); envAnthropicKey != "" {
 			GlobalSettings.AI.Anthropic.Key = envAnthropicKey
 		} else if GlobalSettings.AI.Anthropic.Key == "" {
-			RootCmd.MarkFlagRequired("anthropic-key")
+			markRequired("anthropic-key")
 		}
 
 		if GlobalSettings.AI.Anthropic.Model == "" {
@@ -281,11 +289,11 @@ func init() {
 	if envYouTubeKey := os.Getenv("YOUTUBE_API_KEY"); envYouTubeKey != "" {
 		GlobalSettings.YouTube.APIKey = envYouTubeKey
 	} else if GlobalSettings.YouTube.APIKey == "" {
-		RootCmd.MarkFlagRequired("youtube-api-key")
+		markRequired("youtube-api-key")
 	}
 
 	if GlobalSettings.Hugo.Path == "" {
-		RootCmd.MarkFlagRequired("hugo-path")
+		markRequired("hugo-path")
 	}
 
 	// Bluesky validation
@@ -294,10 +302,28 @@ func init() {
 		if envBlueskyPassword != "" {
 			GlobalSettings.Bluesky.Password = envBlueskyPassword
 		} else if GlobalSettings.Bluesky.Password == "" {
-			RootCmd.MarkFlagRequired("bluesky-password")
+			markRequired("bluesky-password")
 		}
 	} else if envBlueskyPassword := os.Getenv("BLUESKY_PASSWORD"); envBlueskyPassword != "" {
 		GlobalSettings.Bluesky.Password = envBlueskyPassword
+	}
+
+	// Validate required flags only when running in CLI mode (not serve subcommand).
+	RootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
+		// Skip validation for subcommands (e.g. serve)
+		if cmd.Name() != RootCmd.Name() {
+			return nil
+		}
+		for _, name := range requiredFlags {
+			f := RootCmd.Flags().Lookup(name)
+			if f == nil {
+				continue
+			}
+			if !f.Changed {
+				return fmt.Errorf("required flag \"%s\" not set", name)
+			}
+		}
+		return nil
 	}
 }
 

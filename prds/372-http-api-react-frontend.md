@@ -243,7 +243,7 @@ Add `sync.RWMutex` in storage layer for index operations and per-video writes. A
 
 ## Milestones
 
-- [ ] **API Foundation + Video CRUD**: chi router, middleware, error handling, all video lifecycle endpoints, categories, health check. Tests passing.
+- [x] **API Foundation + Video CRUD**: chi router, middleware, error handling, all video lifecycle endpoints, categories, health check. Tests passing.
 - [ ] **Aspect Metadata + Video Editing API**: Aspect metadata endpoints, 7 aspect-specific PATCH endpoints, progress endpoints, manuscript/animations endpoints. Tests passing.
 - [ ] **Frontend Foundation + Phase Dashboard**: Vite + React + TypeScript project, API client layer, app layout with sidebar, phase overview dashboard, video list per phase, video detail (read-only). Go server serves embedded frontend.
 - [ ] **Dynamic Form Rendering + Video Editing UI**: DynamicForm component, all field renderers, aspect tab navigation, PATCH updates, completion badges, progress bars, video create/delete/archive actions.
@@ -263,3 +263,12 @@ Add `sync.RWMutex` in storage layer for index operations and per-video writes. A
 - Discovered existing `openapi.yaml` with ~26 endpoints already specified
 - Confirmed chi router already in `go.mod`
 - Confirmed service layer, aspect system, and video manager are cleanly separated from CLI
+- **Milestone 1 complete**: API Foundation + Video CRUD
+  - Created `internal/api/` package: server, middleware (slog, CORS, RequestID, Recoverer), error helpers
+  - Implemented 9 endpoints: health, video CRUD (GET/POST/PUT/DELETE), phases, categories, lightweight list
+  - Added `serve` cobra subcommand with `--host`/`--port` flags
+  - Fixed CLI required-flag validation via `PersistentPreRunE` (skips for subcommands)
+  - Added `sync.RWMutex` to storage YAML struct for concurrent safety
+  - Wired serve mode into `main.go`
+  - 83.1% test coverage on API handlers, all tests pass with `-race`
+  - Note: URL pattern uses `?category=X` query param instead of PRD's `/{category}/{name}` path params

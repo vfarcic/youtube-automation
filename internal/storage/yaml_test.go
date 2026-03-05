@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -941,4 +942,51 @@ path: /path/to/video
 
 		assert.Empty(t, loadedVideo.Dubbing)
 	})
+}
+
+// TestConcurrentAccess verifies the RWMutex protects against data races.
+// Run with: go test -race ./internal/storage/...
+func TestConcurrentAccess(t *testing.T) {
+	tempDir := t.TempDir()
+	indexPath := filepath.Join(tempDir, "index.yaml")
+	videoPath := filepath.Join(tempDir, "concurrent-video.yaml")
+
+	y := NewYAML(indexPath)
+
+	// Seed initial data
+	initialVideo := Video{Name: "concurrent-test", Category: "testing"}
+	require.NoError(t, y.WriteVideo(initialVideo, videoPath))
+	require.NoError(t, y.WriteIndex([]VideoIndex{{Name: "concurrent-test", Category: "testing"}}))
+
+	const goroutines = 10
+	var wg sync.WaitGroup
+	wg.Add(goroutines * 2) // readers + writers
+
+	// Concurrent readers
+	for i := 0; i < goroutines; i++ {
+		go func() {
+			defer wg.Done()
+			_, _ = y.GetVideo(videoPath)
+			_, _ = y.GetIndex()
+		}()
+	}
+
+	// Concurrent writers
+	for i := 0; i < goroutines; i++ {
+		go func(n int) {
+			defer wg.Done()
+			v := Video{Name: fmt.Sprintf("video-%d", n), Category: "testing"}
+			_ = y.WriteVideo(v, videoPath)
+			_ = y.WriteIndex([]VideoIndex{{Name: fmt.Sprintf("video-%d", n), Category: "testing"}})
+		}(i)
+	}
+
+	wg.Wait()
+
+	// Verify data is still readable after concurrent access
+	_, err := y.GetVideo(videoPath)
+	require.NoError(t, err)
+	idx, err := y.GetIndex()
+	require.NoError(t, err)
+	require.Len(t, idx, 1, "index should have exactly 1 entry")
 }

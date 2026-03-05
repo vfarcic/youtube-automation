@@ -3,6 +3,7 @@ package storage
 import (
 	"fmt"
 	"os"
+	"sync"
 
 	"gopkg.in/yaml.v3"
 )
@@ -12,6 +13,7 @@ import (
 // Ensure all fields that need to be accessed from other packages are exported (start with a capital letter).
 type YAML struct {
 	IndexPath string
+	mu        sync.RWMutex
 }
 
 // VideoIndex holds basic information about a video, used in the index file.
@@ -152,6 +154,8 @@ func NewYAML(indexPath string) *YAML {
 }
 
 func (y *YAML) GetVideo(path string) (Video, error) {
+	y.mu.RLock()
+	defer y.mu.RUnlock()
 	var video Video
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -176,6 +180,8 @@ func (y *YAML) GetVideo(path string) (Video, error) {
 }
 
 func (y *YAML) WriteVideo(video Video, path string) error {
+	y.mu.Lock()
+	defer y.mu.Unlock()
 	data, err := yaml.Marshal(&video)
 	if err != nil {
 		return fmt.Errorf("failed to marshal video data for %s: %w", path, err)
@@ -188,6 +194,8 @@ func (y *YAML) WriteVideo(video Video, path string) error {
 }
 
 func (y *YAML) GetIndex() ([]VideoIndex, error) {
+	y.mu.RLock()
+	defer y.mu.RUnlock()
 	var index []VideoIndex
 	data, err := os.ReadFile(y.IndexPath)
 	if err != nil {
@@ -201,6 +209,8 @@ func (y *YAML) GetIndex() ([]VideoIndex, error) {
 }
 
 func (y *YAML) WriteIndex(vi []VideoIndex) error {
+	y.mu.Lock()
+	defer y.mu.Unlock()
 	data, err := yaml.Marshal(&vi)
 	if err != nil {
 		return fmt.Errorf("failed to marshal video index: %w", err)
