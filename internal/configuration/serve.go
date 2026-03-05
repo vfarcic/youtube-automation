@@ -1,12 +1,15 @@
 package configuration
 
 import (
+	"os"
+
 	"github.com/spf13/cobra"
 )
 
 var serveHost string
 var servePort int
 var serveMode bool
+var apiToken string
 
 var serveCmd = &cobra.Command{
 	Use:   "serve",
@@ -19,6 +22,7 @@ var serveCmd = &cobra.Command{
 func init() {
 	serveCmd.Flags().StringVar(&serveHost, "host", "localhost", "Host to listen on")
 	serveCmd.Flags().IntVar(&servePort, "port", 8080, "Port to listen on")
+	serveCmd.Flags().StringVar(&apiToken, "api-token", os.Getenv("API_TOKEN"), "Bearer token for API authentication (or set API_TOKEN env var)")
 	RootCmd.AddCommand(serveCmd)
 }
 
@@ -30,6 +34,11 @@ func GetServeHost() string {
 // GetServePort returns the configured port for the API server.
 func GetServePort() int {
 	return servePort
+}
+
+// GetAPIToken returns the configured API authentication token.
+func GetAPIToken() string {
+	return apiToken
 }
 
 // IsServeMode returns true when the serve subcommand was invoked.

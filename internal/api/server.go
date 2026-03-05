@@ -22,16 +22,18 @@ type Server struct {
 	videoManager  *video.Manager
 	aspectService *aspect.Service
 	filesystem    *filesystem.Operations
+	apiToken      string
 }
 
 // NewServer creates a new API server wired to the given service and manager.
-func NewServer(videoService *service.VideoService, videoManager *video.Manager, aspectService *aspect.Service, fsOps *filesystem.Operations) *Server {
+func NewServer(videoService *service.VideoService, videoManager *video.Manager, aspectService *aspect.Service, fsOps *filesystem.Operations, apiToken string) *Server {
 	s := &Server{
 		router:        chi.NewRouter(),
 		videoService:  videoService,
 		videoManager:  videoManager,
 		aspectService: aspectService,
 		filesystem:    fsOps,
+		apiToken:      apiToken,
 	}
 	s.setupMiddleware()
 	s.setupRoutes()
@@ -43,8 +45,9 @@ func (s *Server) setupRoutes() {
 	// Health check at root level
 	s.router.Get("/health", s.handleHealth)
 
-	// API routes
+	// API routes - protected by bearer token auth
 	s.router.Route("/api", func(r chi.Router) {
+		r.Use(bearerTokenAuth(s.apiToken))
 		// Categories
 		r.Get("/categories", s.handleGetCategories)
 

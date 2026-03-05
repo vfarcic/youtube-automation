@@ -33,7 +33,7 @@ func main() {
 		videoService := service.NewVideoService("index.yaml", fsOps, videoManager)
 		aspectSvc := aspect.NewService()
 
-		srv := api.NewServer(videoService, videoManager, aspectSvc, fsOps)
+		srv := api.NewServer(videoService, videoManager, aspectSvc, fsOps, configuration.GetAPIToken())
 		if err := srv.Start(configuration.GetServeHost(), configuration.GetServePort()); err != nil {
 			fmt.Fprintf(os.Stderr, "Server error: %v\n", err)
 			os.Exit(1)

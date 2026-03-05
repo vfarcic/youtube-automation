@@ -248,7 +248,7 @@ Add `sync.RWMutex` in storage layer for index operations and per-video writes. A
 
 - [x] **API Foundation + Video CRUD**: chi router, middleware, error handling, all video lifecycle endpoints, categories, health check. Tests passing.
 - [x] **Aspect Metadata + Video Editing API**: Aspect metadata endpoints, 7 aspect-specific PATCH endpoints, progress endpoints, manuscript/animations endpoints. Tests passing.
-- [ ] **Bearer Token Authentication**: `API_TOKEN` env var middleware, constant-time comparison, `/health` always public, empty token = disabled. Tests passing.
+- [x] **Bearer Token Authentication**: `API_TOKEN` env var middleware, constant-time comparison, `/health` always public, empty token = disabled. Tests passing.
 - [ ] **Frontend Foundation + Phase Dashboard**: Vite + React + TypeScript project, API client layer, app layout with sidebar, phase overview dashboard, video list per phase, video detail (read-only). Go server serves embedded frontend.
 - [ ] **Dynamic Form Rendering + Video Editing UI**: DynamicForm component, all field renderers, aspect tab navigation, PATCH updates, completion badges, progress bars, video create/delete/archive actions.
 - [ ] **AI Content Generation**: All 12 AI API endpoints, SSE infrastructure for long-running operations, frontend AI panel with suggestion display and "apply" action.
@@ -290,3 +290,10 @@ Add `sync.RWMutex` in storage layer for index operations and per-video writes. A
   - **Authentication added**: Bearer token via `API_TOKEN` env var. Empty = disabled (local dev). In K8s, delivered via Secret (not in git). `/health` always public for probes. Constant-time comparison. Replaces original "no auth" decision.
   - **Kubernetes deployment**: Will deploy via Helm chart to K8s. Container images pushed to ghcr.io (public). GHA workflow extended to build images on push to main, run tests on PRs only.
   - **Deferred packaging**: Dockerfile, Helm chart, and GHA image workflow deferred until after React frontend is built (both backend + frontend containerized together).
+- **Milestone 3 complete**: Bearer Token Authentication
+  - Created `internal/api/middleware_auth.go`: `bearerTokenAuth()` middleware with `crypto/subtle.ConstantTimeCompare`
+  - Added `--api-token` flag to serve command with `API_TOKEN` env var fallback
+  - `/health` always public (K8s probes), `/api/*` routes protected when token set
+  - Auth disabled when token empty (backwards compatible, local dev friendly)
+  - 9 tests (7 unit + 2 integration): valid/invalid/missing/malformed tokens, auth disabled, health public, CORS preflight
+  - All tests pass with `-race`
