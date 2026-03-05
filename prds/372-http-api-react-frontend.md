@@ -244,7 +244,7 @@ Add `sync.RWMutex` in storage layer for index operations and per-video writes. A
 ## Milestones
 
 - [x] **API Foundation + Video CRUD**: chi router, middleware, error handling, all video lifecycle endpoints, categories, health check. Tests passing.
-- [ ] **Aspect Metadata + Video Editing API**: Aspect metadata endpoints, 7 aspect-specific PATCH endpoints, progress endpoints, manuscript/animations endpoints. Tests passing.
+- [x] **Aspect Metadata + Video Editing API**: Aspect metadata endpoints, 7 aspect-specific PATCH endpoints, progress endpoints, manuscript/animations endpoints. Tests passing.
 - [ ] **Frontend Foundation + Phase Dashboard**: Vite + React + TypeScript project, API client layer, app layout with sidebar, phase overview dashboard, video list per phase, video detail (read-only). Go server serves embedded frontend.
 - [ ] **Dynamic Form Rendering + Video Editing UI**: DynamicForm component, all field renderers, aspect tab navigation, PATCH updates, completion badges, progress bars, video create/delete/archive actions.
 - [ ] **AI Content Generation**: All 12 AI API endpoints, SSE infrastructure for long-running operations, frontend AI panel with suggestion display and "apply" action.
@@ -272,3 +272,12 @@ Add `sync.RWMutex` in storage layer for index operations and per-video writes. A
   - Wired serve mode into `main.go`
   - 83.1% test coverage on API handlers, all tests pass with `-race`
   - Note: URL pattern uses `?category=X` query param instead of PRD's `/{category}/{name}` path params
+- **Milestone 2 complete**: Aspect Metadata + Video Editing API
+  - Created `internal/aspect/setter.go`: reflection-based `SetFieldValueByJSONPath` with type coercion (float64→int, JSON round-trip for slices)
+  - Created `internal/api/handlers_aspects.go`: 4 aspect metadata endpoints (GET aspects, overview, fields, completion)
+  - Created `internal/api/handlers_video_patch.go`: PATCH handler with aspect-scoped field validation, progress (overall + per-aspect), manuscript, animations endpoints
+  - Updated `server.go` with `aspectService` and `filesystem` dependencies, registered 9 new routes
+  - Added PATCH to CORS allowed methods
+  - Updated `main.go` and test helper for new `NewServer` signature
+  - 82.1% API test coverage, 84.8% aspect test coverage, all tests pass with `-race`
+  - PATCH uses query params `?category=X&aspect=Y` (consistent with M1 pattern)

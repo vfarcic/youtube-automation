@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"devopstoolkit/youtube-automation/internal/aspect"
 	"devopstoolkit/youtube-automation/internal/filesystem"
 	"devopstoolkit/youtube-automation/internal/service"
 	"devopstoolkit/youtube-automation/internal/video"
@@ -52,8 +53,9 @@ func setupTestEnv(t *testing.T) *testEnv {
 	fsOps := filesystem.NewOperations()
 	videoManager := video.NewManager(fsOps.GetFilePath)
 	videoService := service.NewVideoService(indexPath, fsOps, videoManager)
+	aspectService := aspect.NewService()
 
-	srv := NewServer(videoService, videoManager)
+	srv := NewServer(videoService, videoManager, aspectService, fsOps)
 	return &testEnv{
 		server: srv,
 		tmpDir: tmpDir,

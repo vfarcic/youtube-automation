@@ -6,6 +6,8 @@ import (
 	"log/slog"
 	"net/http"
 
+	"devopstoolkit/youtube-automation/internal/aspect"
+	"devopstoolkit/youtube-automation/internal/filesystem"
 	"devopstoolkit/youtube-automation/internal/service"
 	"devopstoolkit/youtube-automation/internal/video"
 
@@ -14,18 +16,22 @@ import (
 
 // Server is the HTTP API server.
 type Server struct {
-	router       chi.Router
-	httpServer   *http.Server
-	videoService *service.VideoService
-	videoManager *video.Manager
+	router        chi.Router
+	httpServer    *http.Server
+	videoService  *service.VideoService
+	videoManager  *video.Manager
+	aspectService *aspect.Service
+	filesystem    *filesystem.Operations
 }
 
 // NewServer creates a new API server wired to the given service and manager.
-func NewServer(videoService *service.VideoService, videoManager *video.Manager) *Server {
+func NewServer(videoService *service.VideoService, videoManager *video.Manager, aspectService *aspect.Service, fsOps *filesystem.Operations) *Server {
 	s := &Server{
-		router:       chi.NewRouter(),
-		videoService: videoService,
-		videoManager: videoManager,
+		router:        chi.NewRouter(),
+		videoService:  videoService,
+		videoManager:  videoManager,
+		aspectService: aspectService,
+		filesystem:    fsOps,
 	}
 	s.setupMiddleware()
 	s.setupRoutes()
@@ -42,6 +48,14 @@ func (s *Server) setupRoutes() {
 		// Categories
 		r.Get("/categories", s.handleGetCategories)
 
+		// Aspects
+		r.Route("/aspects", func(r chi.Router) {
+			r.Get("/", s.handleGetAspects)
+			r.Get("/overview", s.handleGetAspectsOverview)
+			r.Get("/{key}/fields", s.handleGetAspectFields)
+			r.Get("/{key}/fields/{field}/completion", s.handleGetFieldCompletion)
+		})
+
 		// Videos
 		r.Route("/videos", func(r chi.Router) {
 			r.Get("/phases", s.handleGetPhases)
@@ -50,7 +64,12 @@ func (s *Server) setupRoutes() {
 			r.Post("/", s.handleCreateVideo)
 			r.Get("/{videoName}", s.handleGetVideo)
 			r.Put("/{videoName}", s.handleUpdateVideo)
+			r.Patch("/{videoName}", s.handlePatchVideoAspect)
 			r.Delete("/{videoName}", s.handleDeleteVideo)
+			r.Get("/{videoName}/progress", s.handleGetVideoProgress)
+			r.Get("/{videoName}/progress/{aspect}", s.handleGetVideoAspectProgress)
+			r.Get("/{videoName}/manuscript", s.handleGetVideoManuscript)
+			r.Get("/{videoName}/animations", s.handleGetVideoAnimations)
 		})
 	})
 }
