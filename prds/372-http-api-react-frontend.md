@@ -50,7 +50,10 @@ The existing **aspect system** (`internal/aspect/`) already generates typed fiel
 - [ ] Frontend dynamically renders aspect-based editing forms from API metadata
 - [ ] Frontend shows progress tracking per aspect and overall
 - [ ] Frontend supports AI content generation with apply-to-field UX
+- [ ] API protected by bearer token auth (env var, disabled when unset)
 - [ ] Go server embeds and serves the built frontend (single binary deployment)
+- [ ] Helm chart deploys backend + frontend to Kubernetes
+- [ ] GHA builds and pushes container images to ghcr.io
 - [ ] 80% test coverage on API handlers
 
 ### Nice to Have (Future)
@@ -94,7 +97,7 @@ internal/api/
   sse.go                 -- Server-Sent Events for long-running operations
 ```
 
-**Authentication**: None (personal tool). Middleware hook for future addition.
+**Authentication**: Bearer token via `API_TOKEN` environment variable. Empty/unset = auth disabled (local dev). In Kubernetes, delivered via Secret (not committed to git). `/health` is always public (K8s probes). Uses `crypto/subtle.ConstantTimeCompare` for timing-safe comparison.
 
 **Long-running operations** (YouTube upload, AI generation, analytics): SSE (`text/event-stream`) for progress updates. Start with synchronous for simple operations, add SSE incrementally.
 
@@ -235,7 +238,7 @@ Add `sync.RWMutex` in storage layer for index operations and per-video writes. A
 
 ## Out of Scope
 
-- Multi-user authentication/authorization
+- Multi-user authentication/authorization (single shared token is sufficient)
 - Database migration (stays YAML)
 - Real-time collaborative editing
 - Mobile app
@@ -245,12 +248,14 @@ Add `sync.RWMutex` in storage layer for index operations and per-video writes. A
 
 - [x] **API Foundation + Video CRUD**: chi router, middleware, error handling, all video lifecycle endpoints, categories, health check. Tests passing.
 - [x] **Aspect Metadata + Video Editing API**: Aspect metadata endpoints, 7 aspect-specific PATCH endpoints, progress endpoints, manuscript/animations endpoints. Tests passing.
+- [ ] **Bearer Token Authentication**: `API_TOKEN` env var middleware, constant-time comparison, `/health` always public, empty token = disabled. Tests passing.
 - [ ] **Frontend Foundation + Phase Dashboard**: Vite + React + TypeScript project, API client layer, app layout with sidebar, phase overview dashboard, video list per phase, video detail (read-only). Go server serves embedded frontend.
 - [ ] **Dynamic Form Rendering + Video Editing UI**: DynamicForm component, all field renderers, aspect tab navigation, PATCH updates, completion badges, progress bars, video create/delete/archive actions.
 - [ ] **AI Content Generation**: All 12 AI API endpoints, SSE infrastructure for long-running operations, frontend AI panel with suggestion display and "apply" action.
 - [ ] **Publishing + Social Media**: YouTube upload, Hugo blog, shorts upload, dubbed upload, transcript fetch endpoints. Social media posting endpoints. Frontend publishing panel with upload progress.
 - [ ] **Analytics Dashboard**: Video analytics, title analysis, timing recommendations, channel stats endpoints. Frontend analytics views.
 - [ ] **AMA, Dubbing, Translation**: Remaining specialized feature endpoints and frontend panels. Full feature parity with CLI.
+- [ ] **Containerization + Kubernetes Deployment**: Dockerfile (backend + frontend), Helm chart, GHA workflow to build/push images to ghcr.io on main push, PR-only test workflow. K8s Secret for `API_TOKEN`.
 - [ ] **Documentation + Polish**: OpenAPI spec updated to cover all endpoints, README updated, build/deployment documentation.
 - [ ] **Feature Tested & Validated**: End-to-end testing, 80% test coverage on API handlers, frontend tested with real data.
 
@@ -281,3 +286,7 @@ Add `sync.RWMutex` in storage layer for index operations and per-video writes. A
   - Updated `main.go` and test helper for new `NewServer` signature
   - 82.1% API test coverage, 84.8% aspect test coverage, all tests pass with `-race`
   - PATCH uses query params `?category=X&aspect=Y` (consistent with M1 pattern)
+- **Design decisions**:
+  - **Authentication added**: Bearer token via `API_TOKEN` env var. Empty = disabled (local dev). In K8s, delivered via Secret (not in git). `/health` always public for probes. Constant-time comparison. Replaces original "no auth" decision.
+  - **Kubernetes deployment**: Will deploy via Helm chart to K8s. Container images pushed to ghcr.io (public). GHA workflow extended to build images on push to main, run tests on PRs only.
+  - **Deferred packaging**: Dockerfile, Helm chart, and GHA image workflow deferred until after React frontend is built (both backend + frontend containerized together).
