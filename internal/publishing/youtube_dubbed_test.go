@@ -90,7 +90,7 @@ func TestUploadDubbedVideo_Validation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := UploadDubbedVideo(tt.video, tt.lang)
+			_, err := UploadDubbedVideo(tt.video, tt.lang, nil)
 			if err == nil {
 				t.Errorf("UploadDubbedVideo() expected error containing %q, got nil", tt.wantErr)
 				return
@@ -131,7 +131,7 @@ func TestUploadDubbedVideo_EmptyChannelID(t *testing.T) {
 		},
 	}
 
-	_, err = UploadDubbedVideo(video, "es")
+	_, err = UploadDubbedVideo(video, "es", nil)
 	if err == nil {
 		t.Error("UploadDubbedVideo() expected error for empty channel ID, got nil")
 		return

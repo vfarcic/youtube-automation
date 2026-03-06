@@ -7,7 +7,9 @@ import (
 	"strings"
 	"time"
 
+	"devopstoolkit/youtube-automation/internal/gdrive"
 	"devopstoolkit/youtube-automation/internal/storage"
+	"devopstoolkit/youtube-automation/internal/thumbnail"
 
 	"google.golang.org/api/option"
 	"google.golang.org/api/youtube/v3"
@@ -63,7 +65,7 @@ func getPublishStatus(scheduledDate string) (privacyStatus string, publishAt str
 // Returns:
 //   - string: The YouTube video ID of the uploaded dubbed video
 //   - error: Any error that occurred during upload
-func UploadDubbedVideo(video *storage.Video, langCode string) (string, error) {
+func UploadDubbedVideo(video *storage.Video, langCode string, driveService gdrive.DriveService) (string, error) {
 	// Validate language code - only Spanish supported for now
 	if langCode != "es" {
 		return "", fmt.Errorf("unsupported language code: %s (only 'es' is currently supported)", langCode)
@@ -156,24 +158,25 @@ func UploadDubbedVideo(video *storage.Video, langCode string) (string, error) {
 	}
 
 	// Upload localized thumbnail if available (same pattern as English videos)
-	if dubbingInfo.ThumbnailPath != "" {
-		if _, statErr := os.Stat(dubbingInfo.ThumbnailPath); statErr == nil {
-			thumbnailFile, openErr := os.Open(dubbingInfo.ThumbnailPath)
+	if ref, refErr := thumbnail.ResolveDubbingThumbnail(dubbingInfo); refErr == nil {
+		_ = thumbnail.WithThumbnailFile(ctx, ref, driveService, func(localPath string) error {
+			thumbnailFile, openErr := os.Open(localPath)
 			if openErr != nil {
-				fmt.Printf("Warning: could not open thumbnail file %s: %v\n", dubbingInfo.ThumbnailPath, openErr)
-			} else {
-				defer thumbnailFile.Close()
-				thumbnailCall := service.Thumbnails.Set(response.Id)
-				thumbnailResp, thumbnailErr := thumbnailCall.Media(thumbnailFile).Do()
-				if thumbnailErr != nil {
-					fmt.Printf("Warning: could not upload thumbnail: %v\n", thumbnailErr)
-				} else if len(thumbnailResp.Items) > 0 && thumbnailResp.Items[0].Default != nil {
-					fmt.Printf("Thumbnail uploaded, URL: %s\n", thumbnailResp.Items[0].Default.Url)
-				} else {
-					fmt.Printf("Thumbnail uploaded successfully\n")
-				}
+				fmt.Printf("Warning: could not open thumbnail file %s: %v\n", localPath, openErr)
+				return nil
 			}
-		}
+			defer thumbnailFile.Close()
+			thumbnailCall := service.Thumbnails.Set(response.Id)
+			thumbnailResp, thumbnailErr := thumbnailCall.Media(thumbnailFile).Do()
+			if thumbnailErr != nil {
+				fmt.Printf("Warning: could not upload thumbnail: %v\n", thumbnailErr)
+			} else if len(thumbnailResp.Items) > 0 && thumbnailResp.Items[0].Default != nil {
+				fmt.Printf("Thumbnail uploaded, URL: %s\n", thumbnailResp.Items[0].Default.Url)
+			} else {
+				fmt.Printf("Thumbnail uploaded successfully\n")
+			}
+			return nil
+		})
 	}
 
 	return response.Id, nil

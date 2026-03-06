@@ -11,6 +11,7 @@ import (
 	"runtime"
 	"strings"
 
+	"devopstoolkit/youtube-automation/internal/gdrive"
 	"devopstoolkit/youtube-automation/internal/storage"
 )
 
@@ -33,14 +34,14 @@ type ThumbnailGenerator interface {
 // calls the generator to create the localized version,
 // and saves the result to disk with a language suffix.
 // Returns the path to the saved thumbnail.
-func LocalizeThumbnail(ctx context.Context, generator ThumbnailGenerator, video *storage.Video, langCode string) (string, error) {
+func LocalizeThumbnail(ctx context.Context, generator ThumbnailGenerator, video *storage.Video, langCode string, driveService gdrive.DriveService) (string, error) {
 	// Validate language
 	if !IsSupportedLanguage(langCode) {
 		return "", fmt.Errorf("%w: %s", ErrUnsupportedLang, langCode)
 	}
 
-	// Get the original thumbnail path
-	originalPath, err := GetOriginalThumbnailPath(video)
+	// Resolve the thumbnail reference (supports both local and Drive-hosted)
+	ref, err := ResolveThumbnail(video)
 	if err != nil {
 		return "", err
 	}
@@ -50,14 +51,26 @@ func LocalizeThumbnail(ctx context.Context, generator ThumbnailGenerator, video 
 		return "", ErrNoTagline
 	}
 
-	// Generate the localized thumbnail
-	imageBytes, err := generator.GenerateLocalizedThumbnail(ctx, originalPath, video.Tagline, langCode)
-	if err != nil {
-		return "", fmt.Errorf("failed to generate localized thumbnail: %w", err)
+	// Determine output path from local path if available, or construct from video name
+	var outputBase string
+	if localPath, pathErr := GetOriginalThumbnailPath(video); pathErr == nil {
+		outputBase = localPath
+	} else {
+		// Drive-only thumbnail: construct output path from video name
+		outputBase = filepath.Join(".", video.Name+"-thumbnail.png")
 	}
+	outputPath := GetLocalizedThumbnailPath(outputBase, langCode)
 
-	// Determine output path
-	outputPath := GetLocalizedThumbnailPath(originalPath, langCode)
+	// Generate the localized thumbnail (may download from Drive first)
+	var imageBytes []byte
+	genErr := WithThumbnailFile(ctx, ref, driveService, func(localPath string) error {
+		var genInnerErr error
+		imageBytes, genInnerErr = generator.GenerateLocalizedThumbnail(ctx, localPath, video.Tagline, langCode)
+		return genInnerErr
+	})
+	if genErr != nil {
+		return "", fmt.Errorf("failed to generate localized thumbnail: %w", genErr)
+	}
 
 	// Save the generated image
 	if err := os.WriteFile(outputPath, imageBytes, 0644); err != nil {

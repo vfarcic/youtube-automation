@@ -223,7 +223,7 @@ func TestLocalizeThumbnail_Success(t *testing.T) {
 	mock := &mockGenerator{returnBytes: expectedOutput}
 
 	ctx := context.Background()
-	outputPath, err := LocalizeThumbnail(ctx, mock, video, "es")
+	outputPath, err := LocalizeThumbnail(ctx, mock, video, "es", nil)
 
 	if err != nil {
 		t.Fatalf("LocalizeThumbnail() unexpected error = %v", err)
@@ -266,7 +266,7 @@ func TestLocalizeThumbnail_NoThumbnail(t *testing.T) {
 	mock := &mockGenerator{returnBytes: []byte("image")}
 	ctx := context.Background()
 
-	_, err := LocalizeThumbnail(ctx, mock, video, "es")
+	_, err := LocalizeThumbnail(ctx, mock, video, "es", nil)
 
 	if err == nil {
 		t.Fatal("LocalizeThumbnail() expected error, got nil")
@@ -294,7 +294,7 @@ func TestLocalizeThumbnail_NoTagline(t *testing.T) {
 	mock := &mockGenerator{returnBytes: []byte("image")}
 	ctx := context.Background()
 
-	_, err := LocalizeThumbnail(ctx, mock, video, "es")
+	_, err := LocalizeThumbnail(ctx, mock, video, "es", nil)
 
 	if err == nil {
 		t.Fatal("LocalizeThumbnail() expected error, got nil")
@@ -322,7 +322,7 @@ func TestLocalizeThumbnail_UnsupportedLanguage(t *testing.T) {
 	mock := &mockGenerator{returnBytes: []byte("image")}
 	ctx := context.Background()
 
-	_, err := LocalizeThumbnail(ctx, mock, video, "xx") // Invalid language
+	_, err := LocalizeThumbnail(ctx, mock, video, "xx", nil) // Invalid language
 
 	if err == nil {
 		t.Fatal("LocalizeThumbnail() expected error, got nil")
@@ -351,7 +351,7 @@ func TestLocalizeThumbnail_GenerationFails(t *testing.T) {
 	mock := &mockGenerator{returnError: generationError}
 	ctx := context.Background()
 
-	_, err := LocalizeThumbnail(ctx, mock, video, "es")
+	_, err := LocalizeThumbnail(ctx, mock, video, "es", nil)
 
 	if err == nil {
 		t.Fatal("LocalizeThumbnail() expected error, got nil")
@@ -381,7 +381,7 @@ func TestLocalizeThumbnail_SaveFails(t *testing.T) {
 	mock := &mockGenerator{returnBytes: []byte("localized image")}
 	ctx := context.Background()
 
-	_, err := LocalizeThumbnail(ctx, mock, video, "es")
+	_, err := LocalizeThumbnail(ctx, mock, video, "es", nil)
 
 	if err == nil {
 		t.Fatal("LocalizeThumbnail() expected error, got nil")
@@ -413,7 +413,7 @@ func TestLocalizeThumbnail_AllLanguages(t *testing.T) {
 			mock := &mockGenerator{returnBytes: []byte("localized for " + lang)}
 			ctx := context.Background()
 
-			outputPath, err := LocalizeThumbnail(ctx, mock, video, lang)
+			outputPath, err := LocalizeThumbnail(ctx, mock, video, lang, nil)
 			if err != nil {
 				t.Fatalf("LocalizeThumbnail() error = %v", err)
 			}

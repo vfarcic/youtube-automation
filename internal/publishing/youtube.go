@@ -258,22 +258,20 @@ func GetAdditionalInfo(hugoURL, projectName, projectURL, relatedVideosRaw string
 }
 
 
-func UploadThumbnail(video storage.Video) error {
+func UploadThumbnail(videoId string, thumbnailPath string) error {
 	client := getClient(context.Background())
 
-	// FIXME: Remove the comment
-	// service, err := youtube.New(client)
 	ctx := context.Background()
 	service, err := youtube.NewService(ctx, option.WithHTTPClient(client))
 	if err != nil {
 		return err
 	}
-	file, err := os.Open(video.Thumbnail)
+	file, err := os.Open(thumbnailPath)
 	if err != nil {
 		return err
 	}
 	defer file.Close()
-	call := service.Thumbnails.Set(video.VideoId)
+	call := service.Thumbnails.Set(videoId)
 	response, err := call.Media(file).Do()
 	if err != nil {
 		return err

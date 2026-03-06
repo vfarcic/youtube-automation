@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"devopstoolkit/youtube-automation/internal/ai"
+	"devopstoolkit/youtube-automation/internal/thumbnail"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -70,9 +71,10 @@ type AIAMATimecodesResponse struct {
 // --- Request types (body-based endpoints) ---
 
 type AIThumbnailsRequest struct {
-	Category  string `json:"category"`
-	Name      string `json:"name"`
-	ImagePath string `json:"imagePath"`
+	Category    string `json:"category"`
+	Name        string `json:"name"`
+	ImagePath   string `json:"imagePath"`
+	DriveFileID string `json:"driveFileId"`
 }
 
 type AITranslateRequest struct {
@@ -181,11 +183,18 @@ func (s *Server) handleAIThumbnails(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, "invalid request body", err.Error())
 		return
 	}
-	if req.ImagePath == "" {
-		respondError(w, http.StatusBadRequest, "imagePath is required", "")
+	if req.ImagePath == "" && req.DriveFileID == "" {
+		respondError(w, http.StatusBadRequest, "imagePath or driveFileId is required", "")
 		return
 	}
-	prompts, err := s.aiService.GenerateThumbnailVariations(r.Context(), req.ImagePath)
+
+	ref := thumbnail.ThumbnailRef{Path: req.ImagePath, DriveFileID: req.DriveFileID}
+	var prompts ai.VariationPrompts
+	err := thumbnail.WithThumbnailFile(r.Context(), ref, s.driveService, func(localPath string) error {
+		var genErr error
+		prompts, genErr = s.aiService.GenerateThumbnailVariations(r.Context(), localPath)
+		return genErr
+	})
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "AI generation failed", err.Error())
 		return

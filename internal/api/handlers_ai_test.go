@@ -296,8 +296,8 @@ func TestHandleAIThumbnails(t *testing.T) {
 			wantStatus: http.StatusOK,
 		},
 		{
-			name:       "missing imagePath",
-			body:       `{"imagePath":""}`,
+			name:       "missing imagePath and driveFileId",
+			body:       `{"imagePath":"","driveFileId":""}`,
 			mock:       &mockAIService{},
 			wantStatus: http.StatusBadRequest,
 		},
@@ -311,6 +311,12 @@ func TestHandleAIThumbnails(t *testing.T) {
 			name:       "AI error",
 			body:       `{"imagePath":"/tmp/thumb.png"}`,
 			mock:       &mockAIService{err: fmt.Errorf("vision failed")},
+			wantStatus: http.StatusInternalServerError,
+		},
+		{
+			name:       "driveFileId without drive service returns error",
+			body:       `{"driveFileId":"drive-abc123"}`,
+			mock:       &mockAIService{thumbnails: ai.VariationPrompts{Subtle: "s", Bold: "b"}},
 			wantStatus: http.StatusInternalServerError,
 		},
 	}
@@ -333,6 +339,30 @@ func TestHandleAIThumbnails(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestHandleAIThumbnails_DriveFileID(t *testing.T) {
+	mock := &mockAIService{thumbnails: ai.VariationPrompts{Subtle: "drive subtle", Bold: "drive bold"}}
+	env := setupAITestEnv(t, mock)
+	env.server.driveService = &mockDriveService{
+		getFileContent: "fake-image-data",
+		getFileMIME:    "image/png",
+		getFileName:    "thumb.png",
+	}
+
+	body := `{"driveFileId":"drive-thumb-123"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/ai/thumbnails", strings.NewReader(body))
+	rr := httptest.NewRecorder()
+	env.server.Router().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d; body: %s", rr.Code, http.StatusOK, rr.Body.String())
+	}
+	var resp AIThumbnailsResponse
+	json.NewDecoder(rr.Body).Decode(&resp)
+	if resp.Subtle != "drive subtle" || resp.Bold != "drive bold" {
+		t.Errorf("unexpected response: %+v", resp)
 	}
 }
 

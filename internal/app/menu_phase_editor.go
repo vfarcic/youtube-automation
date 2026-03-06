@@ -542,8 +542,11 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 						updatedVideo.VideoId = newVideoID // Store the new video ID
 						fmt.Println(m.confirmationStyle.Render(fmt.Sprintf("Video uploaded successfully. New Video ID: %s", updatedVideo.VideoId)))
 						// Thumbnail upload should happen AFTER successful video upload and ID retrieval
-						if updatedVideo.Thumbnail != "" { // User provided/confirmed a thumbnail path
-							if tnErr := publishing.UploadThumbnail(updatedVideo); tnErr != nil {
+						if ref, refErr := thumbnail.ResolveThumbnail(&updatedVideo); refErr == nil {
+							tnErr := thumbnail.WithThumbnailFile(context.Background(), ref, nil, func(path string) error {
+								return publishing.UploadThumbnail(updatedVideo.VideoId, path)
+							})
+							if tnErr != nil {
 								log.Print(m.errorStyle.Render(fmt.Sprintf("Failed to upload thumbnail: %v", tnErr)))
 							} else {
 								fmt.Println(m.confirmationStyle.Render("Thumbnail uploaded."))
@@ -1085,7 +1088,7 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 
 					// Generate the thumbnail
 					ctx := context.Background()
-					outputPath, err := thumbnail.LocalizeThumbnail(ctx, geminiClient, &updatedVideo, "es")
+					outputPath, err := thumbnail.LocalizeThumbnail(ctx, geminiClient, &updatedVideo, "es", nil)
 					if err != nil {
 						fmt.Println(m.errorStyle.Render(fmt.Sprintf("Failed to generate thumbnail: %v", err)))
 						continue
@@ -1135,7 +1138,7 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 							info.UploadedVideoID == ""
 						if canUpload {
 							fmt.Println(m.normalStyle.Render("Uploading long-form video..."))
-							videoID, err := publishing.UploadDubbedVideo(&updatedVideo, "es")
+							videoID, err := publishing.UploadDubbedVideo(&updatedVideo, "es", nil)
 							if err != nil {
 								fmt.Println(m.errorStyle.Render(fmt.Sprintf("  Failed: %v", err)))
 								failCount++
@@ -1411,7 +1414,11 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 							Password:   configuration.GlobalSettings.Bluesky.Password,
 							URL:        configuration.GlobalSettings.Bluesky.URL,
 						}
-						if bsErr := bluesky.SendPost(bsConfig, updatedVideo.Tweet, updatedVideo.VideoId, updatedVideo.Thumbnail); bsErr != nil {
+						thumbnailPath := ""
+					if ref, refErr := thumbnail.ResolveThumbnail(&updatedVideo); refErr == nil {
+						thumbnailPath = ref.Path // BlueSky only supports local paths in CLI
+					}
+					if bsErr := bluesky.SendPost(bsConfig, updatedVideo.Tweet, updatedVideo.VideoId, thumbnailPath); bsErr != nil {
 							log.Print(m.errorStyle.Render(fmt.Sprintf("Failed to post to BlueSky: %v", bsErr)))
 							updatedVideo.BlueSkyPosted = false // Revert intent
 						} else {
