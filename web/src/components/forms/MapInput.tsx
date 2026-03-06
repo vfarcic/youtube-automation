@@ -56,9 +56,9 @@ export function MapInput({
       <FieldLabel name={name} helpText={helpText} complete={complete} />
       <div className="space-y-3">
         {keys.map((key) => (
-          <div key={key} className="border border-gray-200 rounded p-3">
+          <div key={key} className="border border-gray-700 rounded p-3">
             <div className="flex justify-between items-center mb-2">
-              <span className="text-xs font-medium text-gray-500">{mapKeyLabel}: {key}</span>
+              <span className="text-xs font-medium text-gray-400">{mapKeyLabel}: {key}</span>
               <button
                 type="button"
                 onClick={() => handleRemove(key)}
@@ -71,7 +71,7 @@ export function MapInput({
             <div className="space-y-2">
               {itemFields.map((subField) => (
                 <div key={subField.fieldName}>
-                  <label className="block text-xs text-gray-600 mb-0.5">{subField.name}</label>
+                  <label className="block text-xs text-gray-400 mb-0.5">{subField.name}</label>
                   {subField.type === 'number' ? (
                     <input
                       type="number"
@@ -79,7 +79,7 @@ export function MapInput({
                       onChange={(e) =>
                         handleEntryChange(key, subField.fieldName, Number(e.target.value))
                       }
-                      className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-full border border-gray-600 bg-gray-800 text-gray-100 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                   ) : (
                     <input
@@ -88,7 +88,7 @@ export function MapInput({
                       onChange={(e) =>
                         handleEntryChange(key, subField.fieldName, e.target.value)
                       }
-                      className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-full border border-gray-600 bg-gray-800 text-gray-100 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                   )}
                 </div>
@@ -103,14 +103,14 @@ export function MapInput({
           value={newKey}
           onChange={(e) => setNewKey(e.target.value)}
           placeholder={mapKeyLabel}
-          className="border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="border border-gray-600 bg-gray-800 text-gray-100 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
           aria-label={`New ${mapKeyLabel}`}
         />
         <button
           type="button"
           onClick={handleAdd}
           disabled={!newKey.trim()}
-          className="px-3 py-1 text-xs border border-dashed border-gray-300 rounded hover:border-blue-400 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-3 py-1 text-xs border border-dashed border-gray-600 text-gray-400 rounded hover:border-blue-400 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           + Add Entry
         </button>

@@ -31,7 +31,7 @@ export function SelectInput({
         id={fieldName}
         value={value}
         onChange={(e) => onChange(fieldName, e.target.value)}
-        className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+        className="w-full border border-gray-600 bg-gray-800 text-gray-100 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
       >
         {placeholder && <option value="">{placeholder}</option>}
         {options.map((opt) => (

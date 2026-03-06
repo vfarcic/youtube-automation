@@ -213,3 +213,56 @@ export interface CreateVideoRequest {
   category: string;
   date?: string;
 }
+
+// --- AI Response Types ---
+
+export interface AITitlesResponse {
+  titles: string[];
+}
+
+export interface AIDescriptionResponse {
+  description: string;
+}
+
+export interface AITagsResponse {
+  tags: string;
+}
+
+export interface AITweetsResponse {
+  tweets: string[];
+}
+
+export interface AIDescriptionTagsResponse {
+  descriptionTags: string;
+}
+
+export interface ShortCandidate {
+  id: string;
+  title: string;
+  text: string;
+  rationale: string;
+}
+
+export interface AIShortsResponse {
+  candidates: ShortCandidate[];
+}
+
+export interface AIThumbnailsResponse {
+  subtle: string;
+  bold: string;
+}
+
+export interface AITranslateResponse {
+  title: string;
+  description: string;
+  tags: string;
+  timecodes: string;
+  shortTitles?: string[];
+}
+
+export interface AIAMAContentResponse {
+  title: string;
+  timecodes: string;
+  description: string;
+  tags: string;
+}

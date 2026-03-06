@@ -24,6 +24,7 @@ type Server struct {
 	videoManager  *video.Manager
 	aspectService *aspect.Service
 	filesystem    *filesystem.Operations
+	aiService     AIService
 	apiToken      string
 	frontendFS    fs.FS
 }
@@ -31,13 +32,14 @@ type Server struct {
 // NewServer creates a new API server wired to the given service and manager.
 // frontendFS should be the sub-directory containing the built frontend (e.g. the "dist" folder).
 // Pass nil to disable frontend serving.
-func NewServer(videoService *service.VideoService, videoManager *video.Manager, aspectService *aspect.Service, fsOps *filesystem.Operations, apiToken string, frontendFS fs.FS) *Server {
+func NewServer(videoService *service.VideoService, videoManager *video.Manager, aspectService *aspect.Service, fsOps *filesystem.Operations, aiService AIService, apiToken string, frontendFS fs.FS) *Server {
 	s := &Server{
 		router:        chi.NewRouter(),
 		videoService:  videoService,
 		videoManager:  videoManager,
 		aspectService: aspectService,
 		filesystem:    fsOps,
+		aiService:     aiService,
 		apiToken:      apiToken,
 		frontendFS:    frontendFS,
 	}
@@ -63,6 +65,22 @@ func (s *Server) setupRoutes() {
 			r.Get("/overview", s.handleGetAspectsOverview)
 			r.Get("/{key}/fields", s.handleGetAspectFields)
 			r.Get("/{key}/fields/{field}/completion", s.handleGetFieldCompletion)
+		})
+
+		// AI content generation
+		r.Route("/ai", func(r chi.Router) {
+			r.Post("/titles/{category}/{name}", s.handleAITitles)
+			r.Post("/description/{category}/{name}", s.handleAIDescription)
+			r.Post("/tags/{category}/{name}", s.handleAITags)
+			r.Post("/tweets/{category}/{name}", s.handleAITweets)
+			r.Post("/description-tags/{category}/{name}", s.handleAIDescriptionTags)
+			r.Post("/shorts/{category}/{name}", s.handleAIShorts)
+			r.Post("/thumbnails", s.handleAIThumbnails)
+			r.Post("/translate", s.handleAITranslate)
+			r.Post("/ama/content", s.handleAIAMAContent)
+			r.Post("/ama/title", s.handleAIAMATitle)
+			r.Post("/ama/description", s.handleAIAMADescription)
+			r.Post("/ama/timecodes", s.handleAIAMATimecodes)
 		})
 
 		// Videos

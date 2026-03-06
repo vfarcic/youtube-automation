@@ -44,12 +44,12 @@ The existing **aspect system** (`internal/aspect/`) already generates typed fiel
 ### Must Have (MVP)
 - [x] HTTP API serves all video lifecycle operations (CRUD, phase, progress)
 - [x] API exposes aspect metadata for dynamic form rendering
-- [ ] API serves AI content generation (titles, description, tags, tweets)
+- [x] API serves AI content generation (titles, description, tags, tweets)
 - [ ] API serves publishing operations (YouTube upload, Hugo blog post)
 - [x] React frontend renders phase dashboard with video counts
 - [x] Frontend dynamically renders aspect-based editing forms from API metadata
 - [x] Frontend shows progress tracking per aspect and overall
-- [ ] Frontend supports AI content generation with apply-to-field UX
+- [x] Frontend supports AI content generation with apply-to-field UX
 - [x] API protected by bearer token auth (env var, disabled when unset)
 - [x] Go server embeds and serves the built frontend (single binary deployment)
 - [ ] Helm chart deploys backend + frontend to Kubernetes
@@ -253,7 +253,7 @@ Add `sync.RWMutex` in storage layer for index operations and per-video writes. A
 - [x] **Git Sync for YAML Data**: Server clones/pulls a configured Git repo on startup, auto-commits and pushes on data mutations. Required because YAML data lives in a GitHub repo.
 - [x] **Dynamic Form Rendering + Video Editing UI**: DynamicForm component, all field renderers, aspect tab navigation, PATCH updates, completion badges, progress bars, video create/delete actions.
 - [x] **Array Field Type Support**: Add `"array"` field type to aspect system with item schema. Backend: new field type in aspect metadata with `itemFields` describing each sub-field. Frontend: `ArrayInput` component rendering items as sub-forms with add/remove. PATCH: verify reflection-based setter handles typed slices/maps correctly. Affected fields: `titles` ([]TitleVariant), `thumbnailVariants` ([]ThumbnailVariant), `shorts` ([]Short), `dubbing` (map[string]DubbingInfo).
-- [ ] **AI Content Generation**: All 12 AI API endpoints, SSE infrastructure for long-running operations, frontend AI panel with suggestion display and "apply" action.
+- [x] **AI Content Generation**: All 12 AI API endpoints, frontend inline AI generation with apply-to-field UX. SSE deferred to future milestone.
 - [ ] **Publishing + Social Media**: YouTube upload, Hugo blog, shorts upload, dubbed upload, transcript fetch endpoints. Social media posting endpoints. Frontend publishing panel with upload progress.
 - [ ] **Analytics Dashboard**: Video analytics, title analysis, timing recommendations, channel stats endpoints. Frontend analytics views.
 - [ ] **AMA, Dubbing, Translation**: Remaining specialized feature endpoints and frontend panels. Full feature parity with CLI.
@@ -370,6 +370,21 @@ Add `sync.RWMutex` in storage layer for index operations and per-video writes. A
   - **Scope**: Backend aspect types + metadata generation, frontend `ArrayInput` component, PATCH handler verification for typed slices. `dubbing` (map[string]DubbingInfo) may need separate `"map"` type or special handling.
   - **Impact**: New milestone inserted before AI Content Generation. Affects `internal/aspect/` (types, field type registry, metadata builder) and `web/src/components/forms/` (new component).
 
+- **Milestone 8 complete**: AI Content Generation
+  - Backend: Created `internal/api/ai_service.go` (AIService interface + DefaultAIService), `internal/api/handlers_ai.go` (12 endpoints: titles, description, tags, tweets, description-tags, shorts, thumbnails, translate, 4x AMA), `internal/api/handlers_ai_test.go`
+  - Updated `server.go`: added `aiService` dependency, registered `/api/ai/` route group with all 12 endpoints
+  - Updated `cmd/youtube-automation/main.go`: wired `&api.DefaultAIService{}` into server
+  - Frontend: Created `web/src/lib/aiFields.ts` (field-to-AI config map), `web/src/components/forms/AIGenerateButton.tsx` (inline generate button with field-specific UX: checkboxes for titles/shorts, radio for tweets, direct apply for strings)
+  - Integrated into `DynamicForm.tsx`: added `category`/`videoName` props, renders `AIGenerateButton` next to AI-eligible fields
+  - Updated `VideoDetail.tsx`: passes video identifiers to DynamicForm, removed separate "AI Assist" tab and `AIPanel` component
+  - Added 12 AI mutation hooks in `web/src/api/hooks.ts`, 9 AI response types in `web/src/api/types.ts`
+  - 7 new frontend tests in `web/src/test/AIGenerateButton.test.tsx`, MSW handlers for all AI endpoints
+  - **Bug fix**: `filesystem.ResolvePath()` — manuscript paths stored in YAML are relative to data dir, but `os.ReadFile` in serve mode runs from a different CWD. Added `ResolvePath()` to prepend `rootDir` when set. Fixed `GetVideoManuscript` and `handleGetVideoAnimations`.
+  - 3 new `ResolvePath` tests in `operations_test.go`
+  - **Design decision**: Inline AI over separate tab — user feedback that switching between AI tab and form tab was clunky. Generate buttons render next to each AI-eligible field, results appear inline, Apply populates the field and dismisses results. Thumbnails, translation, and AMA remain API-only (not field-level).
+  - Verified with real data: titles, description, tags generation working inline
+  - 57 frontend tests pass, all backend tests pass
+
 ### How to Run for Manual Testing
 
 The server reads `settings.yaml` from the **current working directory**. To run with real data from `devops-catalog`:
@@ -383,3 +398,17 @@ cd ../devops-catalog && /path/to/youtube-automation/youtube-release serve
 ```
 
 The server starts at `http://localhost:8080`. The frontend is embedded in the binary and served automatically.
+
+### Post-Task Validation Protocol
+
+**After completing each task**, always rebuild and restart the backend server so the user can manually validate:
+
+```bash
+# 1. Stop the running server (Ctrl+C or kill the process)
+# 2. Rebuild with frontend embedded
+make build-local-full
+# 3. Restart from the devops-catalog directory
+cd ../devops-catalog && /path/to/youtube-automation/youtube-release serve
+```
+
+**Why**: The Go binary embeds the frontend at build time, so backend changes require a full rebuild + restart. The frontend dev server (`npm run dev`) hot-reloads automatically, but for integrated testing the embedded build is used. Always restart the server after any backend or frontend change to ensure the user can validate against real data.

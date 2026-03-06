@@ -15,7 +15,7 @@ func TestSPAHandler(t *testing.T) {
 	}
 
 	env := setupTestEnv(t)
-	srv := NewServer(env.server.videoService, env.server.videoManager, env.server.aspectService, env.server.filesystem, "", fakeFS)
+	srv := NewServer(env.server.videoService, env.server.videoManager, env.server.aspectService, env.server.filesystem, nil, "", fakeFS)
 
 	tests := []struct {
 		name            string
@@ -78,7 +78,7 @@ func TestSPAHandlerAPIRoutesStillWork(t *testing.T) {
 	}
 
 	env := setupTestEnv(t)
-	srv := NewServer(env.server.videoService, env.server.videoManager, env.server.aspectService, env.server.filesystem, "", fakeFS)
+	srv := NewServer(env.server.videoService, env.server.videoManager, env.server.aspectService, env.server.filesystem, nil, "", fakeFS)
 
 	// API routes should still return JSON, not index.html
 	req := httptest.NewRequest(http.MethodGet, "/api/videos/phases", nil)
@@ -101,7 +101,7 @@ func TestSPAHandlerHealthStillWorks(t *testing.T) {
 	}
 
 	env := setupTestEnv(t)
-	srv := NewServer(env.server.videoService, env.server.videoManager, env.server.aspectService, env.server.filesystem, "", fakeFS)
+	srv := NewServer(env.server.videoService, env.server.videoManager, env.server.aspectService, env.server.filesystem, nil, "", fakeFS)
 
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
 	rr := httptest.NewRecorder()
@@ -115,7 +115,7 @@ func TestSPAHandlerHealthStillWorks(t *testing.T) {
 func TestNoFrontendFS(t *testing.T) {
 	env := setupTestEnv(t)
 	// nil frontendFS should not register SPA handler
-	srv := NewServer(env.server.videoService, env.server.videoManager, env.server.aspectService, env.server.filesystem, "", nil)
+	srv := NewServer(env.server.videoService, env.server.videoManager, env.server.aspectService, env.server.filesystem, nil, "", nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/nonexistent", nil)
 	rr := httptest.NewRecorder()

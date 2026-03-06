@@ -190,6 +190,14 @@ export const mockAspects: AspectsResponse = {
   ],
 };
 
+// AI mock responses
+const mockAITitles = { titles: ['AI Title 1', 'AI Title 2', 'AI Title 3'] };
+const mockAIDescription = { description: 'AI generated description' };
+const mockAITags = { tags: 'ai,generated,tags' };
+const mockAITweets = { tweets: ['Tweet 1', 'Tweet 2'] };
+const mockAIDescriptionTags = { descriptionTags: '#ai #gen #tags' };
+const mockAIShorts = { candidates: [{ id: 'short1', title: 'Short One', text: 'text', rationale: 'good' }] };
+
 export const handlers = [
   http.get('/api/videos/phases', () => HttpResponse.json(mockPhases)),
   http.get('/api/videos/list', () => HttpResponse.json(mockVideoList)),
@@ -208,4 +216,17 @@ export const handlers = [
     );
   }),
   http.delete('/api/videos/:videoName', () => new HttpResponse(null, { status: 204 })),
+  // AI endpoints
+  http.post('/api/ai/titles/:category/:name', () => HttpResponse.json(mockAITitles)),
+  http.post('/api/ai/description/:category/:name', () => HttpResponse.json(mockAIDescription)),
+  http.post('/api/ai/tags/:category/:name', () => HttpResponse.json(mockAITags)),
+  http.post('/api/ai/tweets/:category/:name', () => HttpResponse.json(mockAITweets)),
+  http.post('/api/ai/description-tags/:category/:name', () => HttpResponse.json(mockAIDescriptionTags)),
+  http.post('/api/ai/shorts/:category/:name', () => HttpResponse.json(mockAIShorts)),
+  http.post('/api/ai/thumbnails', () => HttpResponse.json({ subtle: 'subtle prompt', bold: 'bold prompt' })),
+  http.post('/api/ai/translate', () => HttpResponse.json({ title: 'Titulo', description: 'Desc', tags: 'tags', timecodes: '' })),
+  http.post('/api/ai/ama/content', () => HttpResponse.json({ title: 'AMA', timecodes: '00:00', description: 'Desc', tags: 'tags' })),
+  http.post('/api/ai/ama/title', () => HttpResponse.json({ title: 'AMA Title' })),
+  http.post('/api/ai/ama/description', () => HttpResponse.json({ description: 'AMA Desc' })),
+  http.post('/api/ai/ama/timecodes', () => HttpResponse.json({ timecodes: '00:00 Intro' })),
 ];

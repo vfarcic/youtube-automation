@@ -218,7 +218,7 @@ func (s *Server) handleGetVideoAnimations(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	animations, sections, err := s.filesystem.GetAnimations(v.Gist)
+	animations, sections, err := s.filesystem.GetAnimations(s.filesystem.ResolvePath(v.Gist))
 	if err != nil {
 		respondError(w, http.StatusNotFound, "failed to read animations", err.Error())
 		return

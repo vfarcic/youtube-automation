@@ -50,7 +50,7 @@ func main() {
 			}
 		}
 
-		fsOps := filesystem.NewOperationsWithBaseDir(filepath.Join(dataDir, "manuscript"))
+		fsOps := filesystem.NewOperationsWithBaseDir(dataDir, "manuscript")
 		videoManager := video.NewManager(fsOps.GetFilePath)
 		videoService := service.NewVideoService(filepath.Join(dataDir, "index.yaml"), fsOps, videoManager)
 
@@ -61,7 +61,7 @@ func main() {
 		aspectSvc := aspect.NewService()
 
 		distFS, _ := fs.Sub(frontend.DistFS, "dist")
-		srv := api.NewServer(videoService, videoManager, aspectSvc, fsOps, configuration.GetAPIToken(), distFS)
+		srv := api.NewServer(videoService, videoManager, aspectSvc, fsOps, &api.DefaultAIService{}, configuration.GetAPIToken(), distFS)
 		if err := srv.Start(configuration.GetServeHost(), configuration.GetServePort()); err != nil {
 			fmt.Fprintf(os.Stderr, "Server error: %v\n", err)
 			os.Exit(1)

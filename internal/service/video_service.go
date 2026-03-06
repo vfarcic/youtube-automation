@@ -118,11 +118,12 @@ FIXME:
 
 	// Create the default video YAML file
 	videoPath := s.filesystem.GetFilePath(vi.Category, vi.Name, "yaml")
+	storagePath := s.filesystem.GetStoragePath(vi.Category, vi.Name, "yaml")
 
 	defaultVideo := storage.Video{
 		Name:     sanitizedName,
 		Category: category,
-		Path:     videoPath,
+		Path:     storagePath,
 		// Initialize sponsorship
 		Sponsorship: storage.Sponsorship{
 			Amount:  "",
@@ -193,7 +194,7 @@ func (s *VideoService) GetVideosByPhase(phase int) ([]storage.Video, error) {
 		// Always use sanitized name to ensure consistency with filenames
 		fullVideo.Name = s.filesystem.SanitizeName(fullVideo.Name)
 		fullVideo.Category = videoIndex.Category
-		fullVideo.Path = videoPath
+		fullVideo.Path = s.filesystem.GetStoragePath(videoIndex.Category, sanitizedName, "yaml")
 
 		// Use CalculateVideoPhase since we already have the full video data loaded
 		// This avoids the file I/O overhead of GetVideoPhase which would reload the video
@@ -276,7 +277,7 @@ func (s *VideoService) GetVideo(name, category string) (storage.Video, error) {
 	// The filename is the source of truth, not the YAML content
 	video.Name = s.filesystem.SanitizeName(video.Name)
 	video.Category = category
-	video.Path = videoPath
+	video.Path = s.filesystem.GetStoragePath(category, sanitizedName, "yaml")
 
 	return video, nil
 }
@@ -287,7 +288,10 @@ func (s *VideoService) UpdateVideo(v storage.Video) error {
 		return fmt.Errorf("video path is required")
 	}
 
-	if err := s.yamlStorage.WriteVideo(v, v.Path); err != nil {
+	// Reconstruct the full filesystem path from category/name since v.Path
+	// may be repo-relative (without the data dir prefix) for storage purposes
+	fullPath := s.filesystem.GetFilePath(v.Category, v.Name, "yaml")
+	if err := s.yamlStorage.WriteVideo(v, fullPath); err != nil {
 		return err
 	}
 
@@ -530,10 +534,11 @@ func (s *VideoService) GetVideoManuscript(name, category string) (string, error)
 		return "", fmt.Errorf("gist field is empty for video %s in category %s", name, category)
 	}
 
-	// Read the manuscript file
-	manuscriptContent, readErr := os.ReadFile(video.Gist)
+	// Read the manuscript file — resolve the storage-relative path to an absolute path
+	gistPath := s.filesystem.ResolvePath(video.Gist)
+	manuscriptContent, readErr := os.ReadFile(gistPath)
 	if readErr != nil {
-		return "", fmt.Errorf("failed to read manuscript file %s: %w", video.Gist, readErr)
+		return "", fmt.Errorf("failed to read manuscript file %s: %w", gistPath, readErr)
 	}
 
 	return string(manuscriptContent), nil

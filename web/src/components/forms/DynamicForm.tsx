@@ -8,12 +8,16 @@ import { NumberInput } from './NumberInput';
 import { SelectInput } from './SelectInput';
 import { ArrayInput } from './ArrayInput';
 import { MapInput } from './MapInput';
+import { AIGenerateButton } from './AIGenerateButton';
+import { AI_FIELD_CONFIG } from '../../lib/aiFields';
 
 interface DynamicFormProps {
   fields: AspectField[];
   video: VideoResponse;
   onSave: (changedFields: Record<string, unknown>) => void;
   saving?: boolean;
+  category?: string;
+  videoName?: string;
 }
 
 /** Resolve a possibly dot-notated path like "sponsorship.amount" from a video object. */
@@ -27,7 +31,7 @@ function getFieldValue(video: VideoResponse, fieldName: string): unknown {
   return current;
 }
 
-export function DynamicForm({ fields, video, onSave, saving }: DynamicFormProps) {
+export function DynamicForm({ fields, video, onSave, saving, category, videoName }: DynamicFormProps) {
   const initialValues = useMemo(() => {
     const vals: Record<string, unknown> = {};
     for (const field of fields) {
@@ -80,16 +84,24 @@ export function DynamicForm({ fields, video, onSave, saving }: DynamicFormProps)
         {sorted.map((field) => (
           <div key={field.fieldName}>
             {renderField(field, values[field.fieldName], handleChange, isFieldComplete(field, values[field.fieldName]))}
+            {category && videoName && AI_FIELD_CONFIG[field.fieldName] && (
+              <AIGenerateButton
+                fieldName={field.fieldName}
+                category={category}
+                videoName={videoName}
+                onApply={(value) => handleChange(field.fieldName, value)}
+              />
+            )}
           </div>
         ))}
       </div>
 
-      <div className="flex gap-3 mt-6 pt-4 border-t">
+      <div className="flex gap-3 mt-6 pt-4 border-t border-gray-700">
         <button
           type="button"
           onClick={handleSave}
           disabled={!isDirty || saving}
-          className="px-4 py-1.5 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-4 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {saving ? 'Saving...' : 'Save'}
         </button>
@@ -97,7 +109,7 @@ export function DynamicForm({ fields, video, onSave, saving }: DynamicFormProps)
           type="button"
           onClick={handleReset}
           disabled={!isDirty || saving}
-          className="px-4 py-1.5 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-4 py-1.5 text-sm border border-gray-600 text-gray-300 rounded hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Reset
         </button>

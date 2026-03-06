@@ -15,35 +15,115 @@ func TestNewOperations(t *testing.T) {
 
 func TestNewOperationsWithBaseDir(t *testing.T) {
 	tests := []struct {
-		name    string
-		baseDir string
+		name           string
+		rootDir        string
+		manuscriptDir  string
+		expectedBase   string
 	}{
-		{"custom path", "/data/repo/manuscript"},
-		{"relative path", "./tmp/manuscript"},
-		{"simple path", "content"},
+		{"custom path", "/data/repo", "manuscript", "/data/repo/manuscript"},
+		{"relative path", "./tmp", "manuscript", "tmp/manuscript"},
+		{"simple path", "data", "content", "data/content"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ops := NewOperationsWithBaseDir(tt.baseDir)
+			ops := NewOperationsWithBaseDir(tt.rootDir, tt.manuscriptDir)
 			assert.NotNil(t, ops)
-			assert.Equal(t, tt.baseDir, ops.GetBaseDir())
+			assert.Equal(t, tt.expectedBase, ops.GetBaseDir())
 		})
 	}
 }
 
 func TestGetDirPath_CustomBaseDir(t *testing.T) {
-	ops := NewOperationsWithBaseDir("/data/content")
+	ops := NewOperationsWithBaseDir("/data", "content")
 
 	result := ops.GetDirPath("devops")
 	assert.Equal(t, "/data/content/devops", result)
 }
 
 func TestGetFilePath_CustomBaseDir(t *testing.T) {
-	ops := NewOperationsWithBaseDir("/data/content")
+	ops := NewOperationsWithBaseDir("/data", "content")
 
 	result := ops.GetFilePath("devops", "my-video", "yaml")
 	assert.Equal(t, "/data/content/devops/my-video.yaml", result)
+}
+
+func TestGetStoragePath(t *testing.T) {
+	tests := []struct {
+		name      string
+		ops       *Operations
+		category  string
+		videoName string
+		extension string
+		expected  string
+	}{
+		{
+			name:      "with rootDir set returns repo-relative path",
+			ops:       NewOperationsWithBaseDir("tmp", "manuscript"),
+			category:  "ai",
+			videoName: "my-video",
+			extension: "yaml",
+			expected:  "manuscript/ai/my-video.yaml",
+		},
+		{
+			name:      "without rootDir returns same as GetFilePath",
+			ops:       NewOperations(),
+			category:  "ai",
+			videoName: "my-video",
+			extension: "yaml",
+			expected:  "manuscript/ai/my-video.yaml",
+		},
+		{
+			name:      "with nested rootDir",
+			ops:       NewOperationsWithBaseDir("/var/data", "manuscript"),
+			category:  "devops",
+			videoName: "test",
+			extension: "yaml",
+			expected:  "manuscript/devops/test.yaml",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := tt.ops.GetStoragePath(tt.category, tt.videoName, tt.extension)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestResolvePath(t *testing.T) {
+	tests := []struct {
+		name        string
+		ops         *Operations
+		storagePath string
+		expected    string
+	}{
+		{
+			name:        "with rootDir prepends rootDir",
+			ops:         NewOperationsWithBaseDir("/var/data", "manuscript"),
+			storagePath: "manuscript/devops/my-video.md",
+			expected:    "/var/data/manuscript/devops/my-video.md",
+		},
+		{
+			name:        "without rootDir returns path unchanged",
+			ops:         NewOperations(),
+			storagePath: "manuscript/devops/my-video.md",
+			expected:    "manuscript/devops/my-video.md",
+		},
+		{
+			name:        "absolute path returned unchanged even with rootDir",
+			ops:         NewOperationsWithBaseDir("/var/data", "manuscript"),
+			storagePath: "/absolute/path/to/file.md",
+			expected:    "/absolute/path/to/file.md",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := tt.ops.ResolvePath(tt.storagePath)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
 }
 
 func TestGetDirPath(t *testing.T) {

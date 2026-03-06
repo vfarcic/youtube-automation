@@ -35,6 +35,7 @@ func sanitizeFileName(name string) string {
 // Operations handles file and directory path operations
 type Operations struct {
 	baseDir string
+	rootDir string
 }
 
 // NewOperations creates a new filesystem operations handler with the default base directory ("manuscript")
@@ -42,14 +43,43 @@ func NewOperations() *Operations {
 	return &Operations{baseDir: defaultBaseDir}
 }
 
-// NewOperationsWithBaseDir creates a new filesystem operations handler with a custom base directory
-func NewOperationsWithBaseDir(baseDir string) *Operations {
-	return &Operations{baseDir: baseDir}
+// NewOperationsWithBaseDir creates a new filesystem operations handler with a custom root and manuscript directory.
+// rootDir is the data root (e.g. "tmp/"), manuscriptDir is appended to form baseDir (e.g. "manuscript").
+// GetFilePath returns paths relative to CWD (rootDir/manuscriptDir/...), while GetStoragePath
+// returns paths relative to rootDir (manuscriptDir/...) for storage in YAML.
+func NewOperationsWithBaseDir(rootDir, manuscriptDir string) *Operations {
+	return &Operations{
+		baseDir: filepath.Join(rootDir, manuscriptDir),
+		rootDir: rootDir,
+	}
+}
+
+// GetStoragePath returns a path relative to rootDir, suitable for storing in YAML files.
+// When rootDir is empty (CLI mode), this behaves identically to GetFilePath.
+func (o *Operations) GetStoragePath(category, name, extension string) string {
+	fullPath := o.GetFilePath(category, name, extension)
+	if o.rootDir == "" {
+		return fullPath
+	}
+	rel, err := filepath.Rel(o.rootDir, fullPath)
+	if err != nil {
+		return fullPath
+	}
+	return rel
 }
 
 // GetBaseDir returns the configured base directory
 func (o *Operations) GetBaseDir() string {
 	return o.baseDir
+}
+
+// ResolvePath converts a storage-relative path back to an absolute path.
+// When rootDir is empty (CLI mode), the path is returned unchanged.
+func (o *Operations) ResolvePath(storagePath string) string {
+	if o.rootDir == "" || filepath.IsAbs(storagePath) {
+		return storagePath
+	}
+	return filepath.Join(o.rootDir, storagePath)
 }
 
 // GetDirPath generates the directory path for a given category

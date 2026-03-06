@@ -17,20 +17,20 @@ export function VideoDetail() {
   const patchVideo = usePatchVideo();
   const deleteVideo = useDeleteVideo();
 
-  const [activeTab, setActiveTab] = useState(0);
+  const [activeTab, setActiveTab] = useState<number>(0);
   const [saveMsg, setSaveMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   if (isLoading) {
-    return <p className="text-gray-500">Loading video...</p>;
+    return <p className="text-gray-400">Loading video...</p>;
   }
 
   if (error) {
-    return <p className="text-red-500">Failed to load video.</p>;
+    return <p className="text-red-400">Failed to load video.</p>;
   }
 
   if (!video) {
-    return <p className="text-gray-400">Video not found.</p>;
+    return <p className="text-gray-500">Video not found.</p>;
   }
 
   const aspects = aspectsData?.aspects ?? [];
@@ -68,17 +68,17 @@ export function VideoDetail() {
     <div>
       <Link
         to={`/phases/${video.phase}`}
-        className="text-sm text-blue-500 hover:underline"
+        className="text-sm text-blue-400 hover:underline"
       >
         Back to phase
       </Link>
-      <h2 className="text-xl font-bold text-gray-900 mt-2 mb-4">
+      <h2 className="text-xl font-bold text-gray-100 mt-2 mb-4">
         {video.name}
       </h2>
 
       {progress && (
         <div className="mb-6">
-          <h3 className="text-sm font-semibold text-gray-500 mb-2">
+          <h3 className="text-sm font-semibold text-gray-400 mb-2">
             Overall Progress
           </h3>
           <ProgressBar progress={progress.overall} color="bg-green-500" />
@@ -87,7 +87,7 @@ export function VideoDetail() {
 
       {aspects.length > 0 && (
         <>
-          <div className="flex flex-wrap gap-1 border-b mb-4" role="tablist">
+          <div className="flex flex-wrap gap-1 border-b border-gray-700 mb-4" role="tablist">
             {aspects.map((aspect, idx) => {
               const ap = getAspectProgress(aspect.key);
               const label = ASPECT_LABELS[aspect.key] ?? aspect.title;
@@ -97,7 +97,7 @@ export function VideoDetail() {
                 ? 'bg-green-500'
                 : isPartial
                   ? 'bg-yellow-500'
-                  : 'bg-gray-300';
+                  : 'bg-gray-600';
               return (
                 <button
                   key={aspect.key}
@@ -106,8 +106,8 @@ export function VideoDetail() {
                   onClick={() => { setActiveTab(idx); setSaveMsg(null); }}
                   className={`px-3 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5 ${
                     idx === activeTab
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700'
+                      ? 'border-blue-500 text-blue-400'
+                      : 'border-transparent text-gray-400 hover:text-gray-300'
                   }`}
                 >
                   {ap && (
@@ -118,7 +118,7 @@ export function VideoDetail() {
                   )}
                   {label}
                   {ap && (
-                    <span className="text-xs text-gray-400">
+                    <span className="text-xs text-gray-500">
                       {ap.completed}/{ap.total}
                     </span>
                   )}
@@ -134,29 +134,31 @@ export function VideoDetail() {
               video={video}
               onSave={handleSave}
               saving={patchVideo.isPending}
+              category={category}
+              videoName={videoName}
             />
           )}
 
           {saveMsg && (
-            <p className={`mt-3 text-sm ${saveMsg.type === 'success' ? 'text-green-600' : 'text-red-500'}`}>
+            <p className={`mt-3 text-sm ${saveMsg.type === 'success' ? 'text-green-400' : 'text-red-400'}`}>
               {saveMsg.text}
             </p>
           )}
         </>
       )}
 
-      <div className="mt-8 pt-4 border-t">
+      <div className="mt-8 pt-4 border-t border-gray-700">
         {!confirmDelete ? (
           <button
             type="button"
             onClick={() => setConfirmDelete(true)}
-            className="px-4 py-1.5 text-sm text-red-600 border border-red-300 rounded hover:bg-red-50"
+            className="px-4 py-1.5 text-sm text-red-400 border border-red-800 rounded hover:bg-red-900/30"
           >
             Delete Video
           </button>
         ) : (
           <div className="flex items-center gap-3">
-            <span className="text-sm text-red-600">Are you sure?</span>
+            <span className="text-sm text-red-400">Are you sure?</span>
             <button
               type="button"
               onClick={handleDelete}
@@ -168,7 +170,7 @@ export function VideoDetail() {
             <button
               type="button"
               onClick={() => setConfirmDelete(false)}
-              className="px-4 py-1.5 text-sm border border-gray-300 rounded hover:bg-gray-50"
+              className="px-4 py-1.5 text-sm border border-gray-600 text-gray-300 rounded hover:bg-gray-800"
             >
               Cancel
             </button>

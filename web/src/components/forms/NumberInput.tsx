@@ -33,7 +33,7 @@ export function NumberInput({
         onChange={(e) => onChange(fieldName, Number(e.target.value))}
         min={min}
         max={max}
-        className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+        className="w-full border border-gray-600 bg-gray-800 text-gray-100 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
       />
     </div>
   );

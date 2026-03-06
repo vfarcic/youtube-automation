@@ -7,6 +7,15 @@ import type {
   OverallProgressResponse,
   AspectsResponse,
   CreateVideoRequest,
+  AITitlesResponse,
+  AIDescriptionResponse,
+  AITagsResponse,
+  AITweetsResponse,
+  AIDescriptionTagsResponse,
+  AIShortsResponse,
+  AIThumbnailsResponse,
+  AITranslateResponse,
+  AIAMAContentResponse,
 } from './types';
 
 export function usePhases() {
@@ -100,5 +109,85 @@ export function useDeleteVideo() {
       qc.invalidateQueries({ queryKey: ['videosList'] });
       qc.invalidateQueries({ queryKey: ['phases'] });
     },
+  });
+}
+
+// --- AI Mutation Hooks ---
+
+export function useAITitles() {
+  return useMutation<AITitlesResponse, Error, { category: string; name: string }>({
+    mutationFn: ({ category, name }) =>
+      post<AITitlesResponse>(`/api/ai/titles/${encodeURIComponent(category)}/${encodeURIComponent(name)}`, {}),
+  });
+}
+
+export function useAIDescription() {
+  return useMutation<AIDescriptionResponse, Error, { category: string; name: string }>({
+    mutationFn: ({ category, name }) =>
+      post<AIDescriptionResponse>(`/api/ai/description/${encodeURIComponent(category)}/${encodeURIComponent(name)}`, {}),
+  });
+}
+
+export function useAITags() {
+  return useMutation<AITagsResponse, Error, { category: string; name: string }>({
+    mutationFn: ({ category, name }) =>
+      post<AITagsResponse>(`/api/ai/tags/${encodeURIComponent(category)}/${encodeURIComponent(name)}`, {}),
+  });
+}
+
+export function useAITweets() {
+  return useMutation<AITweetsResponse, Error, { category: string; name: string }>({
+    mutationFn: ({ category, name }) =>
+      post<AITweetsResponse>(`/api/ai/tweets/${encodeURIComponent(category)}/${encodeURIComponent(name)}`, {}),
+  });
+}
+
+export function useAIDescriptionTags() {
+  return useMutation<AIDescriptionTagsResponse, Error, { category: string; name: string }>({
+    mutationFn: ({ category, name }) =>
+      post<AIDescriptionTagsResponse>(`/api/ai/description-tags/${encodeURIComponent(category)}/${encodeURIComponent(name)}`, {}),
+  });
+}
+
+export function useAIShorts() {
+  return useMutation<AIShortsResponse, Error, { category: string; name: string }>({
+    mutationFn: ({ category, name }) =>
+      post<AIShortsResponse>(`/api/ai/shorts/${encodeURIComponent(category)}/${encodeURIComponent(name)}`, {}),
+  });
+}
+
+export function useAIThumbnails() {
+  return useMutation<AIThumbnailsResponse, Error, { imagePath: string }>({
+    mutationFn: (body) => post<AIThumbnailsResponse>('/api/ai/thumbnails', body),
+  });
+}
+
+export function useAITranslate() {
+  return useMutation<AITranslateResponse, Error, { category: string; name: string; targetLanguage: string }>({
+    mutationFn: (body) => post<AITranslateResponse>('/api/ai/translate', body),
+  });
+}
+
+export function useAIAMAContent() {
+  return useMutation<AIAMAContentResponse, Error, { category: string; name: string }>({
+    mutationFn: (body) => post<AIAMAContentResponse>('/api/ai/ama/content', body),
+  });
+}
+
+export function useAIAMATitle() {
+  return useMutation<{ title: string }, Error, { category: string; name: string }>({
+    mutationFn: (body) => post<{ title: string }>('/api/ai/ama/title', body),
+  });
+}
+
+export function useAIAMADescription() {
+  return useMutation<{ description: string }, Error, { category: string; name: string }>({
+    mutationFn: (body) => post<{ description: string }>('/api/ai/ama/description', body),
+  });
+}
+
+export function useAIAMATimecodes() {
+  return useMutation<{ timecodes: string }, Error, { category: string; name: string }>({
+    mutationFn: (body) => post<{ timecodes: string }>('/api/ai/ama/timecodes', body),
   });
 }

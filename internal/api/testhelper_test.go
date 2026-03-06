@@ -55,7 +55,7 @@ func setupTestEnv(t *testing.T) *testEnv {
 	videoService := service.NewVideoService(indexPath, fsOps, videoManager)
 	aspectService := aspect.NewService()
 
-	srv := NewServer(videoService, videoManager, aspectService, fsOps, "", nil)
+	srv := NewServer(videoService, videoManager, aspectService, fsOps, nil, "", nil)
 	return &testEnv{
 		server: srv,
 		tmpDir: tmpDir,
