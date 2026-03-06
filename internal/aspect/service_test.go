@@ -192,9 +192,6 @@ func TestPostProductionFieldConsistency(t *testing.T) {
 	// Test that Post-Production fields match the new reflection-based names
 	expectedFields := []string{
 		"Thumbnail Variants",
-		"Shorts",
-		"Members",
-		"Request Edit",
 		"Timecodes",
 		"Movie",
 		"Slides",
@@ -346,8 +343,8 @@ func TestGetAspectsOverview(t *testing.T) {
 		expectedFieldCounts := map[string]int{
 			AspectKeyInitialDetails: 10, // actual count from mapping (includes sponsor name and URL)
 			AspectKeyWorkProgress:   11, // actual count from mapping
-			AspectKeyDefinition:     7,  // actual count from mapping (includes Titles array)
-			AspectKeyPostProduction: 7,  // actual count from mapping (ThumbnailVariants, Shorts, Members, RequestEdit, Timecodes, Movie, Slides)
+			AspectKeyDefinition:     10, // actual count from mapping (includes Titles array, Shorts, Members, RequestEdit)
+			AspectKeyPostProduction: 4,  // actual count from mapping (ThumbnailVariants, Timecodes, Movie, Slides)
 			AspectKeyPublishing:     3,  // actual count from mapping
 			AspectKeyPostPublish:    10, // actual count from mapping
 			AspectKeyAnalysis:       1,  // actual count from mapping (Titles for share percentages)

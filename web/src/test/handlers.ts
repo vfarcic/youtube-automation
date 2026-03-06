@@ -232,4 +232,19 @@ export const handlers = [
   http.post('/api/drive/upload/thumbnail/:videoName', () =>
     HttpResponse.json({ driveFileId: 'mock-drive-id-123', variantIndex: 0 }),
   ),
+  // Action endpoints
+  http.post('/api/actions/request-thumbnail/:videoName', () =>
+    HttpResponse.json({
+      alreadyRequested: false,
+      emailSent: true,
+      video: { ...mockVideo, requestThumbnail: true },
+    }),
+  ),
+  http.post('/api/actions/request-edit/:videoName', () =>
+    HttpResponse.json({
+      alreadyRequested: false,
+      emailSent: true,
+      video: { ...mockVideo, requestEdit: true },
+    }),
+  ),
 ];

@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"devopstoolkit/youtube-automation/internal/aspect"
+	"devopstoolkit/youtube-automation/internal/configuration"
 	"devopstoolkit/youtube-automation/internal/filesystem"
 	"devopstoolkit/youtube-automation/internal/gdrive"
 	"devopstoolkit/youtube-automation/internal/service"
@@ -28,6 +29,8 @@ type Server struct {
 	aiService     AIService
 	driveService  gdrive.DriveService
 	driveFolderID string
+	emailService  EmailService
+	emailSettings *configuration.SettingsEmail
 	apiToken      string
 	frontendFS    fs.FS
 }
@@ -96,6 +99,12 @@ func (s *Server) setupRoutes() {
 		// Drive upload
 		r.Route("/drive", func(r chi.Router) {
 			r.Post("/upload/thumbnail/{videoName}", s.handleDriveUploadThumbnail)
+		})
+
+		// Action buttons (send emails, set flags)
+		r.Route("/actions", func(r chi.Router) {
+			r.Post("/request-thumbnail/{videoName}", s.handleRequestThumbnail)
+			r.Post("/request-edit/{videoName}", s.handleRequestEdit)
 		})
 
 		// Videos

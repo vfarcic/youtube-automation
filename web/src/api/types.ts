@@ -269,3 +269,13 @@ export interface AIAMAContentResponse {
   description: string;
   tags: string;
 }
+
+// --- Action Button Types ---
+
+export interface ActionResponse {
+  alreadyRequested: boolean;
+  emailSent: boolean;
+  emailError?: string;
+  video: VideoResponse;
+  syncWarning?: string;
+}

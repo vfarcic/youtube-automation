@@ -8,6 +8,7 @@ import { NumberInput } from './NumberInput';
 import { SelectInput } from './SelectInput';
 import { ArrayInput } from './ArrayInput';
 import { MapInput } from './MapInput';
+import { ActionButton, isActionField } from './ActionButton';
 import { AIGenerateButton } from './AIGenerateButton';
 import { AI_FIELD_CONFIG } from '../../lib/aiFields';
 
@@ -175,6 +176,16 @@ function renderField(
 
   switch (field.type) {
     case 'boolean':
+      if (isActionField(fieldName) && category && videoName) {
+        return (
+          <ActionButton
+            fieldName={fieldName}
+            value={Boolean(value)}
+            category={category}
+            videoName={videoName}
+          />
+        );
+      }
       return (
         <Toggle
           name={name}

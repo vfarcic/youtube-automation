@@ -16,6 +16,7 @@ import type {
   AIThumbnailsResponse,
   AITranslateResponse,
   AIAMAContentResponse,
+  ActionResponse,
 } from './types';
 
 export function usePhases() {
@@ -189,6 +190,42 @@ export function useAIAMADescription() {
 export function useAIAMATimecodes() {
   return useMutation<{ timecodes: string }, Error, { category: string; name: string }>({
     mutationFn: (body) => post<{ timecodes: string }>('/api/ai/ama/timecodes', body),
+  });
+}
+
+// --- Action Button Hooks ---
+
+export function useRequestThumbnail() {
+  const qc = useQueryClient();
+  return useMutation<ActionResponse, Error, { name: string; category: string }>({
+    mutationFn: ({ name, category }) =>
+      post<ActionResponse>(
+        `/api/actions/request-thumbnail/${encodeURIComponent(name)}?category=${encodeURIComponent(category)}`,
+        {},
+      ),
+    onSuccess: (_data, { name, category }) => {
+      qc.invalidateQueries({ queryKey: ['video', name, category] });
+      qc.invalidateQueries({ queryKey: ['videoProgress', name, category] });
+      qc.invalidateQueries({ queryKey: ['videosList'] });
+      qc.invalidateQueries({ queryKey: ['phases'] });
+    },
+  });
+}
+
+export function useRequestEdit() {
+  const qc = useQueryClient();
+  return useMutation<ActionResponse, Error, { name: string; category: string }>({
+    mutationFn: ({ name, category }) =>
+      post<ActionResponse>(
+        `/api/actions/request-edit/${encodeURIComponent(name)}?category=${encodeURIComponent(category)}`,
+        {},
+      ),
+    onSuccess: (_data, { name, category }) => {
+      qc.invalidateQueries({ queryKey: ['video', name, category] });
+      qc.invalidateQueries({ queryKey: ['videoProgress', name, category] });
+      qc.invalidateQueries({ queryKey: ['videosList'] });
+      qc.invalidateQueries({ queryKey: ['phases'] });
+    },
   });
 }
 

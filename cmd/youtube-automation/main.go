@@ -16,6 +16,7 @@ import (
 	"devopstoolkit/youtube-automation/internal/filesystem"
 	"devopstoolkit/youtube-automation/internal/frontend"
 	"devopstoolkit/youtube-automation/internal/gdrive"
+	"devopstoolkit/youtube-automation/internal/notification"
 	gitpkg "devopstoolkit/youtube-automation/internal/git"
 	"devopstoolkit/youtube-automation/internal/platform/bluesky"
 	"devopstoolkit/youtube-automation/internal/service"
@@ -66,6 +67,13 @@ func main() {
 
 		distFS, _ := fs.Sub(frontend.DistFS, "dist")
 		srv := api.NewServer(videoService, videoManager, aspectSvc, fsOps, &api.DefaultAIService{}, configuration.GetAPIToken(), distFS)
+
+		// Email: configure action button email sending
+		if configuration.GlobalSettings.Email.Password != "" {
+			emailSvc := notification.NewEmail(configuration.GlobalSettings.Email.Password)
+			srv.SetEmailService(emailSvc, &configuration.GlobalSettings.Email)
+			slog.Info("Email notifications enabled for action buttons")
+		}
 
 		// Google Drive: configure thumbnail upload if credentials are set
 		gdriveCfg := configuration.GlobalSettings.GDrive
