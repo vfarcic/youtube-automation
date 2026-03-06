@@ -330,3 +330,184 @@ func TestCompletionService_FieldMappingConsistency(t *testing.T) {
 		})
 	}
 }
+
+func TestCompletionService_IsFilledOnly_Slices(t *testing.T) {
+	service := NewCompletionService()
+	video := storage.Video{}
+
+	testCases := []struct {
+		value       interface{}
+		expected    bool
+		description string
+	}{
+		{[]storage.ThumbnailVariant{}, false, "Empty ThumbnailVariant slice should not be complete"},
+		{[]storage.ThumbnailVariant{{Path: "thumb.jpg"}}, true, "Non-empty ThumbnailVariant slice should be complete"},
+		{[]storage.Short{}, false, "Empty Short slice should not be complete"},
+		{[]storage.Short{{ID: "short1", Title: "Test"}}, true, "Non-empty Short slice should be complete"},
+		{[]storage.TitleVariant{}, false, "Empty TitleVariant slice should not be complete"},
+		{[]storage.TitleVariant{{Index: 1, Text: "Title"}}, true, "Non-empty TitleVariant slice should be complete"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			result := service.IsFieldComplete("test", "test", tc.value, video)
+			assert.Equal(t, tc.expected, result, tc.description)
+		})
+	}
+}
+
+func TestCalculateAspectProgress_Definition(t *testing.T) {
+	service := NewCompletionService()
+
+	testCases := []struct {
+		name              string
+		video             storage.Video
+		expectedCompleted int
+		expectedTotal     int
+	}{
+		{
+			name:              "Empty video",
+			video:             storage.Video{},
+			expectedCompleted: 0,
+			expectedTotal:     10,
+		},
+		{
+			name: "Titles with text count as one task",
+			video: storage.Video{
+				Titles: []storage.TitleVariant{{Index: 1, Text: "A Title"}},
+			},
+			expectedCompleted: 1,
+			expectedTotal:     10,
+		},
+		{
+			name: "All definition fields complete",
+			video: storage.Video{
+				Titles:           []storage.TitleVariant{{Index: 1, Text: "Title"}},
+				Description:      "Desc",
+				Tags:             "tag1",
+				DescriptionTags:  "dtag1",
+				Tweet:            "tweet",
+				Animations:       "anim",
+				Shorts:           []storage.Short{{ID: "s1"}},
+				Members:          "m1",
+				RequestThumbnail: true,
+				RequestEdit:      true,
+			},
+			expectedCompleted: 10,
+			expectedTotal:     10,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			completed, total := service.CalculateAspectProgress(AspectKeyDefinition, tc.video)
+			assert.Equal(t, tc.expectedCompleted, completed, "completed mismatch")
+			assert.Equal(t, tc.expectedTotal, total, "total mismatch")
+		})
+	}
+}
+
+func TestCalculateAspectProgress_Analysis(t *testing.T) {
+	service := NewCompletionService()
+
+	testCases := []struct {
+		name              string
+		video             storage.Video
+		expectedCompleted int
+		expectedTotal     int
+	}{
+		{
+			name:              "No titles returns 0/0",
+			video:             storage.Video{},
+			expectedCompleted: 0,
+			expectedTotal:     0,
+		},
+		{
+			name: "Titles without shares",
+			video: storage.Video{
+				Titles: []storage.TitleVariant{{Index: 1, Text: "T1"}, {Index: 2, Text: "T2"}},
+			},
+			expectedCompleted: 0,
+			expectedTotal:     2,
+		},
+		{
+			name: "Titles with shares",
+			video: storage.Video{
+				Titles: []storage.TitleVariant{
+					{Index: 1, Text: "T1", Share: 40},
+					{Index: 2, Text: "T2", Share: 0},
+					{Index: 3, Text: "T3", Share: 60},
+				},
+			},
+			expectedCompleted: 2,
+			expectedTotal:     3,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			completed, total := service.CalculateAspectProgress(AspectKeyAnalysis, tc.video)
+			assert.Equal(t, tc.expectedCompleted, completed, "completed mismatch")
+			assert.Equal(t, tc.expectedTotal, total, "total mismatch")
+		})
+	}
+}
+
+func TestCalculateAspectProgress_Publishing_Shorts(t *testing.T) {
+	service := NewCompletionService()
+
+	testCases := []struct {
+		name              string
+		video             storage.Video
+		expectedCompleted int
+		expectedTotal     int
+	}{
+		{
+			name:              "No shorts",
+			video:             storage.Video{},
+			expectedCompleted: 0,
+			expectedTotal:     3, // UploadVideo, VideoId, HugoPath
+		},
+		{
+			name: "Shorts with mixed upload status",
+			video: storage.Video{
+				UploadVideo: "video.mp4",
+				Shorts: []storage.Short{
+					{ID: "s1", YouTubeID: "abc"},
+					{ID: "s2", YouTubeID: ""},
+				},
+			},
+			expectedCompleted: 2, // UploadVideo + 1 uploaded short
+			expectedTotal:     5, // 3 base + 2 shorts
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			completed, total := service.CalculateAspectProgress(AspectKeyPublishing, tc.video)
+			assert.Equal(t, tc.expectedCompleted, completed, "completed mismatch")
+			assert.Equal(t, tc.expectedTotal, total, "total mismatch")
+		})
+	}
+}
+
+func TestCalculateAspectProgress_PostProduction(t *testing.T) {
+	service := NewCompletionService()
+
+	video := storage.Video{
+		ThumbnailVariants: []storage.ThumbnailVariant{{Path: "t.jpg"}},
+		Movie:             true,
+		Slides:            true,
+		Timecodes:         "00:00 Intro",
+	}
+	completed, total := service.CalculateAspectProgress(AspectKeyPostProduction, video)
+	assert.Equal(t, 4, completed)
+	assert.Equal(t, 4, total)
+}
+
+func TestCalculateAspectProgress_UnknownAspect(t *testing.T) {
+	service := NewCompletionService()
+	completed, total := service.CalculateAspectProgress("nonexistent", storage.Video{})
+	assert.Equal(t, 0, completed)
+	assert.Equal(t, 0, total)
+}

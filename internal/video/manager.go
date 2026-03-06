@@ -5,18 +5,24 @@ import (
 
 	"devopstoolkit/youtube-automation/internal/storage"
 	"devopstoolkit/youtube-automation/internal/workflow"
-	"strings"
 )
+
+// ProgressCalculator computes aspect-based progress from aspect mappings
+type ProgressCalculator interface {
+	CalculateAspectProgress(aspectKey string, video storage.Video) (int, int)
+}
 
 // Manager handles video phase determination and lifecycle operations
 type Manager struct {
-	filePathFunc func(category, name, extension string) string
+	filePathFunc   func(category, name, extension string) string
+	progressCalc   ProgressCalculator
 }
 
-// NewManager creates a new video manager with the provided file path function
-func NewManager(filePathFunc func(string, string, string) string) *Manager {
+// NewManager creates a new video manager with the provided file path function and progress calculator
+func NewManager(filePathFunc func(string, string, string) string, progressCalc ProgressCalculator) *Manager {
 	return &Manager{
 		filePathFunc: filePathFunc,
+		progressCalc: progressCalc,
 	}
 }
 
@@ -93,204 +99,38 @@ func (m *Manager) CalculateOverallProgress(video storage.Video) (int, int) {
 }
 
 // CalculateDefinePhaseCompletion calculates the completed and total tasks for the Definition phase.
-func (m *Manager) CalculateDefinePhaseCompletion(video storage.Video) (completed int, total int) {
-	// Check Titles array - at least one title with non-empty text is required
-	titleComplete := false
-	if len(video.Titles) > 0 {
-		for _, t := range video.Titles {
-			if len(strings.TrimSpace(t.Text)) > 0 && strings.TrimSpace(t.Text) != "-" {
-				titleComplete = true
-				break
-			}
-		}
-	}
-
-	fieldsToCount := []interface{}{
-		video.Description,
-		video.Tags,
-		video.DescriptionTags,
-		video.Tweet,
-		video.Animations,
-		video.RequestThumbnail, // This is a bool
-		// Gist removed - it belongs to InitialDetails phase, not Definition phase
-	}
-	total = len(fieldsToCount) + 1 // +1 for title check
-
-	// Count title completion
-	if titleComplete {
-		completed++
-	}
-
-	// Count other fields
-	for _, field := range fieldsToCount {
-		switch v := field.(type) {
-		case string:
-			if len(strings.TrimSpace(v)) > 0 && strings.TrimSpace(v) != "-" {
-				completed++
-			}
-		case bool:
-			if v { // For RequestThumbnail, true means complete
-				completed++
-			}
-		}
-	}
-	return completed, total
+func (m *Manager) CalculateDefinePhaseCompletion(video storage.Video) (int, int) {
+	return m.progressCalc.CalculateAspectProgress("definition", video)
 }
 
 // CalculateInitialDetailsProgress calculates Initial Details phase progress on-the-fly
 func (m *Manager) CalculateInitialDetailsProgress(video storage.Video) (int, int) {
-	var completedCount, totalCount int
-
-	// General fields
-	generalFields := []interface{}{
-		video.ProjectName,
-		video.ProjectURL,
-		video.Gist,
-		video.Date,
-	}
-	c, t := m.countCompletedTasks(generalFields)
-	completedCount += c
-	totalCount += t
-
-	// Sponsorship.Amount
-	totalCount++
-	if len(video.Sponsorship.Amount) > 0 {
-		completedCount++
-	}
-
-	// Sponsorship.Name
-	totalCount++
-	if len(video.Sponsorship.Name) > 0 {
-		completedCount++
-	}
-
-	// Sponsorship.URL
-	totalCount++
-	if len(video.Sponsorship.URL) > 0 {
-		completedCount++
-	}
-
-	// Special conditions (3 additional tasks)
-	totalCount += 3
-
-	// Condition 1: Sponsorship Emails
-	if len(video.Sponsorship.Amount) == 0 || video.Sponsorship.Amount == "N/A" || video.Sponsorship.Amount == "-" || len(video.Sponsorship.Emails) > 0 {
-		completedCount++
-	}
-
-	// Condition 2: Sponsorship Blocked
-	if len(video.Sponsorship.Blocked) == 0 {
-		completedCount++
-	}
-
-	// Condition 3: Delayed
-	if !video.Delayed {
-		completedCount++
-	}
-
-	return completedCount, totalCount
+	return m.progressCalc.CalculateAspectProgress("initial-details", video)
 }
 
 // CalculateWorkProgressProgress calculates Work Progress phase progress on-the-fly
 func (m *Manager) CalculateWorkProgressProgress(video storage.Video) (int, int) {
-	fields := []interface{}{
-		video.Code,
-		video.Head,
-		video.Screen,
-		video.RelatedVideos,
-		video.Thumbnails,
-		video.Diagrams,
-		video.Screenshots,
-		video.Location,
-		video.Tagline,
-		video.TaglineIdeas,
-		video.OtherLogos,
-	}
-	return m.countCompletedTasks(fields)
+	return m.progressCalc.CalculateAspectProgress("work-progress", video)
 }
 
 // CalculatePostProductionProgress calculates Post-Production phase progress on-the-fly
 func (m *Manager) CalculatePostProductionProgress(video storage.Video) (int, int) {
-	fields := []interface{}{
-		video.ThumbnailVariants,
-		video.Shorts,
-		video.Members,
-		video.RequestEdit,
-		video.Movie,
-		video.Slides,
-	}
-	completed, total := m.countCompletedTasks(fields)
-
-	// Special handling for Timecodes
-	total++
-	if video.Timecodes != "" && !m.containsString(video.Timecodes, "FIXME:") {
-		completed++
-	}
-
-	return completed, total
+	return m.progressCalc.CalculateAspectProgress("post-production", video)
 }
 
 // CalculatePublishingProgress calculates Publishing phase progress on-the-fly
 func (m *Manager) CalculatePublishingProgress(video storage.Video) (int, int) {
-	fields := []interface{}{
-		video.UploadVideo,
-		video.HugoPath,
-	}
-	completed, total := m.countCompletedTasks(fields)
-
-	// Add shorts to the count - each short adds 1 to total, uploaded shorts add 1 to completed
-	for _, short := range video.Shorts {
-		total++
-		if short.YouTubeID != "" {
-			completed++
-		}
-	}
-
-	return completed, total
+	return m.progressCalc.CalculateAspectProgress("publishing", video)
 }
 
 // CalculatePostPublishProgress calculates Post-Publish phase progress on-the-fly
 func (m *Manager) CalculatePostPublishProgress(video storage.Video) (int, int) {
-	fields := []interface{}{
-		video.DOTPosted,
-		video.BlueSkyPosted,
-		video.LinkedInPosted,
-		video.SlackPosted,
-		video.YouTubeHighlight,
-		video.YouTubeComment,
-		video.YouTubeCommentReply,
-		video.GDE,
-		video.Repo,
-	}
-	completed, total := m.countCompletedTasks(fields)
-
-	// Special logic for NotifiedSponsors
-	total++
-	if video.NotifiedSponsors || len(video.Sponsorship.Amount) == 0 || video.Sponsorship.Amount == "N/A" || video.Sponsorship.Amount == "-" {
-		completed++
-	}
-
-	return completed, total
+	return m.progressCalc.CalculateAspectProgress("post-publish", video)
 }
 
 // CalculateAnalysisProgress calculates Analysis phase progress on-the-fly
 func (m *Manager) CalculateAnalysisProgress(video storage.Video) (int, int) {
-	// If no titles exist, return 0/0 (nothing to track)
-	if len(video.Titles) == 0 {
-		return 0, 0
-	}
-
-	completed := 0
-	total := len(video.Titles)
-
-	// Count titles that have share percentages filled (Share > 0)
-	for _, title := range video.Titles {
-		if title.Share > 0 {
-			completed++
-		}
-	}
-
-	return completed, total
+	return m.progressCalc.CalculateAspectProgress("analysis", video)
 }
 
 // CalculateDubbingProgress calculates Dubbing phase progress on-the-fly
@@ -346,33 +186,3 @@ func (m *Manager) CalculateDubbingProgress(video storage.Video) (int, int) {
 	return completed, total
 }
 
-// countCompletedTasks counts completed tasks based on field values
-func (m *Manager) countCompletedTasks(fields []interface{}) (completed int, total int) {
-	for _, field := range fields {
-		switch v := field.(type) {
-		case string:
-			if len(v) > 0 && v != "-" {
-				completed++
-			}
-		case bool:
-			if v {
-				completed++
-			}
-		case []storage.ThumbnailVariant:
-			if len(v) > 0 {
-				completed++
-			}
-		case []storage.Short:
-			if len(v) > 0 {
-				completed++
-			}
-		}
-		total++
-	}
-	return completed, total
-}
-
-// containsString checks if a string contains a substring
-func (m *Manager) containsString(s, substr string) bool {
-	return strings.Contains(s, substr)
-}

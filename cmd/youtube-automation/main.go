@@ -56,7 +56,8 @@ func main() {
 		}
 
 		fsOps := filesystem.NewOperationsWithBaseDir(dataDir, "manuscript")
-		videoManager := video.NewManager(fsOps.GetFilePath)
+		aspectSvcForProgress := aspect.NewService()
+		videoManager := video.NewManager(fsOps.GetFilePath, aspectSvcForProgress)
 		videoService := service.NewVideoService(filepath.Join(dataDir, "index.yaml"), fsOps, videoManager)
 
 		if gitSync != nil {

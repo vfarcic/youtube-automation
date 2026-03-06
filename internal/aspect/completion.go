@@ -9,16 +9,103 @@ import (
 
 // CompletionService handles field completion logic using struct tag reflection
 type CompletionService struct {
-	fieldCompletionCache map[string]string // Cache for field completion criteria
+	fieldCompletionCache map[string]string    // Cache for field completion criteria
+	aspectFieldsCache    map[string][]string  // Cache: aspectKey -> list of JSON field names
 }
 
 // NewCompletionService creates a new completion service
 func NewCompletionService() *CompletionService {
 	service := &CompletionService{
 		fieldCompletionCache: make(map[string]string),
+		aspectFieldsCache:    make(map[string][]string),
 	}
 	service.initializeCompletionCache()
+	service.initializeAspectFieldsCache()
 	return service
+}
+
+// initializeAspectFieldsCache populates the aspect fields cache from aspect mappings
+func (s *CompletionService) initializeAspectFieldsCache() {
+	for _, mapping := range GetVideoAspectMappings() {
+		fieldNames := make([]string, len(mapping.Fields))
+		for i, f := range mapping.Fields {
+			fieldNames[i] = f.FieldName
+		}
+		s.aspectFieldsCache[mapping.AspectKey] = fieldNames
+	}
+}
+
+// CalculateAspectProgress calculates progress (completed, total) for a given aspect
+// by iterating over the aspect's fields and checking completion
+func (s *CompletionService) CalculateAspectProgress(aspectKey string, video storage.Video) (int, int) {
+	fieldNames, ok := s.aspectFieldsCache[aspectKey]
+	if !ok {
+		return 0, 0
+	}
+
+	// Special case: Analysis aspect — each title is a task, Share > 0 = complete
+	if aspectKey == AspectKeyAnalysis {
+		return s.calculateAnalysisProgress(video)
+	}
+
+	completed := 0
+	total := 0
+
+	for _, fieldName := range fieldNames {
+		// Special case: Titles in Definition — "at least one non-empty title"
+		if aspectKey == AspectKeyDefinition && fieldName == "titles" {
+			total++
+			if s.hasTitleWithText(video) {
+				completed++
+			}
+			continue
+		}
+
+		// Normal field: extract value, check completion
+		value := GetFieldValueByJSONPath(video, fieldName)
+		mappedName := mapFieldNameForCompletion(fieldName)
+
+		total++
+		if s.IsFieldComplete(aspectKey, mappedName, value, video) {
+			completed++
+		}
+	}
+
+	// Special case: Publishing — each Short adds to total, YouTubeID != "" = complete
+	if aspectKey == AspectKeyPublishing {
+		for _, short := range video.Shorts {
+			total++
+			if short.YouTubeID != "" {
+				completed++
+			}
+		}
+	}
+
+	return completed, total
+}
+
+// calculateAnalysisProgress handles the Analysis aspect: each title is a task
+func (s *CompletionService) calculateAnalysisProgress(video storage.Video) (int, int) {
+	if len(video.Titles) == 0 {
+		return 0, 0
+	}
+	completed := 0
+	for _, title := range video.Titles {
+		if title.Share > 0 {
+			completed++
+		}
+	}
+	return completed, len(video.Titles)
+}
+
+// hasTitleWithText checks if at least one title has non-empty text
+func (s *CompletionService) hasTitleWithText(video storage.Video) bool {
+	for _, t := range video.Titles {
+		if len(strings.TrimSpace(t.Text)) > 0 && strings.TrimSpace(t.Text) != "-" {
+			return true
+		}
+	}
+	return false
 }
 
 // initializeCompletionCache uses reflection to build a cache of field completion criteria from struct tags
@@ -137,6 +224,11 @@ func (s *CompletionService) isFilledOnly(value interface{}) bool {
 	case bool:
 		return v
 	default:
+		// Handle slices ([]ThumbnailVariant, []Short, []TitleVariant, etc.)
+		rv := reflect.ValueOf(value)
+		if rv.IsValid() && rv.Kind() == reflect.Slice {
+			return rv.Len() > 0
+		}
 		return false
 	}
 }

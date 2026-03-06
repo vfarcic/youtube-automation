@@ -51,9 +51,9 @@ func setupTestEnv(t *testing.T) *testEnv {
 	t.Cleanup(func() { os.Chdir(origDir) })
 
 	fsOps := filesystem.NewOperations()
-	videoManager := video.NewManager(fsOps.GetFilePath)
-	videoService := service.NewVideoService(indexPath, fsOps, videoManager)
 	aspectService := aspect.NewService()
+	videoManager := video.NewManager(fsOps.GetFilePath, aspectService)
+	videoService := service.NewVideoService(indexPath, fsOps, videoManager)
 
 	srv := NewServer(videoService, videoManager, aspectService, fsOps, nil, "", nil)
 	return &testEnv{

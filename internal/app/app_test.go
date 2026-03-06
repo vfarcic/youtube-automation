@@ -49,7 +49,7 @@ func TestMenuHandlerComponents(t *testing.T) {
 		confirmer:    &defaultConfirmer{},
 		uiRenderer:   ui.NewRenderer(),
 		filesystem:   fs,
-		videoManager: video.NewManager(fs.GetFilePath),
+		videoManager: video.NewManager(fs.GetFilePath, nil),
 	}
 
 	// Test that all components are properly initialized

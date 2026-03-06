@@ -31,7 +31,7 @@ func setupTestVideoService(t *testing.T) (*VideoService, string, func()) {
 
 	// Initialize service dependencies
 	fsOps := filesystem.NewOperations()
-	videoManager := video.NewManager(fsOps.GetFilePath)
+	videoManager := video.NewManager(fsOps.GetFilePath, nil)
 	service := NewVideoService("index.yaml", fsOps, videoManager)
 
 	cleanup := func() {
