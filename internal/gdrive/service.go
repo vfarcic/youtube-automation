@@ -14,6 +14,7 @@ import (
 type DriveService interface {
 	UploadFile(ctx context.Context, filename string, content io.Reader, mimeType string, folderID string) (fileID string, err error)
 	FindOrCreateFolder(ctx context.Context, name string, parentID string) (folderID string, err error)
+	GetFile(ctx context.Context, fileID string) (content io.ReadCloser, mimeType string, filename string, err error)
 }
 
 type driveService struct {
@@ -45,6 +46,24 @@ func (d *driveService) UploadFile(ctx context.Context, filename string, content 
 		return "", fmt.Errorf("unable to upload file to Drive: %w", err)
 	}
 	return created.Id, nil
+}
+
+// GetFile downloads a file from Google Drive by its file ID.
+// Returns the file content stream, MIME type, and original filename.
+func (d *driveService) GetFile(ctx context.Context, fileID string) (io.ReadCloser, string, string, error) {
+	// Get file metadata first
+	meta, err := d.service.Files.Get(fileID).Fields("name, mimeType").SupportsAllDrives(true).Context(ctx).Do()
+	if err != nil {
+		return nil, "", "", fmt.Errorf("unable to get file metadata from Drive: %w", err)
+	}
+
+	// Download file content
+	resp, err := d.service.Files.Get(fileID).SupportsAllDrives(true).Context(ctx).Download()
+	if err != nil {
+		return nil, "", "", fmt.Errorf("unable to download file from Drive: %w", err)
+	}
+
+	return resp.Body, meta.MimeType, meta.Name, nil
 }
 
 // FindOrCreateFolder looks for an existing folder with the given name inside parentID.

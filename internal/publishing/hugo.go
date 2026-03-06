@@ -25,16 +25,19 @@ func (r *Hugo) Post(gist, title, date, videoId string) (string, error) {
 // SanitizeTitle sanitizes a title for use as a directory name in Hugo
 func SanitizeTitle(title string) string {
 	postDir := title
-	postDir = strings.ReplaceAll(postDir, " ", "-")
 	postDir = strings.ReplaceAll(postDir, "(", "")
 	postDir = strings.ReplaceAll(postDir, ")", "")
 	postDir = strings.ReplaceAll(postDir, ":", "")
 	postDir = strings.ReplaceAll(postDir, "&", "")
-	postDir = strings.ReplaceAll(postDir, "/", "-")
 	postDir = strings.ReplaceAll(postDir, "'", "")
 	postDir = strings.ReplaceAll(postDir, "!", "")
 	postDir = strings.ReplaceAll(postDir, "?", "")
+	// Convert hyphens and slashes to spaces so Fields() collapses them with surrounding whitespace
+	postDir = strings.ReplaceAll(postDir, "-", " ")
+	postDir = strings.ReplaceAll(postDir, "/", " ")
 	postDir = strings.ToLower(postDir)
+	// Fields splits on any whitespace runs, then join with single hyphen
+	postDir = strings.Join(strings.Fields(postDir), "-")
 	return postDir
 }
 

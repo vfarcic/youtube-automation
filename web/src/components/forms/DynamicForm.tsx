@@ -10,6 +10,8 @@ import { ArrayInput } from './ArrayInput';
 import { MapInput } from './MapInput';
 import { ActionButton, isActionField } from './ActionButton';
 import { AIGenerateButton } from './AIGenerateButton';
+import { VideoUploadInput } from './VideoUploadInput';
+import { FieldLabel } from './FieldLabel';
 import { AI_FIELD_CONFIG } from '../../lib/aiFields';
 
 interface DynamicFormProps {
@@ -84,7 +86,7 @@ export function DynamicForm({ fields, video, onSave, saving, category, videoName
       <div className="space-y-4">
         {sorted.map((field) => (
           <div key={field.fieldName}>
-            {renderField(field, values[field.fieldName], handleChange, isFieldComplete(field, values[field.fieldName]), category, videoName)}
+            {renderField(field, values[field.fieldName], handleChange, isFieldComplete(field, values[field.fieldName]), category, videoName, video)}
             {category && videoName && AI_FIELD_CONFIG[field.fieldName] && (
               <AIGenerateButton
                 fieldName={field.fieldName}
@@ -169,12 +171,31 @@ function renderField(
   complete: boolean,
   category?: string,
   videoName?: string,
+  video?: VideoResponse,
 ) {
   const { fieldName, name, required, uiHints } = field;
   const helpText = uiHints?.helpText;
   const placeholder = uiHints?.placeholder;
 
   switch (field.type) {
+    case 'label':
+      return (
+        <div>
+          <FieldLabel name={name} helpText={helpText} complete={complete} />
+          <div className="flex items-center gap-2">
+            {value && (
+              <code className="text-xs text-gray-300 bg-gray-800 px-1 rounded">{toStringValue(value)}</code>
+            )}
+            {category && videoName && fieldName === 'videoFile' && (
+              <VideoUploadInput
+                videoName={videoName}
+                category={category}
+                currentDriveFileId={video?.videoDriveFileId as string | undefined}
+              />
+            )}
+          </div>
+        </div>
+      );
     case 'boolean':
       if (isActionField(fieldName) && category && videoName) {
         return (

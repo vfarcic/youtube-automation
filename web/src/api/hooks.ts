@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { get, patch, post, del, uploadFile } from './client';
+import { get, patch, post, del, uploadFile, uploadFileWithProgress } from './client';
 import type {
   PhaseInfo,
   VideoListItem,
@@ -219,6 +219,29 @@ export function useRequestEdit() {
       post<ActionResponse>(
         `/api/actions/request-edit/${encodeURIComponent(name)}?category=${encodeURIComponent(category)}`,
         {},
+      ),
+    onSuccess: (_data, { name, category }) => {
+      qc.invalidateQueries({ queryKey: ['video', name, category] });
+      qc.invalidateQueries({ queryKey: ['videoProgress', name, category] });
+      qc.invalidateQueries({ queryKey: ['videosList'] });
+      qc.invalidateQueries({ queryKey: ['phases'] });
+    },
+  });
+}
+
+export function useUploadVideoToDrive() {
+  const qc = useQueryClient();
+  return useMutation<
+    { driveFileId: string; videoFile: string; syncWarning?: string },
+    Error,
+    { name: string; category: string; file: File; onProgress?: (percent: number) => void }
+  >({
+    mutationFn: ({ name, category, file, onProgress }) =>
+      uploadFileWithProgress<{ driveFileId: string; videoFile: string; syncWarning?: string }>(
+        `/api/drive/upload/video/${encodeURIComponent(name)}?category=${encodeURIComponent(category)}`,
+        file,
+        'video',
+        onProgress,
       ),
     onSuccess: (_data, { name, category }) => {
       qc.invalidateQueries({ queryKey: ['video', name, category] });

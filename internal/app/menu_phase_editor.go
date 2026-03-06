@@ -400,7 +400,7 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 				huh.NewInput().Title(m.colorTitleString(constants.FieldTitleMembers, updatedVideo.Members)).Value(&updatedVideo.Members),
 				huh.NewConfirm().Title(m.colorTitleBool(constants.FieldTitleRequestEdit, updatedVideo.RequestEdit)).Value(&updatedVideo.RequestEdit),
 				huh.NewText().Lines(5).CharLimit(10000).Title(timeCodesTitle).Value(&updatedVideo.Timecodes),
-				huh.NewConfirm().Title(m.colorTitleBool(constants.FieldTitleMovieDone, updatedVideo.Movie)).Value(&updatedVideo.Movie),
+				huh.NewInput().Title(m.colorTitleString(constants.FieldTitleVideoFile, updatedVideo.VideoFile)).Value(&updatedVideo.VideoFile),
 				huh.NewConfirm().Title(m.colorTitleBool(constants.FieldTitleSlidesDone, updatedVideo.Slides)).Value(&updatedVideo.Slides),
 				huh.NewConfirm().Affirmative("Save All").Negative("Cancel").Value(&save),
 			}

@@ -497,3 +497,29 @@ func (m MapFieldType) GetDefaultValue() interface{} {
 func (m MapFieldType) GetTypeName() string {
 	return "map"
 }
+
+// LabelFieldType handles read-only display fields
+type LabelFieldType struct{}
+
+func (l LabelFieldType) Validate(value interface{}) error {
+	return nil
+}
+
+func (l LabelFieldType) GetUIHints() UIHints {
+	return UIHints{
+		InputType: "label",
+		Multiline: false,
+	}
+}
+
+func (l LabelFieldType) GetValidationHints() ValidationHints {
+	return ValidationHints{}
+}
+
+func (l LabelFieldType) GetDefaultValue() interface{} {
+	return ""
+}
+
+func (l LabelFieldType) GetTypeName() string {
+	return "label"
+}

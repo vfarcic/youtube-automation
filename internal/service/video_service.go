@@ -152,7 +152,6 @@ FIXME:
 		Diagrams:            false,
 		Screenshots:         false,
 		RequestThumbnail:    false,
-		Movie:               false,
 		Slides:              false,
 		RequestEdit:         false,
 		LinkedInPosted:      false,

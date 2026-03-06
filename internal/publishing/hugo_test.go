@@ -468,3 +468,46 @@ func main() {
 		}
 	})
 }
+
+func TestSanitizeTitle(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "simple title",
+			input:    "Hello World",
+			expected: "hello-world",
+		},
+		{
+			name:     "title with dash surrounded by spaces",
+			input:    "Stop Designing UIs for AI - Let the LLM Decide What You See",
+			expected: "stop-designing-uis-for-ai-let-the-llm-decide-what-you-see",
+		},
+		{
+			name:     "title with multiple dashes",
+			input:    "Part 1 -- The Beginning",
+			expected: "part-1-the-beginning",
+		},
+		{
+			name:     "title with special characters",
+			input:    "What is Go? A Test & Post!",
+			expected: "what-is-go-a-test-post",
+		},
+		{
+			name:     "title with parentheses and colons",
+			input:    "Kubernetes (K8s): The Basics",
+			expected: "kubernetes-k8s-the-basics",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := SanitizeTitle(tt.input)
+			if result != tt.expected {
+				t.Errorf("SanitizeTitle(%q) = %q, want %q", tt.input, result, tt.expected)
+			}
+		})
+	}
+}

@@ -39,7 +39,7 @@ type TitleVariant struct {
 // ThumbnailVariant represents a single thumbnail variant
 type ThumbnailVariant struct {
 	Index       int     `yaml:"index" json:"index" ui:"auto"`                                        // 1=Original, 2=Subtle, 3=Bold
-	Path        string  `yaml:"path" json:"path"`                                                    // Path to the image file (CLI local path)
+	Path        string  `yaml:"path" json:"path" ui:"auto"`                                          // Path to the image file (CLI local path)
 	DriveFileID string  `yaml:"driveFileId,omitempty" json:"driveFileId,omitempty" ui:"auto"`         // Google Drive file ID (Web UI upload)
 	Share       float64 `yaml:"share,omitempty" json:"share,omitempty" ui:"auto"`                    // Watch time share % from YouTube A/B test
 }
@@ -103,7 +103,8 @@ type Video struct {
 	Members              string             `json:"members" completion:"filled_only"`
 	Animations           string      `json:"animations" completion:"filled_only"`
 	RequestEdit          bool        `json:"requestEdit" completion:"true_only"`
-	Movie                bool        `json:"movie" completion:"filled_only"`
+	VideoFile            string      `yaml:"videoFile,omitempty" json:"videoFile,omitempty" completion:"filled_only" ui:"label"`
+	VideoDriveFileID     string      `yaml:"videoDriveFileId,omitempty" json:"videoDriveFileId,omitempty" ui:"auto"`
 	Timecodes            string      `json:"timecodes" completion:"no_fixme"`
 	HugoPath             string      `json:"hugoPath" completion:"filled_only"`
 	RelatedVideos        string      `json:"relatedVideos" completion:"filled_only"`

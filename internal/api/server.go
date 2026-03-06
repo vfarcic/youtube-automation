@@ -96,9 +96,11 @@ func (s *Server) setupRoutes() {
 			r.Post("/ama/timecodes", s.handleAIAMATimecodes)
 		})
 
-		// Drive upload
+		// Drive upload/download
 		r.Route("/drive", func(r chi.Router) {
 			r.Post("/upload/thumbnail/{videoName}", s.handleDriveUploadThumbnail)
+			r.Post("/upload/video/{videoName}", s.handleDriveUploadVideo)
+			r.Get("/download/video/{videoName}", s.handleDriveDownloadVideo)
 		})
 
 		// Action buttons (send emails, set flags)

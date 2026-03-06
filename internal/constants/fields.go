@@ -52,7 +52,7 @@ const (
 	FieldTitleMembers       = "Members (comma separated)"
 	FieldTitleRequestEdit   = "Edit Request"
 	FieldTitleTimecodes     = "Timecodes"
-	FieldTitleMovieDone     = "Movie Done"
+	FieldTitleVideoFile     = "Video File"
 	FieldTitleSlidesDone    = "Slides Done"
 
 	// Publishing fields

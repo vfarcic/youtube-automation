@@ -67,3 +67,65 @@ export async function uploadFile<T>(path: string, file: File, fieldName: string 
   }
   return res.json();
 }
+
+export function uploadFileWithProgress<T>(
+  path: string,
+  file: File,
+  fieldName: string,
+  onProgress?: (percent: number) => void,
+): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const token = localStorage.getItem('api_token');
+    const formData = new FormData();
+    formData.append(fieldName, file);
+
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', path);
+
+    if (token) {
+      xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+    }
+
+    // Phase 1 (0–50%): XHR send — tracks bytes leaving the browser buffer.
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable && onProgress) {
+        onProgress(Math.round((e.loaded / e.total) * 50));
+      }
+    };
+
+    // Phase 2 (50→95%): Server-side processing creep — starts after send completes.
+    let creepTimer: ReturnType<typeof setInterval> | undefined;
+    let currentProgress = 0;
+
+    xhr.upload.onloadend = () => {
+      currentProgress = 50;
+      creepTimer = setInterval(() => {
+        const remaining = 95 - currentProgress;
+        const step = Math.max(0.5, remaining * 0.05);
+        currentProgress = Math.min(95, currentProgress + step);
+        onProgress?.(Math.round(currentProgress));
+      }, 500);
+    };
+
+    xhr.onload = () => {
+      clearInterval(creepTimer);
+      onProgress?.(100);
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          resolve(JSON.parse(xhr.responseText));
+        } catch {
+          reject(new ApiError(xhr.status, 'Invalid JSON response'));
+        }
+      } else {
+        reject(new ApiError(xhr.status, xhr.responseText || xhr.statusText));
+      }
+    };
+
+    xhr.onerror = () => {
+      clearInterval(creepTimer);
+      reject(new ApiError(0, 'Network error'));
+    };
+
+    xhr.send(formData);
+  });
+}

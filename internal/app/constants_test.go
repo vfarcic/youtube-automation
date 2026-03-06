@@ -46,7 +46,7 @@ func TestFieldTitleConstants(t *testing.T) {
 		{constants.FieldTitleProjectName, "Project Name"},
 		{constants.FieldTitleDescription, "Description"},
 		{constants.FieldTitleCodeDone, "Code Done"},
-		{constants.FieldTitleMovieDone, "Movie Done"},
+		{constants.FieldTitleVideoFile, "Video File"},
 		{constants.FieldTitleBlueSkyPosted, "BlueSky Post Sent"},
 		{constants.FieldTitleDelayed, "Delayed"},
 	}
@@ -123,7 +123,7 @@ func TestConstantsUniqueness(t *testing.T) {
 		constants.FieldTitleProjectName:   true,
 		constants.FieldTitleDescription:   true,
 		constants.FieldTitleCodeDone:      true,
-		constants.FieldTitleMovieDone:     true,
+		constants.FieldTitleVideoFile:     true,
 		constants.FieldTitleBlueSkyPosted: true,
 		constants.FieldTitleDelayed:       true,
 	}

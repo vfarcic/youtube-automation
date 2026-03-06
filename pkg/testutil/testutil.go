@@ -332,7 +332,8 @@ type Video struct {
 	Members             string
 	Animations          string
 	RequestEdit         bool
-	Movie               bool
+	VideoFile           string
+	VideoDriveFileID    string
 	Timecodes           string
 	Gist                string
 	HugoPath            string

@@ -341,7 +341,7 @@ func TestCompletionService_IsFilledOnly_Slices(t *testing.T) {
 		description string
 	}{
 		{[]storage.ThumbnailVariant{}, false, "Empty ThumbnailVariant slice should not be complete"},
-		{[]storage.ThumbnailVariant{{Path: "thumb.jpg"}}, true, "Non-empty ThumbnailVariant slice should be complete"},
+		{[]storage.ThumbnailVariant{{DriveFileID: "abc123"}}, true, "Non-empty ThumbnailVariant slice should be complete"},
 		{[]storage.Short{}, false, "Empty Short slice should not be complete"},
 		{[]storage.Short{{ID: "short1", Title: "Test"}}, true, "Non-empty Short slice should be complete"},
 		{[]storage.TitleVariant{}, false, "Empty TitleVariant slice should not be complete"},
@@ -495,8 +495,8 @@ func TestCalculateAspectProgress_PostProduction(t *testing.T) {
 	service := NewCompletionService()
 
 	video := storage.Video{
-		ThumbnailVariants: []storage.ThumbnailVariant{{Path: "t.jpg"}},
-		Movie:             true,
+		ThumbnailVariants: []storage.ThumbnailVariant{{DriveFileID: "abc123"}},
+		VideoFile:         "video.mp4",
 		Slides:            true,
 		Timecodes:         "00:00 Intro",
 	}

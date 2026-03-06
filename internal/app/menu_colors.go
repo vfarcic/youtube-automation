@@ -150,7 +150,7 @@ func (m *MenuHandler) getFieldKeyFromTitle(fieldTitle string) string {
 		constants.FieldTitleMembers:       "members",
 		constants.FieldTitleRequestEdit:   "requestEdit",
 		constants.FieldTitleTimecodes:     "timecodes",
-		constants.FieldTitleMovieDone:     "movieDone",
+		constants.FieldTitleVideoFile:     "videoFile",
 		constants.FieldTitleSlidesDone:    "slidesDone",
 
 		// Publishing

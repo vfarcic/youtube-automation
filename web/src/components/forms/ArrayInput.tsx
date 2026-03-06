@@ -28,6 +28,7 @@ export function ArrayInput({
   const items = Array.isArray(value) ? value : [];
   const isSingleField = itemFields.length === 1;
   const isThumbnailVariants = fieldName === 'thumbnailVariants';
+  const isUploadOnly = isThumbnailVariants && itemFields.length === 0;
 
   const handleItemChange = (index: number, subField: string, subValue: unknown) => {
     const updated = items.map((item, i) =>
@@ -37,6 +38,10 @@ export function ArrayInput({
   };
 
   const handleAdd = () => {
+    if (isUploadOnly) {
+      onChange(fieldName, [...items, {}]);
+      return;
+    }
     const empty: Record<string, unknown> = {};
     for (const f of itemFields) {
       empty[f.fieldName] = f.type === 'number' ? 0 : f.type === 'boolean' ? false : '';
@@ -53,7 +58,28 @@ export function ArrayInput({
       <FieldLabel name={name} helpText={helpText} complete={complete} />
       <div className="space-y-2">
         {items.map((item, index) =>
-          isSingleField ? (
+          isUploadOnly && category && videoName ? (
+            <div key={index} className="flex items-center gap-2">
+              <span className="text-xs text-gray-400 shrink-0">{item.index ? `#${item.index}` : `Variant ${index + 1}`}</span>
+              {item.driveFileId && (
+                <code className="text-xs text-gray-300 bg-gray-800 px-1 rounded">{String(item.driveFileId)}</code>
+              )}
+              <FileUploadInput
+                videoName={videoName}
+                category={category}
+                variantIndex={index}
+                currentDriveFileId={item.driveFileId as string | undefined}
+              />
+              <button
+                type="button"
+                onClick={() => handleRemove(index)}
+                className="text-xs text-red-500 hover:text-red-700 shrink-0"
+                aria-label={`Remove item ${index + 1}`}
+              >
+                Remove
+              </button>
+            </div>
+          ) : isSingleField ? (
             <div key={index}>
               <div className="flex gap-2 items-center">
                 {itemFields[0].type === 'number' ? (

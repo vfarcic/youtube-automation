@@ -49,7 +49,7 @@ func GetVideoAspectMappings() []AspectMapping {
 			"Titles", "Description", "Tags", "DescriptionTags", "Tweet", "Animations", "Shorts", "Members", "RequestThumbnail", "RequestEdit",
 		},
 		AspectKeyPostProduction: {
-			"ThumbnailVariants", "Timecodes", "Movie", "Slides",
+			"ThumbnailVariants", "Timecodes", "VideoFile", "Slides",
 		},
 		AspectKeyPublishing: {
 			"UploadVideo", "VideoId", "HugoPath",
@@ -186,6 +186,11 @@ func generateFieldMapping(structType reflect.Type, fieldPath string, order int) 
 	// Determine field type from Go type and field name
 	fieldType := determineFieldType(field.Type, fieldPath)
 
+	// Override field type if ui tag specifies it
+	if uiTag := field.Tag.Get("ui"); uiTag == "label" {
+		fieldType = FieldTypeLabel
+	}
+
 	// Create field type instance for UI hints
 	fieldTypeInstance := createFieldTypeInstance(fieldType)
 
@@ -306,6 +311,8 @@ func createFieldTypeInstance(fieldType string) FieldType {
 		return &ArrayFieldType{}
 	case FieldTypeMap:
 		return &MapFieldType{}
+	case FieldTypeLabel:
+		return &LabelFieldType{}
 	default:
 		return &StringFieldType{}
 	}

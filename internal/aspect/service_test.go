@@ -72,7 +72,7 @@ func TestGetAspects(t *testing.T) {
 				validTypes := []string{
 					FieldTypeString, FieldTypeText, FieldTypeBoolean,
 					FieldTypeDate, FieldTypeNumber, FieldTypeSelect,
-					FieldTypeArray, FieldTypeMap,
+					FieldTypeArray, FieldTypeMap, FieldTypeLabel,
 				}
 				isValidType := false
 				for _, validType := range validTypes {
@@ -193,7 +193,7 @@ func TestPostProductionFieldConsistency(t *testing.T) {
 	expectedFields := []string{
 		"Thumbnail Variants",
 		"Timecodes",
-		"Movie",
+		"Video File",
 		"Slides",
 	}
 
@@ -344,7 +344,7 @@ func TestGetAspectsOverview(t *testing.T) {
 			AspectKeyInitialDetails: 10, // actual count from mapping (includes sponsor name and URL)
 			AspectKeyWorkProgress:   11, // actual count from mapping
 			AspectKeyDefinition:     10, // actual count from mapping (includes Titles array, Shorts, Members, RequestEdit)
-			AspectKeyPostProduction: 4,  // actual count from mapping (ThumbnailVariants, Timecodes, Movie, Slides)
+			AspectKeyPostProduction: 4,  // actual count from mapping (ThumbnailVariants, Timecodes, VideoFile, Slides)
 			AspectKeyPublishing:     3,  // actual count from mapping
 			AspectKeyPostPublish:    10, // actual count from mapping
 			AspectKeyAnalysis:       1,  // actual count from mapping (Titles for share percentages)
@@ -465,6 +465,7 @@ func TestGetAspectFields(t *testing.T) {
 					FieldTypeBoolean: true,
 					FieldTypeDate:    true,
 					FieldTypeNumber:  true,
+					FieldTypeLabel:   true,
 					FieldTypeSelect:  true,
 					FieldTypeArray:   true,
 					FieldTypeMap:     true,
@@ -703,7 +704,7 @@ func TestServiceIntegration(t *testing.T) {
 
 				// Verify field type consistency
 				switch field.Type {
-				case FieldTypeString, FieldTypeText, FieldTypeBoolean, FieldTypeDate, FieldTypeNumber, FieldTypeSelect, FieldTypeArray, FieldTypeMap:
+				case FieldTypeString, FieldTypeText, FieldTypeBoolean, FieldTypeDate, FieldTypeNumber, FieldTypeSelect, FieldTypeArray, FieldTypeMap, FieldTypeLabel:
 					// These are valid types
 				default:
 					t.Errorf("Aspect %s field %s has unknown field type: %s",

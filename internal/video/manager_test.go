@@ -472,7 +472,7 @@ func TestCalculateOverallProgress(t *testing.T) {
 				Description: "Test Description",
 
 				// Post-Production phase
-				Movie: true,
+				VideoFile: "video.mp4",
 
 				// Publishing phase
 				UploadVideo: "youtube.com/video",
@@ -521,7 +521,7 @@ func TestCalculateOverallProgress(t *testing.T) {
 
 				// Post-Production
 				ThumbnailVariants: []storage.ThumbnailVariant{{Path: "thumb.jpg"}},
-				Movie:             true,
+				VideoFile:         "video.mp4",
 				Slides:            true,
 				Timecodes:         "00:00 Intro, 05:00 Main", // No FIXME
 
@@ -775,14 +775,14 @@ func TestCalculatePostProductionProgress(t *testing.T) {
 			name:              "Empty_video",
 			video:             storage.Video{},
 			expectedCompleted: 0,
-			expectedTotal:     4, // ThumbnailVariants, Timecodes, Movie, Slides
+			expectedTotal:     4, // ThumbnailVariants, Timecodes, VideoFile, Slides
 			description:       "Empty video should have no post-production progress",
 		},
 		{
 			name: "Basic_fields_complete",
 			video: storage.Video{
 				ThumbnailVariants: []storage.ThumbnailVariant{{Path: "thumbnail.jpg"}},
-				Movie:             true,
+				VideoFile:         "video.mp4",
 				Slides:            true,
 			},
 			expectedCompleted: 3,
@@ -820,7 +820,7 @@ func TestCalculatePostProductionProgress(t *testing.T) {
 			name: "All_complete",
 			video: storage.Video{
 				ThumbnailVariants: []storage.ThumbnailVariant{{Path: "thumbnail.jpg"}},
-				Movie:             true,
+				VideoFile:         "video.mp4",
 				Slides:            true,
 				Timecodes:         "00:00 Intro, 05:00 Main, 10:00 Conclusion",
 			},
@@ -832,11 +832,11 @@ func TestCalculatePostProductionProgress(t *testing.T) {
 			name: "Mixed_completion",
 			video: storage.Video{
 				ThumbnailVariants: []storage.ThumbnailVariant{{Path: "thumbnail.jpg"}},
-				Movie:             true,
+				VideoFile:         "video.mp4",
 				Slides:            false,                  // False, not counted
 				Timecodes:         "FIXME: Add timecodes", // Has FIXME, not counted
 			},
-			expectedCompleted: 2, // Only ThumbnailVariants and Movie
+			expectedCompleted: 2, // Only ThumbnailVariants and VideoFile
 			expectedTotal:     4,
 			description:       "Mixed completion should count only valid fields",
 		},

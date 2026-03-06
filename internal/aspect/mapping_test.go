@@ -99,6 +99,7 @@ func TestGetVideoAspectMappings(t *testing.T) {
 			FieldTypeSelect:  true,
 			FieldTypeArray:   true,
 			FieldTypeMap:     true,
+			FieldTypeLabel:   true,
 		}
 
 		for _, mapping := range mappings {
@@ -162,7 +163,7 @@ func TestGetVideoAspectMappings(t *testing.T) {
 			AspectKeyInitialDetails: 10, // ProjectName, ProjectURL, Amount, Emails, Blocked, Name, URL, Date, Delayed, Gist
 			AspectKeyWorkProgress:   11, // Code, Head, Screen, RelatedVideos, Thumbnails, Diagrams, Screenshots, Location, Tagline, TaglineIdeas, OtherLogos
 			AspectKeyDefinition:     10, // Titles, Description, Tags, DescriptionTags, Tweet, Animations, Shorts, Members, RequestThumbnail, RequestEdit
-			AspectKeyPostProduction: 4,  // ThumbnailVariants, Timecodes, Movie, Slides
+			AspectKeyPostProduction: 4,  // ThumbnailVariants, Timecodes, VideoFile, Slides
 			AspectKeyPublishing:     3,  // UploadVideo, VideoId, HugoPath
 			AspectKeyPostPublish:    10, // DOT, BlueSky, LinkedIn, Slack, YouTube Highlight/Comment/Reply, GDE, Repo, NotifySponsors
 			AspectKeyAnalysis:       1,  // Titles (for A/B test share percentages)
@@ -418,9 +419,9 @@ func TestGenerateItemFields(t *testing.T) {
 
 	t.Run("Should return correct fields for ThumbnailVariant", func(t *testing.T) {
 		result := generateItemFields(reflect.TypeOf(storage.ThumbnailVariant{}))
-		// path only - index and share are ui:"auto"
-		if len(result) != 1 {
-			t.Fatalf("Expected 1 field (path), got %d", len(result))
+		// all fields are ui:"auto" (index, path, driveFileId, share) - upload-only
+		if len(result) != 0 {
+			t.Fatalf("Expected 0 fields (all ui:auto), got %d", len(result))
 		}
 	})
 

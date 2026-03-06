@@ -29,7 +29,7 @@ describe('FileUploadInput', () => {
     expect(screen.getByText('Upload to Drive')).toBeInTheDocument();
   });
 
-  it('shows Uploaded badge when driveFileId exists', () => {
+  it('shows Download link when driveFileId exists', () => {
     renderWithClient(
       <FileUploadInput
         videoName="test-video"
@@ -38,17 +38,19 @@ describe('FileUploadInput', () => {
         currentDriveFileId="existing-id"
       />,
     );
-    expect(screen.getByTestId('drive-uploaded-badge')).toBeInTheDocument();
+    const downloadLink = screen.getByText('Download');
+    expect(downloadLink).toBeInTheDocument();
+    expect(downloadLink).toHaveAttribute('href', 'https://drive.google.com/uc?id=existing-id&export=download');
   });
 
-  it('does not show Uploaded badge when no driveFileId', () => {
+  it('does not show Download link when no driveFileId', () => {
     renderWithClient(
       <FileUploadInput videoName="test-video" category="devops" variantIndex={0} />,
     );
-    expect(screen.queryByTestId('drive-uploaded-badge')).not.toBeInTheDocument();
+    expect(screen.queryByText('Download')).not.toBeInTheDocument();
   });
 
-  it('shows Uploaded after successful upload', async () => {
+  it('shows Uploaded and Download after successful upload', async () => {
     renderWithClient(
       <FileUploadInput videoName="test-video" category="devops" variantIndex={0} />,
     );
@@ -61,8 +63,8 @@ describe('FileUploadInput', () => {
     const uploaded = await screen.findByText('Uploaded');
     expect(uploaded).toBeInTheDocument();
 
-    // Drive file ID should be displayed
-    const badge = await screen.findByTestId('drive-uploaded-badge');
-    expect(badge).toBeInTheDocument();
+    // Download link should appear
+    const downloadLink = await screen.findByText('Download');
+    expect(downloadLink).toBeInTheDocument();
   });
 });
