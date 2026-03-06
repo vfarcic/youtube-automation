@@ -48,3 +48,22 @@ export function patch<T>(path: string, body: unknown): Promise<T> {
 export function del(path: string): Promise<void> {
   return request<void>(path, { method: 'DELETE' });
 }
+
+export async function uploadFile<T>(path: string, file: File, fieldName: string = 'thumbnail'): Promise<T> {
+  const token = localStorage.getItem('api_token');
+  const formData = new FormData();
+  formData.append(fieldName, file);
+
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  // Do NOT set Content-Type — browser sets it with multipart boundary
+
+  const res = await fetch(path, { method: 'POST', headers, body: formData });
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new ApiError(res.status, body || res.statusText);
+  }
+  return res.json();
+}

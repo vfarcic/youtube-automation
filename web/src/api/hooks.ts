@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { get, patch, post, del } from './client';
+import { get, patch, post, del, uploadFile } from './client';
 import type {
   PhaseInfo,
   VideoListItem,
@@ -189,5 +189,23 @@ export function useAIAMADescription() {
 export function useAIAMATimecodes() {
   return useMutation<{ timecodes: string }, Error, { category: string; name: string }>({
     mutationFn: (body) => post<{ timecodes: string }>('/api/ai/ama/timecodes', body),
+  });
+}
+
+export function useUploadThumbnailToDrive() {
+  const qc = useQueryClient();
+  return useMutation<
+    { driveFileId: string; variantIndex: number; syncWarning?: string },
+    Error,
+    { name: string; category: string; variantIndex: number; file: File }
+  >({
+    mutationFn: ({ name, category, variantIndex, file }) =>
+      uploadFile<{ driveFileId: string; variantIndex: number; syncWarning?: string }>(
+        `/api/drive/upload/thumbnail/${encodeURIComponent(name)}?category=${encodeURIComponent(category)}&variantIndex=${variantIndex}`,
+        file,
+      ),
+    onSuccess: (_data, { name, category }) => {
+      qc.invalidateQueries({ queryKey: ['video', name, category] });
+    },
   });
 }

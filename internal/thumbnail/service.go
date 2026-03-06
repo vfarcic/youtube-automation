@@ -76,26 +76,17 @@ func GetLocalizedThumbnailPath(originalPath, langCode string) string {
 	return fmt.Sprintf("%s-%s%s", base, langCode, ext)
 }
 
-// GetOriginalThumbnailPath extracts the original thumbnail path from a video.
-// It prefers ThumbnailVariants with "original" type if available,
-// then falls back to any non-empty variant path,
-// and finally the deprecated Thumbnail field.
+// GetOriginalThumbnailPath extracts the thumbnail path from a video.
+// It uses the first non-empty variant path,
+// falling back to the deprecated Thumbnail field.
 func GetOriginalThumbnailPath(video *storage.Video) (string, error) {
-	// First, try to find the "original" type in ThumbnailVariants
-	for _, variant := range video.ThumbnailVariants {
-		if variant.Type == "original" && variant.Path != "" {
-			return variant.Path, nil
-		}
-	}
-
-	// Fallback: use first non-empty variant path
 	for _, variant := range video.ThumbnailVariants {
 		if variant.Path != "" {
 			return variant.Path, nil
 		}
 	}
 
-	// Final fallback: deprecated Thumbnail field
+	// Fallback: deprecated Thumbnail field
 	if video.Thumbnail != "" {
 		return video.Thumbnail, nil
 	}

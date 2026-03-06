@@ -23,11 +23,12 @@ import (
 
 // VideoService provides data operations for videos in CLI
 type VideoService struct {
-	indexPath    string
-	yamlStorage  *storage.YAML
-	filesystem   *filesystem.Operations
-	videoManager *video.Manager
-	onMutate     func(message string) error
+	indexPath     string
+	yamlStorage   *storage.YAML
+	filesystem    *filesystem.Operations
+	videoManager  *video.Manager
+	onMutate      func(message string) error
+	lastSyncError error
 }
 
 // NewVideoService creates a new video service
@@ -45,14 +46,26 @@ func (s *VideoService) SetOnMutate(fn func(message string) error) {
 	s.onMutate = fn
 }
 
-// notifyMutation calls the onMutate callback if set; errors are logged but not propagated
+// notifyMutation calls the onMutate callback if set; errors are logged and stored.
 func (s *VideoService) notifyMutation(message string) {
+	s.lastSyncError = nil
 	if s.onMutate == nil {
 		return
 	}
 	if err := s.onMutate(message); err != nil {
 		slog.Error("git sync failed after mutation", "message", message, "error", err)
+		s.lastSyncError = err
 	}
+}
+
+// LastSyncError returns the error from the most recent git sync, if any.
+func (s *VideoService) LastSyncError() error {
+	return s.lastSyncError
+}
+
+// IsSyncConfigured returns true if an onMutate callback (git sync) is registered.
+func (s *VideoService) IsSyncConfigured() bool {
+	return s.onMutate != nil
 }
 
 // CreateVideo creates a new video entry

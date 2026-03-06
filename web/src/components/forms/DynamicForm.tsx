@@ -83,7 +83,7 @@ export function DynamicForm({ fields, video, onSave, saving, category, videoName
       <div className="space-y-4">
         {sorted.map((field) => (
           <div key={field.fieldName}>
-            {renderField(field, values[field.fieldName], handleChange, isFieldComplete(field, values[field.fieldName]))}
+            {renderField(field, values[field.fieldName], handleChange, isFieldComplete(field, values[field.fieldName]), category, videoName)}
             {category && videoName && AI_FIELD_CONFIG[field.fieldName] && (
               <AIGenerateButton
                 fieldName={field.fieldName}
@@ -166,6 +166,8 @@ function renderField(
   value: unknown,
   onChange: (fieldName: string, value: unknown) => void,
   complete: boolean,
+  category?: string,
+  videoName?: string,
 ) {
   const { fieldName, name, required, uiHints } = field;
   const helpText = uiHints?.helpText;
@@ -247,6 +249,8 @@ function renderField(
           itemFields={field.itemFields ?? []}
           helpText={helpText}
           complete={complete}
+          category={category}
+          videoName={videoName}
         />
       );
     case 'map':

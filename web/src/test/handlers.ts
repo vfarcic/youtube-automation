@@ -229,4 +229,7 @@ export const handlers = [
   http.post('/api/ai/ama/title', () => HttpResponse.json({ title: 'AMA Title' })),
   http.post('/api/ai/ama/description', () => HttpResponse.json({ description: 'AMA Desc' })),
   http.post('/api/ai/ama/timecodes', () => HttpResponse.json({ timecodes: '00:00 Intro' })),
+  http.post('/api/drive/upload/thumbnail/:videoName', () =>
+    HttpResponse.json({ driveFileId: 'mock-drive-id-123', variantIndex: 0 }),
+  ),
 ];

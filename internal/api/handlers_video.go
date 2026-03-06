@@ -28,6 +28,7 @@ type VideoResponse struct {
 	Edit        ProgressInfo `json:"edit"`
 	Publish     ProgressInfo `json:"publish"`
 	PostPublish ProgressInfo `json:"postPublish"`
+	SyncWarning string       `json:"syncWarning,omitempty"`
 }
 
 // VideoListItem is a lightweight representation of a video.

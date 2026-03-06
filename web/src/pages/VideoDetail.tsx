@@ -18,7 +18,7 @@ export function VideoDetail() {
   const deleteVideo = useDeleteVideo();
 
   const [activeTab, setActiveTab] = useState<number>(0);
-  const [saveMsg, setSaveMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [saveMsg, setSaveMsg] = useState<{ type: 'success' | 'warning' | 'error'; text: string } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   if (isLoading) {
@@ -42,7 +42,13 @@ export function VideoDetail() {
     patchVideo.mutate(
       { name: videoName, category, aspect: currentAspect.key, fields: changedFields },
       {
-        onSuccess: () => setSaveMsg({ type: 'success', text: 'Saved successfully.' }),
+        onSuccess: (data) => {
+          if (data.syncWarning) {
+            setSaveMsg({ type: 'warning', text: data.syncWarning });
+          } else {
+            setSaveMsg({ type: 'success', text: 'Saved and synced.' });
+          }
+        },
         onError: (err) => setSaveMsg({ type: 'error', text: err.message || 'Save failed.' }),
       },
     );
@@ -140,7 +146,7 @@ export function VideoDetail() {
           )}
 
           {saveMsg && (
-            <p className={`mt-3 text-sm ${saveMsg.type === 'success' ? 'text-green-400' : 'text-red-400'}`}>
+            <p className={`mt-3 text-sm ${saveMsg.type === 'success' ? 'text-green-400' : saveMsg.type === 'warning' ? 'text-yellow-400' : 'text-red-400'}`}>
               {saveMsg.text}
             </p>
           )}

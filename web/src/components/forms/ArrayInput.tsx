@@ -1,4 +1,5 @@
 import { FieldLabel } from './FieldLabel';
+import { FileUploadInput } from './FileUploadInput';
 import type { ItemField } from '../../api/types';
 
 interface ArrayInputProps {
@@ -9,6 +10,8 @@ interface ArrayInputProps {
   itemFields: ItemField[];
   helpText?: string;
   complete?: boolean;
+  category?: string;
+  videoName?: string;
 }
 
 export function ArrayInput({
@@ -19,9 +22,12 @@ export function ArrayInput({
   itemFields,
   helpText,
   complete,
+  category,
+  videoName,
 }: ArrayInputProps) {
   const items = Array.isArray(value) ? value : [];
   const isSingleField = itemFields.length === 1;
+  const isThumbnailVariants = fieldName === 'thumbnailVariants';
 
   const handleItemChange = (index: number, subField: string, subValue: unknown) => {
     const updated = items.map((item, i) =>
@@ -48,34 +54,44 @@ export function ArrayInput({
       <div className="space-y-2">
         {items.map((item, index) =>
           isSingleField ? (
-            <div key={index} className="flex gap-2 items-center">
-              {itemFields[0].type === 'number' ? (
-                <input
-                  type="number"
-                  value={Number(item[itemFields[0].fieldName] ?? 0)}
-                  onChange={(e) =>
-                    handleItemChange(index, itemFields[0].fieldName, Number(e.target.value))
-                  }
-                  className="flex-1 border border-gray-600 bg-gray-800 text-gray-100 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
-              ) : (
-                <input
-                  type="text"
-                  value={String(item[itemFields[0].fieldName] ?? '')}
-                  onChange={(e) =>
-                    handleItemChange(index, itemFields[0].fieldName, e.target.value)
-                  }
-                  className="flex-1 border border-gray-600 bg-gray-800 text-gray-100 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+            <div key={index}>
+              <div className="flex gap-2 items-center">
+                {itemFields[0].type === 'number' ? (
+                  <input
+                    type="number"
+                    value={Number(item[itemFields[0].fieldName] ?? 0)}
+                    onChange={(e) =>
+                      handleItemChange(index, itemFields[0].fieldName, Number(e.target.value))
+                    }
+                    className="flex-1 border border-gray-600 bg-gray-800 text-gray-100 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                ) : (
+                  <input
+                    type="text"
+                    value={String(item[itemFields[0].fieldName] ?? '')}
+                    onChange={(e) =>
+                      handleItemChange(index, itemFields[0].fieldName, e.target.value)
+                    }
+                    className="flex-1 border border-gray-600 bg-gray-800 text-gray-100 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                )}
+                <button
+                  type="button"
+                  onClick={() => handleRemove(index)}
+                  className="text-xs text-red-500 hover:text-red-700 shrink-0"
+                  aria-label={`Remove item ${index + 1}`}
+                >
+                  Remove
+                </button>
+              </div>
+              {isThumbnailVariants && category && videoName && (
+                <FileUploadInput
+                  videoName={videoName}
+                  category={category}
+                  variantIndex={index}
+                  currentDriveFileId={item.driveFileId as string | undefined}
                 />
               )}
-              <button
-                type="button"
-                onClick={() => handleRemove(index)}
-                className="text-xs text-red-500 hover:text-red-700 shrink-0"
-                aria-label={`Remove item ${index + 1}`}
-              >
-                Remove
-              </button>
             </div>
           ) : (
             <div key={index} className="border border-gray-700 rounded p-3">
@@ -111,6 +127,14 @@ export function ArrayInput({
                           handleItemChange(index, subField.fieldName, e.target.value)
                         }
                         className="w-full border border-gray-600 bg-gray-800 text-gray-100 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      />
+                    )}
+                    {isThumbnailVariants && subField.fieldName === 'path' && category && videoName && (
+                      <FileUploadInput
+                        videoName={videoName}
+                        category={category}
+                        variantIndex={index}
+                        currentDriveFileId={item.driveFileId as string | undefined}
                       />
                     )}
                   </div>

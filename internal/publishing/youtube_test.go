@@ -3,18 +3,12 @@ package publishing
 import (
 	"devopstoolkit/youtube-automation/internal/configuration"
 	"devopstoolkit/youtube-automation/internal/storage"
-	"encoding/json"
 	"fmt"
-	"net/http"
-	"net/http/httptest"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 
-	"golang.org/x/oauth2"
 	"google.golang.org/api/googleapi"
 	"google.golang.org/api/youtube/v3"
 )
@@ -330,206 +324,8 @@ func TestGetAdditionalInfoEdgeCases(t *testing.T) {
 	}
 }
 
-// TestTokenFileOperations tests the token file operations
-func TestTokenFileOperations(t *testing.T) {
-	// Create a temporary directory for testing
-	tempDir, err := os.MkdirTemp("", "youtube-token-test")
-	if err != nil {
-		t.Fatalf("Failed to create temp directory: %v", err)
-	}
-	defer os.RemoveAll(tempDir)
-
-	// Set up token file manually in the temp directory
-	tokenPath := filepath.Join(tempDir, "token.json")
-
-	// Create a token for testing
-	testToken := &oauth2.Token{
-		AccessToken:  "test-access-token",
-		TokenType:    "Bearer",
-		RefreshToken: "test-refresh-token",
-	}
-
-	// Create a token file manually
-	if err := os.MkdirAll(filepath.Dir(tokenPath), 0700); err != nil {
-		t.Fatalf("Failed to create token directory: %v", err)
-	}
-
-	f, err := os.Create(tokenPath)
-	if err != nil {
-		t.Fatalf("Failed to create token file: %v", err)
-	}
-	if err := json.NewEncoder(f).Encode(testToken); err != nil {
-		f.Close()
-		t.Fatalf("Failed to write token to file: %v", err)
-	}
-	f.Close()
-
-	// Test tokenFromFile
-	readToken, err := tokenFromFile(tokenPath)
-	if err != nil {
-		t.Fatalf("Failed to read token file: %v", err)
-	}
-	if readToken.AccessToken != testToken.AccessToken {
-		t.Errorf("Expected access token %s, got %s", testToken.AccessToken, readToken.AccessToken)
-	}
-	if readToken.RefreshToken != testToken.RefreshToken {
-		t.Errorf("Expected refresh token %s, got %s", testToken.RefreshToken, readToken.RefreshToken)
-	}
-
-	// Test saveToken with a new token
-	newToken := &oauth2.Token{
-		AccessToken:  "new-access-token",
-		TokenType:    "Bearer",
-		RefreshToken: "new-refresh-token",
-	}
-
-	// Delete the existing file to test creation
-	if err := os.Remove(tokenPath); err != nil {
-		t.Fatalf("Failed to remove token file: %v", err)
-	}
-
-	saveToken(tokenPath, newToken)
-
-	// Verify the token was saved correctly
-	readNewToken, err := tokenFromFile(tokenPath)
-	if err != nil {
-		t.Fatalf("Failed to read new token file: %v", err)
-	}
-	if readNewToken.AccessToken != newToken.AccessToken {
-		t.Errorf("Expected new access token %s, got %s", newToken.AccessToken, readNewToken.AccessToken)
-	}
-	if readNewToken.RefreshToken != newToken.RefreshToken {
-		t.Errorf("Expected new refresh token %s, got %s", newToken.RefreshToken, readNewToken.RefreshToken)
-	}
-
-	// Test error cases
-	_, err = tokenFromFile("/nonexistent/path/token.json")
-	if err == nil {
-		t.Error("Expected error when reading non-existent token file, got nil")
-	}
-}
-
-// TestOpenURL tests the openURL function using a mock browser open function
-func TestOpenURL(t *testing.T) {
-	// Store the original execCommand to restore it after the test
-	originalExec := execCommand
-	defer func() {
-		execCommand = originalExec
-	}()
-
-	// Track the command and URL used
-	var capturedCommand string
-	var capturedArgs []string
-
-	// Mock execCommand to capture command and args instead of executing
-	execCommand = func(command string, args ...string) *exec.Cmd {
-		capturedCommand = command
-		capturedArgs = args
-		cmd := originalExec("echo", "test")
-		return cmd
-	}
-
-	// Test URL to open
-	testURL := "http://example.com"
-
-	// Run the function
-	err := openURL(testURL)
-	if err != nil {
-		t.Fatalf("openURL returned error: %v", err)
-	}
-
-	// Verify correct command was "executed" based on OS
-	switch runtime.GOOS {
-	case "linux":
-		if capturedCommand != "xdg-open" {
-			t.Errorf("Expected 'xdg-open' command, got '%s'", capturedCommand)
-		}
-		if len(capturedArgs) != 1 || capturedArgs[0] != testURL {
-			t.Errorf("Expected argument '%s', got '%v'", testURL, capturedArgs)
-		}
-	case "windows":
-		if capturedCommand != "rundll32" {
-			t.Errorf("Expected 'rundll32' command, got '%s'", capturedCommand)
-		}
-		// Note: Windows uses hardcoded URL in implementation
-		expectedURL := "http://localhost:4001/"
-		if len(capturedArgs) != 2 || capturedArgs[0] != "url.dll,FileProtocolHandler" || capturedArgs[1] != expectedURL {
-			t.Errorf("Expected arguments ['url.dll,FileProtocolHandler', '%s'], got '%v'", expectedURL, capturedArgs)
-		}
-	case "darwin":
-		if capturedCommand != "open" {
-			t.Errorf("Expected 'open' command, got '%s'", capturedCommand)
-		}
-		if len(capturedArgs) != 1 || capturedArgs[0] != testURL {
-			t.Errorf("Expected argument '%s', got '%v'", testURL, capturedArgs)
-		}
-	default:
-		// For other platforms, openURL returns an error, which should have been caught above
-	}
-}
-
-// TestExchangeToken tests the token exchange functionality
-func TestExchangeToken(t *testing.T) {
-	// Create a test OAuth2 config
-	config := &oauth2.Config{
-		ClientID:     "test-client-id",
-		ClientSecret: "test-client-secret",
-		Endpoint: oauth2.Endpoint{
-			AuthURL:  "http://example.com/auth",
-			TokenURL: "http://example.com/token",
-		},
-		RedirectURL: "http://localhost:8080/callback",
-		Scopes:      []string{"test-scope"},
-	}
-
-	// Create a mock token server
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{
-			"access_token": "mock-access-token",
-			"token_type": "Bearer",
-			"refresh_token": "mock-refresh-token",
-			"expiry": "2023-01-01T00:00:00Z"
-		}`))
-	}))
-	defer server.Close()
-
-	// Use the mock server URL for the token endpoint
-	config.Endpoint.TokenURL = server.URL
-
-	// Call exchangeToken with a test code
-	token, err := exchangeToken(config, "test-auth-code")
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
-	if token.AccessToken != "mock-access-token" {
-		t.Errorf("Expected access token 'mock-access-token', got '%s'", token.AccessToken)
-	}
-	if token.RefreshToken != "mock-refresh-token" {
-		t.Errorf("Expected refresh token 'mock-refresh-token', got '%s'", token.RefreshToken)
-	}
-}
-
-// TestTokenCacheFile tests the token cache file path generation
-func TestTokenCacheFile(t *testing.T) {
-	// Skip this test in environments where HOME can't be easily modified
-	if runtime.GOOS != "linux" && runtime.GOOS != "darwin" {
-		t.Skip("Skipping test on non-Unix platforms")
-	}
-
-	// Create a temporary directory
-	tempDir, err := os.MkdirTemp("", "youtube-token-cache-test")
-	if err != nil {
-		t.Fatalf("Failed to create temp directory: %v", err)
-	}
-	defer os.RemoveAll(tempDir)
-
-	// Use environment variable mocking rather than directly setting HOME
-	// which is more reliable across test environments
-	origHome := os.Getenv("HOME")
-	os.Setenv("HOME", tempDir)
-	defer os.Setenv("HOME", origHome)
-}
+// OAuth-related tests (token file operations, openURL, exchangeToken, tokenCacheFile)
+// have been moved to internal/auth/oauth_test.go
 
 // TestUploadVideo tests the video upload functionality
 func TestUploadVideo(t *testing.T) {
@@ -1143,46 +939,7 @@ func TestGetSpanishChannelID(t *testing.T) {
 	}
 }
 
-// TestTokenCacheFileWithName tests the parameterized token cache file path generation
-func TestTokenCacheFileWithName(t *testing.T) {
-	tests := []struct {
-		name         string
-		tokenName    string
-		wantContains string
-	}{
-		{
-			name:         "default token name",
-			tokenName:    "youtube-go.json",
-			wantContains: "youtube-go.json",
-		},
-		{
-			name:         "spanish token name",
-			tokenName:    "youtube-go-spanish.json",
-			wantContains: "youtube-go-spanish.json",
-		},
-		{
-			name:         "custom token name",
-			tokenName:    "custom-token.json",
-			wantContains: "custom-token.json",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			path, err := tokenCacheFileWithName(tt.tokenName)
-			if err != nil {
-				t.Errorf("tokenCacheFileWithName(%q) returned error: %v", tt.tokenName, err)
-				return
-			}
-			if !strings.Contains(path, tt.wantContains) {
-				t.Errorf("tokenCacheFileWithName(%q) = %q, want path containing %q", tt.tokenName, path, tt.wantContains)
-			}
-			if !strings.Contains(path, ".credentials") {
-				t.Errorf("tokenCacheFileWithName(%q) = %q, want path containing .credentials", tt.tokenName, path)
-			}
-		})
-	}
-}
+// TestTokenCacheFileWithName moved to internal/auth/oauth_test.go
 
 func TestMain(m *testing.M) {
 	os.Exit(m.Run())

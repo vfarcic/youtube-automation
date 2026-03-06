@@ -372,8 +372,8 @@ func TestGenerateFieldMapping(t *testing.T) {
 		if mapping.FieldType != FieldTypeArray {
 			t.Errorf("Expected field type 'array', got %s", mapping.FieldType)
 		}
-		if len(mapping.ItemFields) != 6 {
-			t.Fatalf("Expected 6 item fields for Short, got %d", len(mapping.ItemFields))
+		if len(mapping.ItemFields) != 3 {
+			t.Fatalf("Expected 3 item fields for Short (id, title, text), got %d", len(mapping.ItemFields))
 		}
 	})
 
@@ -388,8 +388,8 @@ func TestGenerateFieldMapping(t *testing.T) {
 		if mapping.MapKeyLabel == "" {
 			t.Error("Expected non-empty MapKeyLabel for map field")
 		}
-		if len(mapping.ItemFields) != 10 {
-			t.Fatalf("Expected 10 item fields for DubbingInfo, got %d", len(mapping.ItemFields))
+		if len(mapping.ItemFields) != 11 {
+			t.Fatalf("Expected 11 item fields for DubbingInfo, got %d", len(mapping.ItemFields))
 		}
 	})
 }
@@ -418,9 +418,9 @@ func TestGenerateItemFields(t *testing.T) {
 
 	t.Run("Should return correct fields for ThumbnailVariant", func(t *testing.T) {
 		result := generateItemFields(reflect.TypeOf(storage.ThumbnailVariant{}))
-		// type and path - index and share are ui:"auto"
-		if len(result) != 2 {
-			t.Fatalf("Expected 2 fields (type, path), got %d", len(result))
+		// path only - index and share are ui:"auto"
+		if len(result) != 1 {
+			t.Fatalf("Expected 1 field (path), got %d", len(result))
 		}
 	})
 

@@ -219,8 +219,9 @@ function AIGenerateButtonInner({ hookType, label, category, videoName, onApply }
                     className="mt-1"
                   />
                   <div>
-                    <p className="font-medium text-sm text-gray-300">{candidate.title}</p>
-                    <p className="text-xs text-gray-500 mt-1">{candidate.rationale}</p>
+                    <p className="font-medium text-sm text-white">{candidate.title}</p>
+                    <p className="text-sm text-gray-200 mt-1 whitespace-pre-wrap">{candidate.text}</p>
+                    <p className="text-xs text-gray-500 mt-1 italic">{candidate.rationale}</p>
                   </div>
                 </div>
               </label>

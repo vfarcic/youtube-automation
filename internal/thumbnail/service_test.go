@@ -106,47 +106,25 @@ func TestGetOriginalThumbnailPath(t *testing.T) {
 		wantErr error
 	}{
 		{
-			name: "ThumbnailVariants with original type",
+			name: "ThumbnailVariants returns first non-empty path",
 			video: &storage.Video{
 				ThumbnailVariants: []storage.ThumbnailVariant{
-					{Index: 1, Type: "original", Path: "/path/to/original.png"},
-					{Index: 2, Type: "subtle", Path: "/path/to/subtle.png"},
-					{Index: 3, Type: "bold", Path: "/path/to/bold.png"},
+					{Index: 1, Path: "/path/to/first.png"},
+					{Index: 2, Path: "/path/to/second.png"},
 				},
 			},
-			want:    "/path/to/original.png",
+			want:    "/path/to/first.png",
 			wantErr: nil,
 		},
 		{
-			name: "ThumbnailVariants original not first",
+			name: "ThumbnailVariants skips empty paths",
 			video: &storage.Video{
 				ThumbnailVariants: []storage.ThumbnailVariant{
-					{Index: 1, Type: "subtle", Path: "/path/to/subtle.png"},
-					{Index: 2, Type: "original", Path: "/path/to/original.png"},
+					{Index: 1, Path: ""},
+					{Index: 2, Path: "/path/to/second.png"},
 				},
 			},
-			want:    "/path/to/original.png",
-			wantErr: nil,
-		},
-		{
-			name: "ThumbnailVariants without original type falls back to first",
-			video: &storage.Video{
-				ThumbnailVariants: []storage.ThumbnailVariant{
-					{Index: 1, Type: "custom", Path: "/path/to/custom.png"},
-				},
-			},
-			want:    "/path/to/custom.png",
-			wantErr: nil,
-		},
-		{
-			name: "ThumbnailVariants with empty original path falls back to first non-empty",
-			video: &storage.Video{
-				ThumbnailVariants: []storage.ThumbnailVariant{
-					{Index: 1, Type: "original", Path: ""},
-					{Index: 2, Type: "subtle", Path: "/path/to/subtle.png"},
-				},
-			},
-			want:    "/path/to/subtle.png",
+			want:    "/path/to/second.png",
 			wantErr: nil,
 		},
 		{
@@ -161,7 +139,7 @@ func TestGetOriginalThumbnailPath(t *testing.T) {
 			name: "Both ThumbnailVariants and Thumbnail - prefers ThumbnailVariants",
 			video: &storage.Video{
 				ThumbnailVariants: []storage.ThumbnailVariant{
-					{Index: 1, Type: "original", Path: "/new/thumbnail.png"},
+					{Index: 1, Path: "/new/thumbnail.png"},
 				},
 				Thumbnail: "/legacy/thumbnail.jpg",
 			},
@@ -189,7 +167,7 @@ func TestGetOriginalThumbnailPath(t *testing.T) {
 			name: "ThumbnailVariants with all empty paths and empty Thumbnail",
 			video: &storage.Video{
 				ThumbnailVariants: []storage.ThumbnailVariant{
-					{Index: 1, Type: "original", Path: ""},
+					{Index: 1, Path: ""},
 				},
 				Thumbnail: "",
 			},
@@ -237,7 +215,7 @@ func TestLocalizeThumbnail_Success(t *testing.T) {
 		Name:    "Test Video",
 		Tagline: "This is the tagline",
 		ThumbnailVariants: []storage.ThumbnailVariant{
-			{Index: 1, Type: "original", Path: originalPath},
+			{Index: 1, Path: originalPath},
 		},
 	}
 
@@ -309,7 +287,7 @@ func TestLocalizeThumbnail_NoTagline(t *testing.T) {
 		Name:    "Test Video",
 		Tagline: "", // Empty tagline
 		ThumbnailVariants: []storage.ThumbnailVariant{
-			{Index: 1, Type: "original", Path: originalPath},
+			{Index: 1, Path: originalPath},
 		},
 	}
 
@@ -337,7 +315,7 @@ func TestLocalizeThumbnail_UnsupportedLanguage(t *testing.T) {
 		Name:    "Test Video",
 		Tagline: "Test tagline",
 		ThumbnailVariants: []storage.ThumbnailVariant{
-			{Index: 1, Type: "original", Path: originalPath},
+			{Index: 1, Path: originalPath},
 		},
 	}
 
@@ -365,7 +343,7 @@ func TestLocalizeThumbnail_GenerationFails(t *testing.T) {
 		Name:    "Test Video",
 		Tagline: "Test tagline",
 		ThumbnailVariants: []storage.ThumbnailVariant{
-			{Index: 1, Type: "original", Path: originalPath},
+			{Index: 1, Path: originalPath},
 		},
 	}
 
@@ -396,7 +374,7 @@ func TestLocalizeThumbnail_SaveFails(t *testing.T) {
 		Name:    "Test Video",
 		Tagline: "Test tagline",
 		ThumbnailVariants: []storage.ThumbnailVariant{
-			{Index: 1, Type: "original", Path: filepath.Join(nonExistentDir, "thumbnail.png")},
+			{Index: 1, Path: filepath.Join(nonExistentDir, "thumbnail.png")},
 		},
 	}
 
@@ -424,7 +402,7 @@ func TestLocalizeThumbnail_AllLanguages(t *testing.T) {
 		Name:    "Test Video",
 		Tagline: "Test tagline",
 		ThumbnailVariants: []storage.ThumbnailVariant{
-			{Index: 1, Type: "original", Path: originalPath},
+			{Index: 1, Path: originalPath},
 		},
 	}
 

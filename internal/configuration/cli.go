@@ -41,6 +41,7 @@ type Settings struct {
 	Gemini         SettingsGemini         `yaml:"gemini"`
 	API            SettingsAPI            `yaml:"api"`
 	Git            SettingsGit            `yaml:"git"`
+	GDrive         SettingsGDrive         `yaml:"gdrive"`
 }
 
 type SettingsAPI struct {
@@ -52,6 +53,14 @@ type SettingsGit struct {
 	RepoURL string `yaml:"repoURL"`
 	Branch  string `yaml:"branch"`
 	Token   string `yaml:"token"`
+}
+
+// SettingsGDrive holds Google Drive configuration
+type SettingsGDrive struct {
+	CredentialsFile string `yaml:"credentialsFile"` // Path to client_secret JSON file
+	TokenFile       string `yaml:"tokenFile"`       // Token cache filename (default: gdrive-go.json)
+	CallbackPort    int    `yaml:"callbackPort"`    // OAuth callback port (default: 8092)
+	FolderID        string `yaml:"folderId"`        // Root Drive folder ID for uploads (optional)
 }
 
 type SettingsEmail struct {

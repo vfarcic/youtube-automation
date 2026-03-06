@@ -121,7 +121,13 @@ func (s *Server) handlePatchVideoAspect(w http.ResponseWriter, r *http.Request) 
 		respondError(w, http.StatusInternalServerError, "video updated but failed to read back", err.Error())
 		return
 	}
-	respondJSON(w, http.StatusOK, s.enrichVideo(updated))
+	resp := s.enrichVideo(updated)
+	if syncErr := s.videoService.LastSyncError(); syncErr != nil {
+		resp.SyncWarning = "git sync failed: " + syncErr.Error()
+	} else if !s.videoService.IsSyncConfigured() {
+		resp.SyncWarning = "git sync not configured — changes saved locally only"
+	}
+	respondJSON(w, http.StatusOK, resp)
 }
 
 // handleGetVideoProgress returns overall and per-aspect progress for a video.

@@ -254,6 +254,8 @@ Add `sync.RWMutex` in storage layer for index operations and per-video writes. A
 - [x] **Dynamic Form Rendering + Video Editing UI**: DynamicForm component, all field renderers, aspect tab navigation, PATCH updates, completion badges, progress bars, video create/delete actions.
 - [x] **Array Field Type Support**: Add `"array"` field type to aspect system with item schema. Backend: new field type in aspect metadata with `itemFields` describing each sub-field. Frontend: `ArrayInput` component rendering items as sub-forms with add/remove. PATCH: verify reflection-based setter handles typed slices/maps correctly. Affected fields: `titles` ([]TitleVariant), `thumbnailVariants` ([]ThumbnailVariant), `shorts` ([]Short), `dubbing` (map[string]DubbingInfo).
 - [x] **AI Content Generation**: All 12 AI API endpoints, frontend inline AI generation with apply-to-field UX. SSE deferred to future milestone.
+- [x] **Google Drive Thumbnail Upload**: New `internal/gdrive/` package with Drive API client, upload, and folder management (auto-creates per-video subfolders). Extract OAuth into shared `internal/auth/` package (reused by YouTube + Drive). Add `DriveFileID` field to `ThumbnailVariant` and `ThumbnailDriveFileID` to `DubbingInfo`. API endpoint `POST /api/drive/upload/thumbnail/{videoName}` (multipart, returns file ID). Frontend: `FileUploadInput` component with upload/replace UX, Drive ID display, sync warnings. Supports Shared Drives via `SupportsAllDrives`. Config: `gdrive.folderId` in settings.yaml. Dual mode: CLI keeps local paths, Web UI uses Drive file IDs. Tests passing.
+- [ ] **Google Drive Thumbnail Consumption**: Add `WithThumbnailFile` temp-file helper and `ResolveThumbnail` fallback (DriveFileID first, Path for legacy). Update all 5 consumers to download from Drive on-demand: YouTube upload, dubbed upload, BlueSky posting, AI thumbnail analysis, Gemini localization. Temp files deleted immediately after use. Tests passing.
 - [ ] **Publishing + Social Media**: YouTube upload, Hugo blog, shorts upload, dubbed upload, transcript fetch endpoints. Social media posting endpoints. Frontend publishing panel with upload progress.
 - [ ] **Analytics Dashboard**: Video analytics, title analysis, timing recommendations, channel stats endpoints. Frontend analytics views.
 - [ ] **AMA, Dubbing, Translation**: Remaining specialized feature endpoints and frontend panels. Full feature parity with CLI.
@@ -385,6 +387,23 @@ Add `sync.RWMutex` in storage layer for index operations and per-video writes. A
   - Verified with real data: titles, description, tags generation working inline
   - 57 frontend tests pass, all backend tests pass
 
+- **Design decision**: ThumbnailVariant `Type` field removed
+  - **Problem**: `ThumbnailVariant` had a `Type` field ("original", "subtle", "bold") but it wasn't meaningfully used. The only consumer (`GetOriginalThumbnailPath`) had a fallback that made the Type check redundant.
+  - **Decision**: Remove `Type` from the struct entirely. Thumbnails are identified by index/position only.
+  - **Impact**: Simplified struct, simplified `GetOriginalThumbnailPath()`, CLI thumbnail form updated to index-based paths.
+
+- **Design decision**: Short struct fields hidden from editing UI
+  - **Problem**: `FilePath`, `ScheduledDate`, and `YouTubeID` fields on `Short` were showing in frontend editing forms, but they're populated programmatically by the publishing workflow (not manual editing). The CLI never shows them in editing context.
+  - **Decision**: Added `ui:"auto"` tags to these three fields so they're excluded from aspect metadata and form rendering. Only `ID`, `Title`, `Text` appear in editing forms.
+  - **Impact**: Cleaner editing UI, consistent with CLI behavior.
+
+- **Design decision**: Thumbnails migrating from local paths to Google Drive file IDs
+  - **Problem**: Thumbnails are stored as local filesystem paths. The user has symlinks to Google Drive locally, but the app will run remotely in a Kubernetes cluster where no mounted drive exists.
+  - **Decision**: Store Google Drive file IDs instead of local paths. New `internal/gdrive/` package wraps Drive API. Central `WithThumbnailFile` helper downloads to temp file, executes operation, deletes temp file immediately. `ResolveThumbnail` checks `DriveFileID` first, falls back to `Path` for backward compatibility. OAuth refactored to shared `internal/auth/` package (reused by YouTube + Drive).
+  - **Rationale**: File IDs are unambiguous, work anywhere, and avoid filesystem dependencies. Temp-file-only pattern prevents server disk from filling up.
+  - **Scope**: Adds `DriveFileID` field to `ThumbnailVariant` and `DubbingInfo`. All 5 thumbnail consumers updated (YouTube upload, dubbed upload, BlueSky, AI analysis, Gemini localization). New milestone before Publishing + Social Media.
+  - **Impact**: New `internal/gdrive/` and `internal/auth/` packages. Users must re-authenticate after adding Drive OAuth scope.
+
 ### How to Run for Manual Testing
 
 The server reads `settings.yaml` from the **current working directory**. To run with real data from `devops-catalog`:
@@ -412,3 +431,28 @@ cd ../devops-catalog && /path/to/youtube-automation/youtube-release serve
 ```
 
 **Why**: The Go binary embeds the frontend at build time, so backend changes require a full rebuild + restart. The frontend dev server (`npm run dev`) hot-reloads automatically, but for integrated testing the embedded build is used. Always restart the server after any backend or frontend change to ensure the user can validate against real data.
+
+- **Milestone 9 complete**: Google Drive Thumbnail Upload
+  - Created `internal/auth/oauth.go`: shared OAuth package extracted from `publishing/youtube.go`. Exports `OAuthConfig` (with `Scopes` field), `GetClient()`, `TokenFromFile()`, `SaveToken()`. Returns errors instead of `log.Fatalf`. 5 tests.
+  - Updated `internal/publishing/youtube.go`: `getClientWithConfig()` delegates to `auth.GetClient()` with YouTube scopes. Removed 8 extracted helper functions.
+  - Created `internal/gdrive/service.go`: `DriveService` interface with `UploadFile()` and `FindOrCreateFolder()`. Uses `SupportsAllDrives(true)` for Shared Drive support. Auto-creates per-video subfolders. Files named `thumbnail-N.ext`.
+  - Updated `internal/storage/yaml.go`: Added `DriveFileID` (with `ui:"auto"`) to `ThumbnailVariant`, `ThumbnailDriveFileID` to `DubbingInfo`.
+  - Updated `internal/configuration/cli.go`: `SettingsGDrive` struct with `credentialsFile`, `tokenFile`, `callbackPort`, `folderId`.
+  - Created `internal/api/handlers_drive.go`: `POST /api/drive/upload/thumbnail/{videoName}?category=X&variantIndex=N`. Multipart upload, creates subfolder per video, returns `driveFileId`. 501 when Drive not configured. 8 tests.
+  - Updated `internal/api/server.go`: `SetDriveService()` setter, `/api/drive/` route group.
+  - Updated `cmd/youtube-automation/main.go`: wires Drive service from settings, separate token file (`gdrive-go.json`, port 8092), non-fatal on auth failure.
+  - Frontend: `FileUploadInput.tsx` with upload/replace button, Drive ID display, sync warning support. `uploadFile()` in client for multipart FormData. `useUploadThumbnailToDrive()` hook. `ArrayInput` renders upload control for thumbnail variants. 4 tests.
+  - Sync warning propagation: `VideoService.LastSyncError()` + `IsSyncConfigured()`. Responses include `syncWarning` field. UI shows green (synced), yellow (warning), red (error).
+  - **UX polish**: Shorts candidate display shows full text (white) + rationale (gray italic).
+  - Tested with real Google Drive: uploads to Shared Drive with per-video subfolders.
+  - 61 frontend tests pass, all Go tests pass.
+
+- **Design decision**: Dual-mode thumbnails (CLI local paths vs Web UI Drive)
+  - **Problem**: Original milestone said "CLI updated to accept Drive file IDs" but CLI works fine with local paths (symlinked to Drive). Only the Web UI needs Drive file IDs for remote/K8s deployment.
+  - **Decision**: Dual mode — CLI keeps using `Path` (local filesystem), Web UI writes `DriveFileID`. Both fields coexist on `ThumbnailVariant`. Future consumption milestone will add `ResolveThumbnail` that checks `DriveFileID` first, falls back to `Path`.
+  - **Impact**: No CLI changes needed. Web UI uploads to Drive, CLI continues working unchanged.
+
+- **Design decision**: Google Drive folder structure
+  - **Problem**: Thumbnails uploaded to Drive root are hard to organize.
+  - **Decision**: `gdrive.folderId` in settings.yaml sets root folder. Upload handler auto-creates a subfolder per video name (e.g., `web-ui-vs-agents-for-ai/thumbnail-0.png`). Uses `FindOrCreateFolder` to avoid duplicates.
+  - **Impact**: Clean folder hierarchy, thumbnails grouped by video.

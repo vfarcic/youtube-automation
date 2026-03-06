@@ -36,6 +36,7 @@ export interface TitleVariant {
 export interface ThumbnailVariant {
   index: number;
   path: string;
+  driveFileId?: string;
   clickShare: number;
 }
 
@@ -59,6 +60,7 @@ export interface DubbingInfo {
   dubbingStatus: string;
   dubbingError: string;
   thumbnailPath: string;
+  thumbnailDriveFileId?: string;
 }
 
 export interface VideoResponse {
@@ -125,6 +127,7 @@ export interface VideoResponse {
   repo: string;
   shorts: Short[];
   dubbing: Record<string, DubbingInfo>;
+  syncWarning?: string;
 }
 
 export interface AspectProgressInfo {

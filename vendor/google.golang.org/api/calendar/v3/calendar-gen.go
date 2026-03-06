@@ -1,4 +1,4 @@
-// Copyright 2025 Google LLC.
+// Copyright 2026 Google LLC.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -1170,7 +1170,10 @@ type Event struct {
 	// Google Meet conference. To create new conference details use the
 	// createRequest field. To persist your changes, remember to set the
 	// conferenceDataVersion request parameter to 1 for all event modification
-	// requests.
+	// requests. Warning: Reusing Google Meet conference data across different
+	// events can cause access issues and expose meeting details to unintended
+	// users. To help ensure meeting privacy, always generate a unique conference
+	// for each event by using the createRequest field.
 	ConferenceData *ConferenceData `json:"conferenceData,omitempty"`
 	// Created: Creation time of the event (as a RFC3339 timestamp). Read-only.
 	Created string `json:"created,omitempty"`

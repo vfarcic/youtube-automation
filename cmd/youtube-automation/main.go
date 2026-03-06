@@ -1,17 +1,21 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io/fs"
+	"log/slog"
 	"os"
 	"path/filepath"
 
 	"devopstoolkit/youtube-automation/internal/api"
 	"devopstoolkit/youtube-automation/internal/app"
 	"devopstoolkit/youtube-automation/internal/aspect"
+	"devopstoolkit/youtube-automation/internal/auth"
 	"devopstoolkit/youtube-automation/internal/configuration"
 	"devopstoolkit/youtube-automation/internal/filesystem"
 	"devopstoolkit/youtube-automation/internal/frontend"
+	"devopstoolkit/youtube-automation/internal/gdrive"
 	gitpkg "devopstoolkit/youtube-automation/internal/git"
 	"devopstoolkit/youtube-automation/internal/platform/bluesky"
 	"devopstoolkit/youtube-automation/internal/service"
@@ -62,6 +66,38 @@ func main() {
 
 		distFS, _ := fs.Sub(frontend.DistFS, "dist")
 		srv := api.NewServer(videoService, videoManager, aspectSvc, fsOps, &api.DefaultAIService{}, configuration.GetAPIToken(), distFS)
+
+		// Google Drive: configure thumbnail upload if credentials are set
+		gdriveCfg := configuration.GlobalSettings.GDrive
+		if gdriveCfg.CredentialsFile != "" {
+			tokenFile := gdriveCfg.TokenFile
+			if tokenFile == "" {
+				tokenFile = "gdrive-go.json"
+			}
+			callbackPort := gdriveCfg.CallbackPort
+			if callbackPort == 0 {
+				callbackPort = 8092
+			}
+			authCfg := auth.OAuthConfig{
+				CredentialsFile: gdriveCfg.CredentialsFile,
+				TokenFileName:   tokenFile,
+				CallbackPort:    callbackPort,
+				Scopes:          []string{"https://www.googleapis.com/auth/drive"},
+			}
+			httpClient, err := auth.GetClient(context.Background(), authCfg)
+			if err != nil {
+				slog.Warn("Google Drive auth failed, thumbnail uploads disabled", "error", err)
+			} else {
+				ds, err := gdrive.NewDriveService(context.Background(), httpClient)
+				if err != nil {
+					slog.Warn("Google Drive service creation failed", "error", err)
+				} else {
+					srv.SetDriveService(ds, gdriveCfg.FolderID)
+					slog.Info("Google Drive thumbnail uploads enabled")
+				}
+			}
+		}
+
 		if err := srv.Start(configuration.GetServeHost(), configuration.GetServePort()); err != nil {
 			fmt.Fprintf(os.Stderr, "Server error: %v\n", err)
 			os.Exit(1)

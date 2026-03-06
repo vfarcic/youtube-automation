@@ -38,10 +38,10 @@ type TitleVariant struct {
 
 // ThumbnailVariant represents a single thumbnail variant
 type ThumbnailVariant struct {
-	Index int     `yaml:"index" json:"index" ui:"auto"`                     // 1=Original, 2=Subtle, 3=Bold
-	Type  string  `yaml:"type" json:"type"`                                 // "original", "subtle", "bold"
-	Path  string  `yaml:"path" json:"path"`                                 // Path to the image file
-	Share float64 `yaml:"share,omitempty" json:"share,omitempty" ui:"auto"` // Watch time share % from YouTube A/B test
+	Index       int     `yaml:"index" json:"index" ui:"auto"`                                        // 1=Original, 2=Subtle, 3=Bold
+	Path        string  `yaml:"path" json:"path"`                                                    // Path to the image file (CLI local path)
+	DriveFileID string  `yaml:"driveFileId,omitempty" json:"driveFileId,omitempty" ui:"auto"`         // Google Drive file ID (Web UI upload)
+	Share       float64 `yaml:"share,omitempty" json:"share,omitempty" ui:"auto"`                    // Watch time share % from YouTube A/B test
 }
 
 // Short represents a YouTube Short candidate extracted from a video manuscript.
@@ -50,9 +50,9 @@ type Short struct {
 	ID            string `yaml:"id" json:"id"`                                             // Unique identifier (short1, short2, etc.)
 	Title         string `yaml:"title" json:"title"`                                       // Short title
 	Text          string `yaml:"text" json:"text"`                                         // Extracted manuscript segment
-	FilePath      string `yaml:"file_path,omitempty" json:"file_path,omitempty"`           // Path to the short video file
-	ScheduledDate string `yaml:"scheduled_date,omitempty" json:"scheduled_date,omitempty"` // ISO format publish timestamp
-	YouTubeID     string `yaml:"youtube_id,omitempty" json:"youtube_id,omitempty"`         // Short's YouTube video ID (empty until uploaded)
+	FilePath      string `yaml:"file_path,omitempty" json:"file_path,omitempty" ui:"auto"`           // Path to the short video file (set during publishing)
+	ScheduledDate string `yaml:"scheduled_date,omitempty" json:"scheduled_date,omitempty" ui:"auto"` // ISO format publish timestamp (set during publishing)
+	YouTubeID     string `yaml:"youtube_id,omitempty" json:"youtube_id,omitempty" ui:"auto"`         // Short's YouTube video ID (set after upload)
 }
 
 // DubbingInfo tracks dubbing status for a specific language.
@@ -67,7 +67,8 @@ type DubbingInfo struct {
 	UploadedVideoID string `yaml:"uploadedVideoId,omitempty" json:"uploadedVideoId,omitempty"` // YouTube video ID on target channel
 	DubbingStatus   string `yaml:"dubbingStatus,omitempty" json:"dubbingStatus,omitempty"`     // Status: "", "dubbing", "dubbed", "failed"
 	DubbingError    string `yaml:"dubbingError,omitempty" json:"dubbingError,omitempty"`       // Error message if dubbing failed
-	ThumbnailPath   string `yaml:"thumbnailPath,omitempty" json:"thumbnailPath,omitempty"`     // Path to localized thumbnail
+	ThumbnailPath        string `yaml:"thumbnailPath,omitempty" json:"thumbnailPath,omitempty"`               // Path to localized thumbnail
+	ThumbnailDriveFileID string `yaml:"thumbnailDriveFileId,omitempty" json:"thumbnailDriveFileId,omitempty"` // Google Drive file ID for localized thumbnail
 }
 
 // Video represents all data associated with a video project.
@@ -170,9 +171,7 @@ func (y *YAML) GetVideo(path string) (Video, error) {
 	if len(video.ThumbnailVariants) == 0 && video.Thumbnail != "" {
 		video.ThumbnailVariants = []ThumbnailVariant{{
 			Index: 1,
-			Type:  "original",
 			Path:  video.Thumbnail,
-			Share: 0,
 		}}
 	}
 

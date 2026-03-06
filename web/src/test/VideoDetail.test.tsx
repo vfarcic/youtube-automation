@@ -88,7 +88,7 @@ describe('VideoDetail', () => {
     await userEvent.type(input, 'Updated');
     await userEvent.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => {
-      expect(screen.getByText('Saved successfully.')).toBeInTheDocument();
+      expect(screen.getByText('Saved and synced.')).toBeInTheDocument();
     });
   });
 

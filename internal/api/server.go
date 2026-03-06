@@ -10,6 +10,7 @@ import (
 
 	"devopstoolkit/youtube-automation/internal/aspect"
 	"devopstoolkit/youtube-automation/internal/filesystem"
+	"devopstoolkit/youtube-automation/internal/gdrive"
 	"devopstoolkit/youtube-automation/internal/service"
 	"devopstoolkit/youtube-automation/internal/video"
 
@@ -25,8 +26,17 @@ type Server struct {
 	aspectService *aspect.Service
 	filesystem    *filesystem.Operations
 	aiService     AIService
+	driveService  gdrive.DriveService
+	driveFolderID string
 	apiToken      string
 	frontendFS    fs.FS
+}
+
+// SetDriveService configures Google Drive upload support.
+// If ds is nil, Drive upload endpoints return 501 Not Implemented.
+func (s *Server) SetDriveService(ds gdrive.DriveService, folderID string) {
+	s.driveService = ds
+	s.driveFolderID = folderID
 }
 
 // NewServer creates a new API server wired to the given service and manager.
@@ -81,6 +91,11 @@ func (s *Server) setupRoutes() {
 			r.Post("/ama/title", s.handleAIAMATitle)
 			r.Post("/ama/description", s.handleAIAMADescription)
 			r.Post("/ama/timecodes", s.handleAIAMATimecodes)
+		})
+
+		// Drive upload
+		r.Route("/drive", func(r chi.Router) {
+			r.Post("/upload/thumbnail/{videoName}", s.handleDriveUploadThumbnail)
 		})
 
 		// Videos

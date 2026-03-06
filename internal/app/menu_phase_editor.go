@@ -229,21 +229,15 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 			originalRequestEditStatus := updatedVideo.RequestEdit
 
 			// --- Thumbnail Management Section ---
-			// Initialize thumbnail variables from struct
-			thumbOriginal := updatedVideo.Thumbnail
-			thumbSubtle := ""
-			thumbBold := ""
-
-			// Load existing variants if present
-			for _, v := range updatedVideo.ThumbnailVariants {
-				switch v.Type {
-				case "original":
-					thumbOriginal = v.Path
-				case "subtle":
-					thumbSubtle = v.Path
-				case "bold":
-					thumbBold = v.Path
+			// Initialize thumbnail path variables from existing variants
+			thumbPaths := make([]string, 3)
+			for i, v := range updatedVideo.ThumbnailVariants {
+				if i < 3 {
+					thumbPaths[i] = v.Path
 				}
+			}
+			if thumbPaths[0] == "" {
+				thumbPaths[0] = updatedVideo.Thumbnail
 			}
 
 			// Loop for interactive thumbnail management
@@ -259,9 +253,9 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 				thumbForm := huh.NewForm(
 					huh.NewGroup(
 						huh.NewNote().Title("Thumbnail Management"),
-						huh.NewInput().Title(m.colorTitleString(constants.FieldTitleThumbnailPath, thumbOriginal)).Value(&thumbOriginal).Description("Path to the original thumbnail"),
-						huh.NewInput().Title("Thumbnail (Subtle)").Value(&thumbSubtle).Description("Path to the subtle variation"),
-						huh.NewInput().Title("Thumbnail (Bold)").Value(&thumbBold).Description("Path to the bold variation"),
+						huh.NewInput().Title(m.colorTitleString(constants.FieldTitleThumbnailPath, thumbPaths[0])).Value(&thumbPaths[0]).Description("Path to thumbnail variant 1"),
+						huh.NewInput().Title("Thumbnail 2").Value(&thumbPaths[1]).Description("Path to thumbnail variant 2"),
+						huh.NewInput().Title("Thumbnail 3").Value(&thumbPaths[2]).Description("Path to thumbnail variant 3"),
 						huh.NewSelect[int]().
 							Title("Action").
 							Options(
@@ -283,19 +277,19 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 
 				switch thumbAction {
 				case actionThumbGenerate:
-					if thumbOriginal == "" {
-						fmt.Println(m.errorStyle.Render("Please enter an Original Thumbnail path first."))
+					if thumbPaths[0] == "" {
+						fmt.Println(m.errorStyle.Render("Please enter a Thumbnail path first."))
 						continue
 					}
 					// Check if file exists
-					if _, err := os.Stat(thumbOriginal); os.IsNotExist(err) {
-						fmt.Println(m.errorStyle.Render(fmt.Sprintf("Original thumbnail file not found: %s", thumbOriginal)))
+					if _, err := os.Stat(thumbPaths[0]); os.IsNotExist(err) {
+						fmt.Println(m.errorStyle.Render(fmt.Sprintf("Thumbnail file not found: %s", thumbPaths[0])))
 						continue
 					}
 
 					fmt.Println(m.normalStyle.Render("Analyzing thumbnail and generating variations..."))
 					ctx := context.Background()
-					variations, err := ai.GenerateThumbnailVariations(ctx, thumbOriginal)
+					variations, err := ai.GenerateThumbnailVariations(ctx, thumbPaths[0])
 					if err != nil {
 						fmt.Println(m.errorStyle.Render(fmt.Sprintf("Failed to generate variations: %v", err)))
 					} else {
@@ -314,12 +308,14 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 
 				case actionThumbContinue:
 					// Update the video struct with the final thumbnail values
-					updatedVideo.Thumbnail = thumbOriginal
-					updatedVideo.ThumbnailVariants = []storage.ThumbnailVariant{
-						{Index: 1, Type: "original", Path: thumbOriginal},
-						{Index: 2, Type: "subtle", Path: thumbSubtle},
-						{Index: 3, Type: "bold", Path: thumbBold},
+					updatedVideo.Thumbnail = thumbPaths[0]
+					var variants []storage.ThumbnailVariant
+					for i, p := range thumbPaths {
+						if p != "" {
+							variants = append(variants, storage.ThumbnailVariant{Index: i + 1, Path: p})
+						}
 					}
+					updatedVideo.ThumbnailVariants = variants
 					thumbnailDone = true
 				}
 			}
