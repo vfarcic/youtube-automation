@@ -428,3 +428,72 @@ func (n NumberFieldType) GetDefaultValue() interface{} {
 func (n NumberFieldType) GetTypeName() string {
 	return "number"
 }
+
+// ArrayFieldType handles array/slice fields with structured items
+type ArrayFieldType struct{}
+
+func (a ArrayFieldType) Validate(value interface{}) error {
+	if value == nil {
+		return nil
+	}
+	// Accept slices/arrays
+	switch value.(type) {
+	case []interface{}:
+		return nil
+	default:
+		return errors.New("value must be an array")
+	}
+}
+
+func (a ArrayFieldType) GetUIHints() UIHints {
+	return UIHints{
+		InputType: "array",
+		Multiline: false,
+	}
+}
+
+func (a ArrayFieldType) GetValidationHints() ValidationHints {
+	return ValidationHints{}
+}
+
+func (a ArrayFieldType) GetDefaultValue() interface{} {
+	return []interface{}{}
+}
+
+func (a ArrayFieldType) GetTypeName() string {
+	return "array"
+}
+
+// MapFieldType handles map fields with string keys and structured values
+type MapFieldType struct{}
+
+func (m MapFieldType) Validate(value interface{}) error {
+	if value == nil {
+		return nil
+	}
+	switch value.(type) {
+	case map[string]interface{}:
+		return nil
+	default:
+		return errors.New("value must be a map")
+	}
+}
+
+func (m MapFieldType) GetUIHints() UIHints {
+	return UIHints{
+		InputType: "map",
+		Multiline: false,
+	}
+}
+
+func (m MapFieldType) GetValidationHints() ValidationHints {
+	return ValidationHints{}
+}
+
+func (m MapFieldType) GetDefaultValue() interface{} {
+	return map[string]interface{}{}
+}
+
+func (m MapFieldType) GetTypeName() string {
+	return "map"
+}

@@ -120,6 +120,32 @@ func setFieldValue(target reflect.Value, value interface{}, path string) error {
 		target.Set(newSlice.Elem())
 		return nil
 
+	case reflect.Map:
+		// For maps, use JSON round-trip to handle map[string]interface{} → typed map
+		jsonBytes, err := json.Marshal(value)
+		if err != nil {
+			return fmt.Errorf("cannot convert value for map field at %q: %w", path, err)
+		}
+		newMap := reflect.New(targetType)
+		if err := json.Unmarshal(jsonBytes, newMap.Interface()); err != nil {
+			return fmt.Errorf("cannot unmarshal into map field at %q: %w", path, err)
+		}
+		target.Set(newMap.Elem())
+		return nil
+
+	case reflect.Struct:
+		// For structs, use JSON round-trip to handle map[string]interface{} → typed struct
+		jsonBytes, err := json.Marshal(value)
+		if err != nil {
+			return fmt.Errorf("cannot convert value for struct field at %q: %w", path, err)
+		}
+		newStruct := reflect.New(targetType)
+		if err := json.Unmarshal(jsonBytes, newStruct.Interface()); err != nil {
+			return fmt.Errorf("cannot unmarshal into struct field at %q: %w", path, err)
+		}
+		target.Set(newStruct.Elem())
+		return nil
+
 	default:
 		return fmt.Errorf("unsupported target type %s for field at %q", targetType.Kind(), path)
 	}

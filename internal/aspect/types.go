@@ -45,10 +45,20 @@ type AspectSummary struct {
 	CompletedFieldCount int    `json:"completedFieldCount"`
 }
 
+// ItemField describes a sub-field within an array or map item
+type ItemField struct {
+	Name        string `json:"name"`
+	FieldName   string `json:"fieldName"`
+	Type        string `json:"type"`
+	Required    bool   `json:"required"`
+	Order       int    `json:"order"`
+	Description string `json:"description,omitempty"`
+}
+
 // Field represents a single editable field within an aspect
 type Field struct {
-	Name               string          `json:"name"`      // Display name for UI
-	FieldName          string          `json:"fieldName"` // Actual camelCase property name in video data API
+	Name               string          `json:"name"`                    // Display name for UI
+	FieldName          string          `json:"fieldName"`               // Actual camelCase property name in video data API
 	Type               string          `json:"type"`
 	Required           bool            `json:"required"`
 	Order              int             `json:"order"`
@@ -58,6 +68,8 @@ type Field struct {
 	ValidationHints    ValidationHints `json:"validationHints,omitempty"`
 	DefaultValue       interface{}     `json:"defaultValue,omitempty"`
 	CompletionCriteria string          `json:"completionCriteria"`
+	ItemFields         []ItemField     `json:"itemFields,omitempty"`    // Sub-fields for array/map items
+	MapKeyLabel        string          `json:"mapKeyLabel,omitempty"`   // Label for map key input
 }
 
 // FieldOptions provides additional configuration for select-type fields

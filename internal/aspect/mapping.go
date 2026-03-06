@@ -19,6 +19,8 @@ type FieldMapping struct {
 	UIHints         UIHints         `json:"uiHints"`           // Generated from field type
 	ValidationHints ValidationHints `json:"validationHints"`   // Generated from field type
 	DefaultValue    interface{}     `json:"defaultValue"`      // Based on Go zero values
+	ItemFields      []ItemField     `json:"itemFields,omitempty"`  // Sub-fields for array/map items
+	MapKeyLabel     string          `json:"mapKeyLabel,omitempty"` // Label for map key input
 }
 
 // AspectMapping defines the complete mapping configuration for an editing aspect
@@ -187,7 +189,7 @@ func generateFieldMapping(structType reflect.Type, fieldPath string, order int) 
 	// Create field type instance for UI hints
 	fieldTypeInstance := createFieldTypeInstance(fieldType)
 
-	return &FieldMapping{
+	mapping := &FieldMapping{
 		Name:            displayName,
 		FieldName:       jsonFieldName,
 		FieldType:       fieldType,
@@ -199,6 +201,21 @@ func generateFieldMapping(structType reflect.Type, fieldPath string, order int) 
 		ValidationHints: fieldTypeInstance.GetValidationHints(),
 		DefaultValue:    getDefaultValueForType(field.Type),
 	}
+
+	// For array fields, generate item sub-fields from the element type
+	if fieldType == FieldTypeArray && field.Type.Kind() == reflect.Slice {
+		elemType := field.Type.Elem()
+		mapping.ItemFields = generateItemFields(elemType)
+	}
+
+	// For map fields, generate item sub-fields from the value type and set key label
+	if fieldType == FieldTypeMap && field.Type.Kind() == reflect.Map {
+		valueType := field.Type.Elem()
+		mapping.ItemFields = generateItemFields(valueType)
+		mapping.MapKeyLabel = "Language Code"
+	}
+
+	return mapping
 }
 
 // generateDisplayName converts struct field names to display names
@@ -247,6 +264,10 @@ func determineFieldType(goType reflect.Type, fieldName string) string {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
 		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		return FieldTypeNumber
+	case reflect.Slice:
+		return FieldTypeArray
+	case reflect.Map:
+		return FieldTypeMap
 	default:
 		return FieldTypeString
 	}
@@ -281,8 +302,66 @@ func createFieldTypeInstance(fieldType string) FieldType {
 		return &DateFieldType{}
 	case FieldTypeNumber:
 		return &NumberFieldType{}
+	case FieldTypeArray:
+		return &ArrayFieldType{}
+	case FieldTypeMap:
+		return &MapFieldType{}
 	default:
 		return &StringFieldType{}
+	}
+}
+
+// generateItemFields introspects a struct type and returns ItemField descriptors for each field
+func generateItemFields(elemType reflect.Type) []ItemField {
+	if elemType.Kind() != reflect.Struct {
+		return nil
+	}
+
+	var items []ItemField
+	order := 0
+	for i := 0; i < elemType.NumField(); i++ {
+		field := elemType.Field(i)
+		if !field.IsExported() {
+			continue
+		}
+
+		jsonTag := strings.Split(field.Tag.Get("json"), ",")[0]
+		if jsonTag == "" || jsonTag == "-" {
+			continue
+		}
+
+		// Skip auto-managed fields (tagged ui:"auto")
+		if field.Tag.Get("ui") == "auto" {
+			continue
+		}
+
+		order++
+		displayName := generateDisplayName(field.Name)
+		fieldType := determineSubFieldType(field.Type)
+
+		items = append(items, ItemField{
+			Name:      displayName,
+			FieldName: jsonTag,
+			Type:      fieldType,
+			Required:  false,
+			Order:     order,
+		})
+	}
+	return items
+}
+
+// determineSubFieldType maps Go types to simple field types for sub-fields
+func determineSubFieldType(goType reflect.Type) string {
+	switch goType.Kind() {
+	case reflect.Bool:
+		return FieldTypeBoolean
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return FieldTypeNumber
+	case reflect.Float32, reflect.Float64:
+		return FieldTypeNumber
+	default:
+		return FieldTypeString
 	}
 }
 

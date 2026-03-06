@@ -38,6 +38,36 @@ const sampleFields: AspectField[] = [
   },
 ];
 
+const arrayField: AspectField = {
+  name: 'Titles',
+  fieldName: 'titles',
+  type: 'array',
+  required: false,
+  order: 4,
+  description: '',
+  completionCriteria: 'filled_only',
+  itemFields: [
+    { name: 'Index', fieldName: 'index', type: 'number', order: 1 },
+    { name: 'Text', fieldName: 'text', type: 'string', order: 2 },
+    { name: 'Share', fieldName: 'share', type: 'number', order: 3 },
+  ],
+};
+
+const mapField: AspectField = {
+  name: 'Dubbing',
+  fieldName: 'dubbing',
+  type: 'map',
+  required: false,
+  order: 5,
+  description: '',
+  completionCriteria: 'filled_only',
+  mapKeyLabel: 'Language Code',
+  itemFields: [
+    { name: 'Dubbing ID', fieldName: 'dubbingId', type: 'string', order: 1 },
+    { name: 'Title', fieldName: 'title', type: 'string', order: 2 },
+  ],
+};
+
 const dotNotationFields: AspectField[] = [
   {
     name: 'Sponsorship Amount',
@@ -91,6 +121,21 @@ describe('DynamicForm', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Reset' }));
     expect(screen.getByDisplayValue('Test Project')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+  });
+
+  it('renders array fields with ArrayInput component', () => {
+    const video = { ...mockVideo, titles: [{ index: 1, text: 'My Title', watchTimeShare: 0.5 }] };
+    render(<DynamicForm fields={[arrayField]} video={video} onSave={() => {}} />);
+    expect(screen.getByText('Titles')).toBeInTheDocument();
+    expect(screen.getByText('Item 1')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('My Title')).toBeInTheDocument();
+  });
+
+  it('renders map fields with MapInput component', () => {
+    const video = { ...mockVideo, dubbing: { es: { dubbingId: 'dub-1', title: 'Título', description: '', tags: '', timecodes: '', dubbedVideoPath: '', uploadedVideoId: '', dubbingStatus: '', dubbingError: '', thumbnailPath: '' } } };
+    render(<DynamicForm fields={[mapField]} video={video} onSave={() => {}} />);
+    expect(screen.getByText('Dubbing')).toBeInTheDocument();
+    expect(screen.getByText(/Language Code: es/)).toBeInTheDocument();
   });
 
   it('resolves dot-notation fields', () => {

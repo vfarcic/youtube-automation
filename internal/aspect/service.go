@@ -38,6 +38,8 @@ func (s *Service) GetAspects() AspectMetadata {
 				ValidationHints:    fieldMapping.ValidationHints,
 				DefaultValue:       fieldMapping.DefaultValue,
 				CompletionCriteria: s.completionService.GetFieldCompletionCriteria(mapping.AspectKey, completionFieldName),
+				ItemFields:         fieldMapping.ItemFields,
+				MapKeyLabel:        fieldMapping.MapKeyLabel,
 			}
 		}
 
@@ -111,6 +113,8 @@ func (s *Service) GetAspectFields(aspectKey string) (*AspectFields, error) {
 					ValidationHints:    fieldMapping.ValidationHints,
 					DefaultValue:       fieldMapping.DefaultValue,
 					CompletionCriteria: s.completionService.GetFieldCompletionCriteria(mapping.AspectKey, completionFieldName),
+					ItemFields:         fieldMapping.ItemFields,
+					MapKeyLabel:        fieldMapping.MapKeyLabel,
 				}
 			}
 

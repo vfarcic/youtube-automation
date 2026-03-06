@@ -72,6 +72,7 @@ func TestGetAspects(t *testing.T) {
 				validTypes := []string{
 					FieldTypeString, FieldTypeText, FieldTypeBoolean,
 					FieldTypeDate, FieldTypeNumber, FieldTypeSelect,
+					FieldTypeArray, FieldTypeMap,
 				}
 				isValidType := false
 				for _, validType := range validTypes {
@@ -468,6 +469,8 @@ func TestGetAspectFields(t *testing.T) {
 					FieldTypeDate:    true,
 					FieldTypeNumber:  true,
 					FieldTypeSelect:  true,
+					FieldTypeArray:   true,
+					FieldTypeMap:     true,
 				}
 
 				for _, field := range aspectFields.Fields {
@@ -703,7 +706,7 @@ func TestServiceIntegration(t *testing.T) {
 
 				// Verify field type consistency
 				switch field.Type {
-				case FieldTypeString, FieldTypeText, FieldTypeBoolean, FieldTypeDate, FieldTypeNumber, FieldTypeSelect:
+				case FieldTypeString, FieldTypeText, FieldTypeBoolean, FieldTypeDate, FieldTypeNumber, FieldTypeSelect, FieldTypeArray, FieldTypeMap:
 					// These are valid types
 				default:
 					t.Errorf("Aspect %s field %s has unknown field type: %s",

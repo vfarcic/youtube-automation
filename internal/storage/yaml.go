@@ -31,17 +31,17 @@ type VideoIndex struct {
 
 // TitleVariant represents a single title variant for A/B testing
 type TitleVariant struct {
-	Index int     `yaml:"index" json:"index"`                     // 1=uploaded, 2=variant, 3=variant
-	Text  string  `yaml:"text" json:"text"`                       // Title text
-	Share float64 `yaml:"share,omitempty" json:"share,omitempty"` // Watch time share % from YouTube A/B test
+	Index int     `yaml:"index" json:"index" ui:"auto"`                     // 1=uploaded, 2=variant, 3=variant
+	Text  string  `yaml:"text" json:"text"`                                 // Title text
+	Share float64 `yaml:"share,omitempty" json:"share,omitempty" ui:"auto"` // Watch time share % from YouTube A/B test
 }
 
 // ThumbnailVariant represents a single thumbnail variant
 type ThumbnailVariant struct {
-	Index int     `yaml:"index" json:"index"`                     // 1=Original, 2=Subtle, 3=Bold
-	Type  string  `yaml:"type" json:"type"`                       // "original", "subtle", "bold"
-	Path  string  `yaml:"path" json:"path"`                       // Path to the image file
-	Share float64 `yaml:"share,omitempty" json:"share,omitempty"` // Watch time share % from YouTube A/B test
+	Index int     `yaml:"index" json:"index" ui:"auto"`                     // 1=Original, 2=Subtle, 3=Bold
+	Type  string  `yaml:"type" json:"type"`                                 // "original", "subtle", "bold"
+	Path  string  `yaml:"path" json:"path"`                                 // Path to the image file
+	Share float64 `yaml:"share,omitempty" json:"share,omitempty" ui:"auto"` // Watch time share % from YouTube A/B test
 }
 
 // Short represents a YouTube Short candidate extracted from a video manuscript.

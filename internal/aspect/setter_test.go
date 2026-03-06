@@ -166,6 +166,46 @@ func TestSetFieldValueByJSONPath_NonPointer(t *testing.T) {
 	assert.Contains(t, err.Error(), "pointer to a struct")
 }
 
+func TestSetFieldValueByJSONPath_MapField(t *testing.T) {
+	v := &storage.Video{}
+	dubbingData := map[string]interface{}{
+		"es": map[string]interface{}{
+			"dubbingId":       "dub-123",
+			"dubbedVideoPath": "/path/to/dubbed.mp4",
+			"title":           "Título del video",
+		},
+		"fr": map[string]interface{}{
+			"dubbingId": "dub-456",
+			"title":     "Titre de la vidéo",
+		},
+	}
+
+	err := SetFieldValueByJSONPath(v, "dubbing", dubbingData)
+	require.NoError(t, err)
+	require.Len(t, v.Dubbing, 2)
+	assert.Equal(t, "dub-123", v.Dubbing["es"].DubbingID)
+	assert.Equal(t, "/path/to/dubbed.mp4", v.Dubbing["es"].DubbedVideoPath)
+	assert.Equal(t, "Título del video", v.Dubbing["es"].Title)
+	assert.Equal(t, "dub-456", v.Dubbing["fr"].DubbingID)
+}
+
+func TestSetFieldValueByJSONPath_StructField(t *testing.T) {
+	v := &storage.Video{}
+	sponsorshipData := map[string]interface{}{
+		"amount":  "5000",
+		"emails":  "sponsor@example.com",
+		"blocked": "",
+		"name":    "ACME",
+		"url":     "https://acme.com",
+	}
+
+	err := SetFieldValueByJSONPath(v, "sponsorship", sponsorshipData)
+	require.NoError(t, err)
+	assert.Equal(t, "5000", v.Sponsorship.Amount)
+	assert.Equal(t, "sponsor@example.com", v.Sponsorship.Emails)
+	assert.Equal(t, "ACME", v.Sponsorship.Name)
+}
+
 func TestSetFieldValueByJSONPath_FloatToInt(t *testing.T) {
 	// JSON decodes numbers as float64 — verify we handle int conversion
 	type testStruct struct {

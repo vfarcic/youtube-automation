@@ -252,6 +252,7 @@ Add `sync.RWMutex` in storage layer for index operations and per-video writes. A
 - [x] **Frontend Foundation + Phase Dashboard**: Vite + React + TypeScript project, API client layer, app layout with sidebar, phase overview dashboard, video list per phase, video detail (read-only). Go server serves embedded frontend. Auth screen mandatory on load.
 - [x] **Git Sync for YAML Data**: Server clones/pulls a configured Git repo on startup, auto-commits and pushes on data mutations. Required because YAML data lives in a GitHub repo.
 - [x] **Dynamic Form Rendering + Video Editing UI**: DynamicForm component, all field renderers, aspect tab navigation, PATCH updates, completion badges, progress bars, video create/delete actions.
+- [x] **Array Field Type Support**: Add `"array"` field type to aspect system with item schema. Backend: new field type in aspect metadata with `itemFields` describing each sub-field. Frontend: `ArrayInput` component rendering items as sub-forms with add/remove. PATCH: verify reflection-based setter handles typed slices/maps correctly. Affected fields: `titles` ([]TitleVariant), `thumbnailVariants` ([]ThumbnailVariant), `shorts` ([]Short), `dubbing` (map[string]DubbingInfo).
 - [ ] **AI Content Generation**: All 12 AI API endpoints, SSE infrastructure for long-running operations, frontend AI panel with suggestion display and "apply" action.
 - [ ] **Publishing + Social Media**: YouTube upload, Hugo blog, shorts upload, dubbed upload, transcript fetch endpoints. Social media posting endpoints. Frontend publishing panel with upload progress.
 - [ ] **Analytics Dashboard**: Video analytics, title analysis, timing recommendations, channel stats endpoints. Frontend analytics views.
@@ -351,6 +352,23 @@ Add `sync.RWMutex` in storage layer for index operations and per-video writes. A
 - **Bug fix**: Array/object field values (e.g., thumbnail variants) rendered as `[object Object]`. Fixed with JSON serialization for non-primitive values.
 - **Frontend-evaluated completion**: Fields now evaluate `completionCriteria` (`filled_only`, `true_only`, `false_only`, `no_fixme`, `empty_or_filled`) client-side to show live completion status as users edit.
 - Updated PRD checkboxes: marked 4 more Must Have items complete (API CRUD, aspect metadata, dynamic forms, progress tracking). 8/13 Must Have items done (62%).
+- **Milestone 7 complete**: Array Field Type Support
+  - Backend: Added `FieldTypeArray`/`FieldTypeMap` constants, `ItemField` struct, `ArrayFieldType`/`MapFieldType` implementations
+  - Updated `determineFieldType` for `reflect.Slice` → `"array"`, `reflect.Map` → `"map"`
+  - Added `generateItemFields` helper: introspects struct fields via reflection, reads JSON tags, skips `ui:"auto"`-tagged fields (e.g., auto-assigned `index`, analytics-populated `share`)
+  - Added `reflect.Map` and `reflect.Struct` cases to `setFieldValue` (JSON round-trip pattern)
+  - Frontend: `ArrayInput` component with compact single-field mode (inline inputs) and multi-field card mode (bordered sub-forms)
+  - Frontend: `MapInput` component with key input + sub-form value cards
+  - Updated `DynamicForm`: array/map dispatch, `JSON.stringify` deep comparison for dirty detection, array/map-aware `isFieldComplete`
+  - Storage: Added `ui:"auto"` struct tag to `TitleVariant.Index`, `TitleVariant.Share`, `ThumbnailVariant.Index`, `ThumbnailVariant.Share` to exclude auto-managed fields from UI
+  - 11 new backend tests, 13 new frontend tests, all existing tests updated and passing
+  - Verified with real data: Titles renders as inline text inputs, Shorts/ThumbnailVariants as multi-field cards
+- **Design decision**: Array/complex field type support
+  - **Problem**: Fields like `titles`, `thumbnailVariants`, `shorts`, `dubbing` are arrays/maps of objects. The aspect system currently sends them as `type: "string"` or `type: "text"`, causing the frontend to render raw JSON strings (e.g., `[{"index":1,"text":"..."}]`). The CLI shows these as structured multi-field lists.
+  - **Decision**: Add a new `"array"` field type to the backend aspect system with `itemFields` metadata describing each sub-field's name, type, and order. The frontend renders a generic `ArrayInput` component (list of sub-forms with add/remove). This keeps the frontend dumb about specific field names — any future array-of-objects field gets proper rendering automatically.
+  - **Rationale**: Option 1 (frontend hardcodes known field names) would be faster but breaks the core architectural principle that "when a new field is added to the Go Video struct, it automatically appears in the frontend." Option 2 (backend metadata-driven) maintains that principle.
+  - **Scope**: Backend aspect types + metadata generation, frontend `ArrayInput` component, PATCH handler verification for typed slices. `dubbing` (map[string]DubbingInfo) may need separate `"map"` type or special handling.
+  - **Impact**: New milestone inserted before AI Content Generation. Affects `internal/aspect/` (types, field type registry, metadata builder) and `web/src/components/forms/` (new component).
 
 ### How to Run for Manual Testing
 

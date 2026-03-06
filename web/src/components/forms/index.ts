@@ -5,4 +5,6 @@ export { Toggle } from './Toggle';
 export { DateInput } from './DateInput';
 export { NumberInput } from './NumberInput';
 export { SelectInput } from './SelectInput';
+export { ArrayInput } from './ArrayInput';
+export { MapInput } from './MapInput';
 export { DynamicForm } from './DynamicForm';

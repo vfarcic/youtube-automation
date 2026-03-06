@@ -97,6 +97,8 @@ func TestGetVideoAspectMappings(t *testing.T) {
 			FieldTypeDate:    true,
 			FieldTypeNumber:  true,
 			FieldTypeSelect:  true,
+			FieldTypeArray:   true,
+			FieldTypeMap:     true,
 		}
 
 		for _, mapping := range mappings {
@@ -270,6 +272,10 @@ func TestDetermineFieldType(t *testing.T) {
 		{"Description", FieldTypeText},
 		{"Tags", FieldTypeText},
 		{"Timecodes", FieldTypeText},
+		{"Titles", FieldTypeArray},
+		{"ThumbnailVariants", FieldTypeArray},
+		{"Shorts", FieldTypeArray},
+		{"Dubbing", FieldTypeMap},
 	}
 
 	for _, test := range tests {
@@ -338,6 +344,92 @@ func TestGenerateFieldMapping(t *testing.T) {
 		mapping := generateFieldMapping(videoType, "Sponsorship.NonExistent", 1)
 		if mapping != nil {
 			t.Error("Expected nil mapping for non-existent nested field")
+		}
+	})
+
+	t.Run("Should generate itemFields for array field Titles", func(t *testing.T) {
+		mapping := generateFieldMapping(videoType, "Titles", 1)
+		if mapping == nil {
+			t.Fatal("Expected non-nil mapping for Titles")
+		}
+		if mapping.FieldType != FieldTypeArray {
+			t.Errorf("Expected field type 'array', got %s", mapping.FieldType)
+		}
+		// Only 'text' should be included (index and share are ui:"auto")
+		if len(mapping.ItemFields) != 1 {
+			t.Fatalf("Expected 1 item field for TitleVariant (text only), got %d", len(mapping.ItemFields))
+		}
+		if mapping.ItemFields[0].FieldName != "text" {
+			t.Errorf("Expected item field name %q, got %q", "text", mapping.ItemFields[0].FieldName)
+		}
+	})
+
+	t.Run("Should generate itemFields for array field Shorts", func(t *testing.T) {
+		mapping := generateFieldMapping(videoType, "Shorts", 1)
+		if mapping == nil {
+			t.Fatal("Expected non-nil mapping for Shorts")
+		}
+		if mapping.FieldType != FieldTypeArray {
+			t.Errorf("Expected field type 'array', got %s", mapping.FieldType)
+		}
+		if len(mapping.ItemFields) != 6 {
+			t.Fatalf("Expected 6 item fields for Short, got %d", len(mapping.ItemFields))
+		}
+	})
+
+	t.Run("Should generate itemFields and mapKeyLabel for map field Dubbing", func(t *testing.T) {
+		mapping := generateFieldMapping(videoType, "Dubbing", 1)
+		if mapping == nil {
+			t.Fatal("Expected non-nil mapping for Dubbing")
+		}
+		if mapping.FieldType != FieldTypeMap {
+			t.Errorf("Expected field type 'map', got %s", mapping.FieldType)
+		}
+		if mapping.MapKeyLabel == "" {
+			t.Error("Expected non-empty MapKeyLabel for map field")
+		}
+		if len(mapping.ItemFields) != 10 {
+			t.Fatalf("Expected 10 item fields for DubbingInfo, got %d", len(mapping.ItemFields))
+		}
+	})
+}
+
+func TestGenerateItemFields(t *testing.T) {
+	t.Run("Should return nil for non-struct types", func(t *testing.T) {
+		result := generateItemFields(reflect.TypeOf("string"))
+		if result != nil {
+			t.Error("Expected nil for string type")
+		}
+	})
+
+	t.Run("Should return correct fields for TitleVariant", func(t *testing.T) {
+		result := generateItemFields(reflect.TypeOf(storage.TitleVariant{}))
+		// Only 'text' - index and share are ui:"auto"
+		if len(result) != 1 {
+			t.Fatalf("Expected 1 field (text only), got %d", len(result))
+		}
+		if result[0].FieldName != "text" {
+			t.Errorf("Expected field name 'text', got %s", result[0].FieldName)
+		}
+		if result[0].Type != FieldTypeString {
+			t.Errorf("Expected type string for text, got %s", result[0].Type)
+		}
+	})
+
+	t.Run("Should return correct fields for ThumbnailVariant", func(t *testing.T) {
+		result := generateItemFields(reflect.TypeOf(storage.ThumbnailVariant{}))
+		// type and path - index and share are ui:"auto"
+		if len(result) != 2 {
+			t.Fatalf("Expected 2 fields (type, path), got %d", len(result))
+		}
+	})
+
+	t.Run("Should skip ui:auto fields", func(t *testing.T) {
+		result := generateItemFields(reflect.TypeOf(storage.TitleVariant{}))
+		for _, field := range result {
+			if field.FieldName == "index" || field.FieldName == "share" {
+				t.Errorf("Field %s should be skipped (ui:auto)", field.FieldName)
+			}
 		}
 	})
 }

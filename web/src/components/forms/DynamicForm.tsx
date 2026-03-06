@@ -6,6 +6,8 @@ import { Toggle } from './Toggle';
 import { DateInput } from './DateInput';
 import { NumberInput } from './NumberInput';
 import { SelectInput } from './SelectInput';
+import { ArrayInput } from './ArrayInput';
+import { MapInput } from './MapInput';
 
 interface DynamicFormProps {
   fields: AspectField[];
@@ -39,8 +41,15 @@ export function DynamicForm({ fields, video, onSave, saving }: DynamicFormProps)
   const dirtyFields = useMemo(() => {
     const dirty: Record<string, unknown> = {};
     for (const key of Object.keys(values)) {
-      if (values[key] !== initialValues[key]) {
-        dirty[key] = values[key];
+      const curr = values[key];
+      const init = initialValues[key];
+      // Use deep comparison for objects/arrays, reference equality for primitives
+      if (typeof curr === 'object' && curr !== null) {
+        if (JSON.stringify(curr) !== JSON.stringify(init)) {
+          dirty[key] = curr;
+        }
+      } else if (curr !== init) {
+        dirty[key] = curr;
       }
     }
     return dirty;
@@ -100,6 +109,8 @@ export function DynamicForm({ fields, video, onSave, saving }: DynamicFormProps)
 function isFieldComplete(field: AspectField, value: unknown): boolean {
   switch (field.completionCriteria) {
     case 'filled_only':
+      if (Array.isArray(value)) return value.length > 0;
+      if (value != null && typeof value === 'object') return Object.keys(value).length > 0;
       return typeof value === 'string' ? value.trim().length > 0 : value != null;
     case 'true_only':
       return value === true;
@@ -110,6 +121,8 @@ function isFieldComplete(field: AspectField, value: unknown): boolean {
     case 'empty_or_filled':
       return true;
     default:
+      if (Array.isArray(value)) return value.length > 0;
+      if (value != null && typeof value === 'object') return Object.keys(value).length > 0;
       return typeof value === 'string' ? value.trim().length > 0 : Boolean(value);
   }
 }
@@ -127,6 +140,10 @@ function fieldDefault(field: AspectField): unknown {
       return false;
     case 'number':
       return 0;
+    case 'array':
+      return [];
+    case 'map':
+      return {};
     default:
       return '';
   }
@@ -205,6 +222,31 @@ function renderField(
           required={required}
           helpText={helpText}
           placeholder={placeholder}
+          complete={complete}
+        />
+      );
+    case 'array':
+      return (
+        <ArrayInput
+          name={name}
+          fieldName={fieldName}
+          value={(Array.isArray(value) ? value : []) as Record<string, unknown>[]}
+          onChange={onChange}
+          itemFields={field.itemFields ?? []}
+          helpText={helpText}
+          complete={complete}
+        />
+      );
+    case 'map':
+      return (
+        <MapInput
+          name={name}
+          fieldName={fieldName}
+          value={(value != null && typeof value === 'object' && !Array.isArray(value) ? value : {}) as Record<string, Record<string, unknown>>}
+          onChange={onChange}
+          itemFields={field.itemFields ?? []}
+          mapKeyLabel={field.mapKeyLabel}
+          helpText={helpText}
           complete={complete}
         />
       );

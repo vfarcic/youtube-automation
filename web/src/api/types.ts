@@ -169,6 +169,15 @@ export interface FieldOptions {
   values?: string[];
 }
 
+export interface ItemField {
+  name: string;
+  fieldName: string;
+  type: string;
+  required?: boolean;
+  order: number;
+  description?: string;
+}
+
 export interface AspectField {
   name: string;
   fieldName: string;
@@ -181,6 +190,8 @@ export interface AspectField {
   validationHints?: AspectFieldValidationHints;
   defaultValue?: unknown;
   completionCriteria: string;
+  itemFields?: ItemField[];
+  mapKeyLabel?: string;
 }
 
 export interface AspectMetadata {
