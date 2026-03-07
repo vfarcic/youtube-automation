@@ -78,7 +78,7 @@ func main() {
 				configuration.GlobalSettings.Bluesky.Password,
 				configuration.GlobalSettings.Bluesky.URL,
 			)
-			hugo := &publishing.Hugo{}
+			hugo := publishing.NewHugo(configuration.GlobalSettings.Hugo)
 			var slackSvc *slackpkg.SlackService
 			if slackpkg.GlobalSlackConfig.Token != "" {
 				if svc, err := slackpkg.NewSlackService(slackpkg.GlobalSlackConfig); err == nil {

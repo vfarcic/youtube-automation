@@ -207,46 +207,17 @@ func TestCommitAndPush_PushFailure(t *testing.T) {
 	assert.Contains(t, err.Error(), "git push failed")
 }
 
-func TestAuthenticatedURL(t *testing.T) {
-	tests := []struct {
-		name     string
-		repoURL  string
-		token    string
-		expected string
-	}{
-		{
-			name:     "with token",
-			repoURL:  "https://github.com/user/repo.git",
-			token:    "ghp_abc123",
-			expected: "https://x-access-token:ghp_abc123@github.com/user/repo.git",
-		},
-		{
-			name:     "without token",
-			repoURL:  "https://github.com/user/repo.git",
-			token:    "",
-			expected: "https://github.com/user/repo.git",
-		},
-		{
-			name:     "invalid URL falls back",
-			repoURL:  "://invalid",
-			token:    "tok",
-			expected: "://invalid",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			sm := &SyncManager{repoURL: tt.repoURL, token: tt.token}
-			result := sm.authenticatedURL()
-			assert.Equal(t, tt.expected, result)
-		})
-	}
+func TestSyncManagerAuthenticatedURL(t *testing.T) {
+	// Verifies that SyncManager.authenticatedURL() delegates to the shared AuthenticatedURL
+	sm := &SyncManager{repoURL: "https://github.com/user/repo.git", token: "ghp_abc123"}
+	result := sm.authenticatedURL()
+	assert.Equal(t, "https://x-access-token:ghp_abc123@github.com/user/repo.git", result)
 }
 
 func TestSanitizeOutput(t *testing.T) {
-	assert.Equal(t, "url https://***@github.com", sanitizeOutput([]byte("url https://secret@github.com"), "secret"))
-	assert.Equal(t, "no token here", sanitizeOutput([]byte("no token here"), ""))
-	assert.Equal(t, "no token here", sanitizeOutput([]byte("no token here"), "missing"))
+	assert.Equal(t, "url https://***@github.com", SanitizeOutput([]byte("url https://secret@github.com"), "secret"))
+	assert.Equal(t, "no token here", SanitizeOutput([]byte("no token here"), ""))
+	assert.Equal(t, "no token here", SanitizeOutput([]byte("no token here"), "missing"))
 }
 
 func TestNewSyncManager(t *testing.T) {

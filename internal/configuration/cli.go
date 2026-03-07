@@ -72,7 +72,10 @@ type SettingsEmail struct {
 }
 
 type SettingsHugo struct {
-	Path string `yaml:"path"`
+	Path    string `yaml:"path"`    // Local path (CLI mode)
+	RepoURL string `yaml:"repoURL"` // GitHub repo URL for PR workflow (e.g., https://github.com/user/repo.git)
+	Branch  string `yaml:"branch"`  // Base branch (default: "main")
+	Token   string `yaml:"token"`   // GitHub token for clone + PR creation
 }
 
 type SettingsAI struct {
@@ -328,7 +331,22 @@ func init() {
 		markRequired("youtube-api-key")
 	}
 
-	if GlobalSettings.Hugo.Path == "" {
+	// Hugo settings: env vars override settings.yaml
+	if envHugoRepo := os.Getenv("HUGO_REPO_URL"); envHugoRepo != "" {
+		GlobalSettings.Hugo.RepoURL = envHugoRepo
+	}
+	if envHugoBranch := os.Getenv("HUGO_BRANCH"); envHugoBranch != "" {
+		GlobalSettings.Hugo.Branch = envHugoBranch
+	}
+	if GlobalSettings.Hugo.Branch == "" {
+		GlobalSettings.Hugo.Branch = "main"
+	}
+	if envGitHubToken := os.Getenv("GITHUB_TOKEN"); envGitHubToken != "" && GlobalSettings.Hugo.Token == "" {
+		GlobalSettings.Hugo.Token = envGitHubToken
+	}
+
+	// Path is only required when repoURL is not set (local mode)
+	if GlobalSettings.Hugo.Path == "" && GlobalSettings.Hugo.RepoURL == "" {
 		markRequired("hugo-path")
 	}
 
