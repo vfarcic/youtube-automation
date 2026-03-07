@@ -37,11 +37,6 @@ type PublishHugoResponse struct {
 	SyncWarning string `json:"syncWarning,omitempty"`
 }
 
-type PublishDubbedResponse struct {
-	VideoID     string `json:"videoId"`
-	SyncWarning string `json:"syncWarning,omitempty"`
-}
-
 type TranscriptResponse struct {
 	Transcript string `json:"transcript"`
 }
@@ -286,51 +281,6 @@ func (s *Server) handlePublishHugo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp := PublishHugoResponse{HugoPath: hugoPath}
-	addSyncWarningStr(&resp.SyncWarning, s.videoService)
-	respondJSON(w, http.StatusOK, resp)
-}
-
-// handlePublishDubbed uploads a dubbed video.
-// POST /api/publish/dubbed/{videoName}?category=X&lang=es
-func (s *Server) handlePublishDubbed(w http.ResponseWriter, r *http.Request) {
-	if s.publishingService == nil {
-		respondError(w, http.StatusNotImplemented, "Publishing not configured", "")
-		return
-	}
-
-	videoName := chi.URLParam(r, "videoName")
-	category := r.URL.Query().Get("category")
-	lang := r.URL.Query().Get("lang")
-	if category == "" || lang == "" {
-		respondError(w, http.StatusBadRequest, "Missing parameters", "Query parameters 'category' and 'lang' are required")
-		return
-	}
-
-	video, err := s.videoService.GetVideo(videoName, category)
-	if err != nil {
-		respondError(w, http.StatusNotFound, "Video not found", err.Error())
-		return
-	}
-
-	ytID, err := s.publishingService.UploadDubbedVideo(r.Context(), &video, lang, s.driveService)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "Dubbed video upload failed", err.Error())
-		return
-	}
-
-	if video.Dubbing != nil {
-		if info, ok := video.Dubbing[lang]; ok {
-			info.UploadedVideoID = ytID
-			video.Dubbing[lang] = info
-		}
-	}
-
-	if err := s.videoService.UpdateVideo(video); err != nil {
-		respondError(w, http.StatusInternalServerError, "Failed to save video", err.Error())
-		return
-	}
-
-	resp := PublishDubbedResponse{VideoID: ytID}
 	addSyncWarningStr(&resp.SyncWarning, s.videoService)
 	respondJSON(w, http.StatusOK, resp)
 }

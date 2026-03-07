@@ -35,28 +35,6 @@ func DefaultOAuthConfig() OAuthConfig {
 	}
 }
 
-// SpanishOAuthConfig returns the config for the Spanish channel from settings
-func SpanishOAuthConfig() OAuthConfig {
-	cfg := configuration.GlobalSettings.SpanishChannel
-	credFile := cfg.CredentialsFile
-	if credFile == "" {
-		credFile = "client_secret_spanish.json"
-	}
-	tokenFile := cfg.TokenFile
-	if tokenFile == "" {
-		tokenFile = "youtube-go-spanish.json"
-	}
-	port := cfg.CallbackPort
-	if port == 0 {
-		port = 8091
-	}
-	return OAuthConfig{
-		CredentialsFile: credFile,
-		TokenFileName:   tokenFile,
-		CallbackPort:    port,
-	}
-}
-
 // youtubeScopes defines all OAuth2 scopes required for YouTube operations.
 // These scopes are requested during the initial authentication and cached.
 // All scopes must be included upfront to avoid re-authentication issues.
@@ -87,17 +65,6 @@ func getClientWithConfig(ctx context.Context, oauthCfg OAuthConfig) (*http.Clien
 		return nil, fmt.Errorf("OAuth failed: %w", err)
 	}
 	return client, nil
-}
-
-// GetSpanishChannelClient returns an authenticated HTTP client for the Spanish YouTube channel.
-// It uses separate credentials and token cache from the main English channel.
-func GetSpanishChannelClient(ctx context.Context) (*http.Client, error) {
-	return getClientWithConfig(ctx, SpanishOAuthConfig())
-}
-
-// GetSpanishChannelID returns the configured Spanish channel ID.
-func GetSpanishChannelID() string {
-	return configuration.GlobalSettings.SpanishChannel.ChannelID
 }
 
 func UploadVideo(video *storage.Video) (string, error) {

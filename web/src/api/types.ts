@@ -49,20 +49,6 @@ export interface Short {
   youtubeId: string;
 }
 
-export interface DubbingInfo {
-  dubbingId: string;
-  dubbedVideoPath: string;
-  title: string;
-  description: string;
-  tags: string;
-  timecodes: string;
-  uploadedVideoId: string;
-  dubbingStatus: string;
-  dubbingError: string;
-  thumbnailPath: string;
-  thumbnailDriveFileId?: string;
-}
-
 export interface VideoResponse {
   id: string;
   name: string;
@@ -128,7 +114,6 @@ export interface VideoResponse {
   code: boolean;
   repo: string;
   shorts: Short[];
-  dubbing: Record<string, DubbingInfo>;
   syncWarning?: string;
 }
 
@@ -301,11 +286,6 @@ export interface PublishShortResponse {
 
 export interface PublishHugoResponse {
   hugoPath: string;
-  syncWarning?: string;
-}
-
-export interface PublishDubbedResponse {
-  videoId: string;
   syncWarning?: string;
 }
 

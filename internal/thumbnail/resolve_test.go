@@ -135,64 +135,6 @@ func TestResolveThumbnail(t *testing.T) {
 	}
 }
 
-func TestResolveDubbingThumbnail(t *testing.T) {
-	tests := []struct {
-		name      string
-		info      storage.DubbingInfo
-		wantDrive string
-		wantPath  string
-		wantErr   error
-	}{
-		{
-			name:      "DriveFileID only",
-			info:      storage.DubbingInfo{ThumbnailDriveFileID: "drive-dub"},
-			wantDrive: "drive-dub",
-			wantPath:  "",
-		},
-		{
-			name:     "Path only",
-			info:     storage.DubbingInfo{ThumbnailPath: "/localized/thumb-es.png"},
-			wantPath: "/localized/thumb-es.png",
-		},
-		{
-			name:      "Both - Drive wins",
-			info:      storage.DubbingInfo{ThumbnailPath: "/localized/thumb-es.png", ThumbnailDriveFileID: "drive-dub-2"},
-			wantDrive: "drive-dub-2",
-			wantPath:  "/localized/thumb-es.png",
-		},
-		{
-			name:    "Neither - error",
-			info:    storage.DubbingInfo{},
-			wantErr: ErrNoThumbnail,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ref, err := ResolveDubbingThumbnail(tt.info)
-
-			if tt.wantErr != nil {
-				if err == nil {
-					t.Fatalf("ResolveDubbingThumbnail() expected error %v, got nil", tt.wantErr)
-				}
-				if !errors.Is(err, tt.wantErr) {
-					t.Errorf("ResolveDubbingThumbnail() error = %v, want %v", err, tt.wantErr)
-				}
-				return
-			}
-			if err != nil {
-				t.Fatalf("ResolveDubbingThumbnail() unexpected error: %v", err)
-			}
-			if ref.DriveFileID != tt.wantDrive {
-				t.Errorf("DriveFileID = %q, want %q", ref.DriveFileID, tt.wantDrive)
-			}
-			if ref.Path != tt.wantPath {
-				t.Errorf("Path = %q, want %q", ref.Path, tt.wantPath)
-			}
-		})
-	}
-}
-
 func TestWithThumbnailFile(t *testing.T) {
 	ctx := context.Background()
 

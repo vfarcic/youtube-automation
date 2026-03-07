@@ -122,7 +122,6 @@ func (s *Server) setupRoutes() {
 			r.Post("/youtube/{videoName}/thumbnail", s.handlePublishThumbnail)
 			r.Post("/youtube/{videoName}/shorts/{shortId}", s.handlePublishShort)
 			r.Post("/hugo/{videoName}", s.handlePublishHugo)
-			r.Post("/dubbed/{videoName}", s.handlePublishDubbed)
 			r.Get("/transcript/{videoId}", s.handleGetTranscript)
 			r.Get("/metadata/{videoId}", s.handleGetMetadata)
 		})

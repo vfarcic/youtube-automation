@@ -53,18 +53,6 @@ func ResolveThumbnail(video *storage.Video) (ThumbnailRef, error) {
 	return ThumbnailRef{}, ErrNoThumbnail
 }
 
-// ResolveDubbingThumbnail extracts the best thumbnail reference from dubbing info.
-// Priority: ThumbnailDriveFileID > ThumbnailPath.
-func ResolveDubbingThumbnail(info storage.DubbingInfo) (ThumbnailRef, error) {
-	if info.ThumbnailDriveFileID != "" {
-		return ThumbnailRef{DriveFileID: info.ThumbnailDriveFileID, Path: info.ThumbnailPath}, nil
-	}
-	if info.ThumbnailPath != "" {
-		return ThumbnailRef{Path: info.ThumbnailPath}, nil
-	}
-	return ThumbnailRef{}, ErrNoThumbnail
-}
-
 // WithThumbnailFile resolves a ThumbnailRef to a local file path and calls fn with it.
 // If the ref has a local Path, fn is called directly.
 // If the ref has a DriveFileID, the file is downloaded to a temp file, fn is called,

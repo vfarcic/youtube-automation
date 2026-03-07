@@ -4,43 +4,43 @@ import { describe, it, expect, vi } from 'vitest';
 import { MapInput } from '../components/forms/MapInput';
 import type { ItemField } from '../api/types';
 
-const dubbingItemFields: ItemField[] = [
-  { name: 'Dubbing ID', fieldName: 'dubbingId', type: 'string', order: 1 },
-  { name: 'Title', fieldName: 'title', type: 'string', order: 2 },
+const metadataItemFields: ItemField[] = [
+  { name: 'ID', fieldName: 'id', type: 'string', order: 1 },
+  { name: 'Value', fieldName: 'value', type: 'string', order: 2 },
 ];
 
 const sampleEntries = {
-  es: { dubbingId: 'dub-123', title: 'Título' },
-  fr: { dubbingId: 'dub-456', title: 'Titre' },
+  key1: { id: 'id-1', value: 'val-1' },
+  key2: { id: 'id-2', value: 'val-2' },
 };
 
 describe('MapInput', () => {
   it('renders entries by key', () => {
     render(
       <MapInput
-        name="Dubbing"
-        fieldName="dubbing"
+        name="Metadata"
+        fieldName="metadata"
         value={sampleEntries}
         onChange={() => {}}
-        itemFields={dubbingItemFields}
-        mapKeyLabel="Language Code"
+        itemFields={metadataItemFields}
+        mapKeyLabel="Key"
       />,
     );
-    expect(screen.getByText('Dubbing')).toBeInTheDocument();
-    expect(screen.getByText(/Language Code: es/)).toBeInTheDocument();
-    expect(screen.getByText(/Language Code: fr/)).toBeInTheDocument();
-    expect(screen.getByDisplayValue('Título')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('Titre')).toBeInTheDocument();
+    expect(screen.getByText('Metadata')).toBeInTheDocument();
+    expect(screen.getByText(/Key: key1/)).toBeInTheDocument();
+    expect(screen.getByText(/Key: key2/)).toBeInTheDocument();
+    expect(screen.getByDisplayValue('val-1')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('val-2')).toBeInTheDocument();
   });
 
   it('renders empty state with add controls', () => {
     render(
       <MapInput
-        name="Dubbing"
-        fieldName="dubbing"
+        name="Metadata"
+        fieldName="metadata"
         value={{}}
         onChange={() => {}}
-        itemFields={dubbingItemFields}
+        itemFields={metadataItemFields}
       />,
     );
     expect(screen.getByText('+ Add Entry')).toBeInTheDocument();
@@ -51,18 +51,18 @@ describe('MapInput', () => {
     const onChange = vi.fn();
     render(
       <MapInput
-        name="Dubbing"
-        fieldName="dubbing"
+        name="Metadata"
+        fieldName="metadata"
         value={{}}
         onChange={onChange}
-        itemFields={dubbingItemFields}
+        itemFields={metadataItemFields}
       />,
     );
     const keyInput = screen.getByLabelText('New Key');
-    await userEvent.type(keyInput, 'de');
+    await userEvent.type(keyInput, 'key3');
     await userEvent.click(screen.getByText('+ Add Entry'));
-    expect(onChange).toHaveBeenCalledWith('dubbing', {
-      de: { dubbingId: '', title: '' },
+    expect(onChange).toHaveBeenCalledWith('metadata', {
+      key3: { id: '', value: '' },
     });
   });
 
@@ -70,44 +70,44 @@ describe('MapInput', () => {
     const onChange = vi.fn();
     render(
       <MapInput
-        name="Dubbing"
-        fieldName="dubbing"
+        name="Metadata"
+        fieldName="metadata"
         value={sampleEntries}
         onChange={onChange}
-        itemFields={dubbingItemFields}
+        itemFields={metadataItemFields}
       />,
     );
-    await userEvent.click(screen.getByLabelText('Remove entry es'));
-    expect(onChange).toHaveBeenCalledWith('dubbing', { fr: sampleEntries.fr });
+    await userEvent.click(screen.getByLabelText('Remove entry key1'));
+    expect(onChange).toHaveBeenCalledWith('metadata', { key2: sampleEntries.key2 });
   });
 
   it('updates sub-field value', async () => {
     const onChange = vi.fn();
     render(
       <MapInput
-        name="Dubbing"
-        fieldName="dubbing"
+        name="Metadata"
+        fieldName="metadata"
         value={sampleEntries}
         onChange={onChange}
-        itemFields={dubbingItemFields}
+        itemFields={metadataItemFields}
       />,
     );
-    const titleInput = screen.getByDisplayValue('Título');
-    await userEvent.type(titleInput, '!');
+    const valueInput = screen.getByDisplayValue('val-1');
+    await userEvent.type(valueInput, '!');
     const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1];
-    expect(lastCall[0]).toBe('dubbing');
-    expect(lastCall[1].es.title).toBe('Título!');
+    expect(lastCall[0]).toBe('metadata');
+    expect(lastCall[1].key1.value).toBe('val-1!');
   });
 
   it('does not add entry with empty key', async () => {
     const onChange = vi.fn();
     render(
       <MapInput
-        name="Dubbing"
-        fieldName="dubbing"
+        name="Metadata"
+        fieldName="metadata"
         value={{}}
         onChange={onChange}
-        itemFields={dubbingItemFields}
+        itemFields={metadataItemFields}
       />,
     );
     const addButton = screen.getByText('+ Add Entry');

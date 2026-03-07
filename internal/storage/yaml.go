@@ -55,22 +55,6 @@ type Short struct {
 	YouTubeID     string `yaml:"youtube_id,omitempty" json:"youtube_id,omitempty" ui:"auto"`         // Short's YouTube video ID (set after upload)
 }
 
-// DubbingInfo tracks dubbing status for a specific language.
-// The language code is the map key in Video.Dubbing (e.g., "es" for Spanish).
-type DubbingInfo struct {
-	DubbingID       string `yaml:"dubbingId,omitempty" json:"dubbingId,omitempty"`             // ElevenLabs dubbing job ID
-	DubbedVideoPath string `yaml:"dubbedVideoPath,omitempty" json:"dubbedVideoPath,omitempty"` // Path to the dubbed video file
-	Title       string `yaml:"title,omitempty" json:"title,omitempty"`             // Video title for this language
-	Description string `yaml:"description,omitempty" json:"description,omitempty"` // Video description for this language
-	Tags        string `yaml:"tags,omitempty" json:"tags,omitempty"`               // Comma-separated tags for this language
-	Timecodes   string `yaml:"timecodes,omitempty" json:"timecodes,omitempty"`     // Timecode labels for this language
-	UploadedVideoID string `yaml:"uploadedVideoId,omitempty" json:"uploadedVideoId,omitempty"` // YouTube video ID on target channel
-	DubbingStatus   string `yaml:"dubbingStatus,omitempty" json:"dubbingStatus,omitempty"`     // Status: "", "dubbing", "dubbed", "failed"
-	DubbingError    string `yaml:"dubbingError,omitempty" json:"dubbingError,omitempty"`       // Error message if dubbing failed
-	ThumbnailPath        string `yaml:"thumbnailPath,omitempty" json:"thumbnailPath,omitempty"`               // Path to localized thumbnail
-	ThumbnailDriveFileID string `yaml:"thumbnailDriveFileId,omitempty" json:"thumbnailDriveFileId,omitempty"` // Google Drive file ID for localized thumbnail
-}
-
 // Video represents all data associated with a video project.
 // All fields are already exported.
 type Video struct {
@@ -129,7 +113,6 @@ type Video struct {
 	Gist                 string      `yaml:"gist,omitempty" json:"gist,omitempty" completion:"filled_only"`
 	Code                 bool        `yaml:"code,omitempty" json:"code,omitempty" completion:"true_only"`
 	Shorts               []Short                `yaml:"shorts,omitempty" json:"shorts,omitempty" completion:"filled_only"` // YouTube Shorts extracted from this video
-	Dubbing              map[string]DubbingInfo `yaml:"dubbing,omitempty" json:"dubbing,omitempty"`                        // Dubbing info keyed by language code (e.g., "es")
 }
 
 // Sponsorship holds details about video sponsorship.

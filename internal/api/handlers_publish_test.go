@@ -9,7 +9,6 @@ import (
 	"strings"
 	"testing"
 
-	"devopstoolkit/youtube-automation/internal/gdrive"
 	"devopstoolkit/youtube-automation/internal/publishing"
 	"devopstoolkit/youtube-automation/internal/storage"
 )
@@ -21,8 +20,6 @@ type mockPublishingService struct {
 	uploadThumbnailErr error
 	uploadShortID     string
 	uploadShortErr    error
-	dubbedVideoID     string
-	dubbedVideoErr    error
 	hugoPath          string
 	hugoErr           error
 	transcript        string
@@ -41,9 +38,6 @@ func (m *mockPublishingService) UploadThumbnail(_ context.Context, _, _ string) 
 }
 func (m *mockPublishingService) UploadShort(_ context.Context, _ string, _ storage.Short, _ string) (string, error) {
 	return m.uploadShortID, m.uploadShortErr
-}
-func (m *mockPublishingService) UploadDubbedVideo(_ context.Context, _ *storage.Video, _ string, _ gdrive.DriveService) (string, error) {
-	return m.dubbedVideoID, m.dubbedVideoErr
 }
 func (m *mockPublishingService) CreateHugoPost(_ context.Context, _, _, _, _ string) (string, error) {
 	return m.hugoPath, m.hugoErr
@@ -626,69 +620,3 @@ func TestFormatDOTMessage(t *testing.T) {
 	}
 }
 
-// --- Dubbed Publish Tests ---
-
-func TestHandlePublishDubbed(t *testing.T) {
-	tests := []struct {
-		name       string
-		lang       string
-		mock       *mockPublishingService
-		seedVideo  bool
-		wantStatus int
-	}{
-		{
-			name:       "not configured",
-			lang:       "es",
-			mock:       nil,
-			seedVideo:  false,
-			wantStatus: http.StatusNotImplemented,
-		},
-		{
-			name:       "missing lang",
-			lang:       "",
-			mock:       &mockPublishingService{dubbedVideoID: "yt-dubbed"},
-			seedVideo:  true,
-			wantStatus: http.StatusBadRequest,
-		},
-		{
-			name:       "success",
-			lang:       "es",
-			mock:       &mockPublishingService{dubbedVideoID: "yt-dubbed-id"},
-			seedVideo:  true,
-			wantStatus: http.StatusOK,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			var env *testEnv
-			if tt.mock != nil {
-				env = setupPublishTestEnv(t, tt.mock)
-			} else {
-				env = setupTestEnv(t)
-			}
-			if tt.seedVideo {
-				seedPublishVideo(t, env)
-			}
-
-			url := "/api/publish/dubbed/test-video?category=devops"
-			if tt.lang != "" {
-				url += "&lang=" + tt.lang
-			}
-			req := httptest.NewRequest(http.MethodPost, url, nil)
-			rr := httptest.NewRecorder()
-			env.server.Router().ServeHTTP(rr, req)
-
-			if rr.Code != tt.wantStatus {
-				t.Errorf("status = %d, want %d; body: %s", rr.Code, tt.wantStatus, rr.Body.String())
-			}
-			if tt.wantStatus == http.StatusOK {
-				var resp PublishDubbedResponse
-				json.NewDecoder(rr.Body).Decode(&resp)
-				if resp.VideoID != "yt-dubbed-id" {
-					t.Errorf("videoId = %q, want %q", resp.VideoID, "yt-dubbed-id")
-				}
-			}
-		})
-	}
-}

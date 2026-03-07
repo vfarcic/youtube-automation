@@ -54,17 +54,17 @@ const arrayField: AspectField = {
 };
 
 const mapField: AspectField = {
-  name: 'Dubbing',
-  fieldName: 'dubbing',
+  name: 'Metadata',
+  fieldName: 'metadata',
   type: 'map',
   required: false,
   order: 5,
   description: '',
   completionCriteria: 'filled_only',
-  mapKeyLabel: 'Language Code',
+  mapKeyLabel: 'Key',
   itemFields: [
-    { name: 'Dubbing ID', fieldName: 'dubbingId', type: 'string', order: 1 },
-    { name: 'Title', fieldName: 'title', type: 'string', order: 2 },
+    { name: 'ID', fieldName: 'id', type: 'string', order: 1 },
+    { name: 'Value', fieldName: 'value', type: 'string', order: 2 },
   ],
 };
 
@@ -132,10 +132,10 @@ describe('DynamicForm', () => {
   });
 
   it('renders map fields with MapInput component', () => {
-    const video = { ...mockVideo, dubbing: { es: { dubbingId: 'dub-1', title: 'Título', description: '', tags: '', timecodes: '', dubbedVideoPath: '', uploadedVideoId: '', dubbingStatus: '', dubbingError: '', thumbnailPath: '' } } };
+    const video = { ...mockVideo, metadata: { key1: { id: 'id-1', value: 'val-1' } } } as any;
     render(<DynamicForm fields={[mapField]} video={video} onSave={() => {}} />);
-    expect(screen.getByText('Dubbing')).toBeInTheDocument();
-    expect(screen.getByText(/Language Code: es/)).toBeInTheDocument();
+    expect(screen.getByText('Metadata')).toBeInTheDocument();
+    expect(screen.getByText(/Key: key1/)).toBeInTheDocument();
   });
 
   it('resolves dot-notation fields', () => {

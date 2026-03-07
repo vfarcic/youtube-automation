@@ -322,7 +322,6 @@ func TestDetermineFieldType(t *testing.T) {
 		{"Titles", FieldTypeArray},
 		{"ThumbnailVariants", FieldTypeArray},
 		{"Shorts", FieldTypeArray},
-		{"Dubbing", FieldTypeMap},
 	}
 
 	for _, test := range tests {
@@ -424,21 +423,6 @@ func TestGenerateFieldMapping(t *testing.T) {
 		}
 	})
 
-	t.Run("Should generate itemFields and mapKeyLabel for map field Dubbing", func(t *testing.T) {
-		mapping := generateFieldMapping(videoType, "Dubbing", 1)
-		if mapping == nil {
-			t.Fatal("Expected non-nil mapping for Dubbing")
-		}
-		if mapping.FieldType != FieldTypeMap {
-			t.Errorf("Expected field type 'map', got %s", mapping.FieldType)
-		}
-		if mapping.MapKeyLabel == "" {
-			t.Error("Expected non-empty MapKeyLabel for map field")
-		}
-		if len(mapping.ItemFields) != 11 {
-			t.Fatalf("Expected 11 item fields for DubbingInfo, got %d", len(mapping.ItemFields))
-		}
-	})
 }
 
 func TestGenerateItemFields(t *testing.T) {

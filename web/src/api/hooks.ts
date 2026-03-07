@@ -21,7 +21,6 @@ import type {
   PublishThumbnailResponse,
   PublishShortResponse,
   PublishHugoResponse,
-  PublishDubbedResponse,
   TranscriptResponse,
   MetadataResponse,
   SocialPostResponse,
@@ -329,18 +328,6 @@ export function usePublishHugo() {
     mutationFn: ({ name, category }) =>
       post<PublishHugoResponse>(
         `/api/publish/hugo/${encodeURIComponent(name)}?category=${encodeURIComponent(category)}`,
-        {},
-      ),
-    onSuccess: (_data, { name, category }) => invalidateVideoQueries(qc, name, category),
-  });
-}
-
-export function usePublishDubbed() {
-  const qc = useQueryClient();
-  return useMutation<PublishDubbedResponse, Error, { name: string; category: string; lang: string }>({
-    mutationFn: ({ name, category, lang }) =>
-      post<PublishDubbedResponse>(
-        `/api/publish/dubbed/${encodeURIComponent(name)}?category=${encodeURIComponent(category)}&lang=${encodeURIComponent(lang)}`,
         {},
       ),
     onSuccess: (_data, { name, category }) => invalidateVideoQueries(qc, name, category),

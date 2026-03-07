@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 
-	"devopstoolkit/youtube-automation/internal/gdrive"
 	"devopstoolkit/youtube-automation/internal/platform/bluesky"
 	"devopstoolkit/youtube-automation/internal/publishing"
 	slackpkg "devopstoolkit/youtube-automation/internal/slack"
@@ -15,7 +14,6 @@ type PublishingService interface {
 	UploadVideo(ctx context.Context, video *storage.Video) (string, error)
 	UploadThumbnail(ctx context.Context, videoID, thumbnailPath string) error
 	UploadShort(ctx context.Context, filePath string, short storage.Short, mainVideoID string) (string, error)
-	UploadDubbedVideo(ctx context.Context, video *storage.Video, langCode string, driveService gdrive.DriveService) (string, error)
 	CreateHugoPost(ctx context.Context, gist, title, date, videoID string) (string, error)
 	GetTranscript(ctx context.Context, videoID string) (string, error)
 	GetVideoMetadata(ctx context.Context, videoID string) (*publishing.VideoMetadata, error)
@@ -49,10 +47,6 @@ func (d *DefaultPublishingService) UploadThumbnail(_ context.Context, videoID, t
 
 func (d *DefaultPublishingService) UploadShort(_ context.Context, filePath string, short storage.Short, mainVideoID string) (string, error) {
 	return publishing.UploadShort(filePath, short, mainVideoID)
-}
-
-func (d *DefaultPublishingService) UploadDubbedVideo(_ context.Context, video *storage.Video, langCode string, driveService gdrive.DriveService) (string, error) {
-	return publishing.UploadDubbedVideo(video, langCode, driveService)
 }
 
 func (d *DefaultPublishingService) CreateHugoPost(_ context.Context, gist, title, date, videoID string) (string, error) {

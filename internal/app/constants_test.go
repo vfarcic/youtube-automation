@@ -12,7 +12,6 @@ func TestPhaseTitleConstants(t *testing.T) {
 		constants.PhaseTitleDefinition,
 		constants.PhaseTitlePostProduction,
 		constants.PhaseTitleUpload,
-		constants.PhaseTitleDubbing,
 		constants.PhaseTitlePostPublish,
 	}
 
@@ -22,7 +21,6 @@ func TestPhaseTitleConstants(t *testing.T) {
 		"Definition",
 		"Post-Production",
 		"Upload",
-		"Dubbing",
 		"Post-Publish Details",
 	}
 
@@ -110,12 +108,11 @@ func TestConstantsUniqueness(t *testing.T) {
 		constants.PhaseTitleDefinition:     true,
 		constants.PhaseTitlePostProduction: true,
 		constants.PhaseTitleUpload:         true,
-		constants.PhaseTitleDubbing:        true,
 		constants.PhaseTitlePostPublish:    true,
 	}
 
-	if len(phaseTitles) != 7 {
-		t.Errorf("Expected 7 unique phase titles, got %d", len(phaseTitles))
+	if len(phaseTitles) != 6 {
+		t.Errorf("Expected 6 unique phase titles, got %d", len(phaseTitles))
 	}
 
 	// Test some key field titles for uniqueness

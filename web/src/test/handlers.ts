@@ -100,7 +100,6 @@ export const mockVideo: VideoResponse = {
   code: true,
   repo: '',
   shorts: [],
-  dubbing: {},
 };
 
 export const mockProgress: OverallProgressResponse = {
@@ -203,7 +202,6 @@ const mockPublishYouTube = { videoId: 'yt-abc123' };
 const mockPublishThumbnail = { success: true };
 const mockPublishShort = { youtubeId: 'yt-short-456' };
 const mockPublishHugo = { hugoPath: '/content/devops/test-video.md' };
-const mockPublishDubbed = { videoId: 'yt-dubbed-789' };
 const mockTranscript = { transcript: 'This is the transcript text.' };
 const mockMetadata = { title: 'Test Title', description: 'Test Desc', tags: ['tag1', 'tag2'], publishedAt: '2026-01-15T00:00:00Z' };
 const mockSocialPostAutomated = { posted: true };
@@ -263,7 +261,6 @@ export const handlers = [
   http.post('/api/publish/youtube/:videoName/shorts/:shortId', () => HttpResponse.json(mockPublishShort)),
   http.post('/api/publish/youtube/:videoName', () => HttpResponse.json(mockPublishYouTube)),
   http.post('/api/publish/hugo/:videoName', () => HttpResponse.json(mockPublishHugo)),
-  http.post('/api/publish/dubbed/:videoName', () => HttpResponse.json(mockPublishDubbed)),
   http.get('/api/publish/transcript/:videoId', () => HttpResponse.json(mockTranscript)),
   http.get('/api/publish/metadata/:videoId', () => HttpResponse.json(mockMetadata)),
   // Social endpoints

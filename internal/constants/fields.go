@@ -7,7 +7,6 @@ const (
 	PhaseTitleDefinition     = "Definition"
 	PhaseTitlePostProduction = "Post-Production"
 	PhaseTitleUpload         = "Upload"
-	PhaseTitleDubbing        = "Dubbing"
 	PhaseTitlePostPublish    = "Post-Publish Details"
 	PhaseTitleAnalysis       = "Analysis"
 )
