@@ -1,7 +1,7 @@
 # PRD: HTTP API and React Frontend for Video Management
 
 **Issue**: #372
-**Status**: In Progress
+**Status**: Done
 **Priority**: Medium
 **Created**: 2026-03-05
 
@@ -262,7 +262,7 @@ Add `sync.RWMutex` in storage layer for index operations and per-video writes. A
 - [x] **Hugo Post PR Workflow**: On a remote server, `Hugo.Post()` can't write to a local clone. Extend `SettingsHugo` with `repoURL`, `branch`, `token` fields. When `repoURL` is configured, clone the Hugo repo to a temp dir, create a branch, write the post, push, and create a GitHub PR via REST API. When only `path` is set, keep current local filesystem behavior (backward compatible for CLI). Extract shared `AuthenticatedURL` helper from `SyncManager`. `hugo.token` falls back to `GITHUB_TOKEN` env var. Tests passing.
 - [x] **Containerization + Kubernetes Deployment**: Dockerfile (multi-stage: node→golang→distroless, 16.5MB image), Helm chart (deployment, service, ingress, secret), GHA release workflow builds/pushes multi-platform images to ghcr.io, test workflow includes frontend tests. K8s Secret for `API_TOKEN`. Locally verified: image builds, health endpoint responds, frontend served.
 - [x] **Documentation + Polish**: OpenAPI spec updated to cover all endpoints, README updated, build/deployment documentation.
-- [ ] **Feature Tested & Validated**: End-to-end testing, 80% test coverage on API handlers, frontend tested with real data.
+- [x] **Feature Tested & Validated**: End-to-end testing, 80% test coverage on API handlers, frontend tested with real data.
 
 ## Progress Log
 
@@ -535,3 +535,8 @@ cd ../devops-catalog && /path/to/youtube-automation/youtube-release serve
   - Updated `README.md`: Added HTTP API section (server flags, authentication, endpoint overview table), Web UI section, Docker section, environment variables table. Updated features list and prerequisites.
   - Updated `docs/development.md`: Added current project structure reflecting `internal/api/` and `web/`. Added API development guide (handler pattern, adding endpoints). Added frontend development section (tech stack, dev server setup, key patterns). Added frontend test commands. Updated contributing guidelines.
   - Progress: 13/14 milestones complete. Only "Feature Tested & Validated" remains.
+- **Milestone 14 complete**: Feature Tested & Validated
+  - 82.3% test coverage on API handlers (exceeds 80% target)
+  - Frontend manually validated with real data from `devops-catalog`
+  - All Go and frontend tests passing
+  - **PRD 372 complete** — all 14 milestones done, all 13 Must Have items complete
