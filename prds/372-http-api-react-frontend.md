@@ -52,8 +52,8 @@ The existing **aspect system** (`internal/aspect/`) already generates typed fiel
 - [x] Frontend supports AI content generation with apply-to-field UX
 - [x] API protected by bearer token auth (env var, disabled when unset)
 - [x] Go server embeds and serves the built frontend (single binary deployment)
-- [ ] Helm chart deploys backend + frontend to Kubernetes
-- [ ] GHA builds and pushes container images to ghcr.io
+- [x] Helm chart deploys backend + frontend to Kubernetes
+- [x] GHA builds and pushes container images to ghcr.io
 - [ ] 80% test coverage on API handlers
 
 ### Nice to Have (Future)
@@ -262,7 +262,7 @@ Add `sync.RWMutex` in storage layer for index operations and per-video writes. A
 - [x] **Hugo Post PR Workflow**: On a remote server, `Hugo.Post()` can't write to a local clone. Extend `SettingsHugo` with `repoURL`, `branch`, `token` fields. When `repoURL` is configured, clone the Hugo repo to a temp dir, create a branch, write the post, push, and create a GitHub PR via REST API. When only `path` is set, keep current local filesystem behavior (backward compatible for CLI). Extract shared `AuthenticatedURL` helper from `SyncManager`. `hugo.token` falls back to `GITHUB_TOKEN` env var. Tests passing.
 - [ ] **Analytics Dashboard**: Video analytics, title analysis, timing recommendations, channel stats endpoints. Frontend analytics views.
 - [ ] **AMA, Dubbing, Translation**: Remaining specialized feature endpoints and frontend panels. Full feature parity with CLI.
-- [ ] **Containerization + Kubernetes Deployment**: Dockerfile (backend + frontend), Helm chart, GHA workflow to build/push images to ghcr.io on main push, PR-only test workflow. K8s Secret for `API_TOKEN`.
+- [x] **Containerization + Kubernetes Deployment**: Dockerfile (multi-stage: node→golang→distroless, 16.5MB image), Helm chart (deployment, service, ingress, secret), GHA release workflow builds/pushes multi-platform images to ghcr.io, test workflow includes frontend tests. K8s Secret for `API_TOKEN`. Locally verified: image builds, health endpoint responds, frontend served.
 - [ ] **Documentation + Polish**: OpenAPI spec updated to cover all endpoints, README updated, build/deployment documentation.
 - [ ] **Feature Tested & Validated**: End-to-end testing, 80% test coverage on API handlers, frontend tested with real data.
 
