@@ -208,56 +208,170 @@ func TestHandleAIDescription(t *testing.T) {
 }
 
 func TestHandleAITags(t *testing.T) {
-	env := setupAITestEnv(t, &mockAIService{tags: "go,kubernetes,devops"})
-	seedVideoWithManuscript(t, env, "test-video", "devops", "# Manuscript")
-
-	req := httptest.NewRequest(http.MethodPost, "/api/ai/tags/devops/test-video", nil)
-	rr := httptest.NewRecorder()
-	env.server.Router().ServeHTTP(rr, req)
-
-	if rr.Code != http.StatusOK {
-		t.Fatalf("status = %d, want %d", rr.Code, http.StatusOK)
+	tests := []struct {
+		name       string
+		videoName  string
+		mock       *mockAIService
+		hasManus   bool
+		wantStatus int
+	}{
+		{
+			name:       "success",
+			videoName:  "test-video",
+			mock:       &mockAIService{tags: "go,kubernetes,devops"},
+			hasManus:   true,
+			wantStatus: http.StatusOK,
+		},
+		{
+			name:       "AI error",
+			videoName:  "test-video",
+			mock:       &mockAIService{err: fmt.Errorf("AI failed")},
+			hasManus:   true,
+			wantStatus: http.StatusInternalServerError,
+		},
+		{
+			name:       "manuscript not found",
+			videoName:  "nonexistent",
+			mock:       &mockAIService{},
+			hasManus:   false,
+			wantStatus: http.StatusNotFound,
+		},
 	}
-	var resp AITagsResponse
-	json.NewDecoder(rr.Body).Decode(&resp)
-	if resp.Tags != "go,kubernetes,devops" {
-		t.Errorf("tags = %q, want %q", resp.Tags, "go,kubernetes,devops")
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			env := setupAITestEnv(t, tt.mock)
+			if tt.hasManus {
+				seedVideoWithManuscript(t, env, tt.videoName, "devops", "# Manuscript")
+			}
+
+			req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/api/ai/tags/devops/%s", tt.videoName), nil)
+			rr := httptest.NewRecorder()
+			env.server.Router().ServeHTTP(rr, req)
+
+			if rr.Code != tt.wantStatus {
+				t.Errorf("status = %d, want %d; body: %s", rr.Code, tt.wantStatus, rr.Body.String())
+			}
+			if tt.wantStatus == http.StatusOK {
+				var resp AITagsResponse
+				json.NewDecoder(rr.Body).Decode(&resp)
+				if resp.Tags != "go,kubernetes,devops" {
+					t.Errorf("tags = %q, want %q", resp.Tags, "go,kubernetes,devops")
+				}
+			}
+		})
 	}
 }
 
 func TestHandleAITweets(t *testing.T) {
-	env := setupAITestEnv(t, &mockAIService{tweets: []string{"tweet1", "tweet2"}})
-	seedVideoWithManuscript(t, env, "test-video", "devops", "# Manuscript")
-
-	req := httptest.NewRequest(http.MethodPost, "/api/ai/tweets/devops/test-video", nil)
-	rr := httptest.NewRecorder()
-	env.server.Router().ServeHTTP(rr, req)
-
-	if rr.Code != http.StatusOK {
-		t.Fatalf("status = %d, want %d", rr.Code, http.StatusOK)
+	tests := []struct {
+		name       string
+		videoName  string
+		mock       *mockAIService
+		hasManus   bool
+		wantStatus int
+	}{
+		{
+			name:       "success",
+			videoName:  "test-video",
+			mock:       &mockAIService{tweets: []string{"tweet1", "tweet2"}},
+			hasManus:   true,
+			wantStatus: http.StatusOK,
+		},
+		{
+			name:       "AI error",
+			videoName:  "test-video",
+			mock:       &mockAIService{err: fmt.Errorf("AI failed")},
+			hasManus:   true,
+			wantStatus: http.StatusInternalServerError,
+		},
+		{
+			name:       "manuscript not found",
+			videoName:  "nonexistent",
+			mock:       &mockAIService{},
+			hasManus:   false,
+			wantStatus: http.StatusNotFound,
+		},
 	}
-	var resp AITweetsResponse
-	json.NewDecoder(rr.Body).Decode(&resp)
-	if len(resp.Tweets) != 2 {
-		t.Errorf("tweets count = %d, want 2", len(resp.Tweets))
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			env := setupAITestEnv(t, tt.mock)
+			if tt.hasManus {
+				seedVideoWithManuscript(t, env, tt.videoName, "devops", "# Manuscript")
+			}
+
+			req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/api/ai/tweets/devops/%s", tt.videoName), nil)
+			rr := httptest.NewRecorder()
+			env.server.Router().ServeHTTP(rr, req)
+
+			if rr.Code != tt.wantStatus {
+				t.Errorf("status = %d, want %d; body: %s", rr.Code, tt.wantStatus, rr.Body.String())
+			}
+			if tt.wantStatus == http.StatusOK {
+				var resp AITweetsResponse
+				json.NewDecoder(rr.Body).Decode(&resp)
+				if len(resp.Tweets) != 2 {
+					t.Errorf("tweets count = %d, want 2", len(resp.Tweets))
+				}
+			}
+		})
 	}
 }
 
 func TestHandleAIDescriptionTags(t *testing.T) {
-	env := setupAITestEnv(t, &mockAIService{descriptionTags: "#go #k8s #devops"})
-	seedVideoWithManuscript(t, env, "test-video", "devops", "# Manuscript")
-
-	req := httptest.NewRequest(http.MethodPost, "/api/ai/description-tags/devops/test-video", nil)
-	rr := httptest.NewRecorder()
-	env.server.Router().ServeHTTP(rr, req)
-
-	if rr.Code != http.StatusOK {
-		t.Fatalf("status = %d, want %d", rr.Code, http.StatusOK)
+	tests := []struct {
+		name       string
+		videoName  string
+		mock       *mockAIService
+		hasManus   bool
+		wantStatus int
+	}{
+		{
+			name:       "success",
+			videoName:  "test-video",
+			mock:       &mockAIService{descriptionTags: "#go #k8s #devops"},
+			hasManus:   true,
+			wantStatus: http.StatusOK,
+		},
+		{
+			name:       "AI error",
+			videoName:  "test-video",
+			mock:       &mockAIService{err: fmt.Errorf("AI failed")},
+			hasManus:   true,
+			wantStatus: http.StatusInternalServerError,
+		},
+		{
+			name:       "manuscript not found",
+			videoName:  "nonexistent",
+			mock:       &mockAIService{},
+			hasManus:   false,
+			wantStatus: http.StatusNotFound,
+		},
 	}
-	var resp AIDescriptionTagsResponse
-	json.NewDecoder(rr.Body).Decode(&resp)
-	if resp.DescriptionTags != "#go #k8s #devops" {
-		t.Errorf("descriptionTags = %q, want %q", resp.DescriptionTags, "#go #k8s #devops")
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			env := setupAITestEnv(t, tt.mock)
+			if tt.hasManus {
+				seedVideoWithManuscript(t, env, tt.videoName, "devops", "# Manuscript")
+			}
+
+			req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/api/ai/description-tags/devops/%s", tt.videoName), nil)
+			rr := httptest.NewRecorder()
+			env.server.Router().ServeHTTP(rr, req)
+
+			if rr.Code != tt.wantStatus {
+				t.Errorf("status = %d, want %d; body: %s", rr.Code, tt.wantStatus, rr.Body.String())
+			}
+			if tt.wantStatus == http.StatusOK {
+				var resp AIDescriptionTagsResponse
+				json.NewDecoder(rr.Body).Decode(&resp)
+				if resp.DescriptionTags != "#go #k8s #devops" {
+					t.Errorf("descriptionTags = %q, want %q", resp.DescriptionTags, "#go #k8s #devops")
+				}
+			}
+		})
 	}
 }
 
@@ -265,20 +379,58 @@ func TestHandleAIShorts(t *testing.T) {
 	candidates := []ai.ShortCandidate{
 		{ID: "short1", Title: "Short One", Text: "text", Rationale: "reason"},
 	}
-	env := setupAITestEnv(t, &mockAIService{shorts: candidates})
-	seedVideoWithManuscript(t, env, "test-video", "devops", "# Manuscript")
-
-	req := httptest.NewRequest(http.MethodPost, "/api/ai/shorts/devops/test-video", nil)
-	rr := httptest.NewRecorder()
-	env.server.Router().ServeHTTP(rr, req)
-
-	if rr.Code != http.StatusOK {
-		t.Fatalf("status = %d, want %d", rr.Code, http.StatusOK)
+	tests := []struct {
+		name       string
+		videoName  string
+		mock       *mockAIService
+		hasManus   bool
+		wantStatus int
+	}{
+		{
+			name:       "success",
+			videoName:  "test-video",
+			mock:       &mockAIService{shorts: candidates},
+			hasManus:   true,
+			wantStatus: http.StatusOK,
+		},
+		{
+			name:       "AI error",
+			videoName:  "test-video",
+			mock:       &mockAIService{err: fmt.Errorf("AI failed")},
+			hasManus:   true,
+			wantStatus: http.StatusInternalServerError,
+		},
+		{
+			name:       "manuscript not found",
+			videoName:  "nonexistent",
+			mock:       &mockAIService{},
+			hasManus:   false,
+			wantStatus: http.StatusNotFound,
+		},
 	}
-	var resp AIShortsResponse
-	json.NewDecoder(rr.Body).Decode(&resp)
-	if len(resp.Candidates) != 1 || resp.Candidates[0].ID != "short1" {
-		t.Errorf("unexpected shorts response: %+v", resp)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			env := setupAITestEnv(t, tt.mock)
+			if tt.hasManus {
+				seedVideoWithManuscript(t, env, tt.videoName, "devops", "# Manuscript")
+			}
+
+			req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/api/ai/shorts/devops/%s", tt.videoName), nil)
+			rr := httptest.NewRecorder()
+			env.server.Router().ServeHTTP(rr, req)
+
+			if rr.Code != tt.wantStatus {
+				t.Errorf("status = %d, want %d; body: %s", rr.Code, tt.wantStatus, rr.Body.String())
+			}
+			if tt.wantStatus == http.StatusOK {
+				var resp AIShortsResponse
+				json.NewDecoder(rr.Body).Decode(&resp)
+				if len(resp.Candidates) != 1 || resp.Candidates[0].ID != "short1" {
+					t.Errorf("unexpected shorts response: %+v", resp)
+				}
+			}
+		})
 	}
 }
 
@@ -404,6 +556,13 @@ func TestHandleAITranslate(t *testing.T) {
 			mock:       &mockAIService{},
 			wantStatus: http.StatusBadRequest,
 		},
+		{
+			name:      "AI error",
+			body:      `{"category":"devops","name":"test-video","targetLanguage":"es"}`,
+			seedVideo: true,
+			mock:      &mockAIService{err: fmt.Errorf("translation failed")},
+			wantStatus: http.StatusInternalServerError,
+		},
 	}
 
 	for _, tt := range tests {
@@ -495,56 +654,185 @@ func TestHandleAIAMAContent(t *testing.T) {
 }
 
 func TestHandleAIAMATitle(t *testing.T) {
-	env := setupAITestEnv(t, &mockAIService{amaTitle: "My AMA Title"})
-	seedVideoWithManuscript(t, env, "test-video", "devops", "# Transcript")
-
-	req := httptest.NewRequest(http.MethodPost, "/api/ai/ama/title", strings.NewReader(`{"category":"devops","name":"test-video"}`))
-	rr := httptest.NewRecorder()
-	env.server.Router().ServeHTTP(rr, req)
-
-	if rr.Code != http.StatusOK {
-		t.Fatalf("status = %d, want %d; body: %s", rr.Code, http.StatusOK, rr.Body.String())
+	tests := []struct {
+		name       string
+		body       string
+		hasManus   bool
+		mock       *mockAIService
+		wantStatus int
+	}{
+		{
+			name:       "success",
+			body:       `{"category":"devops","name":"test-video"}`,
+			hasManus:   true,
+			mock:       &mockAIService{amaTitle: "My AMA Title"},
+			wantStatus: http.StatusOK,
+		},
+		{
+			name:       "AI error",
+			body:       `{"category":"devops","name":"test-video"}`,
+			hasManus:   true,
+			mock:       &mockAIService{err: fmt.Errorf("AI failed")},
+			wantStatus: http.StatusInternalServerError,
+		},
+		{
+			name:       "missing fields",
+			body:       `{"category":"devops"}`,
+			mock:       &mockAIService{},
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name:       "manuscript not found",
+			body:       `{"category":"devops","name":"nonexistent"}`,
+			mock:       &mockAIService{},
+			wantStatus: http.StatusNotFound,
+		},
 	}
-	var resp AIAMATitleResponse
-	json.NewDecoder(rr.Body).Decode(&resp)
-	if resp.Title != "My AMA Title" {
-		t.Errorf("title = %q, want %q", resp.Title, "My AMA Title")
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			env := setupAITestEnv(t, tt.mock)
+			if tt.hasManus {
+				seedVideoWithManuscript(t, env, "test-video", "devops", "# Transcript")
+			}
+
+			req := httptest.NewRequest(http.MethodPost, "/api/ai/ama/title", strings.NewReader(tt.body))
+			rr := httptest.NewRecorder()
+			env.server.Router().ServeHTTP(rr, req)
+
+			if rr.Code != tt.wantStatus {
+				t.Errorf("status = %d, want %d; body: %s", rr.Code, tt.wantStatus, rr.Body.String())
+			}
+			if tt.wantStatus == http.StatusOK {
+				var resp AIAMATitleResponse
+				json.NewDecoder(rr.Body).Decode(&resp)
+				if resp.Title != "My AMA Title" {
+					t.Errorf("title = %q, want %q", resp.Title, "My AMA Title")
+				}
+			}
+		})
 	}
 }
 
 func TestHandleAIAMADescription(t *testing.T) {
-	env := setupAITestEnv(t, &mockAIService{amaDescription: "AMA desc"})
-	seedVideoWithManuscript(t, env, "test-video", "devops", "# Transcript")
-
-	req := httptest.NewRequest(http.MethodPost, "/api/ai/ama/description", strings.NewReader(`{"category":"devops","name":"test-video"}`))
-	rr := httptest.NewRecorder()
-	env.server.Router().ServeHTTP(rr, req)
-
-	if rr.Code != http.StatusOK {
-		t.Fatalf("status = %d, want %d", rr.Code, http.StatusOK)
+	tests := []struct {
+		name       string
+		body       string
+		hasManus   bool
+		mock       *mockAIService
+		wantStatus int
+	}{
+		{
+			name:       "success",
+			body:       `{"category":"devops","name":"test-video"}`,
+			hasManus:   true,
+			mock:       &mockAIService{amaDescription: "AMA desc"},
+			wantStatus: http.StatusOK,
+		},
+		{
+			name:       "AI error",
+			body:       `{"category":"devops","name":"test-video"}`,
+			hasManus:   true,
+			mock:       &mockAIService{err: fmt.Errorf("AI failed")},
+			wantStatus: http.StatusInternalServerError,
+		},
+		{
+			name:       "missing fields",
+			body:       `{"category":"devops"}`,
+			mock:       &mockAIService{},
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name:       "manuscript not found",
+			body:       `{"category":"devops","name":"nonexistent"}`,
+			mock:       &mockAIService{},
+			wantStatus: http.StatusNotFound,
+		},
 	}
-	var resp AIAMADescriptionResponse
-	json.NewDecoder(rr.Body).Decode(&resp)
-	if resp.Description != "AMA desc" {
-		t.Errorf("description = %q, want %q", resp.Description, "AMA desc")
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			env := setupAITestEnv(t, tt.mock)
+			if tt.hasManus {
+				seedVideoWithManuscript(t, env, "test-video", "devops", "# Transcript")
+			}
+
+			req := httptest.NewRequest(http.MethodPost, "/api/ai/ama/description", strings.NewReader(tt.body))
+			rr := httptest.NewRecorder()
+			env.server.Router().ServeHTTP(rr, req)
+
+			if rr.Code != tt.wantStatus {
+				t.Errorf("status = %d, want %d; body: %s", rr.Code, tt.wantStatus, rr.Body.String())
+			}
+			if tt.wantStatus == http.StatusOK {
+				var resp AIAMADescriptionResponse
+				json.NewDecoder(rr.Body).Decode(&resp)
+				if resp.Description != "AMA desc" {
+					t.Errorf("description = %q, want %q", resp.Description, "AMA desc")
+				}
+			}
+		})
 	}
 }
 
 func TestHandleAIAMATimecodes(t *testing.T) {
-	env := setupAITestEnv(t, &mockAIService{amaTimecodes: "00:00 Intro\n01:00 Q1"})
-	seedVideoWithManuscript(t, env, "test-video", "devops", "# Transcript")
-
-	req := httptest.NewRequest(http.MethodPost, "/api/ai/ama/timecodes", strings.NewReader(`{"category":"devops","name":"test-video"}`))
-	rr := httptest.NewRecorder()
-	env.server.Router().ServeHTTP(rr, req)
-
-	if rr.Code != http.StatusOK {
-		t.Fatalf("status = %d, want %d", rr.Code, http.StatusOK)
+	tests := []struct {
+		name       string
+		body       string
+		hasManus   bool
+		mock       *mockAIService
+		wantStatus int
+	}{
+		{
+			name:       "success",
+			body:       `{"category":"devops","name":"test-video"}`,
+			hasManus:   true,
+			mock:       &mockAIService{amaTimecodes: "00:00 Intro\n01:00 Q1"},
+			wantStatus: http.StatusOK,
+		},
+		{
+			name:       "AI error",
+			body:       `{"category":"devops","name":"test-video"}`,
+			hasManus:   true,
+			mock:       &mockAIService{err: fmt.Errorf("AI failed")},
+			wantStatus: http.StatusInternalServerError,
+		},
+		{
+			name:       "missing fields",
+			body:       `{"category":"devops"}`,
+			mock:       &mockAIService{},
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name:       "manuscript not found",
+			body:       `{"category":"devops","name":"nonexistent"}`,
+			mock:       &mockAIService{},
+			wantStatus: http.StatusNotFound,
+		},
 	}
-	var resp AIAMATimecodesResponse
-	json.NewDecoder(rr.Body).Decode(&resp)
-	if resp.Timecodes != "00:00 Intro\n01:00 Q1" {
-		t.Errorf("timecodes = %q, want %q", resp.Timecodes, "00:00 Intro\n01:00 Q1")
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			env := setupAITestEnv(t, tt.mock)
+			if tt.hasManus {
+				seedVideoWithManuscript(t, env, "test-video", "devops", "# Transcript")
+			}
+
+			req := httptest.NewRequest(http.MethodPost, "/api/ai/ama/timecodes", strings.NewReader(tt.body))
+			rr := httptest.NewRecorder()
+			env.server.Router().ServeHTTP(rr, req)
+
+			if rr.Code != tt.wantStatus {
+				t.Errorf("status = %d, want %d; body: %s", rr.Code, tt.wantStatus, rr.Body.String())
+			}
+			if tt.wantStatus == http.StatusOK {
+				var resp AIAMATimecodesResponse
+				json.NewDecoder(rr.Body).Decode(&resp)
+				if resp.Timecodes != "00:00 Intro\n01:00 Q1" {
+					t.Errorf("timecodes = %q, want %q", resp.Timecodes, "00:00 Intro\n01:00 Q1")
+				}
+			}
+		})
 	}
 }
 

@@ -3,9 +3,13 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -173,21 +177,45 @@ func TestHandlePublishYouTube(t *testing.T) {
 func TestHandlePublishThumbnail(t *testing.T) {
 	tests := []struct {
 		name       string
+		url        string
 		mock       *mockPublishingService
 		seedVideo  bool
 		wantStatus int
 	}{
 		{
 			name:       "not configured",
+			url:        "/api/publish/youtube/test-video/thumbnail?category=devops",
 			mock:       nil,
 			seedVideo:  false,
 			wantStatus: http.StatusNotImplemented,
 		},
 		{
 			name:       "success",
+			url:        "/api/publish/youtube/test-video/thumbnail?category=devops",
 			mock:       &mockPublishingService{},
 			seedVideo:  true,
 			wantStatus: http.StatusOK,
+		},
+		{
+			name:       "missing category",
+			url:        "/api/publish/youtube/test-video/thumbnail",
+			mock:       &mockPublishingService{},
+			seedVideo:  false,
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name:       "video not found",
+			url:        "/api/publish/youtube/nonexistent/thumbnail?category=devops",
+			mock:       &mockPublishingService{},
+			seedVideo:  false,
+			wantStatus: http.StatusNotFound,
+		},
+		{
+			name:       "video has no YouTube ID",
+			url:        "/api/publish/youtube/no-yt-video/thumbnail?category=devops",
+			mock:       &mockPublishingService{},
+			seedVideo:  false,
+			wantStatus: http.StatusNotFound,
 		},
 	}
 
@@ -203,7 +231,7 @@ func TestHandlePublishThumbnail(t *testing.T) {
 				seedPublishVideo(t, env)
 			}
 
-			req := httptest.NewRequest(http.MethodPost, "/api/publish/youtube/test-video/thumbnail?category=devops", nil)
+			req := httptest.NewRequest(http.MethodPost, tt.url, nil)
 			rr := httptest.NewRecorder()
 			env.server.Router().ServeHTTP(rr, req)
 
@@ -220,6 +248,7 @@ func TestHandlePublishShort(t *testing.T) {
 	tests := []struct {
 		name       string
 		shortID    string
+		url        string
 		mock       *mockPublishingService
 		seedVideo  bool
 		wantStatus int
@@ -227,6 +256,7 @@ func TestHandlePublishShort(t *testing.T) {
 		{
 			name:       "not configured",
 			shortID:    "short1",
+			url:        "/api/publish/youtube/test-video/shorts/short1?category=devops",
 			mock:       nil,
 			seedVideo:  false,
 			wantStatus: http.StatusNotImplemented,
@@ -234,6 +264,7 @@ func TestHandlePublishShort(t *testing.T) {
 		{
 			name:       "short not found",
 			shortID:    "nonexistent",
+			url:        "/api/publish/youtube/test-video/shorts/nonexistent?category=devops",
 			mock:       &mockPublishingService{uploadShortID: "yt-short"},
 			seedVideo:  true,
 			wantStatus: http.StatusNotFound,
@@ -241,9 +272,26 @@ func TestHandlePublishShort(t *testing.T) {
 		{
 			name:       "success",
 			shortID:    "short1",
+			url:        "/api/publish/youtube/test-video/shorts/short1?category=devops",
 			mock:       &mockPublishingService{uploadShortID: "yt-short-id"},
 			seedVideo:  true,
 			wantStatus: http.StatusOK,
+		},
+		{
+			name:       "missing category",
+			shortID:    "short1",
+			url:        "/api/publish/youtube/test-video/shorts/short1",
+			mock:       &mockPublishingService{},
+			seedVideo:  false,
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name:       "upload error",
+			shortID:    "short1",
+			url:        "/api/publish/youtube/test-video/shorts/short1?category=devops",
+			mock:       &mockPublishingService{uploadShortErr: fmt.Errorf("upload failed")},
+			seedVideo:  true,
+			wantStatus: http.StatusInternalServerError,
 		},
 	}
 
@@ -259,8 +307,7 @@ func TestHandlePublishShort(t *testing.T) {
 				seedPublishVideo(t, env)
 			}
 
-			url := fmt.Sprintf("/api/publish/youtube/test-video/shorts/%s?category=devops", tt.shortID)
-			req := httptest.NewRequest(http.MethodPost, url, nil)
+			req := httptest.NewRequest(http.MethodPost, tt.url, nil)
 			rr := httptest.NewRecorder()
 			env.server.Router().ServeHTTP(rr, req)
 
@@ -617,6 +664,80 @@ func TestFormatDOTMessage(t *testing.T) {
 	}
 	if !strings.Contains(msg, "A great video") {
 		t.Error("expected description in DOT message")
+	}
+}
+
+// --- createTempFromReader Tests ---
+
+// errReader is an io.Reader that always returns an error.
+type errReader struct{}
+
+func (e *errReader) Read(p []byte) (int, error) {
+	return 0, errors.New("read error")
+}
+
+func TestCreateTempFromReader(t *testing.T) {
+	tests := []struct {
+		name      string
+		reader    io.Reader
+		filename  string
+		wantExt   string
+		wantErr   bool
+		wantBody  string
+	}{
+		{
+			name:     "success with content",
+			reader:   strings.NewReader("video data here"),
+			filename: "video.mp4",
+			wantExt:  ".mp4",
+			wantBody: "video data here",
+		},
+		{
+			name:     "custom extension",
+			reader:   strings.NewReader("webm data"),
+			filename: "clip.webm",
+			wantExt:  ".webm",
+			wantBody: "webm data",
+		},
+		{
+			name:     "default extension for empty filename",
+			reader:   strings.NewReader("data"),
+			filename: "",
+			wantExt:  ".mp4",
+			wantBody: "data",
+		},
+		{
+			name:    "read error",
+			reader:  &errReader{},
+			filename: "video.mp4",
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			path, err := createTempFromReader(tt.reader, tt.filename)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if tt.wantErr {
+				return
+			}
+			defer os.Remove(path)
+
+			ext := filepath.Ext(path)
+			if ext != tt.wantExt {
+				t.Errorf("ext = %q, want %q", ext, tt.wantExt)
+			}
+
+			content, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatalf("failed to read temp file: %v", err)
+			}
+			if string(content) != tt.wantBody {
+				t.Errorf("content = %q, want %q", string(content), tt.wantBody)
+			}
+		})
 	}
 }
 

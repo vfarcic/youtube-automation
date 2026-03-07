@@ -54,7 +54,7 @@ The existing **aspect system** (`internal/aspect/`) already generates typed fiel
 - [x] Go server embeds and serves the built frontend (single binary deployment)
 - [x] Helm chart deploys backend + frontend to Kubernetes
 - [x] GHA builds and pushes container images to ghcr.io
-- [ ] 80% test coverage on API handlers
+- [x] 80% test coverage on API handlers
 
 ### Nice to Have (Future)
 - [ ] WebSocket/SSE for real-time progress on long-running operations
@@ -521,3 +521,11 @@ cd ../devops-catalog && /path/to/youtube-automation/youtube-release serve
 
 - **Dubbing feature removed**: Removed the entire dubbing subsystem (6,020 lines deleted across 34 files). Deleted `internal/dubbing/` directory (ElevenLabs client, compression, types), `internal/publishing/youtube_dubbed.go`, `DubbingInfo` struct from storage, ElevenLabs/SpanishChannel configuration, `CalculateDubbingProgress()`, `ResolveDubbingThumbnail()`, Spanish OAuth functions, API handler/route for dubbed uploads, ~648 lines of dubbing CLI code, and all corresponding tests. Frontend types, hooks, and test fixtures updated. Dubbing has been split into separate PRDs (#374-378 for analytics). All Go and frontend tests pass.
 - **PRD milestones updated**: Removed "Analytics Dashboard" milestone (analytics work split into PRDs #374-378). Updated "AMA, Dubbing, Translation" milestone to "AMA + Translation".
+
+- **Must Have complete**: 80% test coverage on API handlers (82.3%)
+  - Converted 7 AI handler tests from success-only to table-driven with error paths (tags, tweets, description-tags, shorts, AMA title/description/timecodes)
+  - Added AI translate error case
+  - Added publish thumbnail error paths (missing category, video not found)
+  - Added publish short error paths (missing category, upload error)
+  - Added `TestCreateTempFromReader` (success, custom extension, default extension, read error)
+  - Coverage: 78.2% → 82.3%. All 13 Must Have items now complete.
