@@ -136,7 +136,9 @@ export function ArrayInput({
                 {itemFields.map((subField) => (
                   <div key={subField.fieldName}>
                     <label className="block text-xs text-gray-400 mb-0.5">{subField.name}</label>
-                    {subField.type === 'number' ? (
+                    {subField.type === 'label' ? (
+                      <code className="block text-sm text-gray-300 bg-gray-800 px-2 py-1 rounded">{String(item[subField.fieldName] ?? '')}</code>
+                    ) : subField.type === 'number' ? (
                       <input
                         type="number"
                         value={Number(item[subField.fieldName] ?? 0)}

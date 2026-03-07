@@ -116,6 +116,21 @@ func GetVideoAspectMappings() []AspectMapping {
 		})
 	}
 
+	// Apply aspect-specific item field overrides
+	// Analysis shows titles as read-only labels with share percentages visible
+	for i, aspect := range aspects {
+		if aspect.AspectKey == AspectKeyAnalysis {
+			for j, field := range aspect.Fields {
+				if field.FieldName == "titles" {
+					aspects[i].Fields[j].ItemFields = []ItemField{
+						{Name: "Text", FieldName: "text", Type: FieldTypeLabel, Required: false, Order: 1},
+						{Name: "Share", FieldName: "share", Type: FieldTypeNumber, Required: false, Order: 2},
+					}
+				}
+			}
+		}
+	}
+
 	return aspects
 }
 

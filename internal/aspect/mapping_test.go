@@ -179,6 +179,52 @@ func TestGetVideoAspectMappings(t *testing.T) {
 	})
 }
 
+func TestAnalysisTitlesItemFieldOverrides(t *testing.T) {
+	mappings := GetVideoAspectMappings()
+
+	var analysisAspect *AspectMapping
+	for _, m := range mappings {
+		if m.AspectKey == AspectKeyAnalysis {
+			analysisAspect = &m
+			break
+		}
+	}
+	if analysisAspect == nil {
+		t.Fatal("Analysis aspect not found")
+	}
+
+	var titlesField *FieldMapping
+	for _, f := range analysisAspect.Fields {
+		if f.FieldName == "titles" {
+			titlesField = &f
+			break
+		}
+	}
+	if titlesField == nil {
+		t.Fatal("Titles field not found in Analysis aspect")
+	}
+
+	if len(titlesField.ItemFields) != 2 {
+		t.Fatalf("Expected 2 item fields (text as label + share), got %d", len(titlesField.ItemFields))
+	}
+
+	// First item field: text as label
+	if titlesField.ItemFields[0].FieldName != "text" {
+		t.Errorf("Expected first item field 'text', got %q", titlesField.ItemFields[0].FieldName)
+	}
+	if titlesField.ItemFields[0].Type != FieldTypeLabel {
+		t.Errorf("Expected text field type 'label', got %q", titlesField.ItemFields[0].Type)
+	}
+
+	// Second item field: share as number
+	if titlesField.ItemFields[1].FieldName != "share" {
+		t.Errorf("Expected second item field 'share', got %q", titlesField.ItemFields[1].FieldName)
+	}
+	if titlesField.ItemFields[1].Type != FieldTypeNumber {
+		t.Errorf("Expected share field type 'number', got %q", titlesField.ItemFields[1].Type)
+	}
+}
+
 func TestGetFieldValueByJSONPath(t *testing.T) {
 	video := storage.Video{
 		ProjectName: "Test Project",
