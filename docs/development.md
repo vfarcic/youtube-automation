@@ -1,23 +1,53 @@
 # Development Guide
 
-This guide provides instructions for setting up your development environment, building, running, testing, and contributing to the YouTube Automation Tool.
-
-## Starting a Development Session
-
-When starting a new development session with your AI assistant, use the following prompt:
-
-```
-Retrieve and process all information from the `memory` MCP knowledge graph to guide our session.
-```
+This guide covers setting up your development environment, building, running, testing, and contributing to the YouTube Automation Tool.
 
 ## Prerequisites
 
-- Go 1.x
-- YouTube API credentials (client_secret.json)
+- Go 1.20+
+- Node.js 18+ (for frontend)
+- YouTube API credentials (`client_secret.json`)
 - Azure OpenAI API key
-- Email account for notifications
+- Email account for notifications (optional)
 - Hugo site repository (optional)
 - Bluesky account (optional)
+
+## Project Structure
+
+```
+├── cmd/youtube-automation/     # Application entry point
+├── internal/
+│   ├── ai/                     # AI content generation (titles, descriptions, tags, etc.)
+│   ├── api/                    # HTTP API server, handlers, middleware
+│   ├── app/                    # CLI interactive interface (huh forms)
+│   ├── aspect/                 # Aspect system (dynamic form generation, completion tracking)
+│   ├── configuration/          # Settings, CLI flags, YAML config
+│   ├── filesystem/             # File operations, path resolution
+│   ├── gdrive/                 # Google Drive integration
+│   ├── platform/               # Social media platform integrations
+│   ├── publishing/             # YouTube upload, Hugo blog generation
+│   ├── service/                # Business logic layer (VideoService)
+│   ├── slack/                  # Slack integration
+│   ├── storage/                # YAML-based data persistence
+│   ├── thumbnail/              # Thumbnail resolution and handling
+│   ├── video/                  # Phase calculation, workflow management
+│   └── workflow/               # Phase constants and definitions
+├── web/                        # React + TypeScript frontend
+│   ├── src/
+│   │   ├── components/         # UI components (forms, dashboard, navigation)
+│   │   ├── hooks/              # React hooks
+│   │   ├── services/           # API client
+│   │   └── types/              # TypeScript type definitions
+│   ├── package.json
+│   └── vite.config.ts
+├── pkg/
+│   ├── mocks/                  # Test mocks
+│   └── testutil/               # Test utilities and fixtures
+├── scripts/                    # Build, coverage, and utility scripts
+├── openapi.yaml                # OpenAPI 3.1 specification
+├── settings.yaml               # Global configuration
+└── Dockerfile                  # Multi-stage container build
+```
 
 ## Configuration
 
@@ -41,77 +71,172 @@ bluesky:
   url: https://bsky.social/xrpc
 ```
 
-Environment variables can also be used for sensitive information:
+Environment variables for sensitive information:
 - `EMAIL_PASSWORD`
 - `AI_KEY`
 - `YOUTUBE_API_KEY`
 - `BLUESKY_PASSWORD`
 
-## Running the Tool
-
-### With Devbox
+## Building
 
 ```bash
-devbox run run
-```
+# Build CLI binary
+make build-local
+# or
+go build -o youtube-release ./cmd/youtube-automation
 
-### Build from Source
-
-```bash
-devbox run build
-```
-
-Or use the Makefile:
-
-```bash
+# Build for all platforms
 make build
+
+# Build frontend
+cd web && npm install && npm run build
+
+# Build Docker image
+docker build -t youtube-automation .
+
+# Clean build artifacts
+make clean
 ```
 
-## Usage
+## Running
 
+### CLI Mode
+
+```bash
+./youtube-release [flags]
 ```
-youtube-release [flags]
+
+### API Server Mode
+
+```bash
+# Start with defaults (localhost:8080)
+./youtube-release serve
+
+# Custom host/port with authentication
+./youtube-release serve --host 0.0.0.0 --port 9090 --api-token my-secret
+
+# Using environment variables
+API_TOKEN=my-secret DATA_DIR=./data ./youtube-release serve
 ```
 
-### Required Flags
+The API server serves both the REST API (`/api/*`) and the React frontend (all other paths).
 
-- `--email-from` - Sender email address
-- `--email-thumbnail-to` - Email for thumbnail requests
-- `--email-edit-to` - Email for editing requests
-- `--email-finance-to` - Email for financial matters
-- `--email-password` - Email password
-- `--ai-endpoint` - Azure OpenAI endpoint
-- `--ai-key` - Azure OpenAI API key
-- `--ai-deployment` - Azure OpenAI deployment name
-- `--youtube-api-key` - YouTube API key
-- `--hugo-path` - Path to Hugo site repository
+### Frontend Development
 
-### Optional Flags
+For frontend development with hot reload:
 
-- `--bluesky-identifier` - Bluesky username
-- `--bluesky-password` - Bluesky password
-- `--bluesky-url` - Bluesky API URL
+```bash
+# Terminal 1: Start the Go API server
+./youtube-release serve --api-token dev-token
 
-## Project Structure
+# Terminal 2: Start the Vite dev server with API proxy
+cd web
+npm install
+npm run dev
+```
 
-- `main.go` - Entry point
-- `cli.go` - Command-line interface setup
-- `youtube.go` - YouTube API integration
-- `email.go` - Email notification system
-- `hugo.go` - Hugo integration
-- `bluesky.go` - Bluesky social media integration
+The Vite dev server (port 5173) proxies `/api` and `/health` requests to the Go server (port 8080).
+
+## Testing
+
+```bash
+# Run all Go tests
+go test ./...
+
+# Run Go tests with coverage
+go test ./... -cover
+
+# Generate detailed coverage report
+./scripts/coverage.sh
+
+# Run specific package tests
+go test ./internal/api/...
+
+# Run specific test function with verbose output
+go test -v -run TestHandleGetPhases ./internal/api/
+
+# Run frontend tests
+cd web && npm test
+
+# Run frontend tests in watch mode
+cd web && npm run test:watch
+
+# Check for brittle tests
+./scripts/find_brittle_tests.sh
+```
+
+### Coverage Goal
+
+The project targets 80% test coverage. API handlers are currently at 82.3%.
+
+## API Development
+
+### Adding a New Endpoint
+
+1. Define the handler in the appropriate `handlers_*.go` file in `internal/api/`
+2. Register the route in `server.go` `setupRoutes()`
+3. Add request/response types as needed
+4. Write tests using the test helper in `testhelper_test.go`
+5. Update `openapi.yaml` with the new endpoint
+
+### Handler Pattern
+
+All handlers follow a consistent pattern:
+
+```go
+func (s *Server) handleMyEndpoint(w http.ResponseWriter, r *http.Request) {
+    // 1. Extract and validate parameters
+    videoName := chi.URLParam(r, "videoName")
+    category := r.URL.Query().Get("category")
+    if category == "" {
+        respondError(w, http.StatusBadRequest, "Missing category", "")
+        return
+    }
+
+    // 2. Business logic via service layer
+    result, err := s.videoService.DoSomething(videoName, category)
+    if err != nil {
+        respondError(w, http.StatusInternalServerError, "Failed", err.Error())
+        return
+    }
+
+    // 3. Return JSON response
+    respondJSON(w, http.StatusOK, result)
+}
+```
+
+### Authentication
+
+- All `/api/*` routes use bearer token middleware
+- `/health` is always public
+- Set `API_TOKEN` env var or `--api-token` flag
+- Empty token disables authentication
+
+## Frontend Development
+
+### Tech Stack
+
+- **React 19** with TypeScript
+- **Vite** for build and dev server
+- **TanStack Query** for data fetching
+- **Zustand** for state management
+- **Tailwind CSS** for styling
+- **Vitest** + React Testing Library for tests
+
+### Key Patterns
+
+- **Dynamic form rendering**: Frontend reads aspect metadata from the API and renders forms without hardcoding field names. New fields added to the Go backend automatically appear in the UI.
+- **Dual-mode file storage**: CLI uses local file paths, Web UI uses Google Drive file IDs. Both coexist via the `DriveFileID` field pattern.
+- **Action buttons**: `RequestThumbnail` and `RequestEdit` are rendered as buttons (not checkboxes) to communicate irreversible intent.
 
 ## Field Completion System
 
-The project uses a reflection-based completion system that reads completion criteria directly from struct tags in `internal/storage/yaml.go`. This eliminates hard-coded field mappings and ensures consistency between the data model and validation logic.
-
-### Struct Tag Format
+The project uses a reflection-based completion system via struct tags in `internal/storage/yaml.go`:
 
 ```go
 type Video struct {
     Date string `json:"date" completion:"filled_only"`
     Code bool   `json:"code" completion:"true_only"`
-    // ... other fields
 }
 ```
 
@@ -125,29 +250,18 @@ type Video struct {
 - `empty_or_filled` - Always considered complete
 - `no_fixme` - Complete when field doesn't contain "FIXME"
 
-### Implementation
-
-The `CompletionService` in `internal/aspect/completion.go` uses reflection to:
-1. Read struct tags at startup
-2. Cache completion criteria for performance
-3. Provide consistent validation across CLI and API interfaces
-
-This approach ensures that field validation rules are defined once in the data model and automatically used throughout the application.
-
 ## Contributing
 
-[Add contribution guidelines]
+1. Create a feature branch from `main`
+2. Write tests for all new functionality (80% coverage target)
+3. Ensure `go test ./...` and `cd web && npm test` pass
+4. Update `openapi.yaml` if API endpoints change
+5. Submit a pull request
 
-(If you have specific contribution guidelines, they can be detailed here. This might include coding standards, commit message formats, PR processes, etc.)
-
-## Testing and Code Coverage
-
-This project aims for a test coverage goal of 80%. To check current test coverage, run:
+## Version Management
 
 ```bash
-./scripts/coverage.sh
+make bump-patch    # Bump patch version
+make bump-minor    # Bump minor version
+make bump-major    # Bump major version
 ```
-
-This will generate a detailed coverage report, an HTML visualization, and identify areas needing improvement.
-
-For comprehensive testing documentation including guidelines, examples, and best practices, see the [Testing Guide](docs/testing.md). Additional testing examples and patterns can be found in the [examples directory](docs/examples/). 

@@ -261,7 +261,7 @@ Add `sync.RWMutex` in storage layer for index operations and per-video writes. A
 - [x] **Publishing + Social Media**: YouTube upload, Hugo blog, shorts upload, dubbed upload, transcript fetch endpoints. Social media posting endpoints. Frontend publish buttons (YouTube, Hugo) and social post buttons (BlueSky, Slack automated; LinkedIn, HN, DOT copy-paste). `PublishingService` interface with `DefaultPublishingService`. `UploadVideo` refactored to return errors. Tag sanitization for YouTube 500-char limit. `UploadVideo` field hidden from web UI. Tests passing.
 - [x] **Hugo Post PR Workflow**: On a remote server, `Hugo.Post()` can't write to a local clone. Extend `SettingsHugo` with `repoURL`, `branch`, `token` fields. When `repoURL` is configured, clone the Hugo repo to a temp dir, create a branch, write the post, push, and create a GitHub PR via REST API. When only `path` is set, keep current local filesystem behavior (backward compatible for CLI). Extract shared `AuthenticatedURL` helper from `SyncManager`. `hugo.token` falls back to `GITHUB_TOKEN` env var. Tests passing.
 - [x] **Containerization + Kubernetes Deployment**: Dockerfile (multi-stage: node→golang→distroless, 16.5MB image), Helm chart (deployment, service, ingress, secret), GHA release workflow builds/pushes multi-platform images to ghcr.io, test workflow includes frontend tests. K8s Secret for `API_TOKEN`. Locally verified: image builds, health endpoint responds, frontend served.
-- [ ] **Documentation + Polish**: OpenAPI spec updated to cover all endpoints, README updated, build/deployment documentation.
+- [x] **Documentation + Polish**: OpenAPI spec updated to cover all endpoints, README updated, build/deployment documentation.
 - [ ] **Feature Tested & Validated**: End-to-end testing, 80% test coverage on API handlers, frontend tested with real data.
 
 ## Progress Log
@@ -528,3 +528,10 @@ cd ../devops-catalog && /path/to/youtube-automation/youtube-release serve
   - Added publish short error paths (missing category, upload error)
   - Added `TestCreateTempFromReader` (success, custom extension, default extension, read error)
   - Coverage: 78.2% → 82.3%. All 13 Must Have items now complete.
+
+### 2026-03-08
+- **Milestone 13 complete**: Documentation + Polish
+  - Rewrote `openapi.yaml` from scratch: 26 stale paths → 38 paths covering all 44 API routes. Added proper request/response schemas, security scheme, reusable components (parameters, responses, schemas). Covers all endpoint groups: Health, Videos, Phases, Progress, Categories, Aspects, AI (12 endpoints), Drive (3), Actions (2), Publishing (6), Social.
+  - Updated `README.md`: Added HTTP API section (server flags, authentication, endpoint overview table), Web UI section, Docker section, environment variables table. Updated features list and prerequisites.
+  - Updated `docs/development.md`: Added current project structure reflecting `internal/api/` and `web/`. Added API development guide (handler pattern, adding endpoints). Added frontend development section (tech stack, dev server setup, key patterns). Added frontend test commands. Updated contributing guidelines.
+  - Progress: 13/14 milestones complete. Only "Feature Tested & Validated" remains.

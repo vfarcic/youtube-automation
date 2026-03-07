@@ -3,7 +3,7 @@ info:
   title: YouTube Automation API
   description: |
     REST API for YouTube video automation system that manages video lifecycle from ideation to post-publication.
-    
+
     This API provides comprehensive CRUD operations for video management across 8 distinct phases:
     - Phase 0: Published
     - Phase 1: Publish Pending
@@ -13,7 +13,7 @@ info:
     - Phase 5: Delayed
     - Phase 6: Sponsored Blocked
     - Phase 7: Ideas
-    
+
     Each video progresses through phases with specific tasks and completion tracking.
   version: 1.0.0
   contact:
@@ -26,37 +26,165 @@ info:
 servers:
   - url: http://localhost:8080
     description: Local development server
-  - url: http://localhost:8080/api
-    description: API base path
+
+security:
+  - BearerAuth: []
 
 paths:
   /health:
     get:
-      summary: Health check endpoint
-      description: Returns the health status of the API server
+      summary: Health check
+      description: Returns the health status of the API server. This endpoint does not require authentication.
       operationId: healthCheck
+      security: []
       tags:
         - Health
       responses:
-        '200':
+        "200":
           description: Server is healthy
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: "ok"
-                  time:
-                    type: string
-                    format: date-time
-                    example: "2025-05-27T00:00:00Z"
+                $ref: "#/components/schemas/HealthResponse"
+
+  /api/categories:
+    get:
+      summary: List categories
+      description: Returns the available video categories (directory names in the manuscript store).
+      operationId: getCategories
+      tags:
+        - Categories
+      responses:
+        "200":
+          description: List of category names
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+                example: ["devops", "reviews", "ama"]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/aspects:
+    get:
+      summary: List all aspects with field metadata
+      description: Returns all aspects with their complete field definitions, types, labels, and completion criteria.
+      operationId: getAspects
+      tags:
+        - Aspects
+      responses:
+        "200":
+          description: All aspects with full field metadata
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Aspect"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/aspects/overview:
+    get:
+      summary: Aspect summaries
+      description: Returns lightweight aspect summaries without field details.
+      operationId: getAspectsOverview
+      tags:
+        - Aspects
+      responses:
+        "200":
+          description: Aspect overview list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AspectOverview"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/aspects/{key}/fields:
+    get:
+      summary: Get aspect fields
+      description: Returns the field definitions for a specific aspect.
+      operationId: getAspectFields
+      tags:
+        - Aspects
+      parameters:
+        - $ref: "#/components/parameters/AspectKey"
+      responses:
+        "200":
+          description: Aspect fields
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AspectFields"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/aspects/{key}/fields/{field}/completion:
+    get:
+      summary: Get field completion criteria
+      description: Returns the completion criteria for a specific field within an aspect.
+      operationId: getFieldCompletion
+      tags:
+        - Aspects
+      parameters:
+        - $ref: "#/components/parameters/AspectKey"
+        - name: field
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Field name (JSON tag)
+      responses:
+        "200":
+          description: Completion criteria
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompletionCriteriaResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 
   /api/videos:
+    get:
+      summary: List videos by phase
+      description: Returns all videos for a given phase with computed progress data.
+      operationId: getVideos
+      tags:
+        - Videos
+      parameters:
+        - name: phase
+          in: query
+          required: true
+          schema:
+            type: integer
+          description: Phase number (0-7)
+      responses:
+        "200":
+          description: List of enriched videos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/VideoResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
     post:
-      summary: Create a new video
-      description: Creates a new video with the specified name and category
+      summary: Create a video
+      description: Creates a new video with the given name, category, and optional date.
       operationId: createVideo
       tags:
         - Videos
@@ -65,904 +193,1194 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreateVideoRequest'
+              $ref: "#/components/schemas/CreateVideoRequest"
       responses:
-        '201':
-          description: Video created successfully
+        "201":
+          description: Video created
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CreateVideoResponse'
-        '400':
-          description: Invalid request data
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-    get:
-      summary: Get videos by phase
-      description: Retrieves videos in a specific phase, or all videos from all phases if no phase is specified
-      operationId: getVideos
-      tags:
-        - Videos
-      parameters:
-        - name: phase
-          in: query
-          required: false
-          description: The phase ID to filter videos by. If not provided, returns videos from all phases (0-7).
-          schema:
-            type: integer
-            minimum: 0
-            maximum: 7
-            example: 7
-      responses:
-        '200':
-          description: Videos retrieved successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GetVideosResponse'
-        '400':
-          description: Invalid phase parameter
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/VideoResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
 
   /api/videos/phases:
     get:
-      summary: Get video phase statistics
-      description: Returns count of videos in each phase
-      operationId: getVideoPhases
+      summary: List phases with counts
+      description: Returns all lifecycle phases with the number of videos in each.
+      operationId: getPhases
       tags:
         - Videos
       responses:
-        '200':
-          description: Phase statistics retrieved successfully
+        "200":
+          description: Phase list with counts
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/VideoPhasesResponse'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                type: array
+                items:
+                  $ref: "#/components/schemas/PhaseInfo"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
 
   /api/videos/list:
     get:
-      summary: Get lightweight video list by phase
-      description: |
-        Retrieves a lightweight list of videos in a specific phase, or all videos from all phases if no phase is specified.
-        Optimized for list views, returning only essential fields needed for video cards.
-        
-        Performance: ~200 bytes per video vs ~8.8KB for full video objects (97.5% reduction).
+      summary: Lightweight video list
+      description: Returns a lightweight list of videos for a given phase (id, name, category, title, progress).
       operationId: getVideosList
       tags:
         - Videos
       parameters:
         - name: phase
           in: query
-          required: false
-          description: The phase ID to filter videos by. If not provided, returns videos from all phases (0-7).
+          required: true
           schema:
             type: integer
-            minimum: 0
-            maximum: 7
-            example: 0
+          description: Phase number (0-7)
       responses:
-        '200':
-          description: Lightweight video list retrieved successfully
+        "200":
+          description: Lightweight video list
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GetVideosListResponse'
-              example:
-                videos:
-                  - id: "tutorials/awesome-kubernetes-tutorial"
-                    name: "awesome-kubernetes-tutorial"
-                    category: "tutorials"
-                    date: "2025-05-27T10:00"
-                    title: "Kubernetes Tutorial: From Zero to Hero"
-                    thumbnail: "material/k8s-tutorial/thumbnail.jpg"
-                    status: "draft"
-                    phase: 4
-                    progress:
-                      completed: 3
-                      total: 9
-                  - id: "devops/docker-best-practices"
-                    name: "docker-best-practices"
-                    category: "devops"
-                    date: "2025-05-30T14:00"
-                    title: "Docker Best Practices for Production"
-                    thumbnail: "material/docker-bp/thumbnail.jpg"
-                    status: "published"
-                    phase: 0
-                    progress:
-                      completed: 11
-                      total: 11
-        '400':
-          description: Invalid phase parameter
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                type: array
+                items:
+                  $ref: "#/components/schemas/VideoListItem"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
 
   /api/videos/{videoName}:
     get:
-      summary: Get a specific video
-      description: Retrieves detailed information about a specific video
+      summary: Get a video
+      description: Returns a single video by name and category with computed progress.
       operationId: getVideo
       tags:
         - Videos
       parameters:
-        - name: videoName
-          in: path
-          required: true
-          description: The file-based ID of the video (e.g., 'my-video-file-name')
-          schema:
-            type: string
-            example: "my-video"
-        - name: category
-          in: query
-          required: true
-          description: The category of the video
-          schema:
-            type: string
-            example: "category-01"
+        - $ref: "#/components/parameters/VideoName"
+        - $ref: "#/components/parameters/Category"
       responses:
-        '200':
-          description: Video retrieved successfully
+        "200":
+          description: Video details
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GetVideoResponse'
-        '400':
-          description: Missing required parameters
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: Video not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
+                $ref: "#/components/schemas/VideoResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
     put:
       summary: Update a video
-      description: Updates an existing video with new data
+      description: Replaces the full video data. Fields from the request body are merged over the existing video.
       operationId: updateVideo
       tags:
         - Videos
       parameters:
-        - name: videoName
-          in: path
-          required: true
-          description: The file-based ID of the video (e.g., 'my-video-file-name')
-          schema:
-            type: string
-            example: "my-video"
+        - $ref: "#/components/parameters/VideoName"
+        - $ref: "#/components/parameters/Category"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UpdateVideoRequest'
+              type: object
+              description: Partial or full video fields (JSON tags from storage.Video)
       responses:
-        '200':
-          description: Video updated successfully
+        "200":
+          description: Updated video
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GetVideoResponse'
-        '400':
-          description: Invalid request data
+                $ref: "#/components/schemas/VideoResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    patch:
+      summary: Patch a video aspect
+      description: |
+        Applies a partial update to a single aspect of a video. Only fields belonging
+        to the specified aspect are accepted. Returns the full enriched video.
+      operationId: patchVideoAspect
+      tags:
+        - Videos
+      parameters:
+        - $ref: "#/components/parameters/VideoName"
+        - $ref: "#/components/parameters/Category"
+        - name: aspect
+          in: query
+          required: true
+          schema:
+            type: string
+            enum:
+              - initial_details
+              - work_progress
+              - definition
+              - post_production
+              - publishing
+              - post_publish
+              - analysis
+          description: Aspect key to patch
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Field names (JSON tags) and their new values for the specified aspect
+      responses:
+        "200":
+          description: Updated video with optional sync warning
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
+                $ref: "#/components/schemas/VideoResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
     delete:
       summary: Delete a video
-      description: Deletes a video and all associated files
+      description: Permanently deletes a video by name and category.
       operationId: deleteVideo
       tags:
         - Videos
       parameters:
-        - name: videoName
-          in: path
-          required: true
-          description: The file-based ID of the video (e.g., 'my-video-file-name')
-          schema:
-            type: string
-            example: "my-video"
-        - name: category
-          in: query
-          required: true
-          description: The category of the video
-          schema:
-            type: string
-            example: "category-01"
+        - $ref: "#/components/parameters/VideoName"
+        - $ref: "#/components/parameters/Category"
       responses:
-        '204':
-          description: Video deleted successfully
-        '400':
-          description: Missing required parameters
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+        "204":
+          description: Video deleted
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
 
-  /api/videos/{videoName}/move:
-    post:
-      summary: Move a video to a different category
-      description: Moves a video and its files to a different directory/category
-      operationId: moveVideo
+  /api/videos/{videoName}/progress:
+    get:
+      summary: Get video progress
+      description: Returns overall and per-aspect completion progress for a video.
+      operationId: getVideoProgress
       tags:
         - Videos
       parameters:
-        - name: videoName
-          in: path
-          required: true
-          description: The file-based ID of the video (e.g., 'my-video-file-name')
-          schema:
-            type: string
-            example: "my-video"
-        - name: category
-          in: query
-          required: true
-          description: The current category of the video
-          schema:
-            type: string
-            example: "category-01"
+        - $ref: "#/components/parameters/VideoName"
+        - $ref: "#/components/parameters/Category"
+      responses:
+        "200":
+          description: Progress breakdown
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OverallProgressResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/videos/{videoName}/progress/{aspect}:
+    get:
+      summary: Get aspect progress
+      description: Returns completion progress for a single aspect of a video.
+      operationId: getVideoAspectProgress
+      tags:
+        - Videos
+      parameters:
+        - $ref: "#/components/parameters/VideoName"
+        - $ref: "#/components/parameters/Category"
+        - $ref: "#/components/parameters/AspectKeyPath"
+      responses:
+        "200":
+          description: Aspect progress
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AspectProgressInfo"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/videos/{videoName}/manuscript:
+    get:
+      summary: Get video manuscript
+      description: Returns the raw manuscript content for a video.
+      operationId: getVideoManuscript
+      tags:
+        - Videos
+      parameters:
+        - $ref: "#/components/parameters/VideoName"
+        - $ref: "#/components/parameters/Category"
+      responses:
+        "200":
+          description: Manuscript content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ManuscriptResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/videos/{videoName}/animations:
+    get:
+      summary: Get video animations
+      description: Returns animation cues and section headers extracted from the video's gist file.
+      operationId: getVideoAnimations
+      tags:
+        - Videos
+      parameters:
+        - $ref: "#/components/parameters/VideoName"
+        - $ref: "#/components/parameters/Category"
+      responses:
+        "200":
+          description: Animation cues and sections
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnimationsResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/ai/titles/{category}/{name}:
+    post:
+      summary: Generate title suggestions
+      description: Uses AI to generate title suggestions from the video manuscript.
+      operationId: aiTitles
+      tags:
+        - AI
+      parameters:
+        - $ref: "#/components/parameters/CategoryPath"
+        - $ref: "#/components/parameters/NamePath"
+      responses:
+        "200":
+          description: Generated titles
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AITitlesResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/ai/description/{category}/{name}:
+    post:
+      summary: Generate description
+      description: Uses AI to generate a YouTube description from the video manuscript.
+      operationId: aiDescription
+      tags:
+        - AI
+      parameters:
+        - $ref: "#/components/parameters/CategoryPath"
+        - $ref: "#/components/parameters/NamePath"
+      responses:
+        "200":
+          description: Generated description
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AIDescriptionResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/ai/tags/{category}/{name}:
+    post:
+      summary: Generate tags
+      description: Uses AI to generate YouTube tags from the video manuscript.
+      operationId: aiTags
+      tags:
+        - AI
+      parameters:
+        - $ref: "#/components/parameters/CategoryPath"
+        - $ref: "#/components/parameters/NamePath"
+      responses:
+        "200":
+          description: Generated tags
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AITagsResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/ai/tweets/{category}/{name}:
+    post:
+      summary: Generate tweet suggestions
+      description: Uses AI to generate tweet/social post suggestions from the video manuscript.
+      operationId: aiTweets
+      tags:
+        - AI
+      parameters:
+        - $ref: "#/components/parameters/CategoryPath"
+        - $ref: "#/components/parameters/NamePath"
+      responses:
+        "200":
+          description: Generated tweets
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AITweetsResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/ai/description-tags/{category}/{name}:
+    post:
+      summary: Generate description hashtags
+      description: Uses AI to generate hashtag suggestions from the video manuscript.
+      operationId: aiDescriptionTags
+      tags:
+        - AI
+      parameters:
+        - $ref: "#/components/parameters/CategoryPath"
+        - $ref: "#/components/parameters/NamePath"
+      responses:
+        "200":
+          description: Generated hashtags
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AIDescriptionTagsResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/ai/shorts/{category}/{name}:
+    post:
+      summary: Analyze manuscript for Shorts
+      description: Uses AI to identify potential YouTube Shorts segments from the video manuscript.
+      operationId: aiShorts
+      tags:
+        - AI
+      parameters:
+        - $ref: "#/components/parameters/CategoryPath"
+        - $ref: "#/components/parameters/NamePath"
+      responses:
+        "200":
+          description: Short candidates
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AIShortsResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/ai/thumbnails:
+    post:
+      summary: Generate thumbnail variations
+      description: Uses AI to generate variation prompts for a thumbnail image. Accepts either a local file path or a Google Drive file ID.
+      operationId: aiThumbnails
+      tags:
+        - AI
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/MoveVideoRequest'
+              $ref: "#/components/schemas/AIThumbnailsRequest"
       responses:
-        '200':
-          description: Video moved successfully
+        "200":
+          description: Thumbnail variation prompts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AIThumbnailsResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/ai/translate:
+    post:
+      summary: Translate video metadata
+      description: Uses AI to translate title, description, tags, timecodes, and short titles to a target language.
+      operationId: aiTranslate
+      tags:
+        - AI
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AITranslateRequest"
+      responses:
+        "200":
+          description: Translated metadata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AITranslateResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/ai/ama/content:
+    post:
+      summary: Generate all AMA content
+      description: Uses AI to generate title, timecodes, description, and tags for an AMA video from its manuscript.
+      operationId: aiAMAContent
+      tags:
+        - AI
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AIAMARequest"
+      responses:
+        "200":
+          description: Generated AMA content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AIAMAContentResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/ai/ama/title:
+    post:
+      summary: Generate AMA title
+      description: Uses AI to generate a title for an AMA video from its manuscript.
+      operationId: aiAMATitle
+      tags:
+        - AI
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AIAMARequest"
+      responses:
+        "200":
+          description: Generated title
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AIAMATitleResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/ai/ama/description:
+    post:
+      summary: Generate AMA description
+      description: Uses AI to generate a description for an AMA video from its manuscript.
+      operationId: aiAMADescription
+      tags:
+        - AI
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AIAMARequest"
+      responses:
+        "200":
+          description: Generated description
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AIAMADescriptionResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/ai/ama/timecodes:
+    post:
+      summary: Generate AMA timecodes
+      description: Uses AI to generate timecodes for an AMA video from its manuscript.
+      operationId: aiAMATimecodes
+      tags:
+        - AI
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AIAMARequest"
+      responses:
+        "200":
+          description: Generated timecodes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AIAMATimecodesResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/drive/upload/thumbnail/{videoName}:
+    post:
+      summary: Upload thumbnail to Google Drive
+      description: |
+        Uploads a thumbnail image to Google Drive and updates the video's thumbnail variant
+        with the Drive file ID. Creates a per-video subfolder if a root folder is configured.
+      operationId: driveUploadThumbnail
+      tags:
+        - Drive
+      parameters:
+        - $ref: "#/components/parameters/VideoName"
+        - $ref: "#/components/parameters/Category"
+        - name: variantIndex
+          in: query
+          required: true
+          schema:
+            type: integer
+          description: Index of the thumbnail variant to update
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - thumbnail
+              properties:
+                thumbnail:
+                  type: string
+                  format: binary
+                  description: Thumbnail image file
+      responses:
+        "200":
+          description: Upload successful
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  message:
+                  driveFileId:
                     type: string
-                    example: "Video moved successfully"
-        '400':
-          description: Invalid request data
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                  variantIndex:
+                    type: integer
+                  syncWarning:
+                    type: string
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "501":
+          $ref: "#/components/responses/NotImplemented"
 
-  /api/videos/{videoName}/initial-details:
-    put:
-      summary: Update video initial details phase
-      description: Updates video fields specific to the initial details phase
-      operationId: updateVideoInitialDetails
-      tags:
-        - Video Phases
-      parameters:
-        - name: videoName
-          in: path
-          required: true
-          description: The file-based ID of the video (e.g., 'my-video-file-name')
-          schema:
-            type: string
-            example: "my-video"
-        - name: category
-          in: query
-          required: true
-          description: The category of the video
-          schema:
-            type: string
-            example: "category-01"
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PhaseUpdateRequest'
-      responses:
-        '200':
-          description: Video initial details updated successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GetVideoResponse'
-        '400':
-          description: Invalid request data
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-  /api/videos/{videoName}/work-progress:
-    put:
-      summary: Update video work progress phase
-      description: Updates video fields specific to the work progress phase
-      operationId: updateVideoWorkProgress
-      tags:
-        - Video Phases
-      parameters:
-        - name: videoName
-          in: path
-          required: true
-          description: The file-based ID of the video (e.g., 'my-video-file-name')
-          schema:
-            type: string
-            example: "my-video"
-        - name: category
-          in: query
-          required: true
-          description: The category of the video
-          schema:
-            type: string
-            example: "category-01"
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PhaseUpdateRequest'
-      responses:
-        '200':
-          description: Video work progress updated successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GetVideoResponse'
-        '400':
-          description: Invalid request data
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-  /api/videos/{videoName}/definition:
-    put:
-      summary: Update video definition phase
-      description: Updates video fields specific to the definition phase
-      operationId: updateVideoDefinition
-      tags:
-        - Video Phases
-      parameters:
-        - name: videoName
-          in: path
-          required: true
-          description: The file-based ID of the video (e.g., 'my-video-file-name')
-          schema:
-            type: string
-            example: "my-video"
-        - name: category
-          in: query
-          required: true
-          description: The category of the video
-          schema:
-            type: string
-            example: "category-01"
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PhaseUpdateRequest'
-      responses:
-        '200':
-          description: Video definition updated successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GetVideoResponse'
-        '400':
-          description: Invalid request data
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-  /api/videos/{videoName}/post-production:
-    put:
-      summary: Update video post-production phase
-      description: Updates video fields specific to the post-production phase
-      operationId: updateVideoPostProduction
-      tags:
-        - Video Phases
-      parameters:
-        - name: videoName
-          in: path
-          required: true
-          description: The file-based ID of the video (e.g., 'my-video-file-name')
-          schema:
-            type: string
-            example: "my-video"
-        - name: category
-          in: query
-          required: true
-          description: The category of the video
-          schema:
-            type: string
-            example: "category-01"
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PhaseUpdateRequest'
-      responses:
-        '200':
-          description: Video post-production updated successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GetVideoResponse'
-        '400':
-          description: Invalid request data
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-  /api/videos/{videoName}/publishing:
-    put:
-      summary: Update video publishing phase
-      description: Updates video fields specific to the publishing phase
-      operationId: updateVideoPublishing
-      tags:
-        - Video Phases
-      parameters:
-        - name: videoName
-          in: path
-          required: true
-          description: The file-based ID of the video (e.g., 'my-video-file-name')
-          schema:
-            type: string
-            example: "my-video"
-        - name: category
-          in: query
-          required: true
-          description: The category of the video
-          schema:
-            type: string
-            example: "category-01"
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PhaseUpdateRequest'
-      responses:
-        '200':
-          description: Video publishing updated successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GetVideoResponse'
-        '400':
-          description: Invalid request data
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-  /api/videos/{videoName}/post-publish:
-    put:
-      summary: Update video post-publish phase
-      description: Updates video fields specific to the post-publish phase
-      operationId: updateVideoPostPublish
-      tags:
-        - Video Phases
-      parameters:
-        - name: videoName
-          in: path
-          required: true
-          description: The file-based ID of the video (e.g., 'my-video-file-name')
-          schema:
-            type: string
-            example: "my-video"
-        - name: category
-          in: query
-          required: true
-          description: The category of the video
-          schema:
-            type: string
-            example: "category-01"
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PhaseUpdateRequest'
-      responses:
-        '200':
-          description: Video post-publish updated successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GetVideoResponse'
-        '400':
-          description: Invalid request data
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-  /api/categories:
-    get:
-      summary: Get all categories
-      description: Retrieves list of all available video categories
-      operationId: getCategories
-      tags:
-        - Categories
-      responses:
-        '200':
-          description: Categories retrieved successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CategoriesResponse'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-  /api/animations/{videoName}:
-    get:
-      summary: Get animations from video manuscript
+  /api/drive/upload/video/{videoName}:
+    post:
+      summary: Upload video to Google Drive
       description: |
-        Extracts animation cues and instructions from a video's manuscript file.
-        This endpoint parses the manuscript content to identify animation requirements,
-        sections, and visual cues for video production.
-        
-        **Features:**
-        - Manuscript parsing using existing filesystem operations (same as CLI)
-        - No AI processing - direct file parsing for fast response
-        - Section detection and animation extraction
-        - Comprehensive error handling for all failure scenarios
-        
-        **Performance:** Fast response times using direct file parsing without AI overhead.
-      operationId: getAnimations
+        Uploads a video file to Google Drive and updates the video's VideoFile and VideoDriveFileID fields.
+        Creates a per-video subfolder if a root folder is configured.
+      operationId: driveUploadVideo
       tags:
-        - Animations
+        - Drive
       parameters:
-        - name: videoName
+        - $ref: "#/components/parameters/VideoName"
+        - $ref: "#/components/parameters/Category"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - video
+              properties:
+                video:
+                  type: string
+                  format: binary
+                  description: Video file
+      responses:
+        "200":
+          description: Upload successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  driveFileId:
+                    type: string
+                  videoFile:
+                    type: string
+                    example: "drive://abc123"
+                  syncWarning:
+                    type: string
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "501":
+          $ref: "#/components/responses/NotImplemented"
+
+  /api/drive/download/video/{videoName}:
+    get:
+      summary: Download video from Google Drive
+      description: Streams the video file from Google Drive. Returns the binary file with appropriate Content-Type and Content-Disposition headers.
+      operationId: driveDownloadVideo
+      tags:
+        - Drive
+      parameters:
+        - $ref: "#/components/parameters/VideoName"
+        - $ref: "#/components/parameters/Category"
+      responses:
+        "200":
+          description: Video file stream
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "501":
+          $ref: "#/components/responses/NotImplemented"
+
+  /api/actions/request-thumbnail/{videoName}:
+    post:
+      summary: Request thumbnail creation
+      description: |
+        Sets the RequestThumbnail flag on the video and optionally sends an email
+        to the thumbnail creator. Returns immediately if already requested.
+      operationId: requestThumbnail
+      tags:
+        - Actions
+      parameters:
+        - $ref: "#/components/parameters/VideoName"
+        - $ref: "#/components/parameters/Category"
+      responses:
+        "200":
+          description: Action result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActionResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/actions/request-edit/{videoName}:
+    post:
+      summary: Request video editing
+      description: |
+        Sets the RequestEdit flag on the video and optionally sends an email
+        to the video editor. Returns immediately if already requested.
+      operationId: requestEdit
+      tags:
+        - Actions
+      parameters:
+        - $ref: "#/components/parameters/VideoName"
+        - $ref: "#/components/parameters/Category"
+      responses:
+        "200":
+          description: Action result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActionResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/publish/youtube/{videoName}:
+    post:
+      summary: Upload video to YouTube
+      description: |
+        Uploads the video file and thumbnail to YouTube. Supports both local files
+        and Google Drive-hosted files (downloads to temp, uploads, cleans up).
+      operationId: publishYouTube
+      tags:
+        - Publishing
+      parameters:
+        - $ref: "#/components/parameters/VideoName"
+        - $ref: "#/components/parameters/Category"
+      responses:
+        "200":
+          description: Upload successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublishYouTubeResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "501":
+          $ref: "#/components/responses/NotImplemented"
+
+  /api/publish/youtube/{videoName}/thumbnail:
+    post:
+      summary: Re-upload thumbnail to YouTube
+      description: Re-uploads a thumbnail for an existing YouTube video.
+      operationId: publishThumbnail
+      tags:
+        - Publishing
+      parameters:
+        - $ref: "#/components/parameters/VideoName"
+        - $ref: "#/components/parameters/Category"
+      responses:
+        "200":
+          description: Thumbnail uploaded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublishThumbnailResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "501":
+          $ref: "#/components/responses/NotImplemented"
+
+  /api/publish/youtube/{videoName}/shorts/{shortId}:
+    post:
+      summary: Upload a Short to YouTube
+      description: Uploads a YouTube Short for the given video and short ID.
+      operationId: publishShort
+      tags:
+        - Publishing
+      parameters:
+        - $ref: "#/components/parameters/VideoName"
+        - $ref: "#/components/parameters/Category"
+        - name: shortId
           in: path
           required: true
-          description: The name of the video file (without extension)
           schema:
             type: string
-            example: "kubernetes-tutorial"
-        - name: category
-          in: query
-          required: true
-          description: The category/directory containing the video
-          schema:
-            type: string
-            example: "tutorials"
+          description: Short identifier
       responses:
-        '200':
-          description: Animations extracted successfully
+        "200":
+          description: Short uploaded
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AnimationsResponse'
-              examples:
-                with_animations:
-                  summary: Video with animation cues
-                  description: Successful response when manuscript contains animation instructions
-                  value:
-                    animations:
-                      - "Add animation for concept explanation"
-                      - "Show diagram of system architecture"
-                      - "Highlight code changes in the editor"
-                      - "Zoom into terminal commands"
-                empty_animations:
-                  summary: Video without animations
-                  description: Successful response when no animations are found in manuscript
-                  value:
-                    animations: []
-        '400':
-          description: Bad request - invalid parameters
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-              examples:
-                missing_video_name:
-                  summary: Missing video name
-                  value:
-                    error: "videoName is required"
-                missing_category:
-                  summary: Missing category parameter
-                  value:
-                    error: "category query parameter is required"
-                manuscript_not_configured:
-                  summary: Video manuscript not configured
-                  value:
-                    error: "Video manuscript not configured"
-        '404':
-          description: Video not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-              examples:
-                video_not_found:
-                  summary: Video does not exist
-                  value:
-                    error: "Video not found"
-        '500':
-          description: Internal server error - processing failed
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-              examples:
-                processing_error:
-                  summary: Failed to process animations
-                  value:
-                    error: "Failed to process animations"
+                $ref: "#/components/schemas/PublishShortResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "501":
+          $ref: "#/components/responses/NotImplemented"
 
-  /api/editing/aspects:
-    get:
-      summary: Get editing aspects overview
-      description: |
-        Returns a lightweight overview of all available editing aspects without field details.
-        This endpoint provides metadata about editing phases (initial-details, work-progress, 
-        definition, post-production, publishing, post-publish) for UI navigation and overview.
-        
-        Each aspect includes:
-        - Basic metadata (key, title, description)
-        - UI configuration (icon, order, endpoint)
-        - Field count for the aspect
-        - Completion count (when video context is provided)
-        
-        **Progress Tracking**: When both `videoName` and `category` query parameters are provided,
-        the response includes `completedFieldCount` showing how many fields have been filled
-        for each aspect. This enables UI progress indicators like "6/8 fields completed".
-        
-        Performance: ~500 bytes response vs ~15KB for full field details (97% reduction).
-      operationId: getEditingAspects
+  /api/publish/hugo/{videoName}:
+    post:
+      summary: Create Hugo blog post
+      description: Creates a Hugo blog post for the video. Supports both local filesystem and remote Git PR workflow.
+      operationId: publishHugo
       tags:
-        - Editing
+        - Publishing
       parameters:
-        - name: videoName
-          in: query
-          required: false
-          description: |
-            Optional video name for progress tracking. When provided with category,
-            enables completion count calculation for each aspect.
-          schema:
-            type: string
-            example: "kubernetes-tutorial"
-        - name: category
-          in: query
-          required: false
-          description: |
-            Optional video category for progress tracking. When provided with videoName,
-            enables completion count calculation for each aspect.
-          schema:
-            type: string
-            example: "tutorials"
+        - $ref: "#/components/parameters/VideoName"
+        - $ref: "#/components/parameters/Category"
       responses:
-        '200':
-          description: Editing aspects overview retrieved successfully
+        "200":
+          description: Hugo post created
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AspectOverviewResponse'
-              examples:
-                without_video_context:
-                  summary: Basic overview without video context
-                  description: Standard response when no video context is provided
-                  value:
-                    aspects:
-                      - key: "initial-details"
-                        title: "Initial Details"
-                        description: "Basic video information and setup"
-                        endpoint: "/api/videos/{videoName}/initial-details"
-                        icon: "info"
-                        order: 1
-                        fieldCount: 8
-                        completedFieldCount: 0
-                      - key: "work-progress"
-                        title: "Work Progress"
-                        description: "Video creation and production tracking"
-                        endpoint: "/api/videos/{videoName}/work-progress"
-                        icon: "work"
-                        order: 2
-                        fieldCount: 11
-                        completedFieldCount: 0
-                with_video_context:
-                  summary: Progress tracking with video context
-                  description: Enhanced response showing actual completion counts when video context is provided
-                  value:
-                    aspects:
-                      - key: "initial-details"
-                        title: "Initial Details"
-                        description: "Basic video information and setup"
-                        endpoint: "/api/videos/{videoName}/initial-details"
-                        icon: "info"
-                        order: 1
-                        fieldCount: 8
-                        completedFieldCount: 6
-                      - key: "work-progress"
-                        title: "Work Progress"
-                        description: "Video creation and production tracking"
-                        endpoint: "/api/videos/{videoName}/work-progress"
-                        icon: "work"
-                        order: 2
-                        fieldCount: 11
-                        completedFieldCount: 8
-        '400':
-          description: Invalid query parameters
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-              examples:
-                missing_category:
-                  summary: Missing category when videoName provided
-                  value:
-                    error: "When videoName is provided, category is also required"
-                video_not_found:
-                  summary: Specified video not found
-                  value:
-                    error: "Video not found"
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/PublishHugoResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "501":
+          $ref: "#/components/responses/NotImplemented"
 
-  /api/editing/aspects/{aspectKey}/fields:
+  /api/publish/transcript/{videoId}:
     get:
-      summary: Get detailed field information for a specific aspect
-      description: |
-        Returns comprehensive field metadata for a specific editing aspect, including:
-        
-        - Field definitions with types and validation rules
-        - UI rendering hints (input types, placeholders, help text)
-        - Validation constraints (required, length limits, patterns)
-        - Default values and options for select fields
-        
-        This endpoint is optimized for frontend forms and UI generation, providing
-        all necessary metadata to render and validate editing interfaces.
-      operationId: getAspectFields
+      summary: Get YouTube transcript
+      description: Fetches the captions/transcript for a YouTube video.
+      operationId: getTranscript
       tags:
-        - Editing
+        - Publishing
       parameters:
-        - name: aspectKey
+        - name: videoId
           in: path
           required: true
-          description: |
-            The unique key identifying the editing aspect. Must be one of:
-            - initial-details
-            - work-progress  
-            - definition
-            - post-production
-            - publishing
-            - post-publish
           schema:
             type: string
-            enum: ["initial-details", "work-progress", "definition", "post-production", "publishing", "post-publish"]
-            example: "work-progress"
+          description: YouTube video ID
       responses:
-        '200':
-          description: Aspect fields retrieved successfully
+        "200":
+          description: Transcript text
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AspectFieldsResponse'
-              example:
-                aspectKey: "work-progress"
-                aspectTitle: "Work Progress"
-                fields:
-                  - name: "Title"
-                    type: "string"
-                    required: true
-                    order: 1
-                    description: "The title of the video"
-                    completionCriteria: "filled_only"
-                    uiHints:
-                      inputType: "text"
-                      placeholder: "Enter video title"
-                      helpText: "The main title that will appear on YouTube"
-                      charLimit: 100
-                      multiline: false
-                    validationHints:
-                      required: true
-                      maxLength: 100
-                    defaultValue: ""
-                  - name: "Description"  
-                    type: "text"
-                    required: true
-                    order: 2
-                    description: "The description of the video"
-                    completionCriteria: "filled_required"
-                    uiHints:
-                      inputType: "textarea"
-                      placeholder: "Enter video description"
-                      helpText: "Detailed description for YouTube"
-                      rows: 5
-                      charLimit: 5000
-                      multiline: true
-                    validationHints:
-                      required: true
-                      maxLength: 5000
-                    defaultValue: ""
-        '400':
-          description: Invalid aspect key
+                $ref: "#/components/schemas/TranscriptResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "501":
+          $ref: "#/components/responses/NotImplemented"
+
+  /api/publish/metadata/{videoId}:
+    get:
+      summary: Get YouTube metadata
+      description: Fetches the title, description, tags, and publish date for a YouTube video.
+      operationId: getMetadata
+      tags:
+        - Publishing
+      parameters:
+        - name: videoId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: YouTube video ID
+      responses:
+        "200":
+          description: Video metadata
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-              example:
-                error: "aspect key is required"
-        '404':
-          description: Aspect not found
+                $ref: "#/components/schemas/MetadataResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "501":
+          $ref: "#/components/responses/NotImplemented"
+
+  /api/social/{platform}/{videoName}:
+    post:
+      summary: Post to social media
+      description: |
+        Posts or prepares a social media post for the given platform.
+        Supported platforms: bluesky (auto-posts), slack (auto-posts),
+        linkedin (returns text for copy-paste), hackernews (returns text),
+        dot (returns text).
+      operationId: socialPost
+      tags:
+        - Social
+      parameters:
+        - name: platform
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [bluesky, slack, linkedin, hackernews, dot]
+          description: Social media platform
+        - $ref: "#/components/parameters/VideoName"
+        - $ref: "#/components/parameters/Category"
+      responses:
+        "200":
+          description: Post result
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-              example:
-                error: "aspect not found"
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/SocialPostResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "501":
+          $ref: "#/components/responses/NotImplemented"
 
 components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: |
+        Bearer token authentication. Set the API_TOKEN environment variable on the server.
+        If API_TOKEN is empty, authentication is disabled. The /health endpoint is always public.
+
+  parameters:
+    VideoName:
+      name: videoName
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Video name (filename without extension)
+    Category:
+      name: category
+      in: query
+      required: true
+      schema:
+        type: string
+      description: Video category
+    AspectKey:
+      name: key
+      in: path
+      required: true
+      schema:
+        type: string
+        enum:
+          - initial_details
+          - work_progress
+          - definition
+          - post_production
+          - publishing
+          - post_publish
+          - analysis
+      description: Aspect key
+    AspectKeyPath:
+      name: aspect
+      in: path
+      required: true
+      schema:
+        type: string
+        enum:
+          - initial_details
+          - work_progress
+          - definition
+          - post_production
+          - publishing
+          - post_publish
+          - analysis
+      description: Aspect key
+    CategoryPath:
+      name: category
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Video category
+    NamePath:
+      name: name
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Video name
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Unauthorized:
+      description: Unauthorized - missing or invalid bearer token
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotImplemented:
+      description: Feature not configured (e.g., Google Drive or publishing service not set up)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
   schemas:
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: Error message
+        detail:
+          type: string
+          description: Additional error details
+
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "ok"
+        time:
+          type: string
+          format: date-time
+
+    ProgressInfo:
+      type: object
+      properties:
+        completed:
+          type: integer
+        total:
+          type: integer
+
+    VideoResponse:
+      type: object
+      description: Full video data with computed phase and per-aspect progress
+      properties:
+        id:
+          type: string
+          description: "Composite ID: category/name"
+          example: "devops/my-video"
+        phase:
+          type: integer
+          description: Computed lifecycle phase (0-7)
+        init:
+          $ref: "#/components/schemas/ProgressInfo"
+        work:
+          $ref: "#/components/schemas/ProgressInfo"
+        define:
+          $ref: "#/components/schemas/ProgressInfo"
+        edit:
+          $ref: "#/components/schemas/ProgressInfo"
+        publish:
+          $ref: "#/components/schemas/ProgressInfo"
+        postPublish:
+          $ref: "#/components/schemas/ProgressInfo"
+        syncWarning:
+          type: string
+          description: Warning message if git sync failed or is not configured
+      additionalProperties: true
+
+    VideoListItem:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        category:
+          type: string
+        date:
+          type: string
+        title:
+          type: string
+        phase:
+          type: integer
+        progress:
+          $ref: "#/components/schemas/ProgressInfo"
+
     CreateVideoRequest:
       type: object
       required:
@@ -971,861 +1389,51 @@ components:
       properties:
         name:
           type: string
-          description: The name of the video
-          example: "my-awesome-video"
+          description: Video name (used as filename)
         category:
           type: string
-          description: The category/directory for the video
-          example: "category-01"
-
-    CreateVideoResponse:
-      type: object
-      properties:
-        video:
-          $ref: '#/components/schemas/VideoIndex'
-
-    VideoIndex:
-      type: object
-      properties:
-        name:
+          description: Video category
+        date:
           type: string
-          description: The name of the video
-          example: "my-awesome-video"
-        category:
-          type: string
-          description: The category of the video
-          example: "category-01"
-
-    VideoPhasesResponse:
-      type: object
-      properties:
-        phases:
-          type: array
-          items:
-            $ref: '#/components/schemas/PhaseInfo'
+          description: Optional publish date (YYYY-MM-DD)
 
     PhaseInfo:
       type: object
       properties:
         id:
           type: integer
-          description: Phase ID (0-7)
-          example: 7
         name:
           type: string
-          description: Human-readable phase name
-          example: "Ideas"
         count:
           type: integer
-          description: Number of videos in this phase
-          example: 5
 
-    GetVideosResponse:
-      type: object
-      properties:
-        videos:
-          type: array
-          items:
-            $ref: '#/components/schemas/Video'
-
-    GetVideoResponse:
-      type: object
-      properties:
-        video:
-          $ref: '#/components/schemas/Video'
-
-    UpdateVideoRequest:
-      type: object
-      required:
-        - video
-      properties:
-        video:
-          $ref: '#/components/schemas/Video'
-
-    MoveVideoRequest:
-      type: object
-      required:
-        - target_directory_path
-      properties:
-        target_directory_path:
-          type: string
-          description: The target directory path to move the video to
-          example: "manuscript/category-02"
-
-    PhaseUpdateRequest:
-      type: object
-      description: Dynamic object containing phase-specific field updates
-      additionalProperties: true
-      example:
-        title: "Updated Video Title"
-        description: "Updated video description"
-        date: "2025-05-27T10:00"
-
-    CategoriesResponse:
-      type: object
-      properties:
-        categories:
-          type: array
-          items:
-            $ref: '#/components/schemas/CategoryInfo'
-
-    CategoryInfo:
-      type: object
-      properties:
-        name:
-          type: string
-          description: The name of the category
-          example: "category-01"
-        path:
-          type: string
-          description: The file system path of the category
-          example: "manuscript/category-01"
-
-    Video:
-      type: object
-      properties:
-        id:
-          type: string
-          description: The unique string-based identifier for the video (category/name format)
-          example: "category-01/my-awesome-video"
-        name:
-          type: string
-          description: The canonical display name of the video, read from the file
-          example: "My Awesome Video"
-        index:
-          type: integer
-          description: The index number of the video
-        path:
-          type: string
-          description: The file system path to the video
-          example: "manuscript/category-01/my-awesome-video.yaml"
-        category:
-          type: string
-          description: The category of the video
-          example: "category-01"
-        init:
-          $ref: '#/components/schemas/Tasks'
-        work:
-          $ref: '#/components/schemas/Tasks'
-        define:
-          $ref: '#/components/schemas/Tasks'
-        edit:
-          $ref: '#/components/schemas/Tasks'
-        publish:
-          $ref: '#/components/schemas/Tasks'
-        postPublish:
-          $ref: '#/components/schemas/Tasks'
-        projectName:
-          type: string
-          description: The name of the project
-          example: "My Project"
-        projectURL:
-          type: string
-          description: The URL of the project
-          example: "https://github.com/user/project"
-        sponsorship:
-          $ref: '#/components/schemas/Sponsorship'
-        date:
-          type: string
-          description: The scheduled date for the video
-          example: "2025-05-27T10:00"
-        delayed:
-          type: boolean
-          description: Whether the video is delayed
-          example: false
-        screen:
-          type: boolean
-          description: Whether screen recording is needed
-          example: true
-        head:
-          type: boolean
-          description: Whether head recording is needed
-          example: false
-        thumbnails:
-          type: boolean
-          description: Whether thumbnails are needed
-          example: true
-        diagrams:
-          type: boolean
-          description: Whether diagrams are needed
-          example: false
-        title:
-          type: string
-          description: The title of the video
-          example: "How to Build Awesome Software"
-        description:
-          type: string
-          description: The description of the video
-          example: "In this video, we'll explore..."
-        tags:
-          type: string
-          description: Tags for the video
-          example: "programming,tutorial,beginner"
-        descriptionTags:
-          type: string
-          description: Tags used in the description
-        location:
-          type: string
-          description: The recording location
-        tagline:
-          type: string
-          description: The tagline for the video
-        taglineIdeas:
-          type: string
-          description: Ideas for taglines
-        otherLogos:
-          type: string
-          description: Other logos to include
-        screenshots:
-          type: boolean
-          description: Whether screenshots are needed
-          example: false
-        requestThumbnail:
-          type: boolean
-          description: Whether a thumbnail is requested
-          example: false
-        thumbnail:
-          type: string
-          description: The thumbnail image
-        language:
-          type: string
-          description: The language of the video
-          example: "en"
-        members:
-          type: string
-          description: Team members involved
-        animations:
-          type: string
-          description: Animations needed
-        requestEdit:
-          type: boolean
-          description: Whether editing is requested
-          example: false
-        movie:
-          type: boolean
-          description: Whether this is a movie format
-          example: false
-        timecodes:
-          type: string
-          description: Video timecodes
-        hugoPath:
-          type: string
-          description: Hugo site path
-        relatedVideos:
-          type: string
-          description: Related videos
-        uploadVideo:
-          type: string
-          description: Upload video path
-        videoId:
-          type: string
-          description: YouTube video ID
-        tweet:
-          type: string
-          description: Tweet content
-        linkedInPosted:
-          type: boolean
-          description: Whether posted to LinkedIn
-          example: false
-        slackPosted:
-          type: boolean
-          description: Whether posted to Slack
-          example: false
-        hnPosted:
-          type: boolean
-          description: Whether posted to Hacker News
-          example: false
-        dotPosted:
-          type: boolean
-          description: Whether posted to DevOpsToolkit
-          example: false
-        blueSkyPosted:
-          type: boolean
-          description: Whether posted to BlueSky
-          example: false
-        youTubeHighlight:
-          type: boolean
-          description: Whether highlighted on YouTube
-          example: false
-        youTubeComment:
-          type: boolean
-          description: Whether commented on YouTube
-          example: false
-        youTubeCommentReply:
-          type: boolean
-          description: Whether replied to YouTube comments
-          example: false
-        slides:
-          type: boolean
-          description: Whether slides are needed
-          example: false
-        gde:
-          type: boolean
-          description: Whether this is a GDE video
-          example: false
-        repo:
-          type: string
-          description: Repository URL
-        notifiedSponsors:
-          type: boolean
-          description: Whether sponsors have been notified
-          example: false
-        appliedLanguage:
-          type: string
-          description: Applied language setting
-        appliedAudioLanguage:
-          type: string
-          description: Applied audio language setting
-        audioLanguage:
-          type: string
-          description: Audio language
-        gist:
-          type: string
-          description: Gist URL or content
-        code:
-          type: boolean
-          description: Whether code is included
-          example: false
-
-    Tasks:
-      type: object
-      description: Task completion tracking for a video phase
-      properties:
-        completed:
-          type: integer
-          description: Number of completed tasks
-          example: 3
-        total:
-          type: integer
-          description: Total number of tasks
-          example: 5
-
-    Sponsorship:
-      type: object
-      description: Sponsorship information for the video
-      properties:
-        amount:
-          type: string
-          description: Sponsorship amount
-          example: "$1000"
-        emails:
-          type: string
-          description: Sponsor contact emails
-          example: "sponsor@company.com"
-        blocked:
-          type: string
-          description: Blocked sponsors
-          example: "competitor-company"
-
-    ErrorResponse:
-      type: object
-      properties:
-        error:
-          type: string
-          description: Error message
-          example: "Invalid request"
-        message:
-          type: string
-          description: Detailed error message
-          example: "The name parameter is required but was not provided"
-
-    GetVideosListResponse:
-      type: object
-      properties:
-        videos:
-          type: array
-          items:
-            $ref: '#/components/schemas/VideoListItem'
-
-    VideoListItem:
-      type: object
-      properties:
-        id:
-          type: string
-          description: The unique string-based identifier for the video (category/name format)
-          example: "tutorials/my-awesome-video"
-        name:
-          type: string
-          description: The name of the video
-          example: "my-awesome-video"
-        category:
-          type: string
-          description: The category of the video
-          example: "category-01"
-        date:
-          type: string
-          description: The scheduled date for the video
-          example: "2025-05-27T10:00"
-        title:
-          type: string
-          description: The title of the video
-          example: "Top 10 DevOps Tools You MUST Use in 2025!"
-        thumbnail:
-          type: string
-          description: The thumbnail image path
-          example: "material/top-2025/thumbnail-01.jpg"
-        status:
-          type: string
-          description: The current status of the video
-          enum: ["published", "draft"]
-          example: "published"
-        phase:
-          type: integer
-          description: The workflow phase of the video (0-7)
-          minimum: 0
-          maximum: 7
-          example: 0
-        progress:
-          type: object
-          description: Video completion progress
-          properties:
-            completed:
-              type: integer
-              description: Number of completed publish tasks
-              example: 10
-            total:
-              type: integer
-              description: Total number of publish tasks
-              example: 11
-      required:
-        - id
-        - name
-        - category
-        - title
-        - status
-        - phase
-        - progress
-      description: |
-        Lightweight video object optimized for list views. Contains only essential fields
-        needed for video cards, resulting in ~200 bytes per video compared to ~8.8KB
-        for full video objects (97.5% size reduction).
-        
-        The phase field indicates the current workflow stage:
-        - Phase 0: Published
-        - Phase 1: Publish Pending  
-        - Phase 2: Edit Requested
-        - Phase 3: Material Done
-        - Phase 4: Started
-        - Phase 5: Delayed
-        - Phase 6: Sponsored Blocked
-        - Phase 7: Ideas
-
-    AspectOverviewResponse:
-      type: object
-      properties:
-        aspects:
-          type: array
-          items:
-            $ref: '#/components/schemas/AspectSummary'
-      description: |
-        Response containing a lightweight overview of all editing aspects.
-        Optimized for navigation and overview purposes.
-
-    AspectFieldsResponse:
+    AspectProgressInfo:
       type: object
       properties:
         aspectKey:
           type: string
-          description: The unique key of the aspect
-          example: "work-progress"
-        aspectTitle:
-          type: string
-          description: The human-readable title of the aspect
-          example: "Work Progress"
-        fields:
-          type: array
-          items:
-            $ref: '#/components/schemas/AspectField'
-      required:
-        - aspectKey
-        - aspectTitle
-        - fields
-      description: |
-        Response containing detailed field information for a specific editing aspect.
-        Includes all metadata needed for frontend form generation and validation.
-
-    AspectSummary:
-      type: object
-      properties:
-        key:
-          type: string
-          description: Unique identifier for the aspect
-          example: "work-progress"
         title:
           type: string
-          description: Human-readable title
-          example: "Work Progress"
-        description:
-          type: string
-          description: Brief description of the aspect's purpose
-          example: "Video creation and production tracking"
-        endpoint:
-          type: string
-          description: API endpoint for updating this aspect
-          example: "/api/videos/{videoName}/work-progress"
-        icon:
-          type: string
-          description: Icon identifier for UI display
-          example: "work"
-        order:
+        completed:
           type: integer
-          description: Sort order for UI display
-          example: 2
-        fieldCount:
+        total:
           type: integer
-          description: Number of fields in this aspect
-          example: 11
-        completedFieldCount:
-          type: integer
-          description: |
-            Number of completed fields in this aspect. When video context is not provided,
-            this will be 0. When video context is provided via query parameters, this
-            shows the actual count of completed fields based on the video's current state.
-          example: 8
-      required:
-        - key
-        - title
-        - description
-        - endpoint
-        - icon
-        - order
-        - fieldCount
-        - completedFieldCount
 
-    # AI Content Generation Schemas
-    AIRequest:
-      type: object
-      required:
-        - manuscript
-      properties:
-        manuscript:
-          type: string
-          description: |
-            The video manuscript content to analyze for AI content generation.
-            Can be any length from a few sentences to full video scripts.
-          example: "In this tutorial, we'll explore advanced Kubernetes deployment strategies including blue-green deployments, canary releases, and rolling updates. We'll cover best practices for production environments and demonstrate how to implement these patterns using kubectl and Helm."
-          minLength: 1
-          maxLength: 500000
-      description: Request payload for all AI content generation endpoints
-
-    AITitlesResponse:
+    OverallProgressResponse:
       type: object
       properties:
-        titles:
+        overall:
+          $ref: "#/components/schemas/ProgressInfo"
+        aspects:
           type: array
           items:
-            type: string
-          description: Array of 5 AI-generated video titles optimized for YouTube
-          example:
-            - "Advanced Kubernetes Deployment Strategies: Blue-Green, Canary & Rolling Updates"
-            - "Master Production Kubernetes: Deployment Patterns That Actually Work"
-            - "Kubernetes Deployment Strategies Explained: From Zero to Production Hero"
-            - "The Complete Guide to Kubernetes Deployment Patterns in 2024"
-            - "Production-Ready Kubernetes: Advanced Deployment Techniques"
-          minItems: 5
-          maxItems: 5
-      required:
-        - titles
-      description: Response containing AI-generated video titles
+            $ref: "#/components/schemas/AspectProgressInfo"
 
-    AIDescriptionResponse:
+    ManuscriptResponse:
       type: object
       properties:
-        description:
+        content:
           type: string
-          description: AI-generated comprehensive video description optimized for YouTube SEO
-          example: "🚀 Ready to master advanced Kubernetes deployment strategies? In this comprehensive tutorial, we dive deep into production-ready deployment patterns that every DevOps engineer should know.\n\n📋 What You'll Learn:\n• Blue-green deployment implementation\n• Canary release strategies\n• Rolling update best practices\n• Production environment considerations\n• kubectl and Helm integration\n\n⚡ Perfect for intermediate to advanced Kubernetes users looking to level up their deployment game!\n\n🔗 Resources mentioned in this video:\n• Kubernetes documentation\n• Helm charts examples\n• Production deployment checklist\n\n👍 If this helped you, please like and subscribe for more DevOps content!"
-          minLength: 50
-          maxLength: 5000
-      required:
-        - description
-      description: Response containing AI-generated video description
-
-    AITagsResponse:
-      type: object
-      properties:
-        tags:
-          type: array
-          items:
-            type: string
-          description: Array of relevant SEO-optimized tags for YouTube discoverability
-          example:
-            - "kubernetes"
-            - "devops"
-            - "deployment"
-            - "blue-green deployment"
-            - "canary release"
-            - "rolling updates"
-            - "kubectl"
-            - "helm"
-            - "production"
-            - "container orchestration"
-          minItems: 5
-          maxItems: 15
-      required:
-        - tags
-      description: Response containing AI-generated video tags
-
-    AITweetsResponse:
-      type: object
-      properties:
-        tweets:
-          type: array
-          items:
-            type: string
-          description: Array of engaging promotional tweets for social media marketing
-          example:
-            - "🚀 New video is live! Master advanced Kubernetes deployment strategies with blue-green, canary, and rolling updates. Perfect for production environments! #Kubernetes #DevOps #CloudNative"
-            - "⚡ Struggling with Kubernetes deployments in production? This tutorial covers the deployment patterns that actually work in real-world scenarios. Check it out! #K8s #DevOps"
-            - "📚 Deep dive into Kubernetes deployment strategies! Learn blue-green deployments, canary releases, and rolling updates with practical examples. Link in bio! #Kubernetes #Tutorial"
-          minItems: 3
-          maxItems: 5
-      required:
-        - tweets
-      description: Response containing AI-generated promotional tweets
-
-
-    AIDescriptionTagsResponse:
-      type: object
-      properties:
-        description_tags:
-          type: array
-          items:
-            type: string
-          description: Array of description segments with embedded hashtags for social media optimization
-          example:
-            - "🚀 Master advanced #Kubernetes deployment strategies in this comprehensive tutorial! Learn #BlueGreenDeployment, #CanaryRelease, and #RollingUpdates for production environments."
-            - "Perfect for #DevOps engineers looking to level up their #ContainerOrchestration skills with #kubectl and #Helm integration."
-            - "📋 Topics covered: #ProductionDeployment best practices, monitoring strategies, and automated rollback procedures."
-          minItems: 2
-          maxItems: 5
-      required:
-        - description_tags
-      description: Response containing AI-generated description with embedded tags
-
-    AspectField:
-      type: object
-      properties:
-        name:
-          type: string
-          description: The field display name for UI
-          example: "Title"
-        fieldName:
-          type: string
-          description: The actual camelCase property name used in video data API
-          example: "title"
-        type:
-          type: string
-          description: The field type for validation and UI rendering
-          enum: ["string", "text", "boolean", "date", "select", "number"]
-          example: "string"
-        required:
-          type: boolean
-          description: Whether this field is required
-          example: true
-        order:
-          type: integer
-          description: Display order for the field
-          example: 1
-        description:
-          type: string
-          description: Human-readable description of the field
-          example: "The title of the video"
-        completionCriteria:
-          type: string
-          description: |
-            Defines the completion criteria for this field, determining when it should be considered "complete" or "valid" for progress tracking and UI styling.
-          enum: ["filled_only", "empty_or_filled", "conditional", "true_only", "false_only", "filled_required"]
-          example: "filled_only"
-        options:
-          $ref: '#/components/schemas/FieldOptions'
-        uiHints:
-          $ref: '#/components/schemas/UIHints'
-        validationHints:
-          $ref: '#/components/schemas/ValidationHints'
-        defaultValue:
-          description: Default value for the field (type varies by field type)
-          oneOf:
-            - type: string
-            - type: number
-            - type: boolean
-            - type: "null"
-          example: ""
-      required:
-        - name
-        - fieldName
-        - type
-        - required
-        - order
-        - description
-        - completionCriteria
-      examples:
-        stringField:
-          summary: String field example
-          value:
-            name: "Title"
-            fieldName: "title"
-            type: "string"
-            required: true
-            order: 1
-            description: "The title of the video"
-            completionCriteria: "filled_only"
-            uiHints:
-              inputType: "text"
-              placeholder: "Enter video title"
-              helpText: "The main title that will appear on YouTube"
-              multiline: false
-        textField:
-          summary: Multi-line text field example
-          value:
-            name: "Description"
-            fieldName: "description"
-            type: "text"
-            required: false
-            order: 2
-            description: "Detailed description of the video content"
-            completionCriteria: "empty_or_filled"
-            uiHints:
-              inputType: "textarea"
-              placeholder: "Enter detailed description..."
-              helpText: "Provide a comprehensive description"
-              rows: 3
-              multiline: true
-        dateField:
-          summary: Date field example with new format
-          value:
-            name: "Date"
-            fieldName: "date"
-            type: "date"
-            required: false
-            order: 3
-            description: "Scheduled date and time for the video"
-            completionCriteria: "empty_or_filled"
-            uiHints:
-              inputType: "datetime"
-              placeholder: "YYYY-MM-DDTHH:MM"
-              helpText: "Enter date and time in UTC format"
-              multiline: false
-        booleanField:
-          summary: Boolean field example
-          value:
-            name: "Code"
-            fieldName: "code"
-            type: "boolean"
-            required: false
-            order: 4
-            description: "Mark when code examples are ready"
-            completionCriteria: "true_only"
-            uiHints:
-              inputType: "checkbox"
-              helpText: "Check when all code examples are complete"
-              multiline: false
-
-    FieldOptions:
-      type: object
-      properties:
-        values:
-          type: array
-          items:
-            type: string
-          description: Available options for select-type fields
-          example: ["draft", "review", "final"]
-      description: Additional configuration for select-type fields
-
-    UIHints:
-      type: object
-      properties:
-        inputType:
-          type: string
-          description: |
-            HTML input type for rendering. For date fields, uses 'datetime' input type 
-            with YYYY-MM-DDTHH:MM format for UTC compatibility.
-          enum: ["text", "textarea", "checkbox", "select", "datetime", "number"]
-          example: "text"
-        placeholder:
-          type: string
-          description: |
-            Placeholder text for input fields. For datetime fields, typically shows 
-            'YYYY-MM-DDTHH:MM' format.
-          example: "Enter video title"
-        helpText:
-          type: string
-          description: Help text displayed near the field
-          example: "The main title that will appear on YouTube"
-        rows:
-          type: integer
-          description: Number of rows for textarea fields
-          example: 3
-        charLimit:
-          type: integer
-          description: Character limit for text fields
-          example: 100
-        multiline:
-          type: boolean
-          description: Whether the field supports multiple lines
-          example: false
-        options:
-          type: array
-          items:
-            $ref: '#/components/schemas/SelectOption'
-          description: Options for select fields
-        attributes:
-          type: object
-          additionalProperties: true
-          description: Additional HTML attributes for the input
-      description: UI rendering hints for frontend applications
-
-    ValidationHints:
-      type: object
-      properties:
-        required:
-          type: boolean
-          description: Whether the field is required
-          example: true
-        minLength:
-          type: integer
-          description: Minimum length for text fields
-          example: 1
-        maxLength:
-          type: integer
-          description: Maximum length for text fields
-          example: 100
-        pattern:
-          type: string
-          description: Regular expression pattern for validation
-          example: "^[a-zA-Z0-9\\s]+$"
-        patternDesc:
-          type: string
-          description: Human-readable description of the pattern
-          example: "Only letters, numbers, and spaces allowed"
-        min:
-          type: integer
-          description: Minimum value for numeric fields
-          example: 0
-        max:
-          type: integer
-          description: Maximum value for numeric fields
-          example: 100
-      description: Validation rules for frontend form validation
-
-    SelectOption:
-      type: object
-      properties:
-        label:
-          type: string
-          description: Display label for the option
-          example: "Draft"
-        value:
-          description: The actual value (type varies)
-          oneOf:
-            - type: string
-            - type: number
-            - type: boolean
-          example: "draft"
-      required:
-        - label
-        - value
-      description: An option for select-type fields
 
     AnimationsResponse:
       type: object
@@ -1834,588 +1442,276 @@ components:
           type: array
           items:
             type: string
-          description: Array of animation cues and instructions extracted from the video manuscript
-          example:
-            - "Add animation for concept explanation"
-            - "Show diagram of system architecture"
-            - "Highlight code changes in the editor"
-            - "Zoom into terminal commands"
-          minItems: 0
-          maxItems: 50
+        sections:
+          type: array
+          items:
+            type: string
+
+    Aspect:
+      type: object
+      description: Aspect with full field metadata
+      properties:
+        key:
+          type: string
+        title:
+          type: string
+        fields:
+          type: array
+          items:
+            type: object
+
+    AspectOverview:
+      type: object
+      properties:
+        key:
+          type: string
+        title:
+          type: string
+
+    AspectFields:
+      type: object
+      properties:
+        key:
+          type: string
+        title:
+          type: string
+        fields:
+          type: array
+          items:
+            type: object
+
+    CompletionCriteriaResponse:
+      type: object
+      properties:
+        aspectKey:
+          type: string
+        fieldKey:
+          type: string
+        completionCriteria:
+          type: string
+
+    AITitlesResponse:
+      type: object
+      properties:
+        titles:
+          type: array
+          items:
+            type: string
+
+    AIDescriptionResponse:
+      type: object
+      properties:
+        description:
+          type: string
+
+    AITagsResponse:
+      type: object
+      properties:
+        tags:
+          type: string
+
+    AITweetsResponse:
+      type: object
+      properties:
+        tweets:
+          type: array
+          items:
+            type: string
+
+    AIDescriptionTagsResponse:
+      type: object
+      properties:
+        descriptionTags:
+          type: string
+
+    AIShortsResponse:
+      type: object
+      properties:
+        candidates:
+          type: array
+          items:
+            type: object
+            properties:
+              title:
+                type: string
+              startTime:
+                type: string
+              endTime:
+                type: string
+              hook:
+                type: string
+
+    AIThumbnailsRequest:
+      type: object
+      properties:
+        category:
+          type: string
+        name:
+          type: string
+        imagePath:
+          type: string
+          description: Local file path to the thumbnail image
+        driveFileId:
+          type: string
+          description: Google Drive file ID of the thumbnail image
+      description: Either imagePath or driveFileId is required
+
+    AIThumbnailsResponse:
+      type: object
+      properties:
+        subtle:
+          type: string
+        bold:
+          type: string
+
+    AITranslateRequest:
+      type: object
       required:
-        - animations
-      description: |
-        Response containing animations extracted from video manuscript.
-        The animations array may be empty if no animation cues are found in the manuscript.
+        - category
+        - name
+        - targetLanguage
+      properties:
+        category:
+          type: string
+        name:
+          type: string
+        targetLanguage:
+          type: string
 
-  /api/ai/titles:
-    post:
-      summary: Generate AI-powered video titles
-      description: |
-        Generates multiple creative and engaging video titles based on the provided manuscript content.
-        Uses Azure OpenAI to analyze the content and suggest 5 optimized titles for YouTube.
-      operationId: generateTitles
-      tags:
-        - AI Content Generation
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/AIRequest'
-            example:
-              manuscript: "In this tutorial, we'll explore advanced Kubernetes deployment strategies including blue-green deployments, canary releases, and rolling updates. We'll cover best practices for production environments and demonstrate how to implement these patterns using kubectl and Helm."
-      responses:
-        '200':
-          description: Titles generated successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AITitlesResponse'
-              example:
-                titles:
-                  - "Advanced Kubernetes Deployment Strategies: Blue-Green, Canary & Rolling Updates"
-                  - "Master Production Kubernetes: Deployment Patterns That Actually Work"
-                  - "Kubernetes Deployment Strategies Explained: From Zero to Production Hero"
-                  - "The Complete Guide to Kubernetes Deployment Patterns in 2024"
-                  - "Production-Ready Kubernetes: Advanced Deployment Techniques"
-        '400':
-          description: Invalid request - manuscript is required
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '405':
-          description: Method not allowed - only POST is supported
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: AI service error or internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-  /api/ai/titles/{videoName}:
-    post:
-      summary: Generate AI-powered video titles (optimized)
-      description: |
-        Generates multiple creative and engaging video titles for a specific video by name and category.
-        This optimized endpoint uses URL parameters instead of JSON payload, reducing request size and 
-        centralizing manuscript file management on the server side.
-      operationId: generateTitlesOptimized
-      tags:
-        - AI Content Generation
-      parameters:
-        - name: videoName
-          in: path
-          required: true
-          description: The name of the video to generate titles for
-          schema:
+    AITranslateResponse:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        tags:
+          type: string
+        timecodes:
+          type: string
+        shortTitles:
+          type: array
+          items:
             type: string
-            example: "ai-kills-iac"
-        - name: category
-          in: query
-          required: true
-          description: The category of the video
-          schema:
+
+    AIAMARequest:
+      type: object
+      required:
+        - category
+        - name
+      properties:
+        category:
+          type: string
+        name:
+          type: string
+
+    AIAMAContentResponse:
+      type: object
+      properties:
+        title:
+          type: string
+        timecodes:
+          type: string
+        description:
+          type: string
+        tags:
+          type: string
+
+    AIAMATitleResponse:
+      type: object
+      properties:
+        title:
+          type: string
+
+    AIAMADescriptionResponse:
+      type: object
+      properties:
+        description:
+          type: string
+
+    AIAMATimecodesResponse:
+      type: object
+      properties:
+        timecodes:
+          type: string
+
+    ActionResponse:
+      type: object
+      properties:
+        alreadyRequested:
+          type: boolean
+        emailSent:
+          type: boolean
+        emailError:
+          type: string
+        video:
+          $ref: "#/components/schemas/VideoResponse"
+        syncWarning:
+          type: string
+
+    PublishYouTubeResponse:
+      type: object
+      properties:
+        videoId:
+          type: string
+        syncWarning:
+          type: string
+
+    PublishThumbnailResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        syncWarning:
+          type: string
+
+    PublishShortResponse:
+      type: object
+      properties:
+        youtubeId:
+          type: string
+        syncWarning:
+          type: string
+
+    PublishHugoResponse:
+      type: object
+      properties:
+        hugoPath:
+          type: string
+        syncWarning:
+          type: string
+
+    TranscriptResponse:
+      type: object
+      properties:
+        transcript:
+          type: string
+
+    MetadataResponse:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        tags:
+          type: array
+          items:
             type: string
-            example: "ai"
-      responses:
-        '200':
-          description: Titles generated successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AITitlesResponse'
-              example:
-                titles:
-                  - "AI Kills Infrastructure as Code: The Future of DevOps Automation"
-                  - "How AI is Revolutionizing Infrastructure Management: Beyond IaC"
-                  - "The End of Traditional IaC? AI-Powered Infrastructure Revolution"
-                  - "AI vs Infrastructure as Code: Which Will Dominate DevOps?"
-                  - "Breaking: AI Makes Infrastructure as Code Obsolete"
-        '400':
-          description: Invalid request - videoName and category are required
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: Video not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '405':
-          description: Method not allowed - only POST is supported
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: AI service error or internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+        publishedAt:
+          type: string
 
-  /api/ai/description:
-    post:
-      summary: Generate AI-powered video description
-      description: |
-        Generates a comprehensive and engaging video description based on the provided manuscript content.
-        The description is optimized for YouTube SEO and viewer engagement.
-      operationId: generateDescription
-      tags:
-        - AI Content Generation
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/AIRequest'
-      responses:
-        '200':
-          description: Description generated successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AIDescriptionResponse'
-              example:
-                description: "🚀 Ready to master advanced Kubernetes deployment strategies? In this comprehensive tutorial, we dive deep into production-ready deployment patterns that every DevOps engineer should know.\n\n📋 What You'll Learn:\n• Blue-green deployment implementation\n• Canary release strategies\n• Rolling update best practices\n• Production environment considerations\n• kubectl and Helm integration\n\n⚡ Perfect for intermediate to advanced Kubernetes users looking to level up their deployment game!\n\n🔗 Resources mentioned in this video:\n• Kubernetes documentation\n• Helm charts examples\n• Production deployment checklist\n\n👍 If this helped you, please like and subscribe for more DevOps content!"
-        '400':
-          description: Invalid request - manuscript is required
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '405':
-          description: Method not allowed - only POST is supported
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: AI service error or internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-  /api/ai/description/{videoName}:
-    post:
-      summary: Generate AI-powered video description (optimized)
-      description: |
-        Generates a comprehensive and engaging video description for a specific video by name and category.
-        This optimized endpoint uses URL parameters instead of JSON payload, reducing request size and 
-        centralizing manuscript file management on the server side.
-      operationId: generateDescriptionOptimized
-      tags:
-        - AI Content Generation
-      parameters:
-        - name: videoName
-          in: path
-          required: true
-          description: The name of the video to generate description for
-          schema:
-            type: string
-            example: "ai-kills-iac"
-        - name: category
-          in: query
-          required: true
-          description: The category of the video
-          schema:
-            type: string
-            example: "ai"
-      responses:
-        '200':
-          description: Description generated successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AIDescriptionResponse'
-              example:
-                description: "🤖 Is AI really killing Infrastructure as Code? In this deep-dive analysis, we explore how artificial intelligence is transforming DevOps practices and what it means for the future of infrastructure management.\n\n📋 What You'll Discover:\n• How AI is changing infrastructure automation\n• The evolution beyond traditional IaC tools\n• Real-world examples of AI-driven infrastructure\n• What this means for DevOps engineers\n• Future predictions and career implications\n\n⚡ Perfect for DevOps professionals, infrastructure engineers, and anyone interested in the intersection of AI and infrastructure!\n\n🔗 Resources mentioned:\n• AI infrastructure tools comparison\n• Traditional vs AI-driven approaches\n• Career transition strategies\n\n👍 If this analysis helped clarify the AI vs IaC debate, please like and subscribe for more tech insights!"
-        '400':
-          description: Invalid request - videoName and category are required
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: Video not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '405':
-          description: Method not allowed - only POST is supported
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: AI service error or internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-  /api/ai/tags:
-    post:
-      summary: Generate AI-powered video tags
-      description: |
-        Generates relevant and SEO-optimized tags based on the provided manuscript content.
-        Returns an array of tags that help with YouTube discoverability.
-      operationId: generateTags
-      tags:
-        - AI Content Generation
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/AIRequest'
-      responses:
-        '200':
-          description: Tags generated successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AITagsResponse'
-              example:
-                tags:
-                  - "kubernetes"
-                  - "devops"
-                  - "deployment"
-                  - "blue-green deployment"
-                  - "canary release"
-                  - "rolling updates"
-                  - "kubectl"
-                  - "helm"
-                  - "production"
-                  - "container orchestration"
-        '400':
-          description: Invalid request - manuscript is required
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '405':
-          description: Method not allowed - only POST is supported
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: AI service error or internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-  /api/ai/tags/{videoName}:
-    post:
-      summary: Generate AI-powered video tags (optimized)
-      description: |
-        Generates relevant and SEO-optimized tags for a specific video by name and category.
-        This optimized endpoint uses URL parameters instead of JSON payload, reducing request size and 
-        centralizing manuscript file management on the server side.
-      operationId: generateTagsOptimized
-      tags:
-        - AI Content Generation
-      parameters:
-        - name: videoName
-          in: path
-          required: true
-          description: The name of the video to generate tags for
-          schema:
-            type: string
-            example: "ai-kills-iac"
-        - name: category
-          in: query
-          required: true
-          description: The category of the video
-          schema:
-            type: string
-            example: "ai"
-      responses:
-        '200':
-          description: Tags generated successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AITagsResponse'
-              example:
-                tags:
-                  - "artificial intelligence"
-                  - "infrastructure as code"
-                  - "devops"
-                  - "automation"
-                  - "cloud computing"
-                  - "terraform"
-                  - "ansible"
-                  - "kubernetes"
-                  - "ai revolution"
-                  - "future of devops"
-        '400':
-          description: Invalid request - videoName and category are required
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: Video not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '405':
-          description: Method not allowed - only POST is supported
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: AI service error or internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-  /api/ai/tweets:
-    post:
-      summary: Generate AI-powered promotional tweets
-      description: |
-        Generates engaging promotional tweets based on the provided manuscript content.
-        Perfect for social media marketing of your video content.
-      operationId: generateTweets
-      tags:
-        - AI Content Generation
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/AIRequest'
-      responses:
-        '200':
-          description: Tweets generated successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AITweetsResponse'
-              example:
-                tweets:
-                  - "🚀 New video is live! Master advanced Kubernetes deployment strategies with blue-green, canary, and rolling updates. Perfect for production environments! #Kubernetes #DevOps #CloudNative"
-                  - "⚡ Struggling with Kubernetes deployments in production? This tutorial covers the deployment patterns that actually work in real-world scenarios. Check it out! #K8s #DevOps"
-                  - "📚 Deep dive into Kubernetes deployment strategies! Learn blue-green deployments, canary releases, and rolling updates with practical examples. Link in bio! #Kubernetes #Tutorial"
-        '400':
-          description: Invalid request - manuscript is required
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '405':
-          description: Method not allowed - only POST is supported
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: AI service error or internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-  /api/ai/tweets/{videoName}:
-    post:
-      summary: Generate AI-powered promotional tweets (optimized)
-      description: |
-        Generates engaging promotional tweets for a specific video by name and category.
-        This optimized endpoint uses URL parameters instead of JSON payload, reducing request size and 
-        centralizing manuscript file management on the server side.
-      operationId: generateTweetsOptimized
-      tags:
-        - AI Content Generation
-      parameters:
-        - name: videoName
-          in: path
-          required: true
-          description: The name of the video to generate tweets for
-          schema:
-            type: string
-            example: "ai-kills-iac"
-        - name: category
-          in: query
-          required: true
-          description: The category of the video
-          schema:
-            type: string
-            example: "ai"
-      responses:
-        '200':
-          description: Tweets generated successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AITweetsResponse'
-              example:
-                tweets:
-                  - "🤖 New video: Is AI really killing Infrastructure as Code? Deep dive into how AI is transforming DevOps and what it means for the future! #AI #DevOps #InfrastructureAsCode #TechTrends"
-                  - "⚡ The great debate: AI vs Infrastructure as Code! Watch my latest analysis on how artificial intelligence is reshaping infrastructure management. Link in bio! #AIRevolution #DevOps"
-                  - "🚀 Breaking down the AI vs IaC debate in my newest video! Essential viewing for DevOps engineers navigating the future of infrastructure automation. #AI #DevOps #CloudComputing"
-        '400':
-          description: Invalid request - videoName and category are required
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: Video not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '405':
-          description: Method not allowed - only POST is supported
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: AI service error or internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-
-
-  /api/ai/description-tags:
-    post:
-      summary: Generate AI-powered description with embedded tags
-      description: |
-        Generates a comprehensive video description that includes relevant tags embedded naturally within the content.
-        Combines the benefits of both description and tags generation in a single optimized response.
-      operationId: generateDescriptionTags
-      tags:
-        - AI Content Generation
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/AIRequest'
-      responses:
-        '200':
-          description: Description with tags generated successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AIDescriptionTagsResponse'
-              example:
-                description_tags:
-                  - "🚀 Master advanced #Kubernetes deployment strategies in this comprehensive tutorial! Learn #BlueGreenDeployment, #CanaryRelease, and #RollingUpdates for production environments."
-                  - "Perfect for #DevOps engineers looking to level up their #ContainerOrchestration skills with #kubectl and #Helm integration."
-                  - "📋 Topics covered: #ProductionDeployment best practices, monitoring strategies, and automated rollback procedures."
-        '400':
-          description: Invalid request - manuscript is required
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '405':
-          description: Method not allowed - only POST is supported
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: AI service error or internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-  /api/ai/description-tags/{videoName}:
-    post:
-      summary: Generate AI-powered description with embedded tags (optimized)
-      description: |
-        Generates a comprehensive video description that includes relevant tags embedded naturally within the content
-        for a specific video by name and category. This optimized endpoint uses URL parameters instead of JSON payload, 
-        reducing request size and centralizing manuscript file management on the server side.
-      operationId: generateDescriptionTagsOptimized
-      tags:
-        - AI Content Generation
-      parameters:
-        - name: videoName
-          in: path
-          required: true
-          description: The name of the video to generate description with tags for
-          schema:
-            type: string
-            example: "ai-kills-iac"
-        - name: category
-          in: query
-          required: true
-          description: The category of the video
-          schema:
-            type: string
-            example: "ai"
-      responses:
-        '200':
-          description: Description with tags generated successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AIDescriptionTagsResponse'
-              example:
-                description_tags:
-                  - "🤖 Is #AI really killing #InfrastructureAsCode? Explore how #ArtificialIntelligence is transforming #DevOps practices and reshaping the future of infrastructure management."
-                  - "Perfect for #DevOpsEngineers, #CloudArchitects, and #TechProfessionals looking to understand the intersection of #AI and #InfrastructureAutomation."
-                  - "📋 Topics: #MachineLearning in infrastructure, #AutomationEvolution, and career implications for #DevOps professionals in the #AIRevolution era."
-        '400':
-          description: Invalid request - videoName and category are required
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: Video not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '405':
-          description: Method not allowed - only POST is supported
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: AI service error or internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-tags:
-  - name: Health
-    description: Health check operations
-  - name: Videos
-    description: Video CRUD operations
-  - name: Video Phases
-    description: Phase-specific video updates
-  - name: Categories
-    description: Category management operations
-  - name: Animations
-    description: Animation extraction from video manuscripts (non-AI parsing)
-  - name: Editing
-    description: Video editing aspects metadata and field definitions
-  - name: AI Content Generation
-    description: AI-powered content generation for video titles, descriptions, tags, and tweets
+    SocialPostResponse:
+      type: object
+      properties:
+        posted:
+          type: boolean
+          description: Whether the post was automatically published
+        message:
+          type: string
+          description: Text for manual copy-paste (linkedin, hackernews, dot)
+        postUrl:
+          type: string
+          description: URL of the published post (if available)
+        syncWarning:
+          type: string
