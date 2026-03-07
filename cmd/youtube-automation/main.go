@@ -19,7 +19,9 @@ import (
 	"devopstoolkit/youtube-automation/internal/notification"
 	gitpkg "devopstoolkit/youtube-automation/internal/git"
 	"devopstoolkit/youtube-automation/internal/platform/bluesky"
+	"devopstoolkit/youtube-automation/internal/publishing"
 	"devopstoolkit/youtube-automation/internal/service"
+	slackpkg "devopstoolkit/youtube-automation/internal/slack"
 	"devopstoolkit/youtube-automation/internal/video"
 )
 
@@ -68,6 +70,28 @@ func main() {
 
 		distFS, _ := fs.Sub(frontend.DistFS, "dist")
 		srv := api.NewServer(videoService, videoManager, aspectSvc, fsOps, &api.DefaultAIService{}, configuration.GetAPIToken(), distFS)
+
+		// Publishing: configure YouTube upload, Hugo, social media
+		{
+			bsCfg := bluesky.GetConfig(
+				configuration.GlobalSettings.Bluesky.Identifier,
+				configuration.GlobalSettings.Bluesky.Password,
+				configuration.GlobalSettings.Bluesky.URL,
+			)
+			hugo := &publishing.Hugo{}
+			var slackSvc *slackpkg.SlackService
+			if slackpkg.GlobalSlackConfig.Token != "" {
+				if svc, err := slackpkg.NewSlackService(slackpkg.GlobalSlackConfig); err == nil {
+					slackSvc = svc
+					slog.Info("Slack posting enabled")
+				} else {
+					slog.Warn("Slack service creation failed", "error", err)
+				}
+			}
+			pubSvc := api.NewDefaultPublishingService(bsCfg, hugo, slackSvc)
+			srv.SetPublishingService(pubSvc)
+			slog.Info("Publishing service configured")
+		}
 
 		// Email: configure action button email sending
 		if configuration.GlobalSettings.Email.Password != "" {

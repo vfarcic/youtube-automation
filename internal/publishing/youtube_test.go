@@ -32,17 +32,13 @@ type uploadRequest struct {
 }
 
 // Mock YouTube video upload function
-func (m *mockYouTubeService) uploadVideo(video *storage.Video) string {
+func (m *mockYouTubeService) uploadVideo(video *storage.Video) (string, error) {
 	if m.shouldFail {
-		// Since the actual function now only returns a string and handles errors by logging,
-		// we'll return an empty string to signify failure in the mock.
-		// The actual error is available in m.uploadError if needed by the test.
-		return ""
+		return "", m.uploadError
 	}
 
-	// Simulating rate limit by returning an empty string, similar to failure.
 	if m.rateLimited {
-		return ""
+		return "", fmt.Errorf("rate limited")
 	}
 
 	// Determine languages based on input video and global defaults
@@ -88,7 +84,7 @@ func (m *mockYouTubeService) uploadVideo(video *storage.Video) string {
 		video.AppliedAudioLanguage = finalDefaultAudioLanguage
 	}
 
-	return videoId
+	return videoId, nil
 }
 
 // TestGetYouTubeURL tests the URL generation functionality
@@ -363,7 +359,10 @@ func TestUploadVideo(t *testing.T) {
 		Language:      "fr", // Specific language for this video
 		AudioLanguage: "de", // Specific audio language
 	}
-	videoID1 := mockService.uploadVideo(video1)
+	videoID1, err1 := mockService.uploadVideo(video1)
+	if err1 != nil {
+		t.Fatalf("Unexpected error: %v", err1)
+	}
 	if videoID1 == "" {
 		t.Errorf("Expected video ID, got empty string")
 	}
@@ -393,7 +392,10 @@ func TestUploadVideo(t *testing.T) {
 		Language:      "", // Should use default
 		AudioLanguage: "", // Should use default
 	}
-	videoID2 := mockService.uploadVideo(video2)
+	videoID2, err2 := mockService.uploadVideo(video2)
+	if err2 != nil {
+		t.Fatalf("Unexpected error: %v", err2)
+	}
 	if videoID2 == "" {
 		t.Errorf("Expected video ID for video 2, got empty string")
 	}
@@ -420,7 +422,10 @@ func TestUploadVideo(t *testing.T) {
 		Language:      "es",
 		AudioLanguage: "", // Falls back to global default 'en'
 	}
-	videoID3 := mockService.uploadVideo(video3)
+	videoID3, err3 := mockService.uploadVideo(video3)
+	if err3 != nil {
+		t.Fatalf("Unexpected error: %v", err3)
+	}
 	if videoID3 == "" {
 		t.Errorf("Expected video ID for video 3, got empty string")
 	}
@@ -447,7 +452,10 @@ func TestUploadVideo(t *testing.T) {
 		UploadVideo: videoPath,
 		Thumbnail:   thumbnailPath,
 	}
-	videoID4 := mockService.uploadVideo(video4)
+	videoID4, err4 := mockService.uploadVideo(video4)
+	if err4 == nil {
+		t.Errorf("Expected error on failure, got nil")
+	}
 	if videoID4 != "" {
 		t.Errorf("Expected empty video ID on failure, got '%s'", videoID4)
 	}
@@ -462,7 +470,10 @@ func TestUploadVideo(t *testing.T) {
 		UploadVideo: videoPath,
 		Thumbnail:   thumbnailPath,
 	}
-	videoID5 := mockService.uploadVideo(video5)
+	videoID5, err5 := mockService.uploadVideo(video5)
+	if err5 == nil {
+		t.Errorf("Expected error on rate limit, got nil")
+	}
 	if videoID5 != "" {
 		t.Errorf("Expected empty video ID on rate limit, got '%s'", videoID5)
 	}
@@ -940,6 +951,79 @@ func TestGetSpanishChannelID(t *testing.T) {
 }
 
 // TestTokenCacheFileWithName moved to internal/auth/oauth_test.go
+
+func TestSanitizeYouTubeTags(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		maxChars int
+		wantTags []string
+	}{
+		{
+			name:     "short tags within limit",
+			input:    "go,kubernetes,devops",
+			wantTags: []string{"go", "kubernetes", "devops"},
+		},
+		{
+			name:     "empty input",
+			input:    "",
+			wantTags: []string{},
+		},
+		{
+			name:     "trims whitespace",
+			input:    " go , kubernetes , devops ",
+			wantTags: []string{"go", "kubernetes", "devops"},
+		},
+		{
+			name:     "skips empty tags",
+			input:    "go,,kubernetes,,devops",
+			wantTags: []string{"go", "kubernetes", "devops"},
+		},
+		{
+			name:  "drops tags from end when over 500 chars",
+			input: strings.Repeat("longertag,", 60) + "last",
+			// 60 * "longertag" (9 chars each) + 59 commas = 540+59=599 > 500
+			// Should drop tags from end to fit
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := sanitizeYouTubeTags(tt.input)
+			if tt.wantTags != nil {
+				if len(got) != len(tt.wantTags) {
+					t.Errorf("sanitizeYouTubeTags() returned %d tags, want %d", len(got), len(tt.wantTags))
+					return
+				}
+				for i, tag := range got {
+					if tag != tt.wantTags[i] {
+						t.Errorf("tag[%d] = %q, want %q", i, tag, tt.wantTags[i])
+					}
+				}
+			}
+		})
+	}
+
+	// Verify the total length is always within 500 chars
+	t.Run("over limit gets trimmed to fit", func(t *testing.T) {
+		// 60 tags of 9 chars each = way over 500
+		input := strings.Repeat("longertag,", 60) + "last"
+		got := sanitizeYouTubeTags(input)
+		total := 0
+		for i, tag := range got {
+			if i > 0 {
+				total++
+			}
+			total += len(tag)
+		}
+		if total > 500 {
+			t.Errorf("total tag length = %d, want <= 500", total)
+		}
+		if len(got) == 0 {
+			t.Error("expected at least some tags to survive")
+		}
+	})
+}
 
 func TestMain(m *testing.M) {
 	os.Exit(m.Run())

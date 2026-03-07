@@ -865,7 +865,7 @@ func TestCalculatePublishingProgress(t *testing.T) {
 			name:              "Empty_video",
 			video:             storage.Video{},
 			expectedCompleted: 0,
-			expectedTotal:     3, // UploadVideo, VideoId, HugoPath
+			expectedTotal:     2, // VideoId, HugoPath (UploadVideo hidden)
 			description:       "Empty video should have no publishing progress",
 		},
 		{
@@ -873,9 +873,9 @@ func TestCalculatePublishingProgress(t *testing.T) {
 			video: storage.Video{
 				UploadVideo: "youtube.com/video",
 			},
-			expectedCompleted: 1,
-			expectedTotal:     3,
-			description:       "Only upload video should count as 1",
+			expectedCompleted: 0,
+			expectedTotal:     2,
+			description:       "UploadVideo is hidden, should not affect progress",
 		},
 		{
 			name: "HugoPath_only",
@@ -883,7 +883,7 @@ func TestCalculatePublishingProgress(t *testing.T) {
 				HugoPath: "/path/to/hugo/post",
 			},
 			expectedCompleted: 1,
-			expectedTotal:     3,
+			expectedTotal:     2,
 			description:       "Only hugo path should count as 1",
 		},
 		{
@@ -893,9 +893,9 @@ func TestCalculatePublishingProgress(t *testing.T) {
 				VideoId:     "abc123",
 				HugoPath:    "/path/to/hugo/post",
 			},
-			expectedCompleted: 3,
-			expectedTotal:     3,
-			description:       "All base fields complete should count as 3",
+			expectedCompleted: 2,
+			expectedTotal:     2,
+			description:       "All visible base fields complete should count as 2",
 		},
 		{
 			name: "Empty_strings",
@@ -904,7 +904,7 @@ func TestCalculatePublishingProgress(t *testing.T) {
 				HugoPath:    "",
 			},
 			expectedCompleted: 0,
-			expectedTotal:     3,
+			expectedTotal:     2,
 			description:       "Empty strings should not be counted",
 		},
 		{
@@ -914,7 +914,7 @@ func TestCalculatePublishingProgress(t *testing.T) {
 				HugoPath:    "-",
 			},
 			expectedCompleted: 0,
-			expectedTotal:     3,
+			expectedTotal:     2,
 			description:       "Dash values should not be counted",
 		},
 		{
@@ -927,8 +927,8 @@ func TestCalculatePublishingProgress(t *testing.T) {
 					{ID: "short2", Title: "Short 2", YouTubeID: ""},
 				},
 			},
-			expectedCompleted: 2,
-			expectedTotal:     5, // 3 base fields + 2 shorts
+			expectedCompleted: 1,
+			expectedTotal:     4, // 2 base fields + 2 shorts
 			description:       "Pending shorts should add to total but not completed",
 		},
 		{
@@ -941,8 +941,8 @@ func TestCalculatePublishingProgress(t *testing.T) {
 					{ID: "short2", Title: "Short 2", YouTubeID: "def456"},
 				},
 			},
-			expectedCompleted: 4,
-			expectedTotal:     5, // 3 base fields + 2 uploaded shorts
+			expectedCompleted: 3,
+			expectedTotal:     4, // 2 base fields + 2 uploaded shorts
 			description:       "Uploaded shorts should count as completed",
 		},
 		{
@@ -956,8 +956,8 @@ func TestCalculatePublishingProgress(t *testing.T) {
 					{ID: "short3", Title: "Short 3", YouTubeID: "ghi789"},
 				},
 			},
-			expectedCompleted: 4, // 2 base + 2 uploaded shorts
-			expectedTotal:     6, // 3 base + 3 shorts
+			expectedCompleted: 3, // 1 base (HugoPath) + 2 uploaded shorts
+			expectedTotal:     5, // 2 base + 3 shorts
 			description:       "Mixed shorts should partially count",
 		},
 	}

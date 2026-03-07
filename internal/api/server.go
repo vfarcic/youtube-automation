@@ -29,10 +29,11 @@ type Server struct {
 	aiService     AIService
 	driveService  gdrive.DriveService
 	driveFolderID string
-	emailService  EmailService
-	emailSettings *configuration.SettingsEmail
-	apiToken      string
-	frontendFS    fs.FS
+	emailService      EmailService
+	emailSettings     *configuration.SettingsEmail
+	publishingService PublishingService
+	apiToken          string
+	frontendFS        fs.FS
 }
 
 // SetDriveService configures Google Drive upload support.
@@ -40,6 +41,12 @@ type Server struct {
 func (s *Server) SetDriveService(ds gdrive.DriveService, folderID string) {
 	s.driveService = ds
 	s.driveFolderID = folderID
+}
+
+// SetPublishingService configures publishing support (YouTube, Hugo, social).
+// If ps is nil, publishing endpoints return 501 Not Implemented.
+func (s *Server) SetPublishingService(ps PublishingService) {
+	s.publishingService = ps
 }
 
 // NewServer creates a new API server wired to the given service and manager.
@@ -108,6 +115,20 @@ func (s *Server) setupRoutes() {
 			r.Post("/request-thumbnail/{videoName}", s.handleRequestThumbnail)
 			r.Post("/request-edit/{videoName}", s.handleRequestEdit)
 		})
+
+		// Publishing (YouTube upload, Hugo, transcript, metadata)
+		r.Route("/publish", func(r chi.Router) {
+			r.Post("/youtube/{videoName}", s.handlePublishYouTube)
+			r.Post("/youtube/{videoName}/thumbnail", s.handlePublishThumbnail)
+			r.Post("/youtube/{videoName}/shorts/{shortId}", s.handlePublishShort)
+			r.Post("/hugo/{videoName}", s.handlePublishHugo)
+			r.Post("/dubbed/{videoName}", s.handlePublishDubbed)
+			r.Get("/transcript/{videoId}", s.handleGetTranscript)
+			r.Get("/metadata/{videoId}", s.handleGetMetadata)
+		})
+
+		// Social media posting
+		r.Post("/social/{platform}/{videoName}", s.handleSocialPost)
 
 		// Videos
 		r.Route("/videos", func(r chi.Router) {

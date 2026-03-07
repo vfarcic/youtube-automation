@@ -61,7 +61,7 @@ export function ArrayInput({
           isUploadOnly && category && videoName ? (
             <div key={index} className="flex items-center gap-2">
               <span className="text-xs text-gray-400 shrink-0">{item.index ? `#${item.index}` : `Variant ${index + 1}`}</span>
-              {item.driveFileId && (
+              {item.driveFileId != null && item.driveFileId !== '' && (
                 <code className="text-xs text-gray-300 bg-gray-800 px-1 rounded">{String(item.driveFileId)}</code>
               )}
               <FileUploadInput

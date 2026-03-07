@@ -164,7 +164,7 @@ func TestGetVideoAspectMappings(t *testing.T) {
 			AspectKeyWorkProgress:   11, // Code, Head, Screen, RelatedVideos, Thumbnails, Diagrams, Screenshots, Location, Tagline, TaglineIdeas, OtherLogos
 			AspectKeyDefinition:     10, // Titles, Description, Tags, DescriptionTags, Tweet, Animations, Shorts, Members, RequestThumbnail, RequestEdit
 			AspectKeyPostProduction: 4,  // ThumbnailVariants, Timecodes, VideoFile, Slides
-			AspectKeyPublishing:     3,  // UploadVideo, VideoId, HugoPath
+			AspectKeyPublishing:     2,  // VideoId, HugoPath (UploadVideo hidden via ui:"auto")
 			AspectKeyPostPublish:    10, // DOT, BlueSky, LinkedIn, Slack, YouTube Highlight/Comment/Reply, GDE, Repo, NotifySponsors
 			AspectKeyAnalysis:       1,  // Titles (for A/B test share percentages)
 		}

@@ -198,6 +198,17 @@ const mockAITweets = { tweets: ['Tweet 1', 'Tweet 2'] };
 const mockAIDescriptionTags = { descriptionTags: '#ai #gen #tags' };
 const mockAIShorts = { candidates: [{ id: 'short1', title: 'Short One', text: 'text', rationale: 'good' }] };
 
+// Publishing mock responses
+const mockPublishYouTube = { videoId: 'yt-abc123' };
+const mockPublishThumbnail = { success: true };
+const mockPublishShort = { youtubeId: 'yt-short-456' };
+const mockPublishHugo = { hugoPath: '/content/devops/test-video.md' };
+const mockPublishDubbed = { videoId: 'yt-dubbed-789' };
+const mockTranscript = { transcript: 'This is the transcript text.' };
+const mockMetadata = { title: 'Test Title', description: 'Test Desc', tags: ['tag1', 'tag2'], publishedAt: '2026-01-15T00:00:00Z' };
+const mockSocialPostAutomated = { posted: true };
+const mockSocialPostManual = { posted: false, message: 'Copy this text to post manually.' };
+
 export const handlers = [
   http.get('/api/videos/phases', () => HttpResponse.json(mockPhases)),
   http.get('/api/videos/list', () => HttpResponse.json(mockVideoList)),
@@ -247,4 +258,18 @@ export const handlers = [
       video: { ...mockVideo, requestEdit: true },
     }),
   ),
+  // Publishing endpoints
+  http.post('/api/publish/youtube/:videoName/thumbnail', () => HttpResponse.json(mockPublishThumbnail)),
+  http.post('/api/publish/youtube/:videoName/shorts/:shortId', () => HttpResponse.json(mockPublishShort)),
+  http.post('/api/publish/youtube/:videoName', () => HttpResponse.json(mockPublishYouTube)),
+  http.post('/api/publish/hugo/:videoName', () => HttpResponse.json(mockPublishHugo)),
+  http.post('/api/publish/dubbed/:videoName', () => HttpResponse.json(mockPublishDubbed)),
+  http.get('/api/publish/transcript/:videoId', () => HttpResponse.json(mockTranscript)),
+  http.get('/api/publish/metadata/:videoId', () => HttpResponse.json(mockMetadata)),
+  // Social endpoints
+  http.post('/api/social/bluesky/:videoName', () => HttpResponse.json(mockSocialPostAutomated)),
+  http.post('/api/social/slack/:videoName', () => HttpResponse.json(mockSocialPostAutomated)),
+  http.post('/api/social/linkedin/:videoName', () => HttpResponse.json(mockSocialPostManual)),
+  http.post('/api/social/hackernews/:videoName', () => HttpResponse.json(mockSocialPostManual)),
+  http.post('/api/social/dot/:videoName', () => HttpResponse.json(mockSocialPostManual)),
 ];

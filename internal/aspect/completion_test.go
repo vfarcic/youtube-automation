@@ -466,7 +466,7 @@ func TestCalculateAspectProgress_Publishing_Shorts(t *testing.T) {
 			name:              "No shorts",
 			video:             storage.Video{},
 			expectedCompleted: 0,
-			expectedTotal:     3, // UploadVideo, VideoId, HugoPath
+			expectedTotal:     2, // VideoId, HugoPath (UploadVideo hidden)
 		},
 		{
 			name: "Shorts with mixed upload status",
@@ -477,8 +477,8 @@ func TestCalculateAspectProgress_Publishing_Shorts(t *testing.T) {
 					{ID: "s2", YouTubeID: ""},
 				},
 			},
-			expectedCompleted: 2, // UploadVideo + 1 uploaded short
-			expectedTotal:     5, // 3 base + 2 shorts
+			expectedCompleted: 1, // 1 uploaded short
+			expectedTotal:     4, // 2 base + 2 shorts
 		},
 	}
 

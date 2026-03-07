@@ -345,7 +345,7 @@ func TestGetAspectsOverview(t *testing.T) {
 			AspectKeyWorkProgress:   11, // actual count from mapping
 			AspectKeyDefinition:     10, // actual count from mapping (includes Titles array, Shorts, Members, RequestEdit)
 			AspectKeyPostProduction: 4,  // actual count from mapping (ThumbnailVariants, Timecodes, VideoFile, Slides)
-			AspectKeyPublishing:     3,  // actual count from mapping
+			AspectKeyPublishing:     2,  // actual count from mapping (VideoId, HugoPath; UploadVideo hidden)
 			AspectKeyPostPublish:    10, // actual count from mapping
 			AspectKeyAnalysis:       1,  // actual count from mapping (Titles for share percentages)
 		}

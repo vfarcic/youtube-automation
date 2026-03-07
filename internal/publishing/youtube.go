@@ -69,13 +69,13 @@ var youtubeScopes = []string{
 
 // getClient uses a Context to retrieve a Token and generate a Client.
 // It uses the centralized youtubeScopes for all YouTube operations.
-func getClient(ctx context.Context) *http.Client {
+func getClient(ctx context.Context) (*http.Client, error) {
 	return getClientWithConfig(ctx, DefaultOAuthConfig())
 }
 
 // getClientWithConfig uses a Context and OAuthConfig to retrieve a Token and generate a Client.
 // This allows different channels to use different credentials and callback ports.
-func getClientWithConfig(ctx context.Context, oauthCfg OAuthConfig) *http.Client {
+func getClientWithConfig(ctx context.Context, oauthCfg OAuthConfig) (*http.Client, error) {
 	authCfg := auth.OAuthConfig{
 		CredentialsFile: oauthCfg.CredentialsFile,
 		TokenFileName:   oauthCfg.TokenFileName,
@@ -84,14 +84,14 @@ func getClientWithConfig(ctx context.Context, oauthCfg OAuthConfig) *http.Client
 	}
 	client, err := auth.GetClient(ctx, authCfg)
 	if err != nil {
-		log.Fatalf("OAuth failed: %v", err)
+		return nil, fmt.Errorf("OAuth failed: %w", err)
 	}
-	return client
+	return client, nil
 }
 
 // GetSpanishChannelClient returns an authenticated HTTP client for the Spanish YouTube channel.
 // It uses separate credentials and token cache from the main English channel.
-func GetSpanishChannelClient(ctx context.Context) *http.Client {
+func GetSpanishChannelClient(ctx context.Context) (*http.Client, error) {
 	return getClientWithConfig(ctx, SpanishOAuthConfig())
 }
 
@@ -100,24 +100,22 @@ func GetSpanishChannelID() string {
 	return configuration.GlobalSettings.SpanishChannel.ChannelID
 }
 
-func UploadVideo(video *storage.Video) string {
+func UploadVideo(video *storage.Video) (string, error) {
 	if video.UploadVideo == "" {
-		log.Fatalf("You must provide a filename of a video file to upload")
-		return ""
+		return "", fmt.Errorf("you must provide a filename of a video file to upload")
 	}
 	if video.Thumbnail == "" {
-		log.Fatalf("You must provide a thumbnail of the video file to upload")
-		return ""
+		return "", fmt.Errorf("you must provide a thumbnail of the video file to upload")
 	}
-	client := getClient(context.Background())
+	client, err := getClient(context.Background())
+	if err != nil {
+		return "", fmt.Errorf("OAuth failed: %w", err)
+	}
 
-	// FIXME: Remove the comment
-	// service, err := youtube.New(client)
 	ctx := context.Background()
 	service, err := youtube.NewService(ctx, option.WithHTTPClient(client))
-	// service, err := youtube.NewService(ctx, option.WithHTTPClient(client))
 	if err != nil {
-		log.Fatalf("Error creating YouTube client: %v", err)
+		return "", fmt.Errorf("error creating YouTube client: %w", err)
 	}
 	timecodes := ""
 	if len(video.Timecodes) > 0 && video.Timecodes != "N/A" {
@@ -184,7 +182,7 @@ If you are interested in sponsoring this channel, please visit https://devopstoo
 	}
 	// The API returns a 400 Bad Request response if tags is an empty string.
 	if strings.Trim(video.Tags, "") != "" {
-		upload.Snippet.Tags = strings.Split(video.Tags, ",")
+		upload.Snippet.Tags = sanitizeYouTubeTags(video.Tags)
 	}
 
 	// Determine languages to set
@@ -204,13 +202,13 @@ If you are interested in sponsoring this channel, please visit https://devopstoo
 	call := service.Videos.Insert([]string{"snippet", "status"}, upload)
 	file, err := os.Open(video.UploadVideo)
 	if err != nil {
-		log.Fatalf("Error opening %v: %v", video.UploadVideo, err)
+		return "", fmt.Errorf("error opening %v: %w", video.UploadVideo, err)
 	}
 
 	response, err := call.Media(file).Do()
 	file.Close()
 	if err != nil {
-		log.Fatalf("Error getting response from YouTube during insert: %v", err)
+		return "", fmt.Errorf("error uploading video to YouTube: %w", err)
 	}
 	fmt.Printf("Upload successful! Video ID: %v\n", response.Id)
 
@@ -219,7 +217,7 @@ If you are interested in sponsoring this channel, please visit https://devopstoo
 	video.AppliedAudioLanguage = finalDefaultAudioLanguage
 	log.Printf("DEBUG: Language %s and Audio Language %s stored in video struct for video ID %s", video.AppliedLanguage, video.AppliedAudioLanguage, response.Id)
 
-	return response.Id
+	return response.Id, nil
 }
 
 // GetAdditionalInfoFromPath converts a Hugo path to URL and calls GetAdditionalInfo
@@ -259,7 +257,10 @@ func GetAdditionalInfo(hugoURL, projectName, projectURL, relatedVideosRaw string
 
 
 func UploadThumbnail(videoId string, thumbnailPath string) error {
-	client := getClient(context.Background())
+	client, err := getClient(context.Background())
+	if err != nil {
+		return fmt.Errorf("OAuth failed: %w", err)
+	}
 
 	ctx := context.Background()
 	service, err := youtube.NewService(ctx, option.WithHTTPClient(client))
@@ -278,6 +279,35 @@ func UploadThumbnail(videoId string, thumbnailPath string) error {
 	}
 	fmt.Printf("Thumbnail uploaded, URL: %s\n", response.Items[0].Default.Url)
 	return nil
+}
+
+// sanitizeYouTubeTags splits a comma-separated tag string and drops tags from
+// the end until the total character count (tags joined by commas) fits within
+// YouTube's 500-character limit.
+func sanitizeYouTubeTags(raw string) []string {
+	const maxTotal = 500
+	parts := strings.Split(raw, ",")
+	tags := make([]string, 0, len(parts))
+	for _, t := range parts {
+		t = strings.TrimSpace(t)
+		if t != "" {
+			tags = append(tags, t)
+		}
+	}
+	for len(tags) > 0 {
+		total := 0
+		for i, t := range tags {
+			if i > 0 {
+				total++ // comma separator
+			}
+			total += len(t)
+		}
+		if total <= maxTotal {
+			break
+		}
+		tags = tags[:len(tags)-1]
+	}
+	return tags
 }
 
 func GetYouTubeURL(videoId string) string {
@@ -356,7 +386,10 @@ func UploadShort(filePath string, short storage.Short, mainVideoID string) (stri
 		return "", fmt.Errorf("video file does not exist: %s", filePath)
 	}
 
-	client := getClient(context.Background())
+	client, err := getClient(context.Background())
+	if err != nil {
+		return "", fmt.Errorf("OAuth failed: %w", err)
+	}
 	ctx := context.Background()
 	service, err := youtube.NewService(ctx, option.WithHTTPClient(client))
 	if err != nil {

@@ -9,6 +9,8 @@ import { SelectInput } from './SelectInput';
 import { ArrayInput } from './ArrayInput';
 import { MapInput } from './MapInput';
 import { ActionButton, isActionField } from './ActionButton';
+import { PublishButton, isPublishField } from './PublishButton';
+import { SocialPostButton, isSocialField } from './SocialPostButton';
 import { AIGenerateButton } from './AIGenerateButton';
 import { VideoUploadInput } from './VideoUploadInput';
 import { FieldLabel } from './FieldLabel';
@@ -179,11 +181,22 @@ function renderField(
 
   switch (field.type) {
     case 'label':
+      if (isPublishField(fieldName) && category && videoName && video) {
+        return (
+          <PublishButton
+            fieldName={fieldName}
+            value={toStringValue(value)}
+            category={category}
+            videoName={videoName}
+            video={video}
+          />
+        );
+      }
       return (
         <div>
           <FieldLabel name={name} helpText={helpText} complete={complete} />
           <div className="flex items-center gap-2">
-            {value && (
+            {value != null && value !== '' && (
               <code className="text-xs text-gray-300 bg-gray-800 px-1 rounded">{toStringValue(value)}</code>
             )}
             {category && videoName && fieldName === 'videoFile' && (
@@ -200,6 +213,16 @@ function renderField(
       if (isActionField(fieldName) && category && videoName) {
         return (
           <ActionButton
+            fieldName={fieldName}
+            value={Boolean(value)}
+            category={category}
+            videoName={videoName}
+          />
+        );
+      }
+      if (isSocialField(fieldName) && category && videoName) {
+        return (
+          <SocialPostButton
             fieldName={fieldName}
             value={Boolean(value)}
             category={category}
@@ -299,6 +322,17 @@ function renderField(
         />
       );
     default:
+      if (isPublishField(fieldName) && category && videoName && video) {
+        return (
+          <PublishButton
+            fieldName={fieldName}
+            value={toStringValue(value)}
+            category={category}
+            videoName={videoName}
+            video={video}
+          />
+        );
+      }
       return (
         <TextInput
           name={name}

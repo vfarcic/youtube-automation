@@ -98,7 +98,10 @@ func UploadDubbedVideo(video *storage.Video, langCode string, driveService gdriv
 
 	// Get the appropriate client for the language
 	ctx := context.Background()
-	client := GetSpanishChannelClient(ctx) // For now, only Spanish
+	client, err := GetSpanishChannelClient(ctx) // For now, only Spanish
+	if err != nil {
+		return "", fmt.Errorf("OAuth failed: %w", err)
+	}
 
 	// Create YouTube service
 	service, err := youtube.NewService(ctx, option.WithHTTPClient(client))
@@ -235,7 +238,10 @@ func UploadDubbedShort(video *storage.Video, shortIndex int) (string, error) {
 
 	// Get the appropriate client
 	ctx := context.Background()
-	client := GetSpanishChannelClient(ctx)
+	client, err := GetSpanishChannelClient(ctx)
+	if err != nil {
+		return "", fmt.Errorf("OAuth failed: %w", err)
+	}
 
 	// Create YouTube service
 	service, err := youtube.NewService(ctx, option.WithHTTPClient(client))

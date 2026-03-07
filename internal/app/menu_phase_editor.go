@@ -534,9 +534,13 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 				// Action: Upload Video to YouTube if requested
 				if uploadTrigger && updatedVideo.UploadVideo != "" {
 					fmt.Println(m.orangeStyle.Render(fmt.Sprintf("Attempting to upload video: %s", updatedVideo.UploadVideo)))
-					newVideoID := publishing.UploadVideo(&updatedVideo) // Pass the whole struct
+					newVideoID, uploadErr := publishing.UploadVideo(&updatedVideo) // Pass the whole struct
+					if uploadErr != nil {
+						log.Print(m.errorStyle.Render(fmt.Sprintf("Failed to upload video: %v", uploadErr)))
+						return fmt.Errorf("failed to upload video: %w", uploadErr)
+					}
 					if newVideoID == "" {
-						log.Print(m.errorStyle.Render(fmt.Sprintf("Failed to upload video from path: %s. YouTube API might have returned an empty ID or an error occurred.", updatedVideo.UploadVideo)))
+						log.Print(m.errorStyle.Render(fmt.Sprintf("Failed to upload video from path: %s. YouTube API returned an empty ID.", updatedVideo.UploadVideo)))
 						return fmt.Errorf("failed to upload video from path: %s", updatedVideo.UploadVideo)
 					} else {
 						updatedVideo.VideoId = newVideoID // Store the new video ID

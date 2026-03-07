@@ -108,7 +108,7 @@ type Video struct {
 	Timecodes            string      `json:"timecodes" completion:"no_fixme"`
 	HugoPath             string      `json:"hugoPath" completion:"filled_only"`
 	RelatedVideos        string      `json:"relatedVideos" completion:"filled_only"`
-	UploadVideo          string      `json:"uploadVideo" completion:"filled_only"`
+	UploadVideo          string      `json:"uploadVideo" completion:"filled_only" ui:"auto"`
 	VideoId              string      `json:"videoId" completion:"filled_only"`
 	Tweet                string      `json:"tweet" completion:"filled_only"`
 	LinkedInPosted       bool        `json:"linkedInPosted" completion:"true_only"`

@@ -52,7 +52,7 @@ func GetVideoAspectMappings() []AspectMapping {
 			"ThumbnailVariants", "Timecodes", "VideoFile", "Slides",
 		},
 		AspectKeyPublishing: {
-			"UploadVideo", "VideoId", "HugoPath",
+			"VideoId", "HugoPath",
 		},
 		AspectKeyPostPublish: {
 			"DOTPosted", "BlueSkyPosted", "LinkedInPosted", "SlackPosted",
@@ -170,6 +170,11 @@ func generateFieldMapping(structType reflect.Type, fieldPath string, order int) 
 	// Regular field
 	field, found := structType.FieldByName(fieldPath)
 	if !found {
+		return nil
+	}
+
+	// Skip auto-managed fields (tagged ui:"auto")
+	if field.Tag.Get("ui") == "auto" {
 		return nil
 	}
 

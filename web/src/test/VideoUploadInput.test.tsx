@@ -136,7 +136,6 @@ describe('VideoUploadInput', () => {
     let resolveUpload: ((value: any) => void) | undefined;
 
     const clientModule = await import('../api/client');
-    const origFn = clientModule.uploadFileWithProgress;
     vi.spyOn(clientModule, 'uploadFileWithProgress').mockImplementation(
       (_path, _file, _field, onProgress) => {
         capturedOnProgress = onProgress;

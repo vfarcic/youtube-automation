@@ -106,6 +106,8 @@ export interface VideoResponse {
   thumbnail: string;
   thumbnailVariants: ThumbnailVariant[];
   uploadVideo: string;
+  videoFile?: string;
+  videoDriveFileId?: string;
   tweet: string;
   appliedLanguage: string;
   appliedAudioLanguage: string;
@@ -277,5 +279,50 @@ export interface ActionResponse {
   emailSent: boolean;
   emailError?: string;
   video: VideoResponse;
+  syncWarning?: string;
+}
+
+// --- Publishing Response Types ---
+
+export interface PublishYouTubeResponse {
+  videoId: string;
+  syncWarning?: string;
+}
+
+export interface PublishThumbnailResponse {
+  success: boolean;
+  syncWarning?: string;
+}
+
+export interface PublishShortResponse {
+  youtubeId: string;
+  syncWarning?: string;
+}
+
+export interface PublishHugoResponse {
+  hugoPath: string;
+  syncWarning?: string;
+}
+
+export interface PublishDubbedResponse {
+  videoId: string;
+  syncWarning?: string;
+}
+
+export interface TranscriptResponse {
+  transcript: string;
+}
+
+export interface MetadataResponse {
+  title: string;
+  description: string;
+  tags: string[];
+  publishedAt: string;
+}
+
+export interface SocialPostResponse {
+  posted: boolean;
+  message?: string;
+  postUrl?: string;
   syncWarning?: string;
 }

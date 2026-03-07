@@ -17,6 +17,14 @@ import type {
   AITranslateResponse,
   AIAMAContentResponse,
   ActionResponse,
+  PublishYouTubeResponse,
+  PublishThumbnailResponse,
+  PublishShortResponse,
+  PublishHugoResponse,
+  PublishDubbedResponse,
+  TranscriptResponse,
+  MetadataResponse,
+  SocialPostResponse,
 } from './types';
 
 export function usePhases() {
@@ -267,5 +275,102 @@ export function useUploadThumbnailToDrive() {
     onSuccess: (_data, { name, category }) => {
       qc.invalidateQueries({ queryKey: ['video', name, category] });
     },
+  });
+}
+
+// --- Publishing Hooks ---
+
+function invalidateVideoQueries(qc: ReturnType<typeof useQueryClient>, name: string, category: string) {
+  qc.invalidateQueries({ queryKey: ['video', name, category] });
+  qc.invalidateQueries({ queryKey: ['videoProgress', name, category] });
+  qc.invalidateQueries({ queryKey: ['videosList'] });
+  qc.invalidateQueries({ queryKey: ['phases'] });
+}
+
+export function usePublishYouTube() {
+  const qc = useQueryClient();
+  return useMutation<PublishYouTubeResponse, Error, { name: string; category: string }>({
+    mutationFn: ({ name, category }) =>
+      post<PublishYouTubeResponse>(
+        `/api/publish/youtube/${encodeURIComponent(name)}?category=${encodeURIComponent(category)}`,
+        {},
+      ),
+    onSuccess: (_data, { name, category }) => invalidateVideoQueries(qc, name, category),
+  });
+}
+
+export function usePublishThumbnail() {
+  const qc = useQueryClient();
+  return useMutation<PublishThumbnailResponse, Error, { name: string; category: string }>({
+    mutationFn: ({ name, category }) =>
+      post<PublishThumbnailResponse>(
+        `/api/publish/youtube/${encodeURIComponent(name)}/thumbnail?category=${encodeURIComponent(category)}`,
+        {},
+      ),
+    onSuccess: (_data, { name, category }) => invalidateVideoQueries(qc, name, category),
+  });
+}
+
+export function usePublishShort() {
+  const qc = useQueryClient();
+  return useMutation<PublishShortResponse, Error, { name: string; category: string; shortId: string }>({
+    mutationFn: ({ name, category, shortId }) =>
+      post<PublishShortResponse>(
+        `/api/publish/youtube/${encodeURIComponent(name)}/shorts/${encodeURIComponent(shortId)}?category=${encodeURIComponent(category)}`,
+        {},
+      ),
+    onSuccess: (_data, { name, category }) => invalidateVideoQueries(qc, name, category),
+  });
+}
+
+export function usePublishHugo() {
+  const qc = useQueryClient();
+  return useMutation<PublishHugoResponse, Error, { name: string; category: string }>({
+    mutationFn: ({ name, category }) =>
+      post<PublishHugoResponse>(
+        `/api/publish/hugo/${encodeURIComponent(name)}?category=${encodeURIComponent(category)}`,
+        {},
+      ),
+    onSuccess: (_data, { name, category }) => invalidateVideoQueries(qc, name, category),
+  });
+}
+
+export function usePublishDubbed() {
+  const qc = useQueryClient();
+  return useMutation<PublishDubbedResponse, Error, { name: string; category: string; lang: string }>({
+    mutationFn: ({ name, category, lang }) =>
+      post<PublishDubbedResponse>(
+        `/api/publish/dubbed/${encodeURIComponent(name)}?category=${encodeURIComponent(category)}&lang=${encodeURIComponent(lang)}`,
+        {},
+      ),
+    onSuccess: (_data, { name, category }) => invalidateVideoQueries(qc, name, category),
+  });
+}
+
+export function useTranscript(videoId?: string) {
+  return useQuery<TranscriptResponse>({
+    queryKey: ['transcript', videoId],
+    queryFn: () => get<TranscriptResponse>(`/api/publish/transcript/${encodeURIComponent(videoId!)}`),
+    enabled: !!videoId,
+  });
+}
+
+export function useVideoMetadata(videoId?: string) {
+  return useQuery<MetadataResponse>({
+    queryKey: ['videoMetadata', videoId],
+    queryFn: () => get<MetadataResponse>(`/api/publish/metadata/${encodeURIComponent(videoId!)}`),
+    enabled: !!videoId,
+  });
+}
+
+export function useSocialPost() {
+  const qc = useQueryClient();
+  return useMutation<SocialPostResponse, Error, { platform: string; name: string; category: string }>({
+    mutationFn: ({ platform, name, category }) =>
+      post<SocialPostResponse>(
+        `/api/social/${encodeURIComponent(platform)}/${encodeURIComponent(name)}?category=${encodeURIComponent(category)}`,
+        {},
+      ),
+    onSuccess: (_data, { name, category }) => invalidateVideoQueries(qc, name, category),
   });
 }

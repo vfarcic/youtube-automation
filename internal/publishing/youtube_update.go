@@ -30,7 +30,10 @@ func GetVideoMetadata(videoID string) (*VideoMetadata, error) {
 	}
 
 	ctx := context.Background()
-	client := getClient(ctx)
+	client, err := getClient(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("OAuth failed: %w", err)
+	}
 
 	service, err := youtube.NewService(ctx, option.WithHTTPClient(client))
 	if err != nil {
@@ -64,7 +67,10 @@ func UpdateAMAVideo(videoID, title, description, tags, timecodes string) error {
 	}
 
 	ctx := context.Background()
-	client := getClient(ctx)
+	client, err := getClient(ctx)
+	if err != nil {
+		return fmt.Errorf("OAuth failed: %w", err)
+	}
 
 	service, err := youtube.NewService(ctx, option.WithHTTPClient(client))
 	if err != nil {
