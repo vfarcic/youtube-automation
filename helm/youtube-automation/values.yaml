@@ -49,6 +49,13 @@ existingSecretKey: "api-token"
 # Additional environment variables (map of name: value)
 env: {}
 
+# Inject environment variables from Secrets or ConfigMaps
+envFrom: []
+# - secretRef:
+#     name: my-secret
+# - configMapRef:
+#     name: my-configmap
+
 # Git sync configuration for data repository
 git:
   repoURL: ""
