@@ -2,6 +2,8 @@ package aspect
 
 import (
 	"sort"
+
+	"devopstoolkit/youtube-automation/internal/storage"
 )
 
 // Service provides access to editing aspect metadata
@@ -38,6 +40,8 @@ func (s *Service) GetAspects() AspectMetadata {
 				ValidationHints:    fieldMapping.ValidationHints,
 				DefaultValue:       fieldMapping.DefaultValue,
 				CompletionCriteria: s.completionService.GetFieldCompletionCriteria(mapping.AspectKey, completionFieldName),
+				ItemFields:         fieldMapping.ItemFields,
+				MapKeyLabel:        fieldMapping.MapKeyLabel,
 			}
 		}
 
@@ -111,6 +115,8 @@ func (s *Service) GetAspectFields(aspectKey string) (*AspectFields, error) {
 					ValidationHints:    fieldMapping.ValidationHints,
 					DefaultValue:       fieldMapping.DefaultValue,
 					CompletionCriteria: s.completionService.GetFieldCompletionCriteria(mapping.AspectKey, completionFieldName),
+					ItemFields:         fieldMapping.ItemFields,
+					MapKeyLabel:        fieldMapping.MapKeyLabel,
 				}
 			}
 
@@ -128,6 +134,11 @@ func (s *Service) GetAspectFields(aspectKey string) (*AspectFields, error) {
 // GetFieldCompletionCriteria returns completion criteria for a specific field
 func (s *Service) GetFieldCompletionCriteria(aspectKey, fieldKey string) string {
 	return s.completionService.GetFieldCompletionCriteria(aspectKey, fieldKey)
+}
+
+// CalculateAspectProgress calculates progress (completed, total) for a given aspect
+func (s *Service) CalculateAspectProgress(aspectKey string, video storage.Video) (int, int) {
+	return s.completionService.CalculateAspectProgress(aspectKey, video)
 }
 
 // mapFieldNameForCompletion maps JSON field names to completion service field names

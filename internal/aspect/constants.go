@@ -8,6 +8,9 @@ const (
 	FieldTypeDate    = "date"    // Date picker
 	FieldTypeNumber  = "number"  // Numeric input
 	FieldTypeSelect  = "select"  // Dropdown selection
+	FieldTypeArray   = "array"   // Array of structured items
+	FieldTypeMap     = "map"     // Map of key to structured items
+	FieldTypeLabel   = "label"   // Read-only display label
 )
 
 // AspectKey constants for predefined aspects

@@ -97,6 +97,9 @@ func TestGetVideoAspectMappings(t *testing.T) {
 			FieldTypeDate:    true,
 			FieldTypeNumber:  true,
 			FieldTypeSelect:  true,
+			FieldTypeArray:   true,
+			FieldTypeMap:     true,
+			FieldTypeLabel:   true,
 		}
 
 		for _, mapping := range mappings {
@@ -159,9 +162,9 @@ func TestGetVideoAspectMappings(t *testing.T) {
 		expectedCounts := map[string]int{
 			AspectKeyInitialDetails: 10, // ProjectName, ProjectURL, Amount, Emails, Blocked, Name, URL, Date, Delayed, Gist
 			AspectKeyWorkProgress:   11, // Code, Head, Screen, RelatedVideos, Thumbnails, Diagrams, Screenshots, Location, Tagline, TaglineIdeas, OtherLogos
-			AspectKeyDefinition:     7,  // Titles, Description, Tags, DescriptionTags, Tweet, Animations, RequestThumbnail
-			AspectKeyPostProduction: 7,  // ThumbnailVariants, Shorts, Members, RequestEdit, Timecodes, Movie, Slides
-			AspectKeyPublishing:     3,  // UploadVideo, VideoId, HugoPath
+			AspectKeyDefinition:     10, // Titles, Description, Tags, DescriptionTags, Tweet, Animations, Shorts, Members, RequestThumbnail, RequestEdit
+			AspectKeyPostProduction: 4,  // ThumbnailVariants, Timecodes, VideoFile, Slides
+			AspectKeyPublishing:     2,  // VideoId, HugoPath (UploadVideo hidden via ui:"auto")
 			AspectKeyPostPublish:    10, // DOT, BlueSky, LinkedIn, Slack, YouTube Highlight/Comment/Reply, GDE, Repo, NotifySponsors
 			AspectKeyAnalysis:       1,  // Titles (for A/B test share percentages)
 		}
@@ -174,6 +177,52 @@ func TestGetVideoAspectMappings(t *testing.T) {
 			}
 		}
 	})
+}
+
+func TestAnalysisTitlesItemFieldOverrides(t *testing.T) {
+	mappings := GetVideoAspectMappings()
+
+	var analysisAspect *AspectMapping
+	for _, m := range mappings {
+		if m.AspectKey == AspectKeyAnalysis {
+			analysisAspect = &m
+			break
+		}
+	}
+	if analysisAspect == nil {
+		t.Fatal("Analysis aspect not found")
+	}
+
+	var titlesField *FieldMapping
+	for _, f := range analysisAspect.Fields {
+		if f.FieldName == "titles" {
+			titlesField = &f
+			break
+		}
+	}
+	if titlesField == nil {
+		t.Fatal("Titles field not found in Analysis aspect")
+	}
+
+	if len(titlesField.ItemFields) != 2 {
+		t.Fatalf("Expected 2 item fields (text as label + share), got %d", len(titlesField.ItemFields))
+	}
+
+	// First item field: text as label
+	if titlesField.ItemFields[0].FieldName != "text" {
+		t.Errorf("Expected first item field 'text', got %q", titlesField.ItemFields[0].FieldName)
+	}
+	if titlesField.ItemFields[0].Type != FieldTypeLabel {
+		t.Errorf("Expected text field type 'label', got %q", titlesField.ItemFields[0].Type)
+	}
+
+	// Second item field: share as number
+	if titlesField.ItemFields[1].FieldName != "share" {
+		t.Errorf("Expected second item field 'share', got %q", titlesField.ItemFields[1].FieldName)
+	}
+	if titlesField.ItemFields[1].Type != FieldTypeNumber {
+		t.Errorf("Expected share field type 'number', got %q", titlesField.ItemFields[1].Type)
+	}
 }
 
 func TestGetFieldValueByJSONPath(t *testing.T) {
@@ -270,6 +319,9 @@ func TestDetermineFieldType(t *testing.T) {
 		{"Description", FieldTypeText},
 		{"Tags", FieldTypeText},
 		{"Timecodes", FieldTypeText},
+		{"Titles", FieldTypeArray},
+		{"ThumbnailVariants", FieldTypeArray},
+		{"Shorts", FieldTypeArray},
 	}
 
 	for _, test := range tests {
@@ -338,6 +390,77 @@ func TestGenerateFieldMapping(t *testing.T) {
 		mapping := generateFieldMapping(videoType, "Sponsorship.NonExistent", 1)
 		if mapping != nil {
 			t.Error("Expected nil mapping for non-existent nested field")
+		}
+	})
+
+	t.Run("Should generate itemFields for array field Titles", func(t *testing.T) {
+		mapping := generateFieldMapping(videoType, "Titles", 1)
+		if mapping == nil {
+			t.Fatal("Expected non-nil mapping for Titles")
+		}
+		if mapping.FieldType != FieldTypeArray {
+			t.Errorf("Expected field type 'array', got %s", mapping.FieldType)
+		}
+		// Only 'text' should be included (index and share are ui:"auto")
+		if len(mapping.ItemFields) != 1 {
+			t.Fatalf("Expected 1 item field for TitleVariant (text only), got %d", len(mapping.ItemFields))
+		}
+		if mapping.ItemFields[0].FieldName != "text" {
+			t.Errorf("Expected item field name %q, got %q", "text", mapping.ItemFields[0].FieldName)
+		}
+	})
+
+	t.Run("Should generate itemFields for array field Shorts", func(t *testing.T) {
+		mapping := generateFieldMapping(videoType, "Shorts", 1)
+		if mapping == nil {
+			t.Fatal("Expected non-nil mapping for Shorts")
+		}
+		if mapping.FieldType != FieldTypeArray {
+			t.Errorf("Expected field type 'array', got %s", mapping.FieldType)
+		}
+		if len(mapping.ItemFields) != 3 {
+			t.Fatalf("Expected 3 item fields for Short (id, title, text), got %d", len(mapping.ItemFields))
+		}
+	})
+
+}
+
+func TestGenerateItemFields(t *testing.T) {
+	t.Run("Should return nil for non-struct types", func(t *testing.T) {
+		result := generateItemFields(reflect.TypeOf("string"))
+		if result != nil {
+			t.Error("Expected nil for string type")
+		}
+	})
+
+	t.Run("Should return correct fields for TitleVariant", func(t *testing.T) {
+		result := generateItemFields(reflect.TypeOf(storage.TitleVariant{}))
+		// Only 'text' - index and share are ui:"auto"
+		if len(result) != 1 {
+			t.Fatalf("Expected 1 field (text only), got %d", len(result))
+		}
+		if result[0].FieldName != "text" {
+			t.Errorf("Expected field name 'text', got %s", result[0].FieldName)
+		}
+		if result[0].Type != FieldTypeString {
+			t.Errorf("Expected type string for text, got %s", result[0].Type)
+		}
+	})
+
+	t.Run("Should return correct fields for ThumbnailVariant", func(t *testing.T) {
+		result := generateItemFields(reflect.TypeOf(storage.ThumbnailVariant{}))
+		// all fields are ui:"auto" (index, path, driveFileId, share) - upload-only
+		if len(result) != 0 {
+			t.Fatalf("Expected 0 fields (all ui:auto), got %d", len(result))
+		}
+	})
+
+	t.Run("Should skip ui:auto fields", func(t *testing.T) {
+		result := generateItemFields(reflect.TypeOf(storage.TitleVariant{}))
+		for _, field := range result {
+			if field.FieldName == "index" || field.FieldName == "share" {
+				t.Errorf("Field %s should be skipped (ui:auto)", field.FieldName)
+			}
 		}
 	})
 }

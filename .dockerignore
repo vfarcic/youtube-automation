@@ -1,0 +1,15 @@
+.git
+.github
+node_modules
+web/node_modules
+web/dist
+internal/frontend/dist
+tmp
+*.md
+!go.md
+youtube-release*
+coverage.out
+scripts/
+prds/
+pkg/testutil/testdata/
+.claude/

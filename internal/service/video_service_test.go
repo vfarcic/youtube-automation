@@ -1,6 +1,7 @@
 package service
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -29,8 +30,8 @@ func setupTestVideoService(t *testing.T) (*VideoService, string, func()) {
 	os.WriteFile("index.yaml", []byte(indexContent), 0644)
 
 	// Initialize service dependencies
-	fsOps := &filesystem.Operations{}
-	videoManager := video.NewManager(fsOps.GetFilePath)
+	fsOps := filesystem.NewOperations()
+	videoManager := video.NewManager(fsOps.GetFilePath, nil)
 	service := NewVideoService("index.yaml", fsOps, videoManager)
 
 	cleanup := func() {
@@ -601,6 +602,101 @@ func slicesEqual(a, b []string) bool {
 		}
 	}
 	return true
+}
+
+func TestVideoService_OnMutate_CreateVideo(t *testing.T) {
+	service, _, cleanup := setupTestVideoService(t)
+	defer cleanup()
+
+	var mutateMessages []string
+	service.SetOnMutate(func(msg string) error {
+		mutateMessages = append(mutateMessages, msg)
+		return nil
+	})
+
+	_, err := service.CreateVideo("callback-test", "test-category", "")
+	require.NoError(t, err)
+	assert.Len(t, mutateMessages, 1)
+	assert.Contains(t, mutateMessages[0], "create video")
+}
+
+func TestVideoService_OnMutate_UpdateVideo(t *testing.T) {
+	service, _, cleanup := setupTestVideoService(t)
+	defer cleanup()
+
+	_, err := service.CreateVideo("update-cb-test", "test-category", "")
+	require.NoError(t, err)
+
+	var mutateMessages []string
+	service.SetOnMutate(func(msg string) error {
+		mutateMessages = append(mutateMessages, msg)
+		return nil
+	})
+
+	video, err := service.GetVideo("update-cb-test", "test-category")
+	require.NoError(t, err)
+	video.Description = "updated"
+	err = service.UpdateVideo(video)
+	require.NoError(t, err)
+	assert.Len(t, mutateMessages, 1)
+	assert.Contains(t, mutateMessages[0], "update video")
+}
+
+func TestVideoService_OnMutate_DeleteVideo(t *testing.T) {
+	service, _, cleanup := setupTestVideoService(t)
+	defer cleanup()
+
+	_, err := service.CreateVideo("delete-cb-test", "test-category", "")
+	require.NoError(t, err)
+
+	var mutateMessages []string
+	service.SetOnMutate(func(msg string) error {
+		mutateMessages = append(mutateMessages, msg)
+		return nil
+	})
+
+	err = service.DeleteVideo("delete-cb-test", "test-category")
+	require.NoError(t, err)
+	assert.Len(t, mutateMessages, 1)
+	assert.Contains(t, mutateMessages[0], "delete video")
+}
+
+func TestVideoService_OnMutate_NotCalledOnFailure(t *testing.T) {
+	service, _, cleanup := setupTestVideoService(t)
+	defer cleanup()
+
+	var called bool
+	service.SetOnMutate(func(msg string) error {
+		called = true
+		return nil
+	})
+
+	// Empty name should fail validation before mutation
+	_, err := service.CreateVideo("", "test-category", "")
+	assert.Error(t, err)
+	assert.False(t, called, "onMutate should NOT be called when the mutation itself fails")
+}
+
+func TestVideoService_OnMutate_NilCallbackWorks(t *testing.T) {
+	service, _, cleanup := setupTestVideoService(t)
+	defer cleanup()
+
+	// No callback set — should work without panic
+	_, err := service.CreateVideo("no-cb-test", "test-category", "")
+	assert.NoError(t, err)
+}
+
+func TestVideoService_OnMutate_ErrorIsLogged(t *testing.T) {
+	service, _, cleanup := setupTestVideoService(t)
+	defer cleanup()
+
+	service.SetOnMutate(func(msg string) error {
+		return fmt.Errorf("push failed")
+	})
+
+	// Should succeed even though callback returns error
+	_, err := service.CreateVideo("error-cb-test", "test-category", "")
+	assert.NoError(t, err)
 }
 
 func TestVideoService_SanitizedNamesIntegration(t *testing.T) {

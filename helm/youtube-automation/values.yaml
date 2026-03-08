@@ -1,0 +1,63 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/vfarcic/youtube-automation
+  pullPolicy: IfNotPresent
+  # Overrides the image tag; defaults to the chart appVersion.
+  tag: ""
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: false
+  name: ""
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: youtube-automation.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    memory: 512Mi
+
+# API authentication token — set via --set or external secret
+apiToken: ""
+
+# Reference an existing Secret instead of creating one.
+# When set, the chart will NOT create its own Secret and will use this one.
+existingSecret: ""
+# Key within the existing secret that holds the API token
+existingSecretKey: "api-token"
+
+# Additional environment variables (map of name: value)
+env: {}
+
+# Git sync configuration for data repository
+git:
+  repoURL: ""
+  branch: "main"
+  token: ""
+
+# Extra args passed to the serve command
+extraArgs: []
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

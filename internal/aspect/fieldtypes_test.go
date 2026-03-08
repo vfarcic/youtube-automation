@@ -337,6 +337,118 @@ func TestNumberFieldType(t *testing.T) {
 	})
 }
 
+// TestArrayFieldType tests all methods of ArrayFieldType
+func TestArrayFieldType(t *testing.T) {
+	fieldType := &ArrayFieldType{}
+
+	t.Run("Validate should accept nil", func(t *testing.T) {
+		if err := fieldType.Validate(nil); err != nil {
+			t.Errorf("Expected no error for nil, got: %v", err)
+		}
+	})
+
+	t.Run("Validate should accept slices", func(t *testing.T) {
+		if err := fieldType.Validate([]interface{}{map[string]interface{}{"key": "val"}}); err != nil {
+			t.Errorf("Expected no error for slice, got: %v", err)
+		}
+		if err := fieldType.Validate([]interface{}{}); err != nil {
+			t.Errorf("Expected no error for empty slice, got: %v", err)
+		}
+	})
+
+	t.Run("Validate should reject non-slice types", func(t *testing.T) {
+		if err := fieldType.Validate("not-a-slice"); err == nil {
+			t.Error("Expected error for string, got nil")
+		}
+		if err := fieldType.Validate(123); err == nil {
+			t.Error("Expected error for int, got nil")
+		}
+	})
+
+	t.Run("GetDefaultValue should return empty slice", func(t *testing.T) {
+		val := fieldType.GetDefaultValue()
+		if val == nil {
+			t.Error("Expected non-nil default value")
+		}
+		arr, ok := val.([]interface{})
+		if !ok {
+			t.Errorf("Expected []interface{}, got %T", val)
+		}
+		if len(arr) != 0 {
+			t.Errorf("Expected empty slice, got length %d", len(arr))
+		}
+	})
+
+	t.Run("GetTypeName should return 'array'", func(t *testing.T) {
+		if fieldType.GetTypeName() != "array" {
+			t.Errorf("Expected 'array', got %s", fieldType.GetTypeName())
+		}
+	})
+
+	t.Run("GetUIHints should return inputType 'array'", func(t *testing.T) {
+		hints := fieldType.GetUIHints()
+		if hints.InputType != "array" {
+			t.Errorf("Expected inputType 'array', got %s", hints.InputType)
+		}
+	})
+}
+
+// TestMapFieldType tests all methods of MapFieldType
+func TestMapFieldType(t *testing.T) {
+	fieldType := &MapFieldType{}
+
+	t.Run("Validate should accept nil", func(t *testing.T) {
+		if err := fieldType.Validate(nil); err != nil {
+			t.Errorf("Expected no error for nil, got: %v", err)
+		}
+	})
+
+	t.Run("Validate should accept maps", func(t *testing.T) {
+		if err := fieldType.Validate(map[string]interface{}{"key": "val"}); err != nil {
+			t.Errorf("Expected no error for map, got: %v", err)
+		}
+		if err := fieldType.Validate(map[string]interface{}{}); err != nil {
+			t.Errorf("Expected no error for empty map, got: %v", err)
+		}
+	})
+
+	t.Run("Validate should reject non-map types", func(t *testing.T) {
+		if err := fieldType.Validate("not-a-map"); err == nil {
+			t.Error("Expected error for string, got nil")
+		}
+		if err := fieldType.Validate([]interface{}{}); err == nil {
+			t.Error("Expected error for slice, got nil")
+		}
+	})
+
+	t.Run("GetDefaultValue should return empty map", func(t *testing.T) {
+		val := fieldType.GetDefaultValue()
+		if val == nil {
+			t.Error("Expected non-nil default value")
+		}
+		m, ok := val.(map[string]interface{})
+		if !ok {
+			t.Errorf("Expected map[string]interface{}, got %T", val)
+		}
+		if len(m) != 0 {
+			t.Errorf("Expected empty map, got length %d", len(m))
+		}
+	})
+
+	t.Run("GetTypeName should return 'map'", func(t *testing.T) {
+		if fieldType.GetTypeName() != "map" {
+			t.Errorf("Expected 'map', got %s", fieldType.GetTypeName())
+		}
+	})
+
+	t.Run("GetUIHints should return inputType 'map'", func(t *testing.T) {
+		hints := fieldType.GetUIHints()
+		if hints.InputType != "map" {
+			t.Errorf("Expected inputType 'map', got %s", hints.InputType)
+		}
+	})
+}
+
 // TestEdgeCases tests various edge cases for all field types
 func TestFieldTypeEdgeCases(t *testing.T) {
 	t.Run("All field types should handle nil validation gracefully", func(t *testing.T) {
@@ -358,7 +470,7 @@ func TestFieldTypeEdgeCases(t *testing.T) {
 	})
 
 	t.Run("All field types should return consistent type names", func(t *testing.T) {
-		expectedNames := []string{"string", "text", "boolean", "date", "select", "number"}
+		expectedNames := []string{"string", "text", "boolean", "date", "select", "number", "array", "map"}
 		fieldTypes := []FieldType{
 			&StringFieldType{},
 			&TextFieldType{},
@@ -366,6 +478,8 @@ func TestFieldTypeEdgeCases(t *testing.T) {
 			&DateFieldType{},
 			&SelectFieldType{},
 			&NumberFieldType{},
+			&ArrayFieldType{},
+			&MapFieldType{},
 		}
 
 		for i, ft := range fieldTypes {

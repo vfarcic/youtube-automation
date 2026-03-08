@@ -125,7 +125,7 @@ func (s *VideoService) GetVideosByPhase(phase int) ([]storage.Video, error) {
 		}
 		fullVideo.Name = videoIndex.Name
 		fullVideo.Category = videoIndex.Category
-		fullVideo.Path = videoPath
+		fullVideo.Path = s.filesystem.GetStoragePath(videoIndex.Category, videoIndex.Name, "yaml")
 
 		// Use CalculateVideoPhase since we already have the full video data loaded
 		// This avoids the file I/O overhead of GetVideoPhase which would reload the video
@@ -194,7 +194,7 @@ func (s *VideoService) GetVideo(name, category string) (storage.Video, error) {
 
 	video.Name = name
 	video.Category = category
-	video.Path = videoPath
+	video.Path = s.filesystem.GetStoragePath(category, name, "yaml")
 
 	return video, nil
 }
@@ -205,7 +205,10 @@ func (s *VideoService) UpdateVideo(video storage.Video) error {
 		return fmt.Errorf("video path is required")
 	}
 
-	return s.yamlStorage.WriteVideo(video, video.Path)
+	// Reconstruct the full filesystem path from category/name since video.Path
+	// may be repo-relative (without the data dir prefix) for storage purposes
+	fullPath := s.filesystem.GetFilePath(video.Category, video.Name, "yaml")
+	return s.yamlStorage.WriteVideo(video, fullPath)
 }
 
 // DeleteVideo deletes a video and its associated files

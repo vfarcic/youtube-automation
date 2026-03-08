@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -808,137 +809,49 @@ path: /path/to/video
 	})
 }
 
-// TestDubbingInfo tests DubbingInfo struct serialization
-func TestDubbingInfo(t *testing.T) {
-	t.Run("DubbingInfo with ThumbnailPath serializes to YAML correctly", func(t *testing.T) {
-		info := DubbingInfo{
-			DubbingID:       "dub123",
-			DubbedVideoPath: "/path/to/dubbed-video-es.mp4",
-			Title:           "Título en Español",
-			Description:     "Descripción del video",
-			Tags:            "tag1,tag2,tag3",
-			UploadedVideoID: "yt123",
-			DubbingStatus:   "dubbed",
-			ThumbnailPath:   "/path/to/thumbnail-es.png",
-		}
+// TestConcurrentAccess verifies the RWMutex protects against data races.
+// Run with: go test -race ./internal/storage/...
+func TestConcurrentAccess(t *testing.T) {
+	tempDir := t.TempDir()
+	indexPath := filepath.Join(tempDir, "index.yaml")
+	videoPath := filepath.Join(tempDir, "concurrent-video.yaml")
 
-		yamlData, err := yaml.Marshal(info)
-		require.NoError(t, err)
+	y := NewYAML(indexPath)
 
-		var parsed DubbingInfo
-		err = yaml.Unmarshal(yamlData, &parsed)
-		require.NoError(t, err)
+	// Seed initial data
+	initialVideo := Video{Name: "concurrent-test", Category: "testing"}
+	require.NoError(t, y.WriteVideo(initialVideo, videoPath))
+	require.NoError(t, y.WriteIndex([]VideoIndex{{Name: "concurrent-test", Category: "testing"}}))
 
-		assert.Equal(t, info.DubbingID, parsed.DubbingID)
-		assert.Equal(t, info.DubbedVideoPath, parsed.DubbedVideoPath)
-		assert.Equal(t, info.Title, parsed.Title)
-		assert.Equal(t, info.Description, parsed.Description)
-		assert.Equal(t, info.Tags, parsed.Tags)
-		assert.Equal(t, info.UploadedVideoID, parsed.UploadedVideoID)
-		assert.Equal(t, info.DubbingStatus, parsed.DubbingStatus)
-		assert.Equal(t, info.ThumbnailPath, parsed.ThumbnailPath)
-	})
+	const goroutines = 10
+	var wg sync.WaitGroup
+	wg.Add(goroutines * 2) // readers + writers
 
-	t.Run("DubbingInfo without ThumbnailPath omits field in YAML", func(t *testing.T) {
-		info := DubbingInfo{
-			DubbingID:     "dub123",
-			DubbingStatus: "dubbed",
-		}
+	// Concurrent readers
+	for i := 0; i < goroutines; i++ {
+		go func() {
+			defer wg.Done()
+			_, _ = y.GetVideo(videoPath)
+			_, _ = y.GetIndex()
+		}()
+	}
 
-		yamlData, err := yaml.Marshal(info)
-		require.NoError(t, err)
+	// Concurrent writers
+	for i := 0; i < goroutines; i++ {
+		go func(n int) {
+			defer wg.Done()
+			v := Video{Name: fmt.Sprintf("video-%d", n), Category: "testing"}
+			_ = y.WriteVideo(v, videoPath)
+			_ = y.WriteIndex([]VideoIndex{{Name: fmt.Sprintf("video-%d", n), Category: "testing"}})
+		}(i)
+	}
 
-		yamlStr := string(yamlData)
-		assert.NotContains(t, yamlStr, "thumbnailPath", "thumbnailPath should be omitted when empty")
-	})
+	wg.Wait()
 
-	t.Run("DubbingInfo with ThumbnailPath serializes to JSON correctly", func(t *testing.T) {
-		info := DubbingInfo{
-			DubbingID:     "dub123",
-			DubbingStatus: "dubbed",
-			ThumbnailPath: "/path/to/thumbnail-es.png",
-		}
-
-		jsonData, err := json.Marshal(info)
-		require.NoError(t, err)
-
-		var jsonMap map[string]interface{}
-		err = json.Unmarshal(jsonData, &jsonMap)
-		require.NoError(t, err)
-
-		assert.Equal(t, "/path/to/thumbnail-es.png", jsonMap["thumbnailPath"])
-	})
-}
-
-// TestVideoWithDubbing tests Video struct with Dubbing field including ThumbnailPath
-func TestVideoWithDubbing(t *testing.T) {
-	t.Run("Video with Dubbing persists to YAML and loads correctly", func(t *testing.T) {
-		tempDir := t.TempDir()
-		videoPath := filepath.Join(tempDir, "test-video.yaml")
-
-		originalVideo := Video{
-			Name:     "Test Video with Dubbing",
-			Category: "testing",
-			Path:     videoPath,
-			Dubbing: map[string]DubbingInfo{
-				"es": {
-					DubbingID:       "dub-es-123",
-					DubbedVideoPath: "/path/to/video-es.mp4",
-					Title:           "Título en Español",
-					Description:     "Descripción del video",
-					UploadedVideoID: "yt-es-123",
-					DubbingStatus:   "dubbed",
-					ThumbnailPath:   "/path/to/thumbnail-es.png",
-				},
-				"pt": {
-					DubbingID:       "dub-pt-456",
-					DubbedVideoPath: "/path/to/video-pt.mp4",
-					Title:           "Título em Português",
-					DubbingStatus:   "dubbing",
-					// ThumbnailPath intentionally empty
-				},
-			},
-		}
-
-		y := NewYAML(filepath.Join(tempDir, "index.yaml"))
-		err := y.WriteVideo(originalVideo, videoPath)
-		require.NoError(t, err)
-
-		// Read it back
-		loadedVideo, err := y.GetVideo(videoPath)
-		require.NoError(t, err)
-
-		// Verify Dubbing was persisted correctly
-		require.Len(t, loadedVideo.Dubbing, 2)
-
-		esInfo := loadedVideo.Dubbing["es"]
-		assert.Equal(t, "dub-es-123", esInfo.DubbingID)
-		assert.Equal(t, "/path/to/video-es.mp4", esInfo.DubbedVideoPath)
-		assert.Equal(t, "Título en Español", esInfo.Title)
-		assert.Equal(t, "dubbed", esInfo.DubbingStatus)
-		assert.Equal(t, "/path/to/thumbnail-es.png", esInfo.ThumbnailPath)
-
-		ptInfo := loadedVideo.Dubbing["pt"]
-		assert.Equal(t, "dub-pt-456", ptInfo.DubbingID)
-		assert.Equal(t, "dubbing", ptInfo.DubbingStatus)
-		assert.Empty(t, ptInfo.ThumbnailPath, "ThumbnailPath should be empty for pt")
-	})
-
-	t.Run("Video YAML without Dubbing loads with nil Dubbing map", func(t *testing.T) {
-		tempDir := t.TempDir()
-		videoPath := filepath.Join(tempDir, "no-dubbing-video.yaml")
-
-		yamlContent := `name: Video Without Dubbing
-category: testing
-path: /path/to/video
-`
-		err := os.WriteFile(videoPath, []byte(yamlContent), 0644)
-		require.NoError(t, err)
-
-		y := NewYAML(filepath.Join(tempDir, "index.yaml"))
-		loadedVideo, err := y.GetVideo(videoPath)
-		require.NoError(t, err)
-
-		assert.Empty(t, loadedVideo.Dubbing)
-	})
+	// Verify data is still readable after concurrent access
+	_, err := y.GetVideo(videoPath)
+	require.NoError(t, err)
+	idx, err := y.GetIndex()
+	require.NoError(t, err)
+	require.Len(t, idx, 1, "index should have exactly 1 entry")
 }

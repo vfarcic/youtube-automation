@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"log/slog"
 	"math/rand/v2"
 	"os"
 	"path/filepath"
@@ -22,10 +23,12 @@ import (
 
 // VideoService provides data operations for videos in CLI
 type VideoService struct {
-	indexPath    string
-	yamlStorage  *storage.YAML
-	filesystem   *filesystem.Operations
-	videoManager *video.Manager
+	indexPath     string
+	yamlStorage   *storage.YAML
+	filesystem    *filesystem.Operations
+	videoManager  *video.Manager
+	onMutate      func(message string) error
+	lastSyncError error
 }
 
 // NewVideoService creates a new video service
@@ -36,6 +39,33 @@ func NewVideoService(indexPath string, filesystem *filesystem.Operations, videoM
 		filesystem:   filesystem,
 		videoManager: videoManager,
 	}
+}
+
+// SetOnMutate registers a callback that is invoked after successful data mutations
+func (s *VideoService) SetOnMutate(fn func(message string) error) {
+	s.onMutate = fn
+}
+
+// notifyMutation calls the onMutate callback if set; errors are logged and stored.
+func (s *VideoService) notifyMutation(message string) {
+	s.lastSyncError = nil
+	if s.onMutate == nil {
+		return
+	}
+	if err := s.onMutate(message); err != nil {
+		slog.Error("git sync failed after mutation", "message", message, "error", err)
+		s.lastSyncError = err
+	}
+}
+
+// LastSyncError returns the error from the most recent git sync, if any.
+func (s *VideoService) LastSyncError() error {
+	return s.lastSyncError
+}
+
+// IsSyncConfigured returns true if an onMutate callback (git sync) is registered.
+func (s *VideoService) IsSyncConfigured() bool {
+	return s.onMutate != nil
 }
 
 // CreateVideo creates a new video entry
@@ -101,11 +131,12 @@ FIXME:
 
 	// Create the default video YAML file
 	videoPath := s.filesystem.GetFilePath(vi.Category, vi.Name, "yaml")
+	storagePath := s.filesystem.GetStoragePath(vi.Category, vi.Name, "yaml")
 
 	defaultVideo := storage.Video{
 		Name:     sanitizedName,
 		Category: category,
-		Path:     videoPath,
+		Path:     storagePath,
 		// Initialize sponsorship
 		Sponsorship: storage.Sponsorship{
 			Amount:  "",
@@ -121,7 +152,6 @@ FIXME:
 		Diagrams:            false,
 		Screenshots:         false,
 		RequestThumbnail:    false,
-		Movie:               false,
 		Slides:              false,
 		RequestEdit:         false,
 		LinkedInPosted:      false,
@@ -153,6 +183,7 @@ FIXME:
 		return storage.VideoIndex{}, fmt.Errorf("failed to write index: %w", err)
 	}
 
+	s.notifyMutation(fmt.Sprintf("create video: %s/%s", category, sanitizedName))
 	return vi, nil
 }
 
@@ -175,7 +206,7 @@ func (s *VideoService) GetVideosByPhase(phase int) ([]storage.Video, error) {
 		// Always use sanitized name to ensure consistency with filenames
 		fullVideo.Name = s.filesystem.SanitizeName(fullVideo.Name)
 		fullVideo.Category = videoIndex.Category
-		fullVideo.Path = videoPath
+		fullVideo.Path = s.filesystem.GetStoragePath(videoIndex.Category, sanitizedName, "yaml")
 
 		// Use CalculateVideoPhase since we already have the full video data loaded
 		// This avoids the file I/O overhead of GetVideoPhase which would reload the video
@@ -258,18 +289,26 @@ func (s *VideoService) GetVideo(name, category string) (storage.Video, error) {
 	// The filename is the source of truth, not the YAML content
 	video.Name = s.filesystem.SanitizeName(video.Name)
 	video.Category = category
-	video.Path = videoPath
+	video.Path = s.filesystem.GetStoragePath(category, sanitizedName, "yaml")
 
 	return video, nil
 }
 
 // UpdateVideo updates a video's data
-func (s *VideoService) UpdateVideo(video storage.Video) error {
-	if video.Path == "" {
+func (s *VideoService) UpdateVideo(v storage.Video) error {
+	if v.Path == "" {
 		return fmt.Errorf("video path is required")
 	}
 
-	return s.yamlStorage.WriteVideo(video, video.Path)
+	// Reconstruct the full filesystem path from category/name since v.Path
+	// may be repo-relative (without the data dir prefix) for storage purposes
+	fullPath := s.filesystem.GetFilePath(v.Category, v.Name, "yaml")
+	if err := s.yamlStorage.WriteVideo(v, fullPath); err != nil {
+		return err
+	}
+
+	s.notifyMutation(fmt.Sprintf("update video: %s", v.Path))
+	return nil
 }
 
 // DeleteVideo deletes a video and its associated files
@@ -312,7 +351,12 @@ func (s *VideoService) DeleteVideo(name, category string) error {
 		}
 	}
 
-	return s.yamlStorage.WriteIndex(updatedIndex)
+	if err := s.yamlStorage.WriteIndex(updatedIndex); err != nil {
+		return err
+	}
+
+	s.notifyMutation(fmt.Sprintf("delete video: %s/%s", category, name))
+	return nil
 }
 
 // ArchiveVideo moves a video from index.yaml to index/[YEAR].yaml
@@ -369,7 +413,12 @@ func (s *VideoService) ArchiveVideo(name, category, date string) error {
 		}
 	}
 
-	return s.yamlStorage.WriteIndex(updatedIndex)
+	if err := s.yamlStorage.WriteIndex(updatedIndex); err != nil {
+		return err
+	}
+
+	s.notifyMutation(fmt.Sprintf("archive video: %s/%s", category, name))
+	return nil
 }
 
 // extractYearFromDate extracts the year from a date string in format "2006-01-02T15:04"
@@ -413,7 +462,7 @@ func (s *VideoService) writeArchiveIndex(path string, vi []storage.VideoIndex) e
 // GetCategories returns available video categories
 func (s *VideoService) GetCategories() ([]Category, error) {
 	var availableDirs []Category
-	manuscriptPath := "manuscript"
+	manuscriptPath := s.filesystem.GetBaseDir()
 
 	files, err := os.ReadDir(manuscriptPath)
 	if err != nil {
@@ -473,6 +522,7 @@ func (s *VideoService) MoveVideo(name, category, targetDir string) error {
 		return fmt.Errorf("failed to update index: %w", err)
 	}
 
+	s.notifyMutation(fmt.Sprintf("move video: %s/%s to %s", category, name, targetDir))
 	return nil
 }
 
@@ -496,10 +546,11 @@ func (s *VideoService) GetVideoManuscript(name, category string) (string, error)
 		return "", fmt.Errorf("gist field is empty for video %s in category %s", name, category)
 	}
 
-	// Read the manuscript file
-	manuscriptContent, readErr := os.ReadFile(video.Gist)
+	// Read the manuscript file — resolve the storage-relative path to an absolute path
+	gistPath := s.filesystem.ResolvePath(video.Gist)
+	manuscriptContent, readErr := os.ReadFile(gistPath)
 	if readErr != nil {
-		return "", fmt.Errorf("failed to read manuscript file %s: %w", video.Gist, readErr)
+		return "", fmt.Errorf("failed to read manuscript file %s: %w", gistPath, readErr)
 	}
 
 	return string(manuscriptContent), nil

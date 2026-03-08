@@ -61,9 +61,9 @@ func New() *App {
 	uiRenderer := &ui.Renderer{} // Simple instantiation
 
 	fsOps := filesystem.NewOperations()
-	videoManager := video.NewManager(fsOps.GetFilePath)
-	videoService := service.NewVideoService("index.yaml", fsOps, videoManager)
 	aspectService := aspect.NewService()
+	videoManager := video.NewManager(fsOps.GetFilePath, aspectService)
+	videoService := service.NewVideoService("index.yaml", fsOps, videoManager)
 
 	confirmerInstance := &simpleConfirmer{}
 

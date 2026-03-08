@@ -38,7 +38,7 @@ func TestChooseCreateVideoAndHandleError_GetFieldsError(t *testing.T) {
 		confirmer:    &mockAlwaysYesConfirmer{},
 		uiRenderer:   ui.NewRenderer(),
 		filesystem:   fs,
-		videoManager: video.NewManager(fs.GetFilePath),
+		videoManager: video.NewManager(fs.GetFilePath, nil),
 	}
 
 	// Override the cli.GetCreateVideoFields function for this test

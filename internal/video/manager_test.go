@@ -1,6 +1,7 @@
 package video_test
 
 import (
+	"devopstoolkit/youtube-automation/internal/aspect"
 	"devopstoolkit/youtube-automation/internal/storage"
 	"devopstoolkit/youtube-automation/internal/video"
 	"devopstoolkit/youtube-automation/internal/workflow"
@@ -124,7 +125,7 @@ func TestGetVideoPhase(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			filePathFunc := mockFilePathFunc(t, tc.videoData, tc.name)
-			manager := video.NewManager(filePathFunc)
+			manager := video.NewManager(filePathFunc, nil)
 			phase := manager.GetVideoPhase(tc.videoIndex)
 			assert.Equal(t, tc.expectedPhase, phase, fmt.Sprintf("Test case %s failed", tc.name))
 		})
@@ -132,7 +133,7 @@ func TestGetVideoPhase(t *testing.T) {
 }
 
 func TestCalculateDefinePhaseCompletion(t *testing.T) {
-	manager := video.NewManager(nil) // filePathFunc is not needed for this method
+	manager := video.NewManager(nil, aspect.NewService()) // filePathFunc is not needed for this method
 
 	testCases := []struct {
 		name              string
@@ -144,7 +145,7 @@ func TestCalculateDefinePhaseCompletion(t *testing.T) {
 			name:              "All tasks incomplete",
 			video:             storage.Video{},
 			expectedCompleted: 0,
-			expectedTotal:     7, // Titles, Description, Tags, DescriptionTags, Tweet, Animations, RequestThumbnail (Gist removed)
+			expectedTotal:     10, // Titles, Description, Tags, DescriptionTags, Tweet, Animations, Shorts, Members, RequestThumbnail, RequestEdit
 		},
 		{
 			name: "Some tasks complete",
@@ -155,7 +156,7 @@ func TestCalculateDefinePhaseCompletion(t *testing.T) {
 				RequestThumbnail: true,
 			},
 			expectedCompleted: 4,
-			expectedTotal:     7,
+			expectedTotal:     10,
 		},
 		{
 			name: "All Definition tasks complete",
@@ -166,11 +167,13 @@ func TestCalculateDefinePhaseCompletion(t *testing.T) {
 				DescriptionTags:  "desc_tag1",
 				Tweet:            "Final Tweet",
 				Animations:       "Script for animations",
+				Shorts:           []storage.Short{{ID: "short1", Title: "Short"}},
+				Members:          "member1",
 				RequestThumbnail: true,
-				// Gist is NOT part of Definition phase - it belongs to InitialDetails
+				RequestEdit:      true,
 			},
-			expectedCompleted: 7, // All 7 Definition fields complete
-			expectedTotal:     7,
+			expectedCompleted: 10, // All 10 Definition fields complete
+			expectedTotal:     10,
 		},
 		{
 			name: "All Definition tasks complete with Gist (Gist should not affect Definition count)",
@@ -181,11 +184,14 @@ func TestCalculateDefinePhaseCompletion(t *testing.T) {
 				DescriptionTags:  "desc_tag1",
 				Tweet:            "Final Tweet",
 				Animations:       "Script for animations",
+				Shorts:           []storage.Short{{ID: "short1", Title: "Short"}},
+				Members:          "member1",
 				RequestThumbnail: true,
+				RequestEdit:      true,
 				Gist:             "path/to/my/gist.md", // This should NOT affect Definition phase count
 			},
-			expectedCompleted: 7,
-			expectedTotal:     7,
+			expectedCompleted: 10,
+			expectedTotal:     10,
 		},
 		{
 			name: "Edge case - empty strings not counted",
@@ -200,7 +206,7 @@ func TestCalculateDefinePhaseCompletion(t *testing.T) {
 				Gist:             "",    // Empty Gist (but doesn't matter for Definition phase)
 			},
 			expectedCompleted: 0,
-			expectedTotal:     7,
+			expectedTotal:     10,
 		},
 		{
 			name: "Edge case - string with only spaces not counted",
@@ -211,7 +217,7 @@ func TestCalculateDefinePhaseCompletion(t *testing.T) {
 				Gist:             "  valid/gist/path.md  ", // Gist doesn't affect Definition phase count
 			},
 			expectedCompleted: 2, // Description, RequestThumbnail (title with spaces not counted)
-			expectedTotal:     7,
+			expectedTotal:     10,
 		},
 		{
 			name: "Multiple titles - at least one valid counts as complete",
@@ -225,7 +231,7 @@ func TestCalculateDefinePhaseCompletion(t *testing.T) {
 				RequestThumbnail: true,
 			},
 			expectedCompleted: 3, // Titles (1), Description (1), RequestThumbnail (1)
-			expectedTotal:     7,
+			expectedTotal:     10,
 		},
 		{
 			name: "Titles array with empty text not counted",
@@ -237,7 +243,7 @@ func TestCalculateDefinePhaseCompletion(t *testing.T) {
 				Description: "Test Description",
 			},
 			expectedCompleted: 1, // Only Description
-			expectedTotal:     7,
+			expectedTotal:     10,
 		},
 	}
 
@@ -434,7 +440,7 @@ func TestCalculateVideoPhase(t *testing.T) {
 }
 
 func TestCalculateOverallProgress(t *testing.T) {
-	manager := video.NewManager(nil) // filePathFunc not needed for progress calculations
+	manager := video.NewManager(nil, aspect.NewService()) // filePathFunc not needed for progress calculations
 
 	testCases := []struct {
 		name              string
@@ -446,8 +452,8 @@ func TestCalculateOverallProgress(t *testing.T) {
 		{
 			name:              "Empty_video",
 			video:             storage.Video{},
-			expectedCompleted: 3,  // Sponsorship conditions in Initial Details: emails (1), blocked (1), delayed (1)
-			expectedTotal:     40, // Sum of all phases: Initial(8) + Work(11) + Define(9) + PostProd(6) + Publish(2) + PostPublish(10) = 46, but need to verify actual totals
+			expectedCompleted: -1, // Will be verified dynamically
+			expectedTotal:     -1,
 			description:       "Empty video should have minimal completed tasks",
 		},
 		{
@@ -466,7 +472,7 @@ func TestCalculateOverallProgress(t *testing.T) {
 				Description: "Test Description",
 
 				// Post-Production phase
-				Movie: true,
+				VideoFile: "video.mp4",
 
 				// Publishing phase
 				UploadVideo: "youtube.com/video",
@@ -474,8 +480,8 @@ func TestCalculateOverallProgress(t *testing.T) {
 				// Post-Publish phase
 				SlackPosted: true,
 			},
-			expectedCompleted: 11, // 2 + 2 + 2 + 1 + 1 + 1 + default conditions = 9 + 3 default conditions = 12, but need to calculate exactly
-			expectedTotal:     40,
+			expectedCompleted: -1,
+			expectedTotal:     -1,
 			description:       "Partially complete video should count all completed fields",
 		},
 		{
@@ -508,18 +514,20 @@ func TestCalculateOverallProgress(t *testing.T) {
 				DescriptionTags:  "desc_tag1",
 				Tweet:            "Final Tweet",
 				Animations:       "Animation script",
+				Shorts:           []storage.Short{{ID: "short1", Title: "Short"}},
+				Members:          "member1",
 				RequestThumbnail: true,
+				RequestEdit:      true,
 
 				// Post-Production
-				Thumbnail:   "thumbnail.jpg",
-				Members:     "member1,member2",
-				RequestEdit: true,
-				Movie:       true,
-				Slides:      true,
-				Timecodes:   "00:00 Intro, 05:00 Main", // No FIXME
+				ThumbnailVariants: []storage.ThumbnailVariant{{Path: "thumb.jpg"}},
+				VideoFile:         "video.mp4",
+				Slides:            true,
+				Timecodes:         "00:00 Intro, 05:00 Main", // No FIXME
 
 				// Publishing
 				UploadVideo: "youtube.com/video",
+				VideoId:     "abc123",
 				HugoPath:    "/path/to/hugo",
 
 				// Post-Publish
@@ -534,8 +542,8 @@ func TestCalculateOverallProgress(t *testing.T) {
 				Repo:                "github.com/repo",
 				NotifiedSponsors:    true,
 			},
-			expectedCompleted: 39, // Should be nearly all tasks
-			expectedTotal:     40,
+			expectedCompleted: -1,
+			expectedTotal:     -1,
 			description:       "Fully complete video should have almost all tasks completed",
 		},
 	}
@@ -544,32 +552,27 @@ func TestCalculateOverallProgress(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			completed, total := manager.CalculateOverallProgress(tc.video)
 
-			// For debugging - let's calculate the actual totals for the first test
-			if tc.name == "Empty_video" {
-				initC, initT := manager.CalculateInitialDetailsProgress(tc.video)
-				workC, workT := manager.CalculateWorkProgressProgress(tc.video)
-				defineC, defineT := manager.CalculateDefinePhaseCompletion(tc.video)
-				editC, editT := manager.CalculatePostProductionProgress(tc.video)
-				publishC, publishT := manager.CalculatePublishingProgress(tc.video)
-				postPublishC, postPublishT := manager.CalculatePostPublishProgress(tc.video)
+			// Verify overall equals sum of individual phases
+			initC, initT := manager.CalculateInitialDetailsProgress(tc.video)
+			workC, workT := manager.CalculateWorkProgressProgress(tc.video)
+			defineC, defineT := manager.CalculateDefinePhaseCompletion(tc.video)
+			editC, editT := manager.CalculatePostProductionProgress(tc.video)
+			publishC, publishT := manager.CalculatePublishingProgress(tc.video)
+			postPublishC, postPublishT := manager.CalculatePostPublishProgress(tc.video)
 
-				expectedTotal := initT + workT + defineT + editT + publishT + postPublishT
-				expectedCompleted := initC + workC + defineC + editC + publishC + postPublishC
+			expectedTotal := initT + workT + defineT + editT + publishT + postPublishT
+			expectedCompleted := initC + workC + defineC + editC + publishC + postPublishC
 
-				assert.Equal(t, expectedCompleted, completed, "Completed count mismatch")
-				assert.Equal(t, expectedTotal, total, "Total count mismatch")
-			} else {
-				// For other tests, we'll adjust expectations after seeing results
-				assert.GreaterOrEqual(t, completed, 0, "Completed should be non-negative")
-				assert.GreaterOrEqual(t, total, completed, "Total should be >= completed")
-				assert.Greater(t, total, 0, "Total should be positive")
-			}
+			assert.Equal(t, expectedCompleted, completed, "Completed count should equal sum of phases")
+			assert.Equal(t, expectedTotal, total, "Total count should equal sum of phases")
+			assert.GreaterOrEqual(t, completed, 0, "Completed should be non-negative")
+			assert.GreaterOrEqual(t, total, completed, "Total should be >= completed")
 		})
 	}
 }
 
 func TestCalculateInitialDetailsProgress(t *testing.T) {
-	manager := video.NewManager(nil)
+	manager := video.NewManager(nil, aspect.NewService())
 
 	testCases := []struct {
 		name              string
@@ -581,8 +584,8 @@ func TestCalculateInitialDetailsProgress(t *testing.T) {
 		{
 			name:              "Empty_video",
 			video:             storage.Video{},
-			expectedCompleted: 3, // Three default conditions: sponsorship emails, blocked, delayed
-			expectedTotal:     10, // 4 general fields + 3 sponsorship fields (amount, name, url) + 3 conditions
+			expectedCompleted: 3, // Sponsorship.Emails (conditional, no amount), Sponsorship.Blocked (empty_or_filled), Delayed (false_only)
+			expectedTotal:     10,
 			description:       "Empty video should have 3 completed conditions",
 		},
 		{
@@ -593,7 +596,7 @@ func TestCalculateInitialDetailsProgress(t *testing.T) {
 				Gist:        "path/to/gist",
 				Date:        "2023-01-01",
 			},
-			expectedCompleted: 7, // 4 general + 3 default conditions
+			expectedCompleted: 7, // 4 general + emails(conditional) + blocked(empty_or_filled) + delayed(false_only)
 			expectedTotal:     10,
 			description:       "All general fields should be counted",
 		},
@@ -602,8 +605,8 @@ func TestCalculateInitialDetailsProgress(t *testing.T) {
 			video: storage.Video{
 				Sponsorship: storage.Sponsorship{Amount: "1000"},
 			},
-			expectedCompleted: 3, // Sponsorship amount + emails condition + blocked condition, delayed=false
-			expectedTotal:     10, // ProjectName, ProjectURL, Sponsorship.Amount, Sponsorship.Name, Sponsorship.URL, Sponsorship.Emails, Sponsorship.Blocked, Date, Delayed, Gist
+			expectedCompleted: 3, // Amount(filled_only) + Blocked(empty_or_filled) + Delayed(false_only)
+			expectedTotal:     10,
 			description:       "Sponsorship amount should be counted",
 		},
 		{
@@ -614,8 +617,8 @@ func TestCalculateInitialDetailsProgress(t *testing.T) {
 					Emails: "sponsor@example.com",
 				},
 			},
-			expectedCompleted: 4, // Amount + emails + blocked + delayed
-			expectedTotal:     10, // ProjectName, ProjectURL, Sponsorship.Amount, Sponsorship.Name, Sponsorship.URL, Sponsorship.Emails, Sponsorship.Blocked, Date, Delayed, Gist
+			expectedCompleted: 4, // Amount + Emails + Blocked(empty_or_filled) + Delayed(false_only)
+			expectedTotal:     10,
 			description:       "Sponsorship emails should be counted when amount is set",
 		},
 		{
@@ -623,8 +626,8 @@ func TestCalculateInitialDetailsProgress(t *testing.T) {
 			video: storage.Video{
 				Sponsorship: storage.Sponsorship{Blocked: "Some reason"},
 			},
-			expectedCompleted: 2, // Emails condition (amount is empty) + delayed condition, blocked fails
-			expectedTotal:     10, // ProjectName, ProjectURL, Sponsorship.Amount, Sponsorship.Name, Sponsorship.URL, Sponsorship.Emails, Sponsorship.Blocked, Date, Delayed, Gist
+			expectedCompleted: 2, // Emails(conditional, no amount=pass) + Delayed(false_only)
+			expectedTotal:     10,
 			description:       "Sponsorship blocked should fail the blocked condition",
 		},
 		{
@@ -632,8 +635,8 @@ func TestCalculateInitialDetailsProgress(t *testing.T) {
 			video: storage.Video{
 				Delayed: true,
 			},
-			expectedCompleted: 2, // Emails condition + blocked condition, delayed fails
-			expectedTotal:     10, // ProjectName, ProjectURL, Sponsorship.Amount, Sponsorship.Name, Sponsorship.URL, Sponsorship.Emails, Sponsorship.Blocked, Date, Delayed, Gist
+			expectedCompleted: 2, // Emails(conditional) + Blocked(empty_or_filled)
+			expectedTotal:     10,
 			description:       "Delayed video should fail the delayed condition",
 		},
 		{
@@ -641,8 +644,8 @@ func TestCalculateInitialDetailsProgress(t *testing.T) {
 			video: storage.Video{
 				Sponsorship: storage.Sponsorship{Amount: "N/A"},
 			},
-			expectedCompleted: 4, // Amount + emails passes (N/A), blocked passes, delayed passes
-			expectedTotal:     10, // ProjectName, ProjectURL, Sponsorship.Amount, Sponsorship.Name, Sponsorship.URL, Sponsorship.Emails, Sponsorship.Blocked, Date, Delayed, Gist
+			expectedCompleted: 4, // Amount + Emails(conditional, N/A=pass) + Blocked(empty_or_filled) + Delayed(false_only)
+			expectedTotal:     10,
 			description:       "N/A sponsorship amount should pass emails condition",
 		},
 		{
@@ -650,8 +653,8 @@ func TestCalculateInitialDetailsProgress(t *testing.T) {
 			video: storage.Video{
 				Sponsorship: storage.Sponsorship{Amount: "-"},
 			},
-			expectedCompleted: 4, // Amount + emails passes (-), blocked passes, delayed passes
-			expectedTotal:     10, // ProjectName, ProjectURL, Sponsorship.Amount, Sponsorship.Name, Sponsorship.URL, Sponsorship.Emails, Sponsorship.Blocked, Date, Delayed, Gist
+			expectedCompleted: 3, // Emails(conditional, dash=pass) + Blocked(empty_or_filled) + Delayed(false_only); Amount("-") fails filled_only
+			expectedTotal:     10,
 			description:       "Dash sponsorship amount should pass emails condition",
 		},
 	}
@@ -666,7 +669,7 @@ func TestCalculateInitialDetailsProgress(t *testing.T) {
 }
 
 func TestCalculateWorkProgressProgress(t *testing.T) {
-	manager := video.NewManager(nil)
+	manager := video.NewManager(nil, aspect.NewService())
 
 	testCases := []struct {
 		name              string
@@ -759,7 +762,7 @@ func TestCalculateWorkProgressProgress(t *testing.T) {
 }
 
 func TestCalculatePostProductionProgress(t *testing.T) {
-	manager := video.NewManager(nil)
+	manager := video.NewManager(nil, aspect.NewService())
 
 	testCases := []struct {
 		name              string
@@ -772,21 +775,18 @@ func TestCalculatePostProductionProgress(t *testing.T) {
 			name:              "Empty_video",
 			video:             storage.Video{},
 			expectedCompleted: 0,
-			expectedTotal:     7, // ThumbnailVariants, Shorts, Members, RequestEdit, Movie, Slides, Timecodes
+			expectedTotal:     4, // ThumbnailVariants, Timecodes, VideoFile, Slides
 			description:       "Empty video should have no post-production progress",
 		},
 		{
 			name: "Basic_fields_complete",
 			video: storage.Video{
 				ThumbnailVariants: []storage.ThumbnailVariant{{Path: "thumbnail.jpg"}},
-				Shorts:            []storage.Short{{ID: "short1", Title: "Test Short"}},
-				Members:           "member1,member2",
-				RequestEdit:       true,
-				Movie:             true,
+				VideoFile:         "video.mp4",
 				Slides:            true,
 			},
-			expectedCompleted: 6,
-			expectedTotal:     7,
+			expectedCompleted: 3,
+			expectedTotal:     4,
 			description:       "Basic post-production fields should be counted",
 		},
 		{
@@ -795,7 +795,7 @@ func TestCalculatePostProductionProgress(t *testing.T) {
 				Timecodes: "00:00 Intro, 05:00 Main content",
 			},
 			expectedCompleted: 1,
-			expectedTotal:     7,
+			expectedTotal:     4,
 			description:       "Valid timecodes should be counted",
 		},
 		{
@@ -804,7 +804,7 @@ func TestCalculatePostProductionProgress(t *testing.T) {
 				Timecodes: "00:00 Intro, FIXME: Add more timecodes",
 			},
 			expectedCompleted: 0,
-			expectedTotal:     7,
+			expectedTotal:     4,
 			description:       "Timecodes with FIXME should not be counted",
 		},
 		{
@@ -813,37 +813,31 @@ func TestCalculatePostProductionProgress(t *testing.T) {
 				Timecodes: "",
 			},
 			expectedCompleted: 0,
-			expectedTotal:     7,
+			expectedTotal:     4,
 			description:       "Empty timecodes should not be counted",
 		},
 		{
 			name: "All_complete",
 			video: storage.Video{
 				ThumbnailVariants: []storage.ThumbnailVariant{{Path: "thumbnail.jpg"}},
-				Shorts:            []storage.Short{{ID: "short1", Title: "Test Short"}},
-				Members:           "member1,member2",
-				RequestEdit:       true,
-				Movie:             true,
+				VideoFile:         "video.mp4",
 				Slides:            true,
 				Timecodes:         "00:00 Intro, 05:00 Main, 10:00 Conclusion",
 			},
-			expectedCompleted: 7,
-			expectedTotal:     7,
+			expectedCompleted: 4,
+			expectedTotal:     4,
 			description:       "All post-production fields complete",
 		},
 		{
 			name: "Mixed_completion",
 			video: storage.Video{
 				ThumbnailVariants: []storage.ThumbnailVariant{{Path: "thumbnail.jpg"}},
-				Shorts:            []storage.Short{}, // Empty, not counted
-				Members:           "",                // Empty, not counted
-				RequestEdit:       false,             // False, not counted
-				Movie:             true,
+				VideoFile:         "video.mp4",
 				Slides:            false,                  // False, not counted
 				Timecodes:         "FIXME: Add timecodes", // Has FIXME, not counted
 			},
-			expectedCompleted: 2, // Only ThumbnailVariants and Movie
-			expectedTotal:     7,
+			expectedCompleted: 2, // Only ThumbnailVariants and VideoFile
+			expectedTotal:     4,
 			description:       "Mixed completion should count only valid fields",
 		},
 	}
@@ -858,7 +852,7 @@ func TestCalculatePostProductionProgress(t *testing.T) {
 }
 
 func TestCalculatePublishingProgress(t *testing.T) {
-	manager := video.NewManager(nil)
+	manager := video.NewManager(nil, aspect.NewService())
 
 	testCases := []struct {
 		name              string
@@ -871,7 +865,7 @@ func TestCalculatePublishingProgress(t *testing.T) {
 			name:              "Empty_video",
 			video:             storage.Video{},
 			expectedCompleted: 0,
-			expectedTotal:     2, // UploadVideo, HugoPath
+			expectedTotal:     2, // VideoId, HugoPath (UploadVideo hidden)
 			description:       "Empty video should have no publishing progress",
 		},
 		{
@@ -879,9 +873,9 @@ func TestCalculatePublishingProgress(t *testing.T) {
 			video: storage.Video{
 				UploadVideo: "youtube.com/video",
 			},
-			expectedCompleted: 1,
+			expectedCompleted: 0,
 			expectedTotal:     2,
-			description:       "Only upload video should count as 1",
+			description:       "UploadVideo is hidden, should not affect progress",
 		},
 		{
 			name: "HugoPath_only",
@@ -893,14 +887,15 @@ func TestCalculatePublishingProgress(t *testing.T) {
 			description:       "Only hugo path should count as 1",
 		},
 		{
-			name: "Both_complete",
+			name: "All_base_complete",
 			video: storage.Video{
 				UploadVideo: "youtube.com/video",
+				VideoId:     "abc123",
 				HugoPath:    "/path/to/hugo/post",
 			},
 			expectedCompleted: 2,
 			expectedTotal:     2,
-			description:       "Both fields complete should count as 2",
+			description:       "All visible base fields complete should count as 2",
 		},
 		{
 			name: "Empty_strings",
@@ -932,7 +927,7 @@ func TestCalculatePublishingProgress(t *testing.T) {
 					{ID: "short2", Title: "Short 2", YouTubeID: ""},
 				},
 			},
-			expectedCompleted: 2,
+			expectedCompleted: 1,
 			expectedTotal:     4, // 2 base fields + 2 shorts
 			description:       "Pending shorts should add to total but not completed",
 		},
@@ -946,7 +941,7 @@ func TestCalculatePublishingProgress(t *testing.T) {
 					{ID: "short2", Title: "Short 2", YouTubeID: "def456"},
 				},
 			},
-			expectedCompleted: 4,
+			expectedCompleted: 3,
 			expectedTotal:     4, // 2 base fields + 2 uploaded shorts
 			description:       "Uploaded shorts should count as completed",
 		},
@@ -961,7 +956,7 @@ func TestCalculatePublishingProgress(t *testing.T) {
 					{ID: "short3", Title: "Short 3", YouTubeID: "ghi789"},
 				},
 			},
-			expectedCompleted: 4, // 2 base + 2 uploaded shorts
+			expectedCompleted: 3, // 1 base (HugoPath) + 2 uploaded shorts
 			expectedTotal:     5, // 2 base + 3 shorts
 			description:       "Mixed shorts should partially count",
 		},
@@ -977,7 +972,7 @@ func TestCalculatePublishingProgress(t *testing.T) {
 }
 
 func TestCalculatePostPublishProgress(t *testing.T) {
-	manager := video.NewManager(nil)
+	manager := video.NewManager(nil, aspect.NewService())
 
 	testCases := []struct {
 		name              string
@@ -1088,7 +1083,7 @@ func TestCalculatePostPublishProgress(t *testing.T) {
 }
 
 func TestCalculateAnalysisProgress(t *testing.T) {
-	manager := video.NewManager(nil)
+	manager := video.NewManager(nil, aspect.NewService())
 
 	testCases := []struct {
 		name              string
@@ -1188,156 +1183,11 @@ func TestCalculateAnalysisProgress(t *testing.T) {
 	}
 }
 
-func TestCalculateDubbingProgress(t *testing.T) {
-	manager := video.NewManager(nil)
-
-	testCases := []struct {
-		name              string
-		video             storage.Video
-		expectedCompleted int
-		expectedTotal     int
-		description       string
-	}{
-		{
-			name:              "No_dubbing_map_no_shorts",
-			video:             storage.Video{},
-			expectedCompleted: 0,
-			expectedTotal:     3, // 1 long-form + 1 translation + 1 upload
-			description:       "Video with no dubbing map and no shorts should return 0/3",
-		},
-		{
-			name: "No_dubbing_map_with_shorts",
-			video: storage.Video{
-				Shorts: []storage.Short{
-					{ID: "short1", Title: "Short 1"},
-					{ID: "short2", Title: "Short 2"},
-				},
-			},
-			expectedCompleted: 0,
-			expectedTotal:     5, // 1 long-form + 2 shorts + 1 translation + 1 upload
-			description:       "Video with no dubbing map but 2 shorts should return 0/5",
-		},
-		{
-			name: "Long_form_dubbed_no_shorts",
-			video: storage.Video{
-				Dubbing: map[string]storage.DubbingInfo{
-					"es": {DubbingID: "dub123", DubbingStatus: "dubbed"},
-				},
-			},
-			expectedCompleted: 1, // dubbed but not translated or uploaded
-			expectedTotal:     3, // 1 long-form + 1 translation + 1 upload
-			description:       "Long-form dubbed but not translated should be 1/3",
-		},
-		{
-			name: "Long_form_in_progress",
-			video: storage.Video{
-				Dubbing: map[string]storage.DubbingInfo{
-					"es": {DubbingID: "dub123", DubbingStatus: "dubbing"},
-				},
-			},
-			expectedCompleted: 0,
-			expectedTotal:     3, // 1 long-form + 1 translation + 1 upload
-			description:       "Long-form in progress should be 0/3",
-		},
-		{
-			name: "Long_form_and_shorts_partial",
-			video: storage.Video{
-				Shorts: []storage.Short{
-					{ID: "short1", Title: "Short 1"},
-					{ID: "short2", Title: "Short 2"},
-					{ID: "short3", Title: "Short 3"},
-				},
-				Dubbing: map[string]storage.DubbingInfo{
-					"es":        {DubbingID: "dub1", DubbingStatus: "dubbed"},
-					"es:short1": {DubbingID: "dub2", DubbingStatus: "dubbed"},
-					"es:short2": {DubbingID: "dub3", DubbingStatus: "dubbing"}, // in progress
-					// short3 not started
-				},
-			},
-			expectedCompleted: 2, // long-form + short1 (no translation or upload yet)
-			expectedTotal:     6, // 1 long-form + 3 shorts + 1 translation + 1 upload
-			description:       "Partial dubbing should count only completed",
-		},
-		{
-			name: "All_dubbed_not_translated",
-			video: storage.Video{
-				Shorts: []storage.Short{
-					{ID: "short1", Title: "Short 1"},
-					{ID: "short2", Title: "Short 2"},
-				},
-				Dubbing: map[string]storage.DubbingInfo{
-					"es":        {DubbingID: "dub1", DubbingStatus: "dubbed"},
-					"es:short1": {DubbingID: "dub2", DubbingStatus: "dubbed"},
-					"es:short2": {DubbingID: "dub3", DubbingStatus: "dubbed"},
-				},
-			},
-			expectedCompleted: 3, // all dubbed but not translated or uploaded
-			expectedTotal:     5, // 1 long-form + 2 shorts + 1 translation + 1 upload
-			description:       "All dubbed but not translated should be 3/5",
-		},
-		{
-			name: "All_dubbed_and_translated_not_uploaded",
-			video: storage.Video{
-				Shorts: []storage.Short{
-					{ID: "short1", Title: "Short 1"},
-					{ID: "short2", Title: "Short 2"},
-				},
-				Dubbing: map[string]storage.DubbingInfo{
-					"es":        {DubbingID: "dub1", DubbingStatus: "dubbed", Title: "Título traducido"},
-					"es:short1": {DubbingID: "dub2", DubbingStatus: "dubbed"},
-					"es:short2": {DubbingID: "dub3", DubbingStatus: "dubbed"},
-				},
-			},
-			expectedCompleted: 4, // all dubbed + translated but not uploaded
-			expectedTotal:     5, // 1 long-form + 2 shorts + 1 translation + 1 upload
-			description:       "All dubbed and translated but not uploaded should be 4/5",
-		},
-		{
-			name: "All_complete_with_upload",
-			video: storage.Video{
-				Shorts: []storage.Short{
-					{ID: "short1", Title: "Short 1"},
-					{ID: "short2", Title: "Short 2"},
-				},
-				Dubbing: map[string]storage.DubbingInfo{
-					"es":        {DubbingID: "dub1", DubbingStatus: "dubbed", Title: "Título traducido", UploadedVideoID: "vid123"},
-					"es:short1": {DubbingID: "dub2", DubbingStatus: "dubbed", UploadedVideoID: "vid456"},
-					"es:short2": {DubbingID: "dub3", DubbingStatus: "dubbed", UploadedVideoID: "vid789"},
-				},
-			},
-			expectedCompleted: 5, // all dubbed + translated + uploaded
-			expectedTotal:     5, // 1 long-form + 2 shorts + 1 translation + 1 upload
-			description:       "All dubbed, translated, and uploaded should be 5/5",
-		},
-		{
-			name: "Failed_dubbing_not_counted",
-			video: storage.Video{
-				Dubbing: map[string]storage.DubbingInfo{
-					"es": {DubbingID: "dub123", DubbingStatus: "failed", DubbingError: "Some error"},
-				},
-			},
-			expectedCompleted: 0,
-			expectedTotal:     3, // 1 long-form + 1 translation + 1 upload
-			description:       "Failed dubbing should not count as completed",
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			completed, total := manager.CalculateDubbingProgress(tc.video)
-			assert.Equal(t, tc.expectedCompleted, completed, "Completed count mismatch for %s", tc.description)
-			assert.Equal(t, tc.expectedTotal, total, "Total count mismatch for %s", tc.description)
-		})
-	}
-}
-
-// Note: countCompletedTasks and containsString are private methods, tested indirectly through other functions
-
 func TestGetVideoPhase_ErrorHandling(t *testing.T) {
 	// Test the error path in GetVideoPhase
 	manager := video.NewManager(func(category, name, extension string) string {
 		return "/nonexistent/path.yaml"
-	})
+	}, nil)
 
 	videoIndex := storage.VideoIndex{Category: "test", Name: "nonexistent"}
 	phase := manager.GetVideoPhase(videoIndex)

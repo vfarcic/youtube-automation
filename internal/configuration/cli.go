@@ -17,6 +17,14 @@ var RootCmd = &cobra.Command{
 	Run:   func(cmd *cobra.Command, args []string) {},
 }
 
+// requiredFlags collects flag names that must be set in CLI mode.
+var requiredFlags []string
+
+// markRequired records a flag as required (validated at run-time, not at init-time).
+func markRequired(name string) {
+	requiredFlags = append(requiredFlags, name)
+}
+
 type Settings struct {
 	Email          SettingsEmail          `yaml:"email"`
 	AI             SettingsAI             `yaml:"ai"`
@@ -28,9 +36,29 @@ type Settings struct {
 	Timing         TimingConfig           `yaml:"timing"`
 	Calendar       SettingsCalendar       `yaml:"calendar"`
 	Shorts         ShortsConfig           `yaml:"shorts"`
-	ElevenLabs     SettingsElevenLabs     `yaml:"elevenLabs"`
-	SpanishChannel SettingsSpanishChannel `yaml:"spanishChannel"`
 	Gemini         SettingsGemini         `yaml:"gemini"`
+	API            SettingsAPI            `yaml:"api"`
+	Git            SettingsGit            `yaml:"git"`
+	GDrive         SettingsGDrive         `yaml:"gdrive"`
+}
+
+type SettingsAPI struct {
+	Token string `yaml:"token"`
+}
+
+// SettingsGit holds git sync configuration for the data repository
+type SettingsGit struct {
+	RepoURL string `yaml:"repoURL"`
+	Branch  string `yaml:"branch"`
+	Token   string `yaml:"token"`
+}
+
+// SettingsGDrive holds Google Drive configuration
+type SettingsGDrive struct {
+	CredentialsFile string `yaml:"credentialsFile"` // Path to client_secret JSON file
+	TokenFile       string `yaml:"tokenFile"`       // Token cache filename (default: gdrive-go.json)
+	CallbackPort    int    `yaml:"callbackPort"`    // OAuth callback port (default: 8092)
+	FolderID        string `yaml:"folderId"`        // Root Drive folder ID for uploads (optional)
 }
 
 type SettingsEmail struct {
@@ -42,7 +70,10 @@ type SettingsEmail struct {
 }
 
 type SettingsHugo struct {
-	Path string `yaml:"path"`
+	Path    string `yaml:"path"`    // Local path (CLI mode)
+	RepoURL string `yaml:"repoURL"` // GitHub repo URL for PR workflow (e.g., https://github.com/user/repo.git)
+	Branch  string `yaml:"branch"`  // Base branch (default: "main")
+	Token   string `yaml:"token"`   // GitHub token for clone + PR creation
 }
 
 type SettingsAI struct {
@@ -107,24 +138,6 @@ type ShortsConfig struct {
 	CandidateCount int `yaml:"candidateCount" json:"candidateCount"` // Number of Short candidates to generate (default: 10)
 }
 
-// SettingsElevenLabs holds ElevenLabs API configuration for video dubbing
-type SettingsElevenLabs struct {
-	APIKey              string `yaml:"apiKey"`              // API key (prefer ELEVENLABS_API_KEY env var)
-	TestMode            bool   `yaml:"testMode"`            // true = watermark + lower resolution (saves credits)
-	StartTime           int    `yaml:"startTime"`           // Start time in seconds (0 = beginning)
-	EndTime             int    `yaml:"endTime"`             // End time in seconds (0 = full video)
-	NumSpeakers         int    `yaml:"numSpeakers"`         // Number of speakers (default: 1)
-	DropBackgroundAudio bool   `yaml:"dropBackgroundAudio"` // Whether to drop background audio (default: false)
-}
-
-// SettingsSpanishChannel holds configuration for the Spanish YouTube channel
-type SettingsSpanishChannel struct {
-	ChannelID       string `yaml:"channelId"`       // Spanish channel ID
-	CredentialsFile string `yaml:"credentialsFile"` // OAuth client secret file (default: client_secret_spanish.json)
-	TokenFile       string `yaml:"tokenFile"`       // Token cache file name (default: youtube-go-spanish.json)
-	CallbackPort    int    `yaml:"callbackPort"`    // OAuth callback port (default: 8091)
-}
-
 // SettingsGemini holds Google Gemini API configuration for thumbnail localization
 type SettingsGemini struct {
 	Model string `yaml:"model"` // Image generation model (default: gemini-3-pro-image-preview)
@@ -185,54 +198,46 @@ func init() {
 		GlobalSettings.Shorts.CandidateCount = 10
 	}
 
-	// ElevenLabs settings: load API key from environment variable
-	if envElevenLabsKey := os.Getenv("ELEVENLABS_API_KEY"); envElevenLabsKey != "" {
-		GlobalSettings.ElevenLabs.APIKey = envElevenLabsKey
-	}
-	// Default ElevenLabs settings for testing (saves credits)
-	if GlobalSettings.ElevenLabs.NumSpeakers == 0 {
-		GlobalSettings.ElevenLabs.NumSpeakers = 1
-	}
-	// Note: TestMode defaults to false (zero value), set to true in settings.yaml for testing
-	// Note: StartTime/EndTime default to 0 (full video)
-
-	// Spanish channel defaults
-	if GlobalSettings.SpanishChannel.CredentialsFile == "" {
-		GlobalSettings.SpanishChannel.CredentialsFile = "client_secret_spanish.json"
-	}
-	if GlobalSettings.SpanishChannel.TokenFile == "" {
-		GlobalSettings.SpanishChannel.TokenFile = "youtube-go-spanish.json"
-	}
-	if GlobalSettings.SpanishChannel.CallbackPort == 0 {
-		GlobalSettings.SpanishChannel.CallbackPort = 8091
-	}
-
 	// Gemini defaults (API key loaded via GEMINI_API_KEY env var at runtime)
 	if GlobalSettings.Gemini.Model == "" {
 		GlobalSettings.Gemini.Model = "gemini-3-pro-image-preview"
+	}
+
+	// Git sync defaults — env vars override settings.yaml
+	if envGitRepo := os.Getenv("GIT_REPO_URL"); envGitRepo != "" {
+		GlobalSettings.Git.RepoURL = envGitRepo
+	}
+	if envGitBranch := os.Getenv("GIT_BRANCH"); envGitBranch != "" {
+		GlobalSettings.Git.Branch = envGitBranch
+	}
+	if GlobalSettings.Git.Branch == "" {
+		GlobalSettings.Git.Branch = "main"
+	}
+	if envGitToken := os.Getenv("GIT_TOKEN"); envGitToken != "" {
+		GlobalSettings.Git.Token = envGitToken
 	}
 
 	// Calendar settings: enabled by default, set calendar.disabled: true to disable
 
 	// Check required fields and environment variables
 	if GlobalSettings.Email.From == "" {
-		RootCmd.MarkFlagRequired("email-from")
+		markRequired("email-from")
 	}
 	if GlobalSettings.Email.ThumbnailTo == "" {
-		RootCmd.MarkFlagRequired("email-thumbnail-to")
+		markRequired("email-thumbnail-to")
 	}
 	if GlobalSettings.Email.EditTo == "" {
-		RootCmd.MarkFlagRequired("email-edit-to")
+		markRequired("email-edit-to")
 	}
 	if GlobalSettings.Email.FinanceTo == "" {
-		RootCmd.MarkFlagRequired("email-finance-to")
+		markRequired("email-finance-to")
 	}
 
 	// Check environment variables
 	if envPassword := os.Getenv("EMAIL_PASSWORD"); envPassword != "" {
 		GlobalSettings.Email.Password = envPassword
 	} else if GlobalSettings.Email.Password == "" {
-		RootCmd.MarkFlagRequired("email-password")
+		markRequired("email-password")
 	}
 
 	// Default to azure provider for backward compatibility
@@ -244,17 +249,17 @@ func init() {
 	switch GlobalSettings.AI.Provider {
 	case "azure":
 		if GlobalSettings.AI.Azure.Endpoint == "" {
-			RootCmd.MarkFlagRequired("ai-endpoint")
+			markRequired("ai-endpoint")
 		}
 
 		if envAIKey := os.Getenv("AI_KEY"); envAIKey != "" {
 			GlobalSettings.AI.Azure.Key = envAIKey
 		} else if GlobalSettings.AI.Azure.Key == "" {
-			RootCmd.MarkFlagRequired("ai-key")
+			markRequired("ai-key")
 		}
 
 		if GlobalSettings.AI.Azure.Deployment == "" {
-			RootCmd.MarkFlagRequired("ai-deployment")
+			markRequired("ai-deployment")
 		}
 
 		// Default API version if not set
@@ -266,7 +271,7 @@ func init() {
 		if envAnthropicKey := os.Getenv("ANTHROPIC_API_KEY"); envAnthropicKey != "" {
 			GlobalSettings.AI.Anthropic.Key = envAnthropicKey
 		} else if GlobalSettings.AI.Anthropic.Key == "" {
-			RootCmd.MarkFlagRequired("anthropic-key")
+			markRequired("anthropic-key")
 		}
 
 		if GlobalSettings.AI.Anthropic.Model == "" {
@@ -281,11 +286,26 @@ func init() {
 	if envYouTubeKey := os.Getenv("YOUTUBE_API_KEY"); envYouTubeKey != "" {
 		GlobalSettings.YouTube.APIKey = envYouTubeKey
 	} else if GlobalSettings.YouTube.APIKey == "" {
-		RootCmd.MarkFlagRequired("youtube-api-key")
+		markRequired("youtube-api-key")
 	}
 
-	if GlobalSettings.Hugo.Path == "" {
-		RootCmd.MarkFlagRequired("hugo-path")
+	// Hugo settings: env vars override settings.yaml
+	if envHugoRepo := os.Getenv("HUGO_REPO_URL"); envHugoRepo != "" {
+		GlobalSettings.Hugo.RepoURL = envHugoRepo
+	}
+	if envHugoBranch := os.Getenv("HUGO_BRANCH"); envHugoBranch != "" {
+		GlobalSettings.Hugo.Branch = envHugoBranch
+	}
+	if GlobalSettings.Hugo.Branch == "" {
+		GlobalSettings.Hugo.Branch = "main"
+	}
+	if envGitHubToken := os.Getenv("GITHUB_TOKEN"); envGitHubToken != "" && GlobalSettings.Hugo.Token == "" {
+		GlobalSettings.Hugo.Token = envGitHubToken
+	}
+
+	// Path is only required when repoURL is not set (local mode)
+	if GlobalSettings.Hugo.Path == "" && GlobalSettings.Hugo.RepoURL == "" {
+		markRequired("hugo-path")
 	}
 
 	// Bluesky validation
@@ -294,10 +314,28 @@ func init() {
 		if envBlueskyPassword != "" {
 			GlobalSettings.Bluesky.Password = envBlueskyPassword
 		} else if GlobalSettings.Bluesky.Password == "" {
-			RootCmd.MarkFlagRequired("bluesky-password")
+			markRequired("bluesky-password")
 		}
 	} else if envBlueskyPassword := os.Getenv("BLUESKY_PASSWORD"); envBlueskyPassword != "" {
 		GlobalSettings.Bluesky.Password = envBlueskyPassword
+	}
+
+	// Validate required flags only when running in CLI mode (not serve subcommand).
+	RootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
+		// Skip validation for subcommands (e.g. serve)
+		if cmd.Name() != RootCmd.Name() {
+			return nil
+		}
+		for _, name := range requiredFlags {
+			f := RootCmd.Flags().Lookup(name)
+			if f == nil {
+				continue
+			}
+			if !f.Changed {
+				return fmt.Errorf("required flag \"%s\" not set", name)
+			}
+		}
+		return nil
 	}
 }
 

@@ -44,7 +44,10 @@ type VideoAnalytics struct {
 //   - []VideoAnalytics: Array of video analytics data
 //   - error: Any error encountered during the API calls
 func GetVideoAnalytics(ctx context.Context, startDate, endDate time.Time) ([]VideoAnalytics, error) {
-	client := getClient(ctx)
+	client, err := getClient(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("OAuth failed: %w", err)
+	}
 
 	// Initialize YouTube Data API service (for video titles)
 	youtubeService, err := youtube.NewService(ctx, option.WithHTTPClient(client))
@@ -232,7 +235,10 @@ type FirstWeekMetrics struct {
 //   - FirstWeekMetrics: Performance data for days 0-7
 //   - error: Any error encountered during the API call
 func GetFirstWeekMetrics(ctx context.Context, videoID string, publishDate time.Time) (FirstWeekMetrics, error) {
-	client := getClient(ctx)
+	client, err := getClient(ctx)
+	if err != nil {
+		return FirstWeekMetrics{}, fmt.Errorf("OAuth failed: %w", err)
+	}
 
 	// Initialize YouTube Analytics API service
 	analyticsService, err := youtubeanalytics.NewService(ctx, option.WithHTTPClient(client))
@@ -562,7 +568,10 @@ type EngagementMetrics struct {
 //   - ChannelDemographics: Age and gender distribution data
 //   - error: Any error encountered during the API call
 func GetChannelDemographics(ctx context.Context) (ChannelDemographics, error) {
-	client := getClient(ctx)
+	client, err := getClient(ctx)
+	if err != nil {
+		return ChannelDemographics{}, fmt.Errorf("OAuth failed: %w", err)
+	}
 
 	analyticsService, err := youtubeanalytics.NewService(ctx, option.WithHTTPClient(client))
 	if err != nil {
@@ -644,7 +653,10 @@ func GetChannelDemographics(ctx context.Context) (ChannelDemographics, error) {
 //   - GeographicDistribution: Top countries with view counts and percentages
 //   - error: Any error encountered during the API call
 func GetGeographicDistribution(ctx context.Context) (GeographicDistribution, error) {
-	client := getClient(ctx)
+	client, err := getClient(ctx)
+	if err != nil {
+		return GeographicDistribution{}, fmt.Errorf("OAuth failed: %w", err)
+	}
 
 	analyticsService, err := youtubeanalytics.NewService(ctx, option.WithHTTPClient(client))
 	if err != nil {
@@ -725,7 +737,10 @@ func GetGeographicDistribution(ctx context.Context) (GeographicDistribution, err
 //   - ChannelStatistics: Channel statistics data
 //   - error: Any error encountered during the API call
 func GetChannelStatistics(ctx context.Context) (ChannelStatistics, error) {
-	client := getClient(ctx)
+	client, err := getClient(ctx)
+	if err != nil {
+		return ChannelStatistics{}, fmt.Errorf("OAuth failed: %w", err)
+	}
 
 	youtubeService, err := youtube.NewService(ctx, option.WithHTTPClient(client))
 	if err != nil {
@@ -766,7 +781,10 @@ func GetChannelStatistics(ctx context.Context) (ChannelStatistics, error) {
 //   - EngagementMetrics: Engagement metrics including avg view duration, likes, comments, shares
 //   - error: Any error encountered during the API call
 func GetEngagementMetrics(ctx context.Context) (EngagementMetrics, error) {
-	client := getClient(ctx)
+	client, err := getClient(ctx)
+	if err != nil {
+		return EngagementMetrics{}, fmt.Errorf("OAuth failed: %w", err)
+	}
 
 	analyticsService, err := youtubeanalytics.NewService(ctx, option.WithHTTPClient(client))
 	if err != nil {

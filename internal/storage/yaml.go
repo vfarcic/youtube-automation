@@ -3,6 +3,7 @@ package storage
 import (
 	"fmt"
 	"os"
+	"sync"
 
 	"gopkg.in/yaml.v3"
 )
@@ -12,6 +13,7 @@ import (
 // Ensure all fields that need to be accessed from other packages are exported (start with a capital letter).
 type YAML struct {
 	IndexPath string
+	mu        sync.RWMutex
 }
 
 // VideoIndex holds basic information about a video, used in the index file.
@@ -29,17 +31,17 @@ type VideoIndex struct {
 
 // TitleVariant represents a single title variant for A/B testing
 type TitleVariant struct {
-	Index int     `yaml:"index" json:"index"`                     // 1=uploaded, 2=variant, 3=variant
-	Text  string  `yaml:"text" json:"text"`                       // Title text
-	Share float64 `yaml:"share,omitempty" json:"share,omitempty"` // Watch time share % from YouTube A/B test
+	Index int     `yaml:"index" json:"index" ui:"auto"`                     // 1=uploaded, 2=variant, 3=variant
+	Text  string  `yaml:"text" json:"text"`                                 // Title text
+	Share float64 `yaml:"share,omitempty" json:"share,omitempty" ui:"auto"` // Watch time share % from YouTube A/B test
 }
 
 // ThumbnailVariant represents a single thumbnail variant
 type ThumbnailVariant struct {
-	Index int     `yaml:"index" json:"index"`                     // 1=Original, 2=Subtle, 3=Bold
-	Type  string  `yaml:"type" json:"type"`                       // "original", "subtle", "bold"
-	Path  string  `yaml:"path" json:"path"`                       // Path to the image file
-	Share float64 `yaml:"share,omitempty" json:"share,omitempty"` // Watch time share % from YouTube A/B test
+	Index       int     `yaml:"index" json:"index" ui:"auto"`                                        // 1=Original, 2=Subtle, 3=Bold
+	Path        string  `yaml:"path" json:"path" ui:"auto"`                                          // Path to the image file (CLI local path)
+	DriveFileID string  `yaml:"driveFileId,omitempty" json:"driveFileId,omitempty" ui:"auto"`         // Google Drive file ID (Web UI upload)
+	Share       float64 `yaml:"share,omitempty" json:"share,omitempty" ui:"auto"`                    // Watch time share % from YouTube A/B test
 }
 
 // Short represents a YouTube Short candidate extracted from a video manuscript.
@@ -48,24 +50,9 @@ type Short struct {
 	ID            string `yaml:"id" json:"id"`                                             // Unique identifier (short1, short2, etc.)
 	Title         string `yaml:"title" json:"title"`                                       // Short title
 	Text          string `yaml:"text" json:"text"`                                         // Extracted manuscript segment
-	FilePath      string `yaml:"file_path,omitempty" json:"file_path,omitempty"`           // Path to the short video file
-	ScheduledDate string `yaml:"scheduled_date,omitempty" json:"scheduled_date,omitempty"` // ISO format publish timestamp
-	YouTubeID     string `yaml:"youtube_id,omitempty" json:"youtube_id,omitempty"`         // Short's YouTube video ID (empty until uploaded)
-}
-
-// DubbingInfo tracks dubbing status for a specific language.
-// The language code is the map key in Video.Dubbing (e.g., "es" for Spanish).
-type DubbingInfo struct {
-	DubbingID       string `yaml:"dubbingId,omitempty" json:"dubbingId,omitempty"`             // ElevenLabs dubbing job ID
-	DubbedVideoPath string `yaml:"dubbedVideoPath,omitempty" json:"dubbedVideoPath,omitempty"` // Path to the dubbed video file
-	Title       string `yaml:"title,omitempty" json:"title,omitempty"`             // Video title for this language
-	Description string `yaml:"description,omitempty" json:"description,omitempty"` // Video description for this language
-	Tags        string `yaml:"tags,omitempty" json:"tags,omitempty"`               // Comma-separated tags for this language
-	Timecodes   string `yaml:"timecodes,omitempty" json:"timecodes,omitempty"`     // Timecode labels for this language
-	UploadedVideoID string `yaml:"uploadedVideoId,omitempty" json:"uploadedVideoId,omitempty"` // YouTube video ID on target channel
-	DubbingStatus   string `yaml:"dubbingStatus,omitempty" json:"dubbingStatus,omitempty"`     // Status: "", "dubbing", "dubbed", "failed"
-	DubbingError    string `yaml:"dubbingError,omitempty" json:"dubbingError,omitempty"`       // Error message if dubbing failed
-	ThumbnailPath   string `yaml:"thumbnailPath,omitempty" json:"thumbnailPath,omitempty"`     // Path to localized thumbnail
+	FilePath      string `yaml:"file_path,omitempty" json:"file_path,omitempty" ui:"auto"`           // Path to the short video file (set during publishing)
+	ScheduledDate string `yaml:"scheduled_date,omitempty" json:"scheduled_date,omitempty" ui:"auto"` // ISO format publish timestamp (set during publishing)
+	YouTubeID     string `yaml:"youtube_id,omitempty" json:"youtube_id,omitempty" ui:"auto"`         // Short's YouTube video ID (set after upload)
 }
 
 // Video represents all data associated with a video project.
@@ -100,11 +87,12 @@ type Video struct {
 	Members              string             `json:"members" completion:"filled_only"`
 	Animations           string      `json:"animations" completion:"filled_only"`
 	RequestEdit          bool        `json:"requestEdit" completion:"true_only"`
-	Movie                bool        `json:"movie" completion:"filled_only"`
+	VideoFile            string      `yaml:"videoFile,omitempty" json:"videoFile,omitempty" completion:"filled_only" ui:"label"`
+	VideoDriveFileID     string      `yaml:"videoDriveFileId,omitempty" json:"videoDriveFileId,omitempty" ui:"auto"`
 	Timecodes            string      `json:"timecodes" completion:"no_fixme"`
 	HugoPath             string      `json:"hugoPath" completion:"filled_only"`
 	RelatedVideos        string      `json:"relatedVideos" completion:"filled_only"`
-	UploadVideo          string      `json:"uploadVideo" completion:"filled_only"`
+	UploadVideo          string      `json:"uploadVideo" completion:"filled_only" ui:"auto"`
 	VideoId              string      `json:"videoId" completion:"filled_only"`
 	Tweet                string      `json:"tweet" completion:"filled_only"`
 	LinkedInPosted       bool        `json:"linkedInPosted" completion:"true_only"`
@@ -125,7 +113,6 @@ type Video struct {
 	Gist                 string      `yaml:"gist,omitempty" json:"gist,omitempty" completion:"filled_only"`
 	Code                 bool        `yaml:"code,omitempty" json:"code,omitempty" completion:"true_only"`
 	Shorts               []Short                `yaml:"shorts,omitempty" json:"shorts,omitempty" completion:"filled_only"` // YouTube Shorts extracted from this video
-	Dubbing              map[string]DubbingInfo `yaml:"dubbing,omitempty" json:"dubbing,omitempty"`                        // Dubbing info keyed by language code (e.g., "es")
 }
 
 // Sponsorship holds details about video sponsorship.
@@ -152,6 +139,8 @@ func NewYAML(indexPath string) *YAML {
 }
 
 func (y *YAML) GetVideo(path string) (Video, error) {
+	y.mu.RLock()
+	defer y.mu.RUnlock()
 	var video Video
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -166,9 +155,7 @@ func (y *YAML) GetVideo(path string) (Video, error) {
 	if len(video.ThumbnailVariants) == 0 && video.Thumbnail != "" {
 		video.ThumbnailVariants = []ThumbnailVariant{{
 			Index: 1,
-			Type:  "original",
 			Path:  video.Thumbnail,
-			Share: 0,
 		}}
 	}
 
@@ -176,6 +163,8 @@ func (y *YAML) GetVideo(path string) (Video, error) {
 }
 
 func (y *YAML) WriteVideo(video Video, path string) error {
+	y.mu.Lock()
+	defer y.mu.Unlock()
 	data, err := yaml.Marshal(&video)
 	if err != nil {
 		return fmt.Errorf("failed to marshal video data for %s: %w", path, err)
@@ -188,6 +177,8 @@ func (y *YAML) WriteVideo(video Video, path string) error {
 }
 
 func (y *YAML) GetIndex() ([]VideoIndex, error) {
+	y.mu.RLock()
+	defer y.mu.RUnlock()
 	var index []VideoIndex
 	data, err := os.ReadFile(y.IndexPath)
 	if err != nil {
@@ -201,6 +192,8 @@ func (y *YAML) GetIndex() ([]VideoIndex, error) {
 }
 
 func (y *YAML) WriteIndex(vi []VideoIndex) error {
+	y.mu.Lock()
+	defer y.mu.Unlock()
 	data, err := yaml.Marshal(&vi)
 	if err != nil {
 		return fmt.Errorf("failed to marshal video index: %w", err)

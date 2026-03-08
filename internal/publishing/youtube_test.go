@@ -3,18 +3,12 @@ package publishing
 import (
 	"devopstoolkit/youtube-automation/internal/configuration"
 	"devopstoolkit/youtube-automation/internal/storage"
-	"encoding/json"
 	"fmt"
-	"net/http"
-	"net/http/httptest"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 
-	"golang.org/x/oauth2"
 	"google.golang.org/api/googleapi"
 	"google.golang.org/api/youtube/v3"
 )
@@ -38,17 +32,13 @@ type uploadRequest struct {
 }
 
 // Mock YouTube video upload function
-func (m *mockYouTubeService) uploadVideo(video *storage.Video) string {
+func (m *mockYouTubeService) uploadVideo(video *storage.Video) (string, error) {
 	if m.shouldFail {
-		// Since the actual function now only returns a string and handles errors by logging,
-		// we'll return an empty string to signify failure in the mock.
-		// The actual error is available in m.uploadError if needed by the test.
-		return ""
+		return "", m.uploadError
 	}
 
-	// Simulating rate limit by returning an empty string, similar to failure.
 	if m.rateLimited {
-		return ""
+		return "", fmt.Errorf("rate limited")
 	}
 
 	// Determine languages based on input video and global defaults
@@ -94,7 +84,7 @@ func (m *mockYouTubeService) uploadVideo(video *storage.Video) string {
 		video.AppliedAudioLanguage = finalDefaultAudioLanguage
 	}
 
-	return videoId
+	return videoId, nil
 }
 
 // TestGetYouTubeURL tests the URL generation functionality
@@ -330,206 +320,8 @@ func TestGetAdditionalInfoEdgeCases(t *testing.T) {
 	}
 }
 
-// TestTokenFileOperations tests the token file operations
-func TestTokenFileOperations(t *testing.T) {
-	// Create a temporary directory for testing
-	tempDir, err := os.MkdirTemp("", "youtube-token-test")
-	if err != nil {
-		t.Fatalf("Failed to create temp directory: %v", err)
-	}
-	defer os.RemoveAll(tempDir)
-
-	// Set up token file manually in the temp directory
-	tokenPath := filepath.Join(tempDir, "token.json")
-
-	// Create a token for testing
-	testToken := &oauth2.Token{
-		AccessToken:  "test-access-token",
-		TokenType:    "Bearer",
-		RefreshToken: "test-refresh-token",
-	}
-
-	// Create a token file manually
-	if err := os.MkdirAll(filepath.Dir(tokenPath), 0700); err != nil {
-		t.Fatalf("Failed to create token directory: %v", err)
-	}
-
-	f, err := os.Create(tokenPath)
-	if err != nil {
-		t.Fatalf("Failed to create token file: %v", err)
-	}
-	if err := json.NewEncoder(f).Encode(testToken); err != nil {
-		f.Close()
-		t.Fatalf("Failed to write token to file: %v", err)
-	}
-	f.Close()
-
-	// Test tokenFromFile
-	readToken, err := tokenFromFile(tokenPath)
-	if err != nil {
-		t.Fatalf("Failed to read token file: %v", err)
-	}
-	if readToken.AccessToken != testToken.AccessToken {
-		t.Errorf("Expected access token %s, got %s", testToken.AccessToken, readToken.AccessToken)
-	}
-	if readToken.RefreshToken != testToken.RefreshToken {
-		t.Errorf("Expected refresh token %s, got %s", testToken.RefreshToken, readToken.RefreshToken)
-	}
-
-	// Test saveToken with a new token
-	newToken := &oauth2.Token{
-		AccessToken:  "new-access-token",
-		TokenType:    "Bearer",
-		RefreshToken: "new-refresh-token",
-	}
-
-	// Delete the existing file to test creation
-	if err := os.Remove(tokenPath); err != nil {
-		t.Fatalf("Failed to remove token file: %v", err)
-	}
-
-	saveToken(tokenPath, newToken)
-
-	// Verify the token was saved correctly
-	readNewToken, err := tokenFromFile(tokenPath)
-	if err != nil {
-		t.Fatalf("Failed to read new token file: %v", err)
-	}
-	if readNewToken.AccessToken != newToken.AccessToken {
-		t.Errorf("Expected new access token %s, got %s", newToken.AccessToken, readNewToken.AccessToken)
-	}
-	if readNewToken.RefreshToken != newToken.RefreshToken {
-		t.Errorf("Expected new refresh token %s, got %s", newToken.RefreshToken, readNewToken.RefreshToken)
-	}
-
-	// Test error cases
-	_, err = tokenFromFile("/nonexistent/path/token.json")
-	if err == nil {
-		t.Error("Expected error when reading non-existent token file, got nil")
-	}
-}
-
-// TestOpenURL tests the openURL function using a mock browser open function
-func TestOpenURL(t *testing.T) {
-	// Store the original execCommand to restore it after the test
-	originalExec := execCommand
-	defer func() {
-		execCommand = originalExec
-	}()
-
-	// Track the command and URL used
-	var capturedCommand string
-	var capturedArgs []string
-
-	// Mock execCommand to capture command and args instead of executing
-	execCommand = func(command string, args ...string) *exec.Cmd {
-		capturedCommand = command
-		capturedArgs = args
-		cmd := originalExec("echo", "test")
-		return cmd
-	}
-
-	// Test URL to open
-	testURL := "http://example.com"
-
-	// Run the function
-	err := openURL(testURL)
-	if err != nil {
-		t.Fatalf("openURL returned error: %v", err)
-	}
-
-	// Verify correct command was "executed" based on OS
-	switch runtime.GOOS {
-	case "linux":
-		if capturedCommand != "xdg-open" {
-			t.Errorf("Expected 'xdg-open' command, got '%s'", capturedCommand)
-		}
-		if len(capturedArgs) != 1 || capturedArgs[0] != testURL {
-			t.Errorf("Expected argument '%s', got '%v'", testURL, capturedArgs)
-		}
-	case "windows":
-		if capturedCommand != "rundll32" {
-			t.Errorf("Expected 'rundll32' command, got '%s'", capturedCommand)
-		}
-		// Note: Windows uses hardcoded URL in implementation
-		expectedURL := "http://localhost:4001/"
-		if len(capturedArgs) != 2 || capturedArgs[0] != "url.dll,FileProtocolHandler" || capturedArgs[1] != expectedURL {
-			t.Errorf("Expected arguments ['url.dll,FileProtocolHandler', '%s'], got '%v'", expectedURL, capturedArgs)
-		}
-	case "darwin":
-		if capturedCommand != "open" {
-			t.Errorf("Expected 'open' command, got '%s'", capturedCommand)
-		}
-		if len(capturedArgs) != 1 || capturedArgs[0] != testURL {
-			t.Errorf("Expected argument '%s', got '%v'", testURL, capturedArgs)
-		}
-	default:
-		// For other platforms, openURL returns an error, which should have been caught above
-	}
-}
-
-// TestExchangeToken tests the token exchange functionality
-func TestExchangeToken(t *testing.T) {
-	// Create a test OAuth2 config
-	config := &oauth2.Config{
-		ClientID:     "test-client-id",
-		ClientSecret: "test-client-secret",
-		Endpoint: oauth2.Endpoint{
-			AuthURL:  "http://example.com/auth",
-			TokenURL: "http://example.com/token",
-		},
-		RedirectURL: "http://localhost:8080/callback",
-		Scopes:      []string{"test-scope"},
-	}
-
-	// Create a mock token server
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{
-			"access_token": "mock-access-token",
-			"token_type": "Bearer",
-			"refresh_token": "mock-refresh-token",
-			"expiry": "2023-01-01T00:00:00Z"
-		}`))
-	}))
-	defer server.Close()
-
-	// Use the mock server URL for the token endpoint
-	config.Endpoint.TokenURL = server.URL
-
-	// Call exchangeToken with a test code
-	token, err := exchangeToken(config, "test-auth-code")
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
-	if token.AccessToken != "mock-access-token" {
-		t.Errorf("Expected access token 'mock-access-token', got '%s'", token.AccessToken)
-	}
-	if token.RefreshToken != "mock-refresh-token" {
-		t.Errorf("Expected refresh token 'mock-refresh-token', got '%s'", token.RefreshToken)
-	}
-}
-
-// TestTokenCacheFile tests the token cache file path generation
-func TestTokenCacheFile(t *testing.T) {
-	// Skip this test in environments where HOME can't be easily modified
-	if runtime.GOOS != "linux" && runtime.GOOS != "darwin" {
-		t.Skip("Skipping test on non-Unix platforms")
-	}
-
-	// Create a temporary directory
-	tempDir, err := os.MkdirTemp("", "youtube-token-cache-test")
-	if err != nil {
-		t.Fatalf("Failed to create temp directory: %v", err)
-	}
-	defer os.RemoveAll(tempDir)
-
-	// Use environment variable mocking rather than directly setting HOME
-	// which is more reliable across test environments
-	origHome := os.Getenv("HOME")
-	os.Setenv("HOME", tempDir)
-	defer os.Setenv("HOME", origHome)
-}
+// OAuth-related tests (token file operations, openURL, exchangeToken, tokenCacheFile)
+// have been moved to internal/auth/oauth_test.go
 
 // TestUploadVideo tests the video upload functionality
 func TestUploadVideo(t *testing.T) {
@@ -567,7 +359,10 @@ func TestUploadVideo(t *testing.T) {
 		Language:      "fr", // Specific language for this video
 		AudioLanguage: "de", // Specific audio language
 	}
-	videoID1 := mockService.uploadVideo(video1)
+	videoID1, err1 := mockService.uploadVideo(video1)
+	if err1 != nil {
+		t.Fatalf("Unexpected error: %v", err1)
+	}
 	if videoID1 == "" {
 		t.Errorf("Expected video ID, got empty string")
 	}
@@ -597,7 +392,10 @@ func TestUploadVideo(t *testing.T) {
 		Language:      "", // Should use default
 		AudioLanguage: "", // Should use default
 	}
-	videoID2 := mockService.uploadVideo(video2)
+	videoID2, err2 := mockService.uploadVideo(video2)
+	if err2 != nil {
+		t.Fatalf("Unexpected error: %v", err2)
+	}
 	if videoID2 == "" {
 		t.Errorf("Expected video ID for video 2, got empty string")
 	}
@@ -624,7 +422,10 @@ func TestUploadVideo(t *testing.T) {
 		Language:      "es",
 		AudioLanguage: "", // Falls back to global default 'en'
 	}
-	videoID3 := mockService.uploadVideo(video3)
+	videoID3, err3 := mockService.uploadVideo(video3)
+	if err3 != nil {
+		t.Fatalf("Unexpected error: %v", err3)
+	}
 	if videoID3 == "" {
 		t.Errorf("Expected video ID for video 3, got empty string")
 	}
@@ -651,7 +452,10 @@ func TestUploadVideo(t *testing.T) {
 		UploadVideo: videoPath,
 		Thumbnail:   thumbnailPath,
 	}
-	videoID4 := mockService.uploadVideo(video4)
+	videoID4, err4 := mockService.uploadVideo(video4)
+	if err4 == nil {
+		t.Errorf("Expected error on failure, got nil")
+	}
 	if videoID4 != "" {
 		t.Errorf("Expected empty video ID on failure, got '%s'", videoID4)
 	}
@@ -666,7 +470,10 @@ func TestUploadVideo(t *testing.T) {
 		UploadVideo: videoPath,
 		Thumbnail:   thumbnailPath,
 	}
-	videoID5 := mockService.uploadVideo(video5)
+	videoID5, err5 := mockService.uploadVideo(video5)
+	if err5 == nil {
+		t.Errorf("Expected error on rate limit, got nil")
+	}
 	if videoID5 != "" {
 		t.Errorf("Expected empty video ID on rate limit, got '%s'", videoID5)
 	}
@@ -1027,161 +834,79 @@ func TestDefaultOAuthConfig(t *testing.T) {
 	}
 }
 
-// TestSpanishOAuthConfig tests the Spanish OAuth configuration with various settings
-func TestSpanishOAuthConfig(t *testing.T) {
+// TestTokenCacheFileWithName moved to internal/auth/oauth_test.go
+
+func TestSanitizeYouTubeTags(t *testing.T) {
 	tests := []struct {
-		name                    string
-		setupSettings           func()
-		expectedCredentialsFile string
-		expectedTokenFileName   string
-		expectedCallbackPort    int
+		name     string
+		input    string
+		maxChars int
+		wantTags []string
 	}{
 		{
-			name: "default values when settings are empty",
-			setupSettings: func() {
-				configuration.GlobalSettings.SpanishChannel = configuration.SettingsSpanishChannel{}
-			},
-			expectedCredentialsFile: "client_secret_spanish.json",
-			expectedTokenFileName:   "youtube-go-spanish.json",
-			expectedCallbackPort:    8091,
+			name:     "short tags within limit",
+			input:    "go,kubernetes,devops",
+			wantTags: []string{"go", "kubernetes", "devops"},
 		},
 		{
-			name: "custom values from settings",
-			setupSettings: func() {
-				configuration.GlobalSettings.SpanishChannel = configuration.SettingsSpanishChannel{
-					ChannelID:       "UC_CUSTOM_CHANNEL",
-					CredentialsFile: "custom_secret.json",
-					TokenFile:       "custom-token.json",
-					CallbackPort:    8095,
-				}
-			},
-			expectedCredentialsFile: "custom_secret.json",
-			expectedTokenFileName:   "custom-token.json",
-			expectedCallbackPort:    8095,
+			name:     "empty input",
+			input:    "",
+			wantTags: []string{},
 		},
 		{
-			name: "partial settings - only credentials file",
-			setupSettings: func() {
-				configuration.GlobalSettings.SpanishChannel = configuration.SettingsSpanishChannel{
-					CredentialsFile: "partial_secret.json",
-				}
-			},
-			expectedCredentialsFile: "partial_secret.json",
-			expectedTokenFileName:   "youtube-go-spanish.json", // default
-			expectedCallbackPort:    8091,                      // default
+			name:     "trims whitespace",
+			input:    " go , kubernetes , devops ",
+			wantTags: []string{"go", "kubernetes", "devops"},
 		},
 		{
-			name: "partial settings - only port",
-			setupSettings: func() {
-				configuration.GlobalSettings.SpanishChannel = configuration.SettingsSpanishChannel{
-					CallbackPort: 8099,
-				}
-			},
-			expectedCredentialsFile: "client_secret_spanish.json", // default
-			expectedTokenFileName:   "youtube-go-spanish.json",    // default
-			expectedCallbackPort:    8099,
-		},
-	}
-
-	// Save original settings to restore after tests
-	originalSettings := configuration.GlobalSettings.SpanishChannel
-	defer func() {
-		configuration.GlobalSettings.SpanishChannel = originalSettings
-	}()
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.setupSettings()
-			config := SpanishOAuthConfig()
-
-			if config.CredentialsFile != tt.expectedCredentialsFile {
-				t.Errorf("SpanishOAuthConfig().CredentialsFile = %q, want %q", config.CredentialsFile, tt.expectedCredentialsFile)
-			}
-			if config.TokenFileName != tt.expectedTokenFileName {
-				t.Errorf("SpanishOAuthConfig().TokenFileName = %q, want %q", config.TokenFileName, tt.expectedTokenFileName)
-			}
-			if config.CallbackPort != tt.expectedCallbackPort {
-				t.Errorf("SpanishOAuthConfig().CallbackPort = %d, want %d", config.CallbackPort, tt.expectedCallbackPort)
-			}
-		})
-	}
-}
-
-// TestGetSpanishChannelID tests the Spanish channel ID getter
-func TestGetSpanishChannelID(t *testing.T) {
-	tests := []struct {
-		name       string
-		channelID  string
-		expectedID string
-	}{
-		{
-			name:       "empty channel ID",
-			channelID:  "",
-			expectedID: "",
+			name:     "skips empty tags",
+			input:    "go,,kubernetes,,devops",
+			wantTags: []string{"go", "kubernetes", "devops"},
 		},
 		{
-			name:       "valid channel ID",
-			channelID:  "UC_SPANISH_CHANNEL_123",
-			expectedID: "UC_SPANISH_CHANNEL_123",
-		},
-	}
-
-	// Save original settings to restore after tests
-	originalSettings := configuration.GlobalSettings.SpanishChannel
-	defer func() {
-		configuration.GlobalSettings.SpanishChannel = originalSettings
-	}()
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			configuration.GlobalSettings.SpanishChannel.ChannelID = tt.channelID
-			result := GetSpanishChannelID()
-			if result != tt.expectedID {
-				t.Errorf("GetSpanishChannelID() = %q, want %q", result, tt.expectedID)
-			}
-		})
-	}
-}
-
-// TestTokenCacheFileWithName tests the parameterized token cache file path generation
-func TestTokenCacheFileWithName(t *testing.T) {
-	tests := []struct {
-		name         string
-		tokenName    string
-		wantContains string
-	}{
-		{
-			name:         "default token name",
-			tokenName:    "youtube-go.json",
-			wantContains: "youtube-go.json",
-		},
-		{
-			name:         "spanish token name",
-			tokenName:    "youtube-go-spanish.json",
-			wantContains: "youtube-go-spanish.json",
-		},
-		{
-			name:         "custom token name",
-			tokenName:    "custom-token.json",
-			wantContains: "custom-token.json",
+			name:  "drops tags from end when over 500 chars",
+			input: strings.Repeat("longertag,", 60) + "last",
+			// 60 * "longertag" (9 chars each) + 59 commas = 540+59=599 > 500
+			// Should drop tags from end to fit
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			path, err := tokenCacheFileWithName(tt.tokenName)
-			if err != nil {
-				t.Errorf("tokenCacheFileWithName(%q) returned error: %v", tt.tokenName, err)
-				return
-			}
-			if !strings.Contains(path, tt.wantContains) {
-				t.Errorf("tokenCacheFileWithName(%q) = %q, want path containing %q", tt.tokenName, path, tt.wantContains)
-			}
-			if !strings.Contains(path, ".credentials") {
-				t.Errorf("tokenCacheFileWithName(%q) = %q, want path containing .credentials", tt.tokenName, path)
+			got := sanitizeYouTubeTags(tt.input)
+			if tt.wantTags != nil {
+				if len(got) != len(tt.wantTags) {
+					t.Errorf("sanitizeYouTubeTags() returned %d tags, want %d", len(got), len(tt.wantTags))
+					return
+				}
+				for i, tag := range got {
+					if tag != tt.wantTags[i] {
+						t.Errorf("tag[%d] = %q, want %q", i, tag, tt.wantTags[i])
+					}
+				}
 			}
 		})
 	}
+
+	// Verify the total length is always within 500 chars
+	t.Run("over limit gets trimmed to fit", func(t *testing.T) {
+		// 60 tags of 9 chars each = way over 500
+		input := strings.Repeat("longertag,", 60) + "last"
+		got := sanitizeYouTubeTags(input)
+		total := 0
+		for i, tag := range got {
+			if i > 0 {
+				total++
+			}
+			total += len(tag)
+		}
+		if total > 500 {
+			t.Errorf("total tag length = %d, want <= 500", total)
+		}
+		if len(got) == 0 {
+			t.Error("expected at least some tags to survive")
+		}
+	})
 }
 
 func TestMain(m *testing.M) {
