@@ -19,7 +19,8 @@ ARG VERSION=dev
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-X main.version=${VERSION}" -o youtube-release ./cmd/youtube-automation
 
 # Stage 3: Minimal runtime
-FROM gcr.io/distroless/static-debian12
+FROM alpine:3.21
+RUN apk add --no-cache git ca-certificates
 COPY --from=go-build /app/youtube-release /youtube-release
 EXPOSE 8080
 ENTRYPOINT ["/youtube-release"]
