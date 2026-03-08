@@ -3,4 +3,4 @@ name: youtube-automation
 description: YouTube Automation Tool - video lifecycle management with web UI
 type: application
 version: 0.184.0
-appVersion: "0.184.0"
+appVersion: "v0.184.0"

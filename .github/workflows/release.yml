@@ -89,8 +89,8 @@ jobs:
         run: |
           VERSION_NO_V="${NEXT_VERSION#v}"
           sed -i "s/^version: .*/version: ${VERSION_NO_V}/" helm/youtube-automation/Chart.yaml
-          sed -i "s/^appVersion: .*/appVersion: \"${VERSION_NO_V}\"/" helm/youtube-automation/Chart.yaml
-          sed -i "s/^  tag: .*/  tag: \"${VERSION_NO_V}\"/" helm/youtube-automation/values.yaml
+          sed -i "s/^appVersion: .*/appVersion: \"${NEXT_VERSION}\"/" helm/youtube-automation/Chart.yaml
+          sed -i "s/^  tag: .*/  tag: \"${NEXT_VERSION}\"/" helm/youtube-automation/values.yaml
           git add helm/youtube-automation/Chart.yaml helm/youtube-automation/values.yaml
           git commit -m "chore: update Helm chart to ${VERSION_NO_V} [skip ci]" || true
           git push origin HEAD:main || true
