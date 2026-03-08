@@ -71,3 +71,4 @@ client_secret_spanish.json
 # Frontend build artifacts (keep placeholder in internal/frontend/dist/)
 web/node_modules/
 web/dist/
+web/.vite/
