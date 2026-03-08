@@ -204,6 +204,11 @@ export interface CreateVideoRequest {
   date?: string;
 }
 
+export interface Category {
+  name: string;
+  path: string;
+}
+
 // --- AI Response Types ---
 
 export interface AITitlesResponse {

@@ -7,6 +7,7 @@ import type {
   OverallProgressResponse,
   AspectsResponse,
   CreateVideoRequest,
+  Category,
   AITitlesResponse,
   AIDescriptionResponse,
   AITagsResponse,
@@ -92,6 +93,13 @@ export function usePatchVideo() {
       qc.invalidateQueries({ queryKey: ['videosList'] });
       qc.invalidateQueries({ queryKey: ['phases'] });
     },
+  });
+}
+
+export function useCategories() {
+  return useQuery<Category[]>({
+    queryKey: ['categories'],
+    queryFn: () => get<Category[]>('/api/categories'),
   });
 }
 

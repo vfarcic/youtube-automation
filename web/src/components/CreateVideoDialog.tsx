@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useCreateVideo } from '../api/hooks';
+import { useCreateVideo, useCategories } from '../api/hooks';
 
 interface CreateVideoDialogProps {
   open: boolean;
@@ -10,6 +10,7 @@ interface CreateVideoDialogProps {
 export function CreateVideoDialog({ open, onClose }: CreateVideoDialogProps) {
   const navigate = useNavigate();
   const createVideo = useCreateVideo();
+  const { data: categories = [] } = useCategories();
   const [name, setName] = useState('');
   const [category, setCategory] = useState('');
   const [date, setDate] = useState('');
@@ -67,14 +68,19 @@ export function CreateVideoDialog({ open, onClose }: CreateVideoDialogProps) {
               <label htmlFor="cv-category" className="block text-sm font-medium text-gray-300 mb-1">
                 Category <span className="text-red-400">*</span>
               </label>
-              <input
+              <select
                 id="cv-category"
-                type="text"
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                placeholder="devops"
-                className="w-full border border-gray-600 bg-gray-700 text-gray-100 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 placeholder-gray-500"
-              />
+                className="w-full border border-gray-600 bg-gray-700 text-gray-100 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+              >
+                <option value="">Select a category</option>
+                {categories.map((cat) => (
+                  <option key={cat.path} value={cat.path}>
+                    {cat.name}
+                  </option>
+                ))}
+              </select>
             </div>
             <div>
               <label htmlFor="cv-date" className="block text-sm font-medium text-gray-300 mb-1">
