@@ -1255,3 +1255,92 @@ slack:
 	// For now, the direct unmarshal test above is safer and more targeted for YAML loading.
 }
 
+func TestGDriveEnvVarOverrides(t *testing.T) {
+	envVars := []string{
+		"GDRIVE_CREDENTIALS_FILE",
+		"GDRIVE_TOKEN_FILE",
+		"GDRIVE_FOLDER_ID",
+	}
+
+	restoreEnvFunc := restoreEnv(t, envVars)
+	defer restoreEnvFunc()
+
+	tests := []struct {
+		name                string
+		yamlContent         string
+		envVars             map[string]string
+		wantCredentialsFile string
+		wantTokenFile       string
+		wantFolderID        string
+	}{
+		{
+			name:                "Env vars override empty YAML",
+			yamlContent:         ``,
+			envVars:             map[string]string{"GDRIVE_CREDENTIALS_FILE": "/secrets/client_secret.json", "GDRIVE_TOKEN_FILE": "token.json", "GDRIVE_FOLDER_ID": "folder123"},
+			wantCredentialsFile: "/secrets/client_secret.json",
+			wantTokenFile:       "token.json",
+			wantFolderID:        "folder123",
+		},
+		{
+			name: "Env vars override YAML values",
+			yamlContent: `
+gdrive:
+  credentialsFile: "/yaml/creds.json"
+  tokenFile: "yaml-token.json"
+  folderId: "yaml-folder"
+`,
+			envVars:             map[string]string{"GDRIVE_CREDENTIALS_FILE": "/env/creds.json", "GDRIVE_FOLDER_ID": "env-folder"},
+			wantCredentialsFile: "/env/creds.json",
+			wantTokenFile:       "yaml-token.json",
+			wantFolderID:        "env-folder",
+		},
+		{
+			name: "YAML values used when env vars not set",
+			yamlContent: `
+gdrive:
+  credentialsFile: "/yaml/creds.json"
+  tokenFile: "yaml-token.json"
+  folderId: "yaml-folder"
+`,
+			envVars:             map[string]string{},
+			wantCredentialsFile: "/yaml/creds.json",
+			wantTokenFile:       "yaml-token.json",
+			wantFolderID:        "yaml-folder",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Clear all env vars
+			for _, v := range envVars {
+				os.Unsetenv(v)
+			}
+			// Set test env vars
+			for k, v := range tt.envVars {
+				os.Setenv(k, v)
+			}
+
+			// Load YAML
+			testSettings := Settings{}
+			if tt.yamlContent != "" {
+				yaml.Unmarshal([]byte(tt.yamlContent), &testSettings)
+			}
+
+			// Apply env var overrides (mimicking init() behavior)
+			if envCreds := os.Getenv("GDRIVE_CREDENTIALS_FILE"); envCreds != "" {
+				testSettings.GDrive.CredentialsFile = envCreds
+			}
+			if envToken := os.Getenv("GDRIVE_TOKEN_FILE"); envToken != "" {
+				testSettings.GDrive.TokenFile = envToken
+			}
+			if envFolder := os.Getenv("GDRIVE_FOLDER_ID"); envFolder != "" {
+				testSettings.GDrive.FolderID = envFolder
+			}
+
+			assert.Equal(t, tt.wantCredentialsFile, testSettings.GDrive.CredentialsFile)
+			assert.Equal(t, tt.wantTokenFile, testSettings.GDrive.TokenFile)
+			assert.Equal(t, tt.wantFolderID, testSettings.GDrive.FolderID)
+		})
+	}
+}
+

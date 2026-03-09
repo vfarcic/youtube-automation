@@ -206,6 +206,17 @@ func init() {
 		GlobalSettings.Git.Token = envGitToken
 	}
 
+	// Google Drive — env vars override settings.yaml
+	if envGDriveCredentials := os.Getenv("GDRIVE_CREDENTIALS_FILE"); envGDriveCredentials != "" {
+		GlobalSettings.GDrive.CredentialsFile = envGDriveCredentials
+	}
+	if envGDriveToken := os.Getenv("GDRIVE_TOKEN_FILE"); envGDriveToken != "" {
+		GlobalSettings.GDrive.TokenFile = envGDriveToken
+	}
+	if envGDriveFolderID := os.Getenv("GDRIVE_FOLDER_ID"); envGDriveFolderID != "" {
+		GlobalSettings.GDrive.FolderID = envGDriveFolderID
+	}
+
 	// Calendar settings: enabled by default, set calendar.disabled: true to disable
 
 	// Check required fields and environment variables

@@ -19,7 +19,7 @@ import (
 // Response: {"driveFileId": "...", "variantIndex": 0}
 func (s *Server) handleDriveUploadThumbnail(w http.ResponseWriter, r *http.Request) {
 	if s.driveService == nil {
-		respondError(w, http.StatusNotImplemented, "Google Drive not configured", "Set gdrive.credentialsFile in settings.yaml")
+		respondError(w, http.StatusNotImplemented, "Google Drive not configured", "Set gdrive.credentialsFile in settings.yaml or GDRIVE_CREDENTIALS_FILE env var")
 		return
 	}
 
@@ -121,7 +121,7 @@ func (s *Server) handleDriveUploadThumbnail(w http.ResponseWriter, r *http.Reque
 // Response: {"driveFileId": "...", "videoFile": "drive://..."}
 func (s *Server) handleDriveUploadVideo(w http.ResponseWriter, r *http.Request) {
 	if s.driveService == nil {
-		respondError(w, http.StatusNotImplemented, "Google Drive not configured", "Set gdrive.credentialsFile in settings.yaml")
+		respondError(w, http.StatusNotImplemented, "Google Drive not configured", "Set gdrive.credentialsFile in settings.yaml or GDRIVE_CREDENTIALS_FILE env var")
 		return
 	}
 
@@ -206,7 +206,7 @@ func (s *Server) handleDriveUploadVideo(w http.ResponseWriter, r *http.Request) 
 // GET /api/drive/download/video/{videoName}?category=X
 func (s *Server) handleDriveDownloadVideo(w http.ResponseWriter, r *http.Request) {
 	if s.driveService == nil {
-		respondError(w, http.StatusNotImplemented, "Google Drive not configured", "Set gdrive.credentialsFile in settings.yaml")
+		respondError(w, http.StatusNotImplemented, "Google Drive not configured", "Set gdrive.credentialsFile in settings.yaml or GDRIVE_CREDENTIALS_FILE env var")
 		return
 	}
 

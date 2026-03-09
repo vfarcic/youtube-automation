@@ -85,6 +85,10 @@ existingSecretKey: "api-token"
 # │ EMAIL (required for email notifications):                                   │
 # │   EMAIL_PASSWORD     - SMTP email password                                 │
 # │                                                                             │
+# │ GOOGLE DRIVE (required for thumbnail uploads):                              │
+# │   GDRIVE_CREDENTIALS_FILE - Path to client_secret JSON file                │
+# │   GDRIVE_TOKEN_FILE       - Token cache filename (default: gdrive-go.json) │
+# │   GDRIVE_FOLDER_ID        - Root Drive folder ID for uploads (optional)    │
 # │                                                                             │
 # └─────────────────────────────────────────────────────────────────────────────┘
 #
