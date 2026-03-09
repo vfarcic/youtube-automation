@@ -46,10 +46,62 @@ existingSecret: ""
 # Key within the existing secret that holds the API token
 existingSecretKey: "api-token"
 
-# Additional environment variables (map of name: value)
+# Additional environment variables (map of name: value).
+# Use this for non-sensitive config. For secrets, prefer envFrom with a Secret reference.
+#
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │                    ENVIRONMENT VARIABLES REFERENCE                          │
+# ├─────────────────────────────────────────────────────────────────────────────┤
+# │                                                                             │
+# │ CORE (handled by the chart automatically):                                  │
+# │   API_TOKEN          - API auth token (from apiToken / existingSecret)      │
+# │   GIT_REPO_URL       - Data repo URL (from git.repoURL)                    │
+# │   GIT_BRANCH         - Data repo branch (from git.branch, default: main)   │
+# │   GIT_TOKEN          - Data repo auth token (from git.token)               │
+# │   DATA_DIR           - Video data directory (default: ./tmp)               │
+# │                                                                             │
+# │ AI PROVIDER (required for AI features like title/description generation):   │
+# │   AI_PROVIDER        - "anthropic" or "azure" (default: anthropic)          │
+# │   ANTHROPIC_API_KEY  - Anthropic API key (required if provider=anthropic)   │
+# │   ANTHROPIC_MODEL    - Model name (default: claude-sonnet-4-20250514)       │
+# │   AI_KEY             - Azure OpenAI key (required if provider=azure)        │
+# │                                                                             │
+# │ YOUTUBE (required):                                                         │
+# │   YOUTUBE_API_KEY    - YouTube Data API v3 key                              │
+# │                                                                             │
+# │ SLACK (required for Slack posting):                                         │
+# │   SLACK_API_TOKEN             - Slack Bot OAuth token (xoxb-...)            │
+# │   SLACK_RETRY_ATTEMPTS        - Retry count (default: 3)                   │
+# │   SLACK_RETRY_BACKOFF_SECONDS - Retry backoff in seconds (default: 1)      │
+# │                                                                             │
+# │ BLUESKY (required for Bluesky posting):                                     │
+# │   BLUESKY_PASSWORD   - Bluesky account password                            │
+# │                                                                             │
+# │ HUGO (required for blog post integration):                                  │
+# │   HUGO_REPO_URL      - Hugo blog repo URL                                  │
+# │   HUGO_BRANCH        - Hugo repo branch (default: main)                    │
+# │   GITHUB_TOKEN       - GitHub token for Hugo repo access / PR creation     │
+# │                                                                             │
+# │ EMAIL (required for email notifications):                                   │
+# │   EMAIL_PASSWORD     - SMTP email password                                 │
+# │                                                                             │
+# │                                                                             │
+# └─────────────────────────────────────────────────────────────────────────────┘
+#
+# Example:
+# env:
+#   AI_PROVIDER: "anthropic"
+#   ANTHROPIC_MODEL: "claude-sonnet-4-20250514"
+#   SLACK_RETRY_ATTEMPTS: "5"
+#
+# For secrets (ANTHROPIC_API_KEY, SLACK_API_TOKEN, etc.), use envFrom:
+# envFrom:
+#   - secretRef:
+#       name: youtube-automation-secrets
 env: {}
 
-# Inject environment variables from Secrets or ConfigMaps
+# Inject environment variables from Secrets or ConfigMaps.
+# Recommended for sensitive values like API keys and tokens.
 envFrom: []
 # - secretRef:
 #     name: my-secret

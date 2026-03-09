@@ -36,8 +36,7 @@ type Settings struct {
 	Timing         TimingConfig           `yaml:"timing"`
 	Calendar       SettingsCalendar       `yaml:"calendar"`
 	Shorts         ShortsConfig           `yaml:"shorts"`
-	Gemini         SettingsGemini         `yaml:"gemini"`
-	API            SettingsAPI            `yaml:"api"`
+API            SettingsAPI            `yaml:"api"`
 	Git            SettingsGit            `yaml:"git"`
 	GDrive         SettingsGDrive         `yaml:"gdrive"`
 }
@@ -138,11 +137,6 @@ type ShortsConfig struct {
 	CandidateCount int `yaml:"candidateCount" json:"candidateCount"` // Number of Short candidates to generate (default: 10)
 }
 
-// SettingsGemini holds Google Gemini API configuration for thumbnail localization
-type SettingsGemini struct {
-	Model string `yaml:"model"` // Image generation model (default: gemini-3-pro-image-preview)
-}
-
 var GlobalSettings Settings
 
 func init() {
@@ -196,11 +190,6 @@ func init() {
 	}
 	if GlobalSettings.Shorts.CandidateCount == 0 {
 		GlobalSettings.Shorts.CandidateCount = 10
-	}
-
-	// Gemini defaults (API key loaded via GEMINI_API_KEY env var at runtime)
-	if GlobalSettings.Gemini.Model == "" {
-		GlobalSettings.Gemini.Model = "gemini-3-pro-image-preview"
 	}
 
 	// Git sync defaults — env vars override settings.yaml
