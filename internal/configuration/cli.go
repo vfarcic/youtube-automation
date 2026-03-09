@@ -160,7 +160,7 @@ func init() {
 	RootCmd.Flags().StringVar(&GlobalSettings.Email.EditTo, "email-edit-to", GlobalSettings.Email.EditTo, "To which email to send requests for edits. (required)")
 	RootCmd.Flags().StringVar(&GlobalSettings.Email.FinanceTo, "email-finance-to", GlobalSettings.Email.FinanceTo, "To which email to send emails related to finances. (required)")
 	RootCmd.Flags().StringVar(&GlobalSettings.Email.Password, "email-password", GlobalSettings.Email.Password, "Email server password. Environment variable `EMAIL_PASSWORD` is supported as well. (required)")
-	RootCmd.Flags().StringVar(&GlobalSettings.AI.Provider, "ai-provider", GlobalSettings.AI.Provider, "AI provider (azure or anthropic). Defaults to azure for backward compatibility.")
+	RootCmd.Flags().StringVar(&GlobalSettings.AI.Provider, "ai-provider", GlobalSettings.AI.Provider, "AI provider (azure or anthropic). Environment variable `AI_PROVIDER` is supported as well. Defaults to anthropic.")
 	RootCmd.Flags().StringVar(&GlobalSettings.AI.Azure.Endpoint, "ai-endpoint", GlobalSettings.AI.Azure.Endpoint, "AI endpoint. For Azure OpenAI. (required for azure)")
 	RootCmd.Flags().StringVar(&GlobalSettings.AI.Azure.Key, "ai-key", GlobalSettings.AI.Azure.Key, "AI key. Environment variable `AI_KEY` is supported as well. (required)")
 	RootCmd.Flags().StringVar(&GlobalSettings.AI.Azure.Deployment, "ai-deployment", GlobalSettings.AI.Azure.Deployment, "AI Deployment. For Azure OpenAI. (required for azure)")
@@ -240,9 +240,14 @@ func init() {
 		markRequired("email-password")
 	}
 
-	// Default to azure provider for backward compatibility
+	// Override AI provider from environment variable
+	if envAIProvider := os.Getenv("AI_PROVIDER"); envAIProvider != "" {
+		GlobalSettings.AI.Provider = envAIProvider
+	}
+
+	// Default to anthropic provider
 	if GlobalSettings.AI.Provider == "" {
-		GlobalSettings.AI.Provider = "azure"
+		GlobalSettings.AI.Provider = "anthropic"
 	}
 
 	// Provider-specific validation

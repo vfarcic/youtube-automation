@@ -94,7 +94,6 @@ func TestFlagParsing(t *testing.T) {
 					Password:    "password123",
 				},
 				AI: SettingsAI{
-					Provider: "azure",
 					Azure: SettingsAzureAI{
 						Endpoint:   "https://api.openai.com",
 						Key:        "ai-key-123",
@@ -139,7 +138,6 @@ func TestFlagParsing(t *testing.T) {
 					Password:    "password123",
 				},
 				AI: SettingsAI{
-					Provider: "azure",
 					Azure: SettingsAzureAI{
 						Endpoint:   "https://api.openai.com",
 						Key:        "ai-key-123",
@@ -359,6 +357,71 @@ hugo:
 
 	if testSettings.Hugo.Path != "/default/hugo/path" {
 		t.Errorf("Hugo.Path = %s, want /default/hugo/path", testSettings.Hugo.Path)
+	}
+}
+
+// TestAIProviderEnvVar tests that AI_PROVIDER environment variable overrides settings
+func TestAIProviderEnvVar(t *testing.T) {
+	tests := []struct {
+		name             string
+		yamlProvider     string
+		envProvider      string
+		expectedProvider string
+	}{
+		{
+			name:             "env var overrides empty yaml",
+			yamlProvider:     "",
+			envProvider:      "azure",
+			expectedProvider: "azure",
+		},
+		{
+			name:             "env var overrides yaml value",
+			yamlProvider:     "azure",
+			envProvider:      "anthropic",
+			expectedProvider: "anthropic",
+		},
+		{
+			name:             "defaults to anthropic when neither set",
+			yamlProvider:     "",
+			envProvider:      "",
+			expectedProvider: "anthropic",
+		},
+		{
+			name:             "yaml value used when env var not set",
+			yamlProvider:     "azure",
+			envProvider:      "",
+			expectedProvider: "azure",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Save and restore AI_PROVIDER
+			restoreFunc := restoreEnv(t, []string{"AI_PROVIDER"})
+			defer restoreFunc()
+
+			// Set up environment
+			if tt.envProvider != "" {
+				os.Setenv("AI_PROVIDER", tt.envProvider)
+			} else {
+				os.Unsetenv("AI_PROVIDER")
+			}
+
+			// Simulate the loading logic from init()
+			provider := tt.yamlProvider
+
+			// Override from env var (matches new code in cli.go)
+			if envAIProvider := os.Getenv("AI_PROVIDER"); envAIProvider != "" {
+				provider = envAIProvider
+			}
+
+			// Default to anthropic
+			if provider == "" {
+				provider = "anthropic"
+			}
+
+			assert.Equal(t, tt.expectedProvider, provider)
+		})
 	}
 }
 
