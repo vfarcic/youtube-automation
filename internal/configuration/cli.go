@@ -166,7 +166,7 @@ func init() {
 	RootCmd.Flags().StringVar(&GlobalSettings.AI.Azure.Deployment, "ai-deployment", GlobalSettings.AI.Azure.Deployment, "AI Deployment. For Azure OpenAI. (required for azure)")
 	RootCmd.Flags().StringVar(&GlobalSettings.AI.Azure.APIVersion, "ai-api-version", GlobalSettings.AI.Azure.APIVersion, "Azure OpenAI API Version (e.g., 2023-05-15). Defaults to a common version if not set.")
 	RootCmd.Flags().StringVar(&GlobalSettings.AI.Anthropic.Key, "anthropic-key", GlobalSettings.AI.Anthropic.Key, "Anthropic API key. Environment variable `ANTHROPIC_API_KEY` is supported as well. (required for anthropic)")
-	RootCmd.Flags().StringVar(&GlobalSettings.AI.Anthropic.Model, "anthropic-model", GlobalSettings.AI.Anthropic.Model, "Anthropic model (e.g., claude-3-sonnet-20240229). (required for anthropic)")
+	RootCmd.Flags().StringVar(&GlobalSettings.AI.Anthropic.Model, "anthropic-model", GlobalSettings.AI.Anthropic.Model, "Anthropic model (e.g., claude-sonnet-4-20250514). Environment variable `ANTHROPIC_MODEL` is supported as well.")
 	RootCmd.Flags().StringVar(&GlobalSettings.YouTube.APIKey, "youtube-api-key", GlobalSettings.YouTube.APIKey, "YouTube API key. Environment variable `YOUTUBE_API_KEY` is supported as well. (required)")
 	RootCmd.Flags().StringVar(&GlobalSettings.Hugo.Path, "hugo-path", GlobalSettings.Hugo.Path, "Path to the repo with Hugo posts. (required)")
 	RootCmd.Flags().StringVar(&GlobalSettings.Bluesky.Identifier, "bluesky-identifier", GlobalSettings.Bluesky.Identifier, "Bluesky username/identifier (e.g., username.bsky.social)")
@@ -279,8 +279,10 @@ func init() {
 			markRequired("anthropic-key")
 		}
 
-		if GlobalSettings.AI.Anthropic.Model == "" {
-			GlobalSettings.AI.Anthropic.Model = "claude-3-sonnet-20240229" // Default model
+		if envModel := os.Getenv("ANTHROPIC_MODEL"); envModel != "" {
+			GlobalSettings.AI.Anthropic.Model = envModel
+		} else if GlobalSettings.AI.Anthropic.Model == "" {
+			GlobalSettings.AI.Anthropic.Model = "claude-sonnet-4-20250514" // Default model
 		}
 
 	default:

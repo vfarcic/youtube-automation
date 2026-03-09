@@ -80,7 +80,7 @@ func TestGetAIProvider(t *testing.T) {
 						Provider: "anthropic",
 						Anthropic: configuration.SettingsAnthropicAI{
 							Key:   "test-anthropic-key",
-							Model: "claude-3-sonnet-20240229",
+							Model: "claude-sonnet-4-20250514",
 						},
 					},
 				}
@@ -97,7 +97,7 @@ func TestGetAIProvider(t *testing.T) {
 						Provider: "anthropic",
 						Anthropic: configuration.SettingsAnthropicAI{
 							Key:   "", // Empty in config
-							Model: "claude-3-sonnet-20240229",
+							Model: "claude-sonnet-4-20250514",
 						},
 					},
 				}
@@ -181,7 +181,7 @@ func TestGetAIProvider(t *testing.T) {
 						Provider: "anthropic",
 						Anthropic: configuration.SettingsAnthropicAI{
 							Key:   "", // Missing
-							Model: "claude-3-sonnet-20240229",
+							Model: "claude-sonnet-4-20250514",
 						},
 					},
 				}
@@ -333,7 +333,7 @@ func TestAnthropicProviderGenerateContent(t *testing.T) {
 			Provider: "anthropic",
 			Anthropic: configuration.SettingsAnthropicAI{
 				Key:   "test-anthropic-key",
-				Model: "claude-3-sonnet-20240229",
+				Model: "claude-sonnet-4-20250514",
 			},
 		},
 	}
@@ -483,7 +483,7 @@ func TestEnvironmentVariablePriority(t *testing.T) {
 				Provider: "anthropic",
 				Anthropic: configuration.SettingsAnthropicAI{
 					Key:   "config-key", // This should be overridden
-					Model: "claude-3-sonnet-20240229",
+					Model: "claude-sonnet-4-20250514",
 				},
 			},
 		}
