@@ -76,7 +76,7 @@ export function CreateVideoDialog({ open, onClose }: CreateVideoDialogProps) {
               >
                 <option value="">Select a category</option>
                 {categories.map((cat) => (
-                  <option key={cat.path} value={cat.path}>
+                  <option key={cat.path} value={cat.name}>
                     {cat.name}
                   </option>
                 ))}
