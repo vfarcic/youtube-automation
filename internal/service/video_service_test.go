@@ -405,6 +405,52 @@ func TestVideoService_GetVideoPhases(t *testing.T) {
 	assert.Equal(t, 1, phases[7], "Should have 1 video in phase 7 (ideas)")
 }
 
+func TestVideoService_SearchVideos(t *testing.T) {
+	service, _, cleanup := setupTestVideoService(t)
+	defer cleanup()
+
+	// Create videos with different fields
+	_, err := service.CreateVideo("kubernetes-basics", "test-category", "2025-01-01T10:00")
+	require.NoError(t, err)
+	_, err = service.CreateVideo("docker-intro", "test-category", "2025-02-01T10:00")
+	require.NoError(t, err)
+	_, err = service.CreateVideo("terraform-guide", "category-02", "2025-03-01T10:00")
+	require.NoError(t, err)
+
+	// Update one video with description
+	v, err := service.GetVideo("docker-intro", "test-category")
+	require.NoError(t, err)
+	v.Description = "Learn about container orchestration"
+	err = service.UpdateVideo(v)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name      string
+		query     string
+		wantCount int
+		wantFirst string
+	}{
+		{name: "match by name", query: "kubernetes", wantCount: 1, wantFirst: "kubernetes-basics"},
+		{name: "match by category", query: "category-02", wantCount: 1, wantFirst: "terraform-guide"},
+		{name: "match by description", query: "orchestration", wantCount: 1, wantFirst: "docker-intro"},
+		{name: "case insensitive", query: "DOCKER", wantCount: 1, wantFirst: "docker-intro"},
+		{name: "no match", query: "nonexistent", wantCount: 0},
+		{name: "empty query", query: "", wantCount: 0},
+		{name: "partial match", query: "terra", wantCount: 1, wantFirst: "terraform-guide"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			results, err := service.SearchVideos(tt.query)
+			assert.NoError(t, err)
+			assert.Len(t, results, tt.wantCount)
+			if tt.wantCount > 0 && len(results) > 0 {
+				assert.Equal(t, tt.wantFirst, results[0].Name)
+			}
+		})
+	}
+}
+
 func TestVideoService_GetCategories(t *testing.T) {
 	service, _, cleanup := setupTestVideoService(t)
 	defer cleanup()

@@ -137,6 +137,37 @@ func (s *Server) handleGetVideosList(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, items)
 }
 
+// handleSearchVideos searches across all videos by a query string.
+func (s *Server) handleSearchVideos(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query().Get("q")
+	if q == "" {
+		respondJSON(w, http.StatusOK, []VideoListItem{})
+		return
+	}
+
+	videos, err := s.videoService.SearchVideos(q)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "search failed", err.Error())
+		return
+	}
+
+	items := make([]VideoListItem, 0, len(videos))
+	for _, v := range videos {
+		title := v.GetUploadTitle()
+		overallC, overallT := s.videoManager.CalculateOverallProgress(v)
+		items = append(items, VideoListItem{
+			ID:       v.Category + "/" + v.Name,
+			Name:     v.Name,
+			Category: v.Category,
+			Date:     v.Date,
+			Title:    title,
+			Phase:    video.CalculateVideoPhase(v),
+			Progress: ProgressInfo{Completed: overallC, Total: overallT},
+		})
+	}
+	respondJSON(w, http.StatusOK, items)
+}
+
 // handleGetVideo returns a single video by name and category.
 func (s *Server) handleGetVideo(w http.ResponseWriter, r *http.Request) {
 	videoName := chi.URLParam(r, "videoName")

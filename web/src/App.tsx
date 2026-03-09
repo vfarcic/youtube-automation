@@ -5,6 +5,7 @@ import { AppLayout } from './components/AppLayout';
 import { PhaseDashboard } from './pages/PhaseDashboard';
 import { VideoList } from './pages/VideoList';
 import { VideoDetail } from './pages/VideoDetail';
+import { SearchResults } from './pages/SearchResults';
 import { AuthScreen } from './pages/AuthScreen';
 import { ApiError } from './api/client';
 
@@ -56,6 +57,7 @@ export default function App() {
           <Route element={<AppLayout />}>
             <Route path="/" element={<PhaseDashboard />} />
             <Route path="/phases/:phaseId" element={<VideoList />} />
+            <Route path="/search" element={<SearchResults />} />
             <Route
               path="/videos/:category/:videoName"
               element={<VideoDetail />}

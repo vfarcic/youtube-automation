@@ -45,6 +45,15 @@ export function useVideosList(phase?: number) {
   });
 }
 
+export function useSearchVideos(query: string) {
+  return useQuery<VideoListItem[]>({
+    queryKey: ['searchVideos', query],
+    queryFn: () =>
+      get<VideoListItem[]>(`/api/videos/search?q=${encodeURIComponent(query)}`),
+    enabled: query.length > 0,
+  });
+}
+
 export function useVideo(name?: string, category?: string) {
   return useQuery<VideoResponse>({
     queryKey: ['video', name, category],

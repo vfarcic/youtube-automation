@@ -1,14 +1,36 @@
-import { NavLink } from 'react-router-dom';
+import { useState } from 'react';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { usePhases } from '../api/hooks';
 import { PHASE_NAMES, PHASE_COLORS } from '../lib/constants';
 
 export function Sidebar() {
   const { data: phases } = usePhases();
+  const [search, setSearch] = useState('');
+  const navigate = useNavigate();
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const q = search.trim();
+    if (q) {
+      navigate(`/search?q=${encodeURIComponent(q)}`);
+    }
+  };
 
   return (
     <aside className="w-60 shrink-0 border-r border-gray-700 bg-gray-800 h-screen overflow-y-auto">
       <div className="p-4">
         <h1 className="text-lg font-bold text-gray-100">YT Automation</h1>
+      </div>
+      <div className="px-3 mb-2">
+        <form onSubmit={handleSearch}>
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search videos..."
+            className="w-full px-2 py-1.5 text-sm bg-gray-900 border border-gray-600 rounded text-gray-100 placeholder-gray-500 focus:outline-none focus:border-blue-500"
+          />
+        </form>
       </div>
       <nav className="px-2 pb-4">
         <NavLink

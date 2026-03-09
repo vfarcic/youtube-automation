@@ -238,6 +238,70 @@ func (s *VideoService) GetVideosByPhase(phase int) ([]storage.Video, error) {
 	return videosInPhase, nil
 }
 
+// SearchVideos returns all videos whose key text fields contain the query string (case-insensitive).
+func (s *VideoService) SearchVideos(query string) ([]storage.Video, error) {
+	if query == "" {
+		return nil, nil
+	}
+
+	index, err := s.yamlStorage.GetIndex()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get video index: %w", err)
+	}
+
+	q := strings.ToLower(query)
+	var results []storage.Video
+
+	for _, videoIndex := range index {
+		sanitizedName := s.filesystem.SanitizeName(videoIndex.Name)
+		videoPath := s.filesystem.GetFilePath(videoIndex.Category, sanitizedName, "yaml")
+		fullVideo, err := s.yamlStorage.GetVideo(videoPath)
+		if err != nil {
+			continue
+		}
+		fullVideo.Name = s.filesystem.SanitizeName(fullVideo.Name)
+		fullVideo.Category = videoIndex.Category
+		fullVideo.Path = s.filesystem.GetStoragePath(videoIndex.Category, sanitizedName, "yaml")
+
+		if videoMatchesQuery(fullVideo, q) {
+			results = append(results, fullVideo)
+		}
+	}
+
+	// Sort by date
+	sort.Slice(results, func(i, j int) bool {
+		date1, _ := time.Parse("2006-01-02T15:04", results[i].Date)
+		date2, _ := time.Parse("2006-01-02T15:04", results[j].Date)
+		return date1.Before(date2)
+	})
+
+	return results, nil
+}
+
+// videoMatchesQuery checks if any key text field contains the query.
+func videoMatchesQuery(v storage.Video, q string) bool {
+	fields := []string{
+		v.Name,
+		v.Category,
+		v.ProjectName,
+		v.Description,
+		v.Tags,
+		v.Tagline,
+		v.TaglineIdeas,
+		v.Location,
+	}
+	// Check title variants
+	for _, t := range v.Titles {
+		fields = append(fields, t.Text)
+	}
+	for _, f := range fields {
+		if strings.Contains(strings.ToLower(f), q) {
+			return true
+		}
+	}
+	return false
+}
+
 // GetVideoPhases returns the count of videos in each phase
 func (s *VideoService) GetVideoPhases() (map[int]int, error) {
 	index, err := s.yamlStorage.GetIndex()

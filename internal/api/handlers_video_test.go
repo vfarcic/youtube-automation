@@ -347,6 +347,100 @@ func TestHandleDeleteVideo(t *testing.T) {
 	})
 }
 
+func TestHandleSearchVideos(t *testing.T) {
+	t.Run("returns matching videos", func(t *testing.T) {
+		env := setupTestEnv(t)
+		seedVideo(t, env, storage.Video{
+			Name:        "kubernetes-deploy",
+			Category:    "devops",
+			Description: "Deploy apps with Kubernetes",
+		})
+		seedVideo(t, env, storage.Video{
+			Name:     "docker-basics",
+			Category: "devops",
+		})
+
+		req := httptest.NewRequest(http.MethodGet, "/api/videos/search?q=kubernetes", nil)
+		w := httptest.NewRecorder()
+		env.server.Router().ServeHTTP(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("status = %d, want %d; body: %s", w.Code, http.StatusOK, w.Body.String())
+		}
+
+		var items []VideoListItem
+		json.NewDecoder(w.Body).Decode(&items)
+		if len(items) != 1 {
+			t.Fatalf("got %d items, want 1", len(items))
+		}
+		if items[0].Name != "kubernetes-deploy" {
+			t.Errorf("name = %q, want %q", items[0].Name, "kubernetes-deploy")
+		}
+	})
+
+	t.Run("empty query returns empty list", func(t *testing.T) {
+		env := setupTestEnv(t)
+
+		req := httptest.NewRequest(http.MethodGet, "/api/videos/search?q=", nil)
+		w := httptest.NewRecorder()
+		env.server.Router().ServeHTTP(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("status = %d, want %d", w.Code, http.StatusOK)
+		}
+
+		var items []VideoListItem
+		json.NewDecoder(w.Body).Decode(&items)
+		if len(items) != 0 {
+			t.Errorf("got %d items, want 0", len(items))
+		}
+	})
+
+	t.Run("no match returns empty list", func(t *testing.T) {
+		env := setupTestEnv(t)
+		seedVideo(t, env, storage.Video{
+			Name:     "some-video",
+			Category: "devops",
+		})
+
+		req := httptest.NewRequest(http.MethodGet, "/api/videos/search?q=nonexistent", nil)
+		w := httptest.NewRecorder()
+		env.server.Router().ServeHTTP(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("status = %d, want %d", w.Code, http.StatusOK)
+		}
+
+		var items []VideoListItem
+		json.NewDecoder(w.Body).Decode(&items)
+		if len(items) != 0 {
+			t.Errorf("got %d items, want 0", len(items))
+		}
+	})
+
+	t.Run("case insensitive search", func(t *testing.T) {
+		env := setupTestEnv(t)
+		seedVideo(t, env, storage.Video{
+			Name:     "terraform-guide",
+			Category: "devops",
+		})
+
+		req := httptest.NewRequest(http.MethodGet, "/api/videos/search?q=TERRAFORM", nil)
+		w := httptest.NewRecorder()
+		env.server.Router().ServeHTTP(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("status = %d, want %d", w.Code, http.StatusOK)
+		}
+
+		var items []VideoListItem
+		json.NewDecoder(w.Body).Decode(&items)
+		if len(items) != 1 {
+			t.Fatalf("got %d items, want 1", len(items))
+		}
+	})
+}
+
 func TestEnrichVideo(t *testing.T) {
 	env := setupTestEnv(t)
 

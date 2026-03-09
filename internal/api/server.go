@@ -133,6 +133,7 @@ func (s *Server) setupRoutes() {
 		r.Route("/videos", func(r chi.Router) {
 			r.Get("/phases", s.handleGetPhases)
 			r.Get("/list", s.handleGetVideosList)
+			r.Get("/search", s.handleSearchVideos)
 			r.Get("/", s.handleGetVideos)
 			r.Post("/", s.handleCreateVideo)
 			r.Get("/{videoName}", s.handleGetVideo)
