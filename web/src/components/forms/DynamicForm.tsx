@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import type { AspectField, VideoResponse } from '../../api/types';
 import { TextInput } from './TextInput';
 import { TextArea } from './TextArea';
@@ -46,6 +46,31 @@ export function DynamicForm({ fields, video, onSave, saving, category, videoName
   }, [fields, video]);
 
   const [values, setValues] = useState<Record<string, unknown>>(initialValues);
+
+  // Sync form state when server data changes (e.g. after thumbnail upload),
+  // but preserve any fields the user has manually edited.
+  const prevInitialRef = useRef(initialValues);
+  useEffect(() => {
+    setValues((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      for (const key of Object.keys(initialValues)) {
+        const prevInit = prevInitialRef.current[key];
+        const currVal = prev[key];
+        // Only update fields the user hasn't manually changed
+        const matches =
+          typeof currVal === 'object' && currVal !== null
+            ? JSON.stringify(currVal) === JSON.stringify(prevInit)
+            : currVal === prevInit;
+        if (matches && initialValues[key] !== prevInit) {
+          next[key] = initialValues[key];
+          changed = true;
+        }
+      }
+      prevInitialRef.current = initialValues;
+      return changed ? next : prev;
+    });
+  }, [initialValues]);
 
   const dirtyFields = useMemo(() => {
     const dirty: Record<string, unknown> = {};

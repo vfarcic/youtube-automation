@@ -143,4 +143,49 @@ describe('DynamicForm', () => {
     render(<DynamicForm fields={dotNotationFields} video={video} onSave={() => {}} />);
     expect(screen.getByDisplayValue('500')).toBeInTheDocument();
   });
+
+  it('syncs form state when video prop changes for untouched fields', async () => {
+    const onSave = vi.fn();
+    const video1 = { ...mockVideo, projectName: 'Original' };
+    const { rerender } = render(
+      <DynamicForm fields={sampleFields} video={video1} onSave={onSave} />,
+    );
+    expect(screen.getByDisplayValue('Original')).toBeInTheDocument();
+
+    // Simulate server-side update (e.g. thumbnail upload changed the video)
+    const video2 = { ...mockVideo, projectName: 'Updated By Server' };
+    rerender(<DynamicForm fields={sampleFields} video={video2} onSave={onSave} />);
+
+    // The untouched field should sync to the new server value
+    expect(screen.getByDisplayValue('Updated By Server')).toBeInTheDocument();
+    // Save button should NOT be enabled since the form matches the new server state
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+  });
+
+  it('preserves user edits when video prop changes', async () => {
+    const onSave = vi.fn();
+    const video1 = { ...mockVideo, projectName: 'Original', description: 'Desc' };
+    const descField: AspectField = {
+      ...sampleFields[2],
+      fieldName: 'description',
+    };
+    const fields = [sampleFields[0], descField];
+    const { rerender } = render(
+      <DynamicForm fields={fields} video={video1} onSave={onSave} />,
+    );
+
+    // User edits projectName
+    const input = screen.getByDisplayValue('Original');
+    await userEvent.clear(input);
+    await userEvent.type(input, 'User Edit');
+
+    // Server updates description (simulating thumbnail upload changing another field)
+    const video2 = { ...mockVideo, projectName: 'Original', description: 'Server Updated Desc' };
+    rerender(<DynamicForm fields={fields} video={video2} onSave={onSave} />);
+
+    // User edit should be preserved
+    expect(screen.getByDisplayValue('User Edit')).toBeInTheDocument();
+    // Server update to untouched field should be synced
+    expect(screen.getByDisplayValue('Server Updated Desc')).toBeInTheDocument();
+  });
 });
