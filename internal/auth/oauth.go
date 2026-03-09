@@ -71,8 +71,10 @@ func TokenCacheFileWithName(filename string) (string, error) {
 		return "", err
 	}
 	tokenCacheDir := filepath.Join(usr.HomeDir, ".credentials")
-	if err := os.MkdirAll(tokenCacheDir, 0700); err != nil {
-		return "", fmt.Errorf("failed to create token cache directory: %w", err)
+	if _, statErr := os.Stat(tokenCacheDir); os.IsNotExist(statErr) {
+		if err := os.MkdirAll(tokenCacheDir, 0700); err != nil {
+			return "", fmt.Errorf("failed to create token cache directory: %w", err)
+		}
 	}
 	return filepath.Join(tokenCacheDir, url.QueryEscape(filename)), nil
 }
