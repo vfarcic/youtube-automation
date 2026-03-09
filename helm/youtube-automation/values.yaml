@@ -121,6 +121,18 @@ git:
 # Extra args passed to the serve command
 extraArgs: []
 
+# Volume mounts for the container (e.g., OAuth credential files)
+volumeMounts: []
+# - name: oauth-credentials
+#   mountPath: /secrets/oauth
+#   readOnly: true
+
+# Volumes to attach to the pod
+volumes: []
+# - name: oauth-credentials
+#   secret:
+#     secretName: youtube-automation-oauth
+
 nodeSelector: {}
 tolerations: []
 affinity: {}
