@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"devopstoolkit/youtube-automation/internal/filesystem"
@@ -106,6 +107,10 @@ func TestVideoService_CreateVideo(t *testing.T) {
 				assert.NoError(t, err)
 				assert.Equal(t, tt.videoName, video.Name)
 				assert.Equal(t, tt.category, video.Category)
+
+				// Verify Gist is auto-populated from Path
+				expectedGist := strings.Replace(video.Path, ".yaml", ".md", 1)
+				assert.Equal(t, expectedGist, video.Gist, "Gist should be auto-populated")
 			}
 		})
 	}
@@ -816,11 +821,17 @@ func TestVideoService_GetVideoManuscript_EmptyGistField(t *testing.T) {
 	service, _, cleanup := setupTestVideoService(t)
 	defer cleanup()
 
-	// Create a test video with empty Gist field
+	// Create a test video then clear its Gist field
 	_, err := service.CreateVideo("test-video-no-gist", "test-category", "")
 	require.NoError(t, err)
 
-	// The Gist field should be empty by default
+	video, err := service.GetVideo("test-video-no-gist", "test-category")
+	require.NoError(t, err)
+	video.Gist = ""
+	err = service.UpdateVideo(video)
+	require.NoError(t, err)
+
+	// The Gist field is now empty
 	content, err := service.GetVideoManuscript("test-video-no-gist", "test-category")
 
 	assert.Error(t, err)

@@ -110,7 +110,7 @@ type Video struct {
 	AppliedLanguage      string      `yaml:"appliedLanguage,omitempty" json:"appliedLanguage,omitempty" completion:"filled_only"`
 	AppliedAudioLanguage string      `yaml:"appliedAudioLanguage,omitempty" json:"appliedAudioLanguage,omitempty" completion:"filled_only"`
 	AudioLanguage        string      `yaml:"audioLanguage,omitempty" json:"audioLanguage,omitempty" completion:"filled_only"`
-	Gist                 string      `yaml:"gist,omitempty" json:"gist,omitempty" completion:"filled_only"`
+	Gist                 string      `yaml:"gist,omitempty" json:"gist,omitempty" completion:"filled_only" ui:"label"`
 	Code                 bool        `yaml:"code,omitempty" json:"code,omitempty" completion:"true_only"`
 	Shorts               []Short                `yaml:"shorts,omitempty" json:"shorts,omitempty" completion:"filled_only"` // YouTube Shorts extracted from this video
 }

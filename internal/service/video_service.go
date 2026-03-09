@@ -133,10 +133,14 @@ FIXME:
 	videoPath := s.filesystem.GetFilePath(vi.Category, vi.Name, "yaml")
 	storagePath := s.filesystem.GetStoragePath(vi.Category, vi.Name, "yaml")
 
+	// Auto-populate Gist path by replacing .yaml with .md in storage path
+	gistPath := strings.Replace(storagePath, ".yaml", ".md", 1)
+
 	defaultVideo := storage.Video{
 		Name:     sanitizedName,
 		Category: category,
 		Path:     storagePath,
+		Gist:     gistPath,
 		// Initialize sponsorship
 		Sponsorship: storage.Sponsorship{
 			Amount:  "",
