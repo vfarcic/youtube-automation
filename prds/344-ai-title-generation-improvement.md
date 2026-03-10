@@ -10,6 +10,7 @@
 | **Author** | @vfarcic |
 | **Created** | 2025-11-18 |
 | **Updated** | 2026-03-10 |
+| **Progress** | 75% (3/4 milestones) |
 
 ## 1. Problem Statement
 
@@ -218,3 +219,14 @@ After AI analysis:
     - *Mitigation*: User approval required. Show diff before applying. Original file can be restored from git.
 - **Risk**: YouTube Analytics API rate limits during first-week enrichment.
     - *Mitigation*: EnrichWithFirstWeekMetrics makes one call per video — acceptable for ~60 videos. Falls back to shares-only if API fails.
+
+## 11. Progress Log
+
+### 2026-03-10
+- Milestone 3 completed: runtime `titles.md` template + approval flow
+- `SuggestTitles()` reads `titles.md` from working directory (not embedded)
+- `HandleAnalyzeTitles()` previews and prompts user to save `titles.md`
+- Analysis template fixed: 10 titles as JSON array, no rule numbers, pattern diversity
+- Removed settings.yaml title patterns (redundant with `titles.md`)
+- Added Milestone 4 for Web UI Analyze section
+- Tests: `LoadTitlesTemplate`, updated `SuggestTitles` tests
