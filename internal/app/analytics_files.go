@@ -5,9 +5,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"time"
-
-	"devopstoolkit/youtube-automation/internal/publishing"
 )
 
 // AnalysisFiles represents the paths to saved analysis files
@@ -20,7 +19,7 @@ type AnalysisFiles struct {
 // This is a pure function that's easy to test.
 //
 // Parameters:
-//   - analytics: Video analytics data to save as JSON
+//   - analytics: Data to save as JSON (any JSON-serializable value)
 //   - analysis: AI-generated analysis text to save as Markdown
 //   - outputDir: Directory where files should be saved (typically "tmp")
 //   - channelID: YouTube channel ID to include in metadata
@@ -28,8 +27,8 @@ type AnalysisFiles struct {
 // Returns:
 //   - AnalysisFiles: Paths to the created files
 //   - error: Any error encountered during file operations
-func SaveAnalysisFiles(analytics []publishing.VideoAnalytics, analysis string, outputDir string, channelID string) (*AnalysisFiles, error) {
-	if len(analytics) == 0 {
+func SaveAnalysisFiles(analytics interface{}, analysis string, outputDir string, channelID string) (*AnalysisFiles, error) {
+	if isEmptyAnalytics(analytics) {
 		return nil, fmt.Errorf("no analytics data to save")
 	}
 
@@ -57,6 +56,9 @@ func SaveAnalysisFiles(analytics []publishing.VideoAnalytics, analysis string, o
 		return nil, fmt.Errorf("failed to write JSON file %s: %w", jsonPath, err)
 	}
 
+	// Count items for metadata
+	count := reflectLen(analytics)
+
 	// Build markdown with metadata header
 	mdContent := fmt.Sprintf(`# YouTube Title Analysis
 
@@ -68,7 +70,7 @@ func SaveAnalysisFiles(analytics []publishing.VideoAnalytics, analysis string, o
 ---
 
 %s
-`, time.Now().Format("2006-01-02 15:04:05"), len(analytics), channelID, analysis)
+`, time.Now().Format("2006-01-02 15:04:05"), count, channelID, analysis)
 
 	// Save analysis as Markdown
 	err = os.WriteFile(mdPath, []byte(mdContent), 0644)
@@ -96,7 +98,7 @@ type CompleteAnalysisFiles struct {
 //
 // Parameters:
 //   - analysisType: Type of analysis (e.g., "title-analysis", "timing-analysis")
-//   - analytics: Video analytics data (saved as 01-analytics.json)
+//   - analytics: Data to save as JSON (any JSON-serializable value)
 //   - rawResponse: Raw AI response (saved as 02-ai-response.txt)
 //   - formattedResult: User-friendly formatted result (saved as 03-result.md)
 //   - outputDir: Base directory where analysis folder will be created
@@ -107,13 +109,13 @@ type CompleteAnalysisFiles struct {
 //   - error: Any error encountered during file operations
 func SaveCompleteAnalysis(
 	analysisType string,
-	analytics []publishing.VideoAnalytics,
+	analytics interface{},
 	rawResponse string,
 	formattedResult string,
 	outputDir string,
 	channelID string,
 ) (*CompleteAnalysisFiles, error) {
-	if len(analytics) == 0 {
+	if isEmptyAnalytics(analytics) {
 		return nil, fmt.Errorf("no analytics data to save")
 	}
 	if rawResponse == "" {
@@ -167,4 +169,25 @@ func SaveCompleteAnalysis(
 		ResponsePath:  responsePath,
 		ResultPath:    resultPath,
 	}, nil
+}
+
+// isEmptyAnalytics checks if the analytics value is nil or an empty slice/array.
+func isEmptyAnalytics(analytics interface{}) bool {
+	if analytics == nil {
+		return true
+	}
+	v := reflect.ValueOf(analytics)
+	if v.Kind() == reflect.Slice || v.Kind() == reflect.Array {
+		return v.Len() == 0
+	}
+	return false
+}
+
+// reflectLen returns the length of a slice/array, or 0 for other types.
+func reflectLen(v interface{}) int {
+	rv := reflect.ValueOf(v)
+	if rv.Kind() == reflect.Slice || rv.Kind() == reflect.Array {
+		return rv.Len()
+	}
+	return 0
 }

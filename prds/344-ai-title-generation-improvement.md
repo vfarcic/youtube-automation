@@ -5,7 +5,7 @@
 | **PRD ID** | 344 |
 | **Issue** | [#344](https://github.com/vfarcic/youtube-automation/issues/344) |
 | **Feature Name** | AI Title Generation Improvement |
-| **Status** | Ready |
+| **Status** | In Progress |
 | **Priority** | Medium |
 | **Author** | @vfarcic |
 | **Created** | 2025-11-18 |
@@ -17,7 +17,7 @@ The AI title generator uses static patterns and generic best practices hardcoded
 
 Meanwhile, we have the cleanest possible signal sitting unused: **YouTube A/B test share data**. When YouTube tests multiple title variants on the same video, the share percentages directly show which title style kept viewers watching longer — eliminating topic, timing, and age bias entirely.
 
-Combined with first-week YouTube Analytics (views, CTR, likes, comments, engagement), the AI can discover which title patterns actually work on this specific channel and update the title generation prompt accordingly.
+Combined with first-week YouTube Analytics (views, likes, comments, engagement), the AI can discover which title patterns actually work on this specific channel and update the title generation prompt accordingly.
 
 ## 2. Proposed Solution
 
@@ -58,7 +58,6 @@ Each video in the dataset contributes:
 | Category | Video YAML | e.g., "ai", "kubernetes" |
 | Date | Video YAML | Publish date |
 | First-week views | YouTube Analytics | Views in days 0-7 |
-| First-week CTR | YouTube Analytics | Click-through rate in first week |
 | First-week likes | YouTube Analytics | Likes in first week |
 | First-week comments | YouTube Analytics | Comments in first week |
 | First-week engagement | Derived | (likes + comments) / views × 100 |
@@ -79,7 +78,6 @@ Grouped by video, with a legend:
 - **A/B test share**: Watch-time share percentage per title variant. Higher share = that title kept viewers watching longer vs other variants in the same test. This is the primary quality signal.
 - **First-week metrics** (days 0-7 after publish, eliminates age bias):
   - **views**: Total views in first week
-  - **ctr**: Click-through rate (percentage)
   - **likes**: Total likes in first week
   - **comments**: Total comments in first week
   - **engagement**: (likes + comments) / views × 100
@@ -87,14 +85,14 @@ Grouped by video, with a legend:
 ## A/B Test Results
 
 ### Video: ai | Monday
-First-week: views=15230 | ctr=8.2% | likes=890 | comments=145 | engagement=6.8%
+First-week: views=15230 | likes=890 | comments=145 | engagement=6.8%
 Titles:
 - "Why I Changed My Mind About Cursor" (share: 42.1%)
 - "Top 10 AI Coding Tools in 2025" (share: 35.5%)
 - "AI Coding Is Broken (Here's the Fix)" (share: 22.4%)
 
 ### Video: kubernetes | Thursday
-First-week: views=9800 | ctr=6.1% | likes=420 | comments=67 | engagement=5.0%
+First-week: views=9800 | likes=420 | comments=67 | engagement=5.0%
 Titles:
 - "Stop Using Helm Charts!" (share: 51.2%)
 - "Why Helm Is Dead in 2025" (share: 48.8%)
@@ -175,7 +173,7 @@ After AI analysis:
     - Format dataset with shares + first-week metrics.
     - Unit tests covering: videos with/without A/B data, missing index files, analytics join.
 
-- [ ] **Milestone 2: AI Analysis + Template**
+- [x] **Milestone 2: AI Analysis + Template**
     - Update `analyze-titles.md` template to focus on A/B share patterns.
     - AI output: recommended `titles.md` content + structured title patterns.
     - Update `AnalyzeTitles()` to use enriched data and new template.

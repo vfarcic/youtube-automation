@@ -479,10 +479,6 @@ func TestEnrichWithAnalytics(t *testing.T) {
 		if result[0].FirstWeekViews != 15000 {
 			t.Errorf("vid1 FirstWeekViews = %d, want 15000", result[0].FirstWeekViews)
 		}
-		if result[0].FirstWeekCTR != 8.2 {
-			t.Errorf("vid1 FirstWeekCTR = %f, want 8.2", result[0].FirstWeekCTR)
-		}
-
 		// vid2 should NOT have analytics
 		if result[1].HasAnalytics {
 			t.Error("vid2 should not have analytics")
@@ -559,7 +555,6 @@ func TestFormatABDataForPrompt(t *testing.T) {
 				DayOfWeek:           "Monday",
 				HasAnalytics:        true,
 				FirstWeekViews:      15230,
-				FirstWeekCTR:        8.2,
 				FirstWeekLikes:      890,
 				FirstWeekComments:   145,
 				FirstWeekEngagement: 6.8,
@@ -590,10 +585,6 @@ func TestFormatABDataForPrompt(t *testing.T) {
 		if !containsString(result, "views=15230") {
 			t.Error("missing views")
 		}
-		if !containsString(result, "ctr=8.2%") {
-			t.Error("missing CTR")
-		}
-
 		// Check titles
 		if !containsString(result, `"Why I Changed My Mind About Cursor" (share: 42.1%)`) {
 			t.Error("missing first title with share")

@@ -47,8 +47,25 @@ func (m *MenuHandler) HandleAnalyzeMenu() error {
 	return nil
 }
 
-// HandleAnalyzeTitles fetches video analytics and displays the results
+// HandleAnalyzeTitles loads A/B test data, enriches with analytics, and runs AI analysis
 func (m *MenuHandler) HandleAnalyzeTitles() error {
+	fmt.Println(m.normalStyle.Render("Loading videos with A/B test data..."))
+
+	// Load videos with A/B data from index files
+	videos, err := ai.LoadVideosWithABData("index.yaml", ".", "manuscript")
+	if err != nil {
+		fmt.Println(m.errorStyle.Render(fmt.Sprintf("Failed to load A/B data: %v", err)))
+		return err
+	}
+
+	if len(videos) == 0 {
+		fmt.Println(m.orangeStyle.Render("No videos with A/B test data found."))
+		return nil
+	}
+
+	fmt.Println(m.greenStyle.Render(fmt.Sprintf("✓ Found %d videos with A/B test data", len(videos))))
+
+	// Fetch YouTube analytics to enrich with first-week metrics
 	fmt.Println(m.normalStyle.Render("Fetching video analytics from YouTube..."))
 	fmt.Println(m.normalStyle.Render("This may take a moment and might require re-authentication."))
 
@@ -59,18 +76,26 @@ func (m *MenuHandler) HandleAnalyzeTitles() error {
 		return err
 	}
 
-	if len(analytics) == 0 {
-		fmt.Println(m.orangeStyle.Render("No video analytics found for the last 365 days."))
-		return nil
+	fmt.Println(m.greenStyle.Render(fmt.Sprintf("✓ Fetched analytics for %d videos", len(analytics))))
+
+	// Fetch first-week metrics for each video (separate API calls per video)
+	fmt.Println(m.normalStyle.Render("Fetching first-week metrics for each video..."))
+	analyticsWithFirstWeek, err := publishing.EnrichWithFirstWeekMetrics(ctx, analytics)
+	if err != nil {
+		fmt.Println(m.errorStyle.Render(fmt.Sprintf("Failed to fetch first-week metrics: %v", err)))
+		return err
 	}
 
-	fmt.Println(m.greenStyle.Render(fmt.Sprintf("✓ Successfully fetched analytics for %d videos from the last 365 days", len(analytics))))
+	fmt.Println(m.greenStyle.Render("✓ First-week metrics fetched"))
+
+	// Enrich A/B data with analytics (now including first-week data)
+	enrichedVideos := ai.EnrichWithAnalytics(videos, analyticsWithFirstWeek)
 
 	// Run AI analysis
 	fmt.Println(m.normalStyle.Render("Analyzing title patterns with AI..."))
 	fmt.Println(m.normalStyle.Render("This may take a moment."))
 
-	result, rawResponse, err := ai.AnalyzeTitles(ctx, analytics)
+	result, rawResponse, err := ai.AnalyzeTitles(ctx, enrichedVideos)
 	if err != nil {
 		fmt.Println(m.errorStyle.Render(fmt.Sprintf("Failed to analyze titles: %v", err)))
 		return err
@@ -80,12 +105,12 @@ func (m *MenuHandler) HandleAnalyzeTitles() error {
 	fmt.Println(m.normalStyle.Render("Saving results to files..."))
 
 	// Format result as markdown
-	formattedResult := FormatTitleAnalysisMarkdown(result, len(analytics), configuration.GlobalSettings.YouTube.ChannelId)
+	formattedResult := FormatTitleAnalysisMarkdown(result, len(enrichedVideos), configuration.GlobalSettings.YouTube.ChannelId)
 
 	// Save complete analysis with all audit trail files
 	files, err := SaveCompleteAnalysis(
 		"title-analysis",
-		analytics,
+		enrichedVideos,
 		rawResponse,
 		formattedResult,
 		"tmp",
@@ -108,7 +133,7 @@ func (m *MenuHandler) HandleAnalyzeTitles() error {
 	fmt.Println("")
 	fmt.Println(m.normalStyle.Render("Next steps:"))
 	fmt.Println(m.normalStyle.Render("  1. Review the formatted analysis file"))
-	fmt.Println(m.normalStyle.Render("  2. Update internal/ai/titles.go with insights"))
+	fmt.Println(m.normalStyle.Render("  2. Review the proposed titles.md update"))
 	fmt.Println(m.normalStyle.Render("  3. Future titles will use improved patterns"))
 
 	return nil

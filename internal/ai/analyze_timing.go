@@ -94,9 +94,9 @@ func GenerateTimingRecommendations(ctx context.Context, analytics []publishing.V
 
 	prompt := promptBuf.String()
 
-	// Save prompt to audit trail before sending to LLM
+	// Save prompt to audit trail before sending to LLM (only if tmp/ already exists)
 	promptDir := filepath.Join(".", "tmp")
-	if mkErr := os.MkdirAll(promptDir, 0755); mkErr == nil {
+	if info, err := os.Stat(promptDir); err == nil && info.IsDir() {
 		_ = os.WriteFile(filepath.Join(promptDir, "timing-analysis-prompt.md"), []byte(prompt), 0644)
 	}
 

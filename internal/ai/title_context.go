@@ -21,7 +21,6 @@ type VideoABData struct {
 	VideoID             string
 	Titles              []storage.TitleVariant
 	FirstWeekViews      int64
-	FirstWeekCTR        float64
 	FirstWeekLikes      int64
 	FirstWeekComments   int64
 	FirstWeekEngagement float64
@@ -175,7 +174,6 @@ func EnrichWithAnalytics(videos []VideoABData, analytics []publishing.VideoAnaly
 		enriched[i] = v
 		if a, ok := analyticsMap[v.VideoID]; ok {
 			enriched[i].FirstWeekViews = a.FirstWeekViews
-			enriched[i].FirstWeekCTR = a.FirstWeekCTR
 			enriched[i].FirstWeekLikes = a.FirstWeekLikes
 			enriched[i].FirstWeekComments = a.FirstWeekComments
 			enriched[i].HasAnalytics = true
@@ -201,7 +199,6 @@ func FormatABDataForPrompt(videos []VideoABData) string {
 	sb.WriteString("- **A/B test share**: Watch-time share percentage per title variant. Higher share = that title kept viewers watching longer vs other variants in the same test. This is the primary quality signal.\n")
 	sb.WriteString("- **First-week metrics** (days 0-7 after publish, eliminates age bias):\n")
 	sb.WriteString("  - **views**: Total views in first week\n")
-	sb.WriteString("  - **ctr**: Click-through rate (percentage)\n")
 	sb.WriteString("  - **likes**: Total likes in first week\n")
 	sb.WriteString("  - **comments**: Total comments in first week\n")
 	sb.WriteString("  - **engagement**: (likes + comments) / views × 100\n")
@@ -211,8 +208,8 @@ func FormatABDataForPrompt(videos []VideoABData) string {
 		sb.WriteString(fmt.Sprintf("### Video: %s | %s\n", v.Category, v.DayOfWeek))
 
 		if v.HasAnalytics {
-			sb.WriteString(fmt.Sprintf("First-week: views=%d | ctr=%.1f%% | likes=%d | comments=%d | engagement=%.1f%%\n",
-				v.FirstWeekViews, v.FirstWeekCTR, v.FirstWeekLikes, v.FirstWeekComments, v.FirstWeekEngagement))
+			sb.WriteString(fmt.Sprintf("First-week: views=%d | likes=%d | comments=%d | engagement=%.1f%%\n",
+				v.FirstWeekViews, v.FirstWeekLikes, v.FirstWeekComments, v.FirstWeekEngagement))
 		} else {
 			sb.WriteString("First-week: (analytics unavailable)\n")
 		}
