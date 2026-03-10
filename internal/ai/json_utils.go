@@ -50,9 +50,12 @@ func ParseJSONResponse(response string, target interface{}) error {
 //
 // Returns empty string if no code blocks found.
 func extractJSONFromMarkdown(content string) string {
+	// Normalize line endings to handle \r\n from AI responses
+	content = strings.ReplaceAll(content, "\r\n", "\n")
+
 	// Look for ```json or ``` code blocks
-	startMarkers := []string{"```json\n", "```\n"}
-	endMarker := "```"
+	startMarkers := []string{"```json\n", "```json \n", "```\n"}
+	endMarker := "\n```"
 
 	for _, startMarker := range startMarkers {
 		startIdx := strings.Index(content, startMarker)

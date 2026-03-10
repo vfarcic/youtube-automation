@@ -241,7 +241,7 @@ func TestAnalyzeTitles(t *testing.T) {
 				return mock, nil
 			}
 
-			gotAnalysis, _, _, err := AnalyzeTitles(ctx, tt.analytics)
+			gotAnalysis, _, err := AnalyzeTitles(ctx, tt.analytics)
 
 			if tt.wantErr {
 				if err == nil {
@@ -316,15 +316,12 @@ func TestAnalyzeTitles_TemplateExecution(t *testing.T) {
 		return mockProvider, nil
 	}
 
-	result, prompt, rawResponse, err := AnalyzeTitles(ctx, analytics)
+	result, rawResponse, err := AnalyzeTitles(ctx, analytics)
 	if err != nil {
 		t.Fatalf("AnalyzeTitles() unexpected error = %v", err)
 	}
 
 	// Verify we got valid results (template was successfully executed and AI returned data)
-	if prompt == "" {
-		t.Errorf("Expected non-empty prompt from AnalyzeTitles")
-	}
 	if rawResponse == "" {
 		t.Errorf("Expected non-empty rawResponse from AnalyzeTitles")
 	}
@@ -334,8 +331,8 @@ func TestAnalyzeTitles_TemplateExecution(t *testing.T) {
 		t.Error("Expected non-empty finding in parsed result")
 	}
 
-	// Verify special characters in the title were handled correctly in template
-	if !strings.Contains(prompt, "Test Title with Special Characters") {
+	// Verify prompt was saved to the mock provider (contains the video title)
+	if !strings.Contains(mockProvider.lastPrompt, "Test Title with Special Characters") {
 		t.Error("Expected prompt to contain the title with special characters")
 	}
 }

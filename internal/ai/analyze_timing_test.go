@@ -255,7 +255,7 @@ func TestGenerateTimingRecommendations(t *testing.T) {
 				return mock, nil
 			}
 
-			gotRecommendations, _, _, err := GenerateTimingRecommendations(ctx, tt.analytics)
+			gotRecommendations, _, err := GenerateTimingRecommendations(ctx, tt.analytics)
 
 			if tt.wantErr {
 				if err == nil {

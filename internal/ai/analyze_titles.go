@@ -5,6 +5,8 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
+	"os"
+	"path/filepath"
 	"text/template"
 
 	"devopstoolkit/youtube-automation/internal/publishing"
@@ -77,25 +79,24 @@ type TitleAnalysisResult struct {
 //
 // Returns:
 //   - TitleAnalysisResult: Parsed analysis results
-//   - string: The prompt sent to AI (for audit trail)
 //   - string: Raw AI response (for audit trail)
 //   - error: Any error encountered during template rendering, AI generation, or parsing
-func AnalyzeTitles(ctx context.Context, analytics []publishing.VideoAnalytics) (TitleAnalysisResult, string, string, error) {
+func AnalyzeTitles(ctx context.Context, analytics []publishing.VideoAnalytics) (TitleAnalysisResult, string, error) {
 	var emptyResult TitleAnalysisResult
 
 	if len(analytics) == 0 {
-		return emptyResult, "", "", fmt.Errorf("no analytics data provided for analysis")
+		return emptyResult, "", fmt.Errorf("no analytics data provided for analysis")
 	}
 
 	provider, err := GetAIProvider()
 	if err != nil {
-		return emptyResult, "", "", fmt.Errorf("failed to get AI provider: %w", err)
+		return emptyResult, "", fmt.Errorf("failed to get AI provider: %w", err)
 	}
 
 	// Parse embedded template
 	tmpl, err := template.New("analyze-titles").Parse(analyzeTitlesTemplate)
 	if err != nil {
-		return emptyResult, "", "", fmt.Errorf("failed to parse template: %w", err)
+		return emptyResult, "", fmt.Errorf("failed to parse template: %w", err)
 	}
 
 	// Calculate date range from analytics data
@@ -120,27 +121,33 @@ func AnalyzeTitles(ctx context.Context, analytics []publishing.VideoAnalytics) (
 	// Execute template to generate prompt
 	var promptBuf bytes.Buffer
 	if err := tmpl.Execute(&promptBuf, data); err != nil {
-		return emptyResult, "", "", fmt.Errorf("failed to execute template: %w", err)
+		return emptyResult, "", fmt.Errorf("failed to execute template: %w", err)
 	}
 
 	prompt := promptBuf.String()
+
+	// Save prompt to audit trail before sending to LLM
+	promptDir := filepath.Join(".", "tmp")
+	if mkErr := os.MkdirAll(promptDir, 0755); mkErr == nil {
+		_ = os.WriteFile(filepath.Join(promptDir, "title-analysis-prompt.md"), []byte(prompt), 0644)
+	}
 
 	// Generate analysis using AI provider
 	// Use a large token limit since we want comprehensive analysis
 	rawResponse, err := provider.GenerateContent(ctx, prompt, 4096)
 	if err != nil {
-		return emptyResult, prompt, "", fmt.Errorf("AI analysis generation failed: %w", err)
+		return emptyResult, "", fmt.Errorf("AI analysis generation failed: %w", err)
 	}
 
 	if len(rawResponse) == 0 {
-		return emptyResult, prompt, "", fmt.Errorf("AI returned empty analysis")
+		return emptyResult, "", fmt.Errorf("AI returned empty analysis")
 	}
 
 	// Parse JSON response
 	var result TitleAnalysisResult
 	if err := ParseJSONResponse(rawResponse, &result); err != nil {
-		return emptyResult, prompt, rawResponse, fmt.Errorf("failed to parse title analysis JSON: %w", err)
+		return emptyResult, rawResponse, fmt.Errorf("failed to parse title analysis JSON: %w", err)
 	}
 
-	return result, prompt, rawResponse, nil
+	return result, rawResponse, nil
 }

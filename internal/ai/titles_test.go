@@ -10,11 +10,13 @@ import (
 
 // MockProvider implements AIProvider for testing
 type MockProvider struct {
-	response string
-	err      error
+	response   string
+	err        error
+	lastPrompt string
 }
 
 func (m *MockProvider) GenerateContent(ctx context.Context, prompt string, maxTokens int) (string, error) {
+	m.lastPrompt = prompt
 	if m.err != nil {
 		return "", m.err
 	}

@@ -70,7 +70,7 @@ func (m *MenuHandler) HandleAnalyzeTitles() error {
 	fmt.Println(m.normalStyle.Render("Analyzing title patterns with AI..."))
 	fmt.Println(m.normalStyle.Render("This may take a moment."))
 
-	result, prompt, rawResponse, err := ai.AnalyzeTitles(ctx, analytics)
+	result, rawResponse, err := ai.AnalyzeTitles(ctx, analytics)
 	if err != nil {
 		fmt.Println(m.errorStyle.Render(fmt.Sprintf("Failed to analyze titles: %v", err)))
 		return err
@@ -86,7 +86,6 @@ func (m *MenuHandler) HandleAnalyzeTitles() error {
 	files, err := SaveCompleteAnalysis(
 		"title-analysis",
 		analytics,
-		prompt,
 		rawResponse,
 		formattedResult,
 		"tmp",
@@ -103,7 +102,7 @@ func (m *MenuHandler) HandleAnalyzeTitles() error {
 	fmt.Println("")
 	fmt.Println(m.normalStyle.Render("Files saved:"))
 	fmt.Println(m.normalStyle.Render(fmt.Sprintf("  • Analytics data: %s", files.AnalyticsPath)))
-	fmt.Println(m.normalStyle.Render(fmt.Sprintf("  • AI prompt: %s", files.PromptPath)))
+	fmt.Println(m.normalStyle.Render("  • AI prompt: tmp/title-analysis-prompt.md"))
 	fmt.Println(m.normalStyle.Render(fmt.Sprintf("  • Raw AI response: %s", files.ResponsePath)))
 	fmt.Println(m.normalStyle.Render(fmt.Sprintf("  • Formatted analysis: %s", files.ResultPath)))
 	fmt.Println("")
@@ -138,7 +137,7 @@ func (m *MenuHandler) HandleAnalyzeTiming() error {
 	fmt.Println(m.normalStyle.Render("Analyzing timing patterns with AI..."))
 	fmt.Println(m.normalStyle.Render("This may take a moment."))
 
-	recommendations, prompt, rawResponse, err := ai.GenerateTimingRecommendations(ctx, analytics)
+	recommendations, rawResponse, err := ai.GenerateTimingRecommendations(ctx, analytics)
 	if err != nil {
 		fmt.Println(m.errorStyle.Render(fmt.Sprintf("Failed to generate timing recommendations: %v", err)))
 		return err
@@ -193,7 +192,6 @@ func (m *MenuHandler) HandleAnalyzeTiming() error {
 	files, err := SaveCompleteAnalysis(
 		"timing-analysis",
 		analytics,
-		prompt,
 		rawResponse,
 		formattedResult,
 		"tmp",
@@ -210,7 +208,7 @@ func (m *MenuHandler) HandleAnalyzeTiming() error {
 	fmt.Println("")
 	fmt.Println(m.normalStyle.Render("Files saved:"))
 	fmt.Println(m.normalStyle.Render(fmt.Sprintf("  • Analytics data: %s", files.AnalyticsPath)))
-	fmt.Println(m.normalStyle.Render(fmt.Sprintf("  • AI prompt: %s", files.PromptPath)))
+	fmt.Println(m.normalStyle.Render("  • AI prompt: tmp/timing-analysis-prompt.md"))
 	fmt.Println(m.normalStyle.Render(fmt.Sprintf("  • Raw AI response: %s", files.ResponsePath)))
 	fmt.Println(m.normalStyle.Render(fmt.Sprintf("  • Formatted analysis: %s", files.ResultPath)))
 	fmt.Println("")

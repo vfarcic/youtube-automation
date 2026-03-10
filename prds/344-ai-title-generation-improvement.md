@@ -1,93 +1,214 @@
-# PRD: AI Title Generation Improvement via A/B Test Analysis
+# PRD: AI Title Generation Improvement via A/B Share Analysis
 
 | Metadata | Details |
 |:---|:---|
 | **PRD ID** | 344 |
 | **Issue** | [#344](https://github.com/vfarcic/youtube-automation/issues/344) |
 | **Feature Name** | AI Title Generation Improvement |
-| **Status** | Deferred until January 2026 (Waiting for A/B test data) |
+| **Status** | Ready |
 | **Priority** | Medium |
 | **Author** | @vfarcic |
 | **Created** | 2025-11-18 |
+| **Updated** | 2026-03-10 |
 
 ## 1. Problem Statement
 
-We are currently collecting A/B test data (Watch Shares) for video titles, but this valuable performance data is not being fed back into our AI title generation process. The AI continues to generate titles based on static templates and generic best practices, missing the opportunity to "learn" from what actually resonates with our specific audience.
+The AI title generator uses static patterns and generic best practices hardcoded in `internal/ai/templates/titles.md`. These patterns (e.g., "Provocative Opinion + Technical Specificity gets 3-5x avg views") are generic guesses, not derived from actual channel data.
+
+Meanwhile, we have the cleanest possible signal sitting unused: **YouTube A/B test share data**. When YouTube tests multiple title variants on the same video, the share percentages directly show which title style kept viewers watching longer — eliminating topic, timing, and age bias entirely.
+
+Combined with first-week YouTube Analytics (views, CTR, likes, comments, engagement), the AI can discover which title patterns actually work on this specific channel and update the title generation prompt accordingly.
 
 ## 2. Proposed Solution
 
-Implement a data-driven feedback loop that:
-1.  **Analyzes** existing videos to find those with completed A/B tests (where titles have `share > 0`).
-2.  **Identifies** "winning" titles (highest share %).
-3.  **Extracts** these high-performing titles to serve as dynamic "few-shot" examples or context.
-4.  **Updates** the AI prompt context at runtime (or periodically updates the template) to include these real-world success stories.
+Replace the current "Analyze > Titles" CLI menu item with a new analysis flow that:
 
-This will allow the AI to generate new titles that are stylistically similar to our best-performing content.
+1. **Collects A/B share data** from local video YAML files (current year + previous year index).
+2. **Enriches with first-week YouTube Analytics** for absolute performance context.
+3. **Sends to AI** for pattern analysis — which title styles win A/B tests and correlate with high first-week performance.
+4. **Outputs**:
+   - A report saved to `./tmp/title-analysis-prompt.md` (prompt) and `./tmp/title-analysis-{date}/` (results).
+   - Recommended updates to `internal/ai/templates/titles.md` (the title generation prompt).
+   - Recommended updates to `settings.yaml` with discovered title patterns.
+5. **Applies updates** to `titles.md` and `settings.yaml` after user approval.
+
+### Why A/B shares are the primary signal
+
+A/B shares compare titles head-to-head on the **same video**. A title with 55% share beat the alternatives regardless of whether the video topic was popular or niche. This is the purest signal for title quality. First-week metrics add absolute context (did the winning title also drive high views/CTR?).
+
+### Why two years of data
+
+The current year's `index.yaml` may have limited data (especially early in the year). Including the previous year via `index/{YEAR-1}.yaml` ensures sufficient sample size while keeping data recent enough to reflect current audience preferences.
 
 ## 3. User Stories
 
-*   **As a** content creator,
-*   **I want** the AI to suggest titles that are proven to work for my channel,
-*   **So that** I can increase my Click-Through Rate (CTR) and average view duration without manual guesswork.
+* **As a** content creator,
+* **I want** the AI to analyze my channel's A/B test results and first-week performance data,
+* **So that** it discovers which title styles actually work on my channel, updates the title generation prompt with data-driven patterns, and generates better titles for future videos.
 
-## 4. Functional Requirements
+## 4. Data Model
 
-### 4.1. Data Extraction
-*   Query the video storage (YAML files) for videos with non-empty `titles` arrays.
-*   Filter for titles where `share` > 0 (indicating A/B test data exists).
-*   Select the title with the highest `share` percentage for each video as the "winner".
+### 4.1. Per-Video Data Point
 
-### 4.2. Analysis Logic
-*   Aggregate winning titles.
-*   (Optional) Categorize winners by video category (e.g., "Tutorials", "Opinion", "News") if data volume permits.
+Each video in the dataset contributes:
 
-### 4.3. Prompt Enhancement
-*   Modify the `internal/ai/analyze_titles.go` (or similar logic) to accept a list of high-performing examples.
-*   Inject these examples into the system prompt sent to the AI provider.
-*   **Format**: "Here are examples of titles that have performed well on this channel: [List of titles]..."
+| Field | Source | Notes |
+|-------|--------|-------|
+| Title variants | Video YAML | Each: text + A/B share % |
+| Category | Video YAML | e.g., "ai", "kubernetes" |
+| Date | Video YAML | Publish date |
+| First-week views | YouTube Analytics | Views in days 0-7 |
+| First-week CTR | YouTube Analytics | Click-through rate in first week |
+| First-week likes | YouTube Analytics | Likes in first week |
+| First-week comments | YouTube Analytics | Comments in first week |
+| First-week engagement | Derived | (likes + comments) / views × 100 |
+| Publish day of week | Derived from date | e.g., "Monday" |
 
-## 5. Technical Implementation
+### 4.2. Data Filtering
 
-### 5.1. New Components
-*   `AnalysisService`: A service in `internal/analysis/` (or similar) responsible for scanning `storage.Video` objects and returning `[]TitleVariant` of winners.
+- **Only include videos with A/B data**: Videos must have 2+ title variants where at least one has a non-zero share value.
+- Videos without A/B data are excluded — they provide no share signal.
+- Videos must have a `videoId` (published videos only).
 
-### 5.2. Modified Components
-*   `internal/ai/titles.go`: Update `GenerateTitles` function to:
-    1.  Call `AnalysisService` to get context.
-    2.  Template the context into the prompt before sending to LLM.
+### 4.3. Data Format in Prompt
 
-## 6. Milestones
+Grouped by video, with a legend:
 
-- [ ] **Milestone 1: Data Analysis Service**
-    - Implement logic to scan all videos and identify "winning" titles based on `share` percentage.
-    - Create unit tests with sample video data (some with A/B tests, some without).
+```markdown
+## Data Legend
+- **A/B test share**: Watch-time share percentage per title variant. Higher share = that title kept viewers watching longer vs other variants in the same test. This is the primary quality signal.
+- **First-week metrics** (days 0-7 after publish, eliminates age bias):
+  - **views**: Total views in first week
+  - **ctr**: Click-through rate (percentage)
+  - **likes**: Total likes in first week
+  - **comments**: Total comments in first week
+  - **engagement**: (likes + comments) / views × 100
 
-- [ ] **Milestone 2: Prompt Integration**
-    - Update the title generation prompt template (`internal/ai/templates/titles.md`) to accept a dynamic list of "proven winners".
-    - Update `internal/ai` code to fetch winners and inject them into the template.
+## A/B Test Results
 
-- [ ] **Milestone 3: End-to-End Testing**
-    - Verify that running the title generator now includes the winning titles in the prompt (via logs or debug mode).
-    - Ensure fallback behavior works if no A/B test data is available yet.
+### Video: ai | Monday
+First-week: views=15230 | ctr=8.2% | likes=890 | comments=145 | engagement=6.8%
+Titles:
+- "Why I Changed My Mind About Cursor" (share: 42.1%)
+- "Top 10 AI Coding Tools in 2025" (share: 35.5%)
+- "AI Coding Is Broken (Here's the Fix)" (share: 22.4%)
 
-## 7. Success Criteria
+### Video: kubernetes | Thursday
+First-week: views=9800 | ctr=6.1% | likes=420 | comments=67 | engagement=5.0%
+Titles:
+- "Stop Using Helm Charts!" (share: 51.2%)
+- "Why Helm Is Dead in 2025" (share: 48.8%)
+```
 
-*   **Technical**: The AI prompt sent to the provider includes at least 3-5 examples of high-performing titles from previous videos (when data exists).
-*   **Performance**: No significant increase in latency for title generation.
-*   **Quality**: Generated titles show stylistic alignment with top-performing past titles.
+### 4.4. Data Sources
 
-## 8. Dependencies
+- **Current year videos**: `index.yaml`
+- **Previous year videos**: `index/{CURRENT_YEAR-1}.yaml`
+- **Video details**: Individual YAML files at `manuscript/{category}/{name}.yaml`
+- **YouTube Analytics**: `GetVideoAnalytics()` + `EnrichWithFirstWeekMetrics()` + `EnrichWithTimingData()`
 
-*   Existing A/B test data structure (implemented in `storage.Video`).
-*   `internal/ai` package for prompt management.
+### 4.5. Audit Trail
 
-## 9. Risk Assessment
+- Prompt saved to `./tmp/title-analysis-prompt.md` before the LLM call (already implemented).
+- Results saved via `SaveCompleteAnalysis()` to `./tmp/title-analysis-{date}/`.
 
-*   **Risk**: Skewed data from older videos might encourage outdated styles.
-    *   *Mitigation*: Limit analysis to the last N months or N videos.
-*   **Risk**: Prompt context limit.
-    *   *Mitigation*: Limit the number of examples injected (e.g., top 5 or top 10).
+## 5. Functional Requirements
 
-## 10. Documentation
+### 5.1. Data Collection
 
-*   Update `docs/development.md` to explain how the feedback loop works.
+- Load video index entries from current year (`index.yaml`) and previous year (`index/{YEAR-1}.yaml`).
+- For each video with a `videoId`, read its YAML to extract titles with shares, category, and date.
+- **Filter to only videos with A/B data** (2+ title variants, at least one with share > 0).
+- Fetch first-week YouTube Analytics and join by video ID.
+
+### 5.2. AI Analysis
+
+- Send the dataset to AI with instructions to:
+  - Identify which title styles/patterns consistently win A/B tests (higher share).
+  - Cross-reference with first-week metrics to find styles that also drive absolute performance.
+  - Produce two outputs:
+    1. **Updated `titles.md` content**: Replace the current static patterns with data-driven ones. Keep the same format (numbered patterns with examples, AVOID section, character length guidance). Use actual channel data as evidence.
+    2. **Title patterns for `settings.yaml`**: A structured list of high-performing and low-performing patterns with evidence, suitable for storage.
+
+### 5.3. User Approval Flow
+
+After AI analysis:
+1. Display the recommended `titles.md` update.
+2. Ask user: "Save updated title patterns to settings.yaml?" (Yes/No).
+3. Ask user: "Update titles.md template?" (Yes/No).
+4. Apply approved changes.
+
+### 5.4. Graceful Degradation
+
+- If no A/B data is available, inform user and skip analysis.
+- If YouTube Analytics are unavailable, analyze with shares only (no first-week metrics).
+- If previous year index doesn't exist, use only current year.
+
+## 6. Technical Implementation
+
+### 6.1. New Components
+
+- `internal/ai/title_context.go`: Functions to load videos from multiple index files, filter to A/B data, format the dataset.
+- `internal/ai/title_context_test.go`: Tests for data collection and formatting.
+- `internal/ai/templates/analyze-titles.md`: Updated template focused on A/B share analysis with structured output (updated `titles.md` content + settings patterns).
+
+### 6.2. Modified Components
+
+- `internal/app/menu_analyze.go`: Replace `HandleAnalyzeTitles()` with new A/B share analysis flow including approval prompts.
+- `internal/ai/analyze_titles.go`: Update `AnalyzeTitles()` to accept enriched data (videos + analytics), use new template, return structured result with `titles.md` update and settings patterns.
+- `internal/ai/templates/titles.md`: Will be updated by the tool itself after user approval — initial content stays as-is until first analysis run.
+- `internal/configuration/settings.go`: Add `SaveTitlePatterns()` / `LoadTitlePatterns()` following the timing recommendations pattern.
+- `internal/configuration/cli.go`: Add `TitlePatterns` config struct and field in `Settings`.
+
+### 6.3. Index File Loading
+
+- Current year: `index.yaml` (relative to data repo root / CWD)
+- Previous year: `index/{currentYear - 1}.yaml`
+- If previous year file doesn't exist, use only current year.
+- Use existing `readArchiveIndex()` pattern from `video_service.go`.
+
+## 7. Milestones
+
+- [x] **Milestone 1: Data Collection**
+    - Implement index loading for current + previous year.
+    - Implement video loading and filtering to A/B data only.
+    - Format dataset with shares + first-week metrics.
+    - Unit tests covering: videos with/without A/B data, missing index files, analytics join.
+
+- [ ] **Milestone 2: AI Analysis + Template**
+    - Update `analyze-titles.md` template to focus on A/B share patterns.
+    - AI output: recommended `titles.md` content + structured title patterns.
+    - Update `AnalyzeTitles()` to use enriched data and new template.
+    - Unit tests for template rendering and response parsing.
+
+- [ ] **Milestone 3: Settings + Approval Flow**
+    - Add `TitlePatterns` to settings.yaml (following timing pattern).
+    - Add `SaveTitlePatterns()` / `LoadTitlePatterns()` to configuration.
+    - Update `HandleAnalyzeTitles()` with approval prompts for settings and template updates.
+    - Write updated `titles.md` to disk after approval.
+    - Unit tests for settings save/load.
+
+## 8. Success Criteria
+
+- **Data quality**: Only videos with actual A/B share data are included in analysis.
+- **Actionable output**: AI produces a concrete `titles.md` replacement, not generic advice.
+- **Settings persistence**: Discovered patterns saved to `settings.yaml` for reference.
+- **User control**: Changes to `titles.md` and `settings.yaml` only applied after explicit approval.
+- **Audit trail**: Full prompt and response saved to `./tmp/` for inspection.
+
+## 9. Dependencies
+
+- `storage.Video` struct with `Titles []TitleVariant` (exists).
+- `publishing.GetVideoAnalytics()` and `EnrichWithFirstWeekMetrics()` (exist).
+- YouTube Analytics API OAuth credentials (exist in deployment).
+- Index file structure: `index.yaml` + `index/{year}.yaml` (exists).
+- Timing recommendations pattern in `settings.yaml` (exists as reference).
+
+## 10. Risk Assessment
+
+- **Risk**: Insufficient A/B data (few videos have share values).
+    - *Mitigation*: Include previous year. Inform user if sample is too small for meaningful analysis.
+- **Risk**: AI produces poor `titles.md` replacement.
+    - *Mitigation*: User approval required. Show diff before applying. Original file can be restored from git.
+- **Risk**: YouTube Analytics API rate limits during first-week enrichment.
+    - *Mitigation*: EnrichWithFirstWeekMetrics makes one call per video — acceptable for ~60 videos. Falls back to shares-only if API fails.

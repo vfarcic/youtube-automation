@@ -5,6 +5,8 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"text/template"
 
@@ -39,23 +41,22 @@ type TimeSlotSummary struct {
 //
 // Returns:
 //   - []configuration.TimingRecommendation: Array of 6-8 timing recommendations
-//   - string: The prompt sent to AI (for audit trail)
 //   - string: Raw AI response (for audit trail)
 //   - error: Any error encountered during analysis or parsing
-func GenerateTimingRecommendations(ctx context.Context, analytics []publishing.VideoAnalytics) ([]configuration.TimingRecommendation, string, string, error) {
+func GenerateTimingRecommendations(ctx context.Context, analytics []publishing.VideoAnalytics) ([]configuration.TimingRecommendation, string, error) {
 	if len(analytics) == 0 {
-		return nil, "", "", fmt.Errorf("no analytics data provided for timing analysis")
+		return nil, "", fmt.Errorf("no analytics data provided for timing analysis")
 	}
 
 	provider, err := GetAIProvider()
 	if err != nil {
-		return nil, "", "", fmt.Errorf("failed to get AI provider: %w", err)
+		return nil, "", fmt.Errorf("failed to get AI provider: %w", err)
 	}
 
 	// First, fetch first-week metrics for all videos (critical for accurate comparison)
 	enrichedWithMetrics, err := publishing.EnrichWithFirstWeekMetrics(ctx, analytics)
 	if err != nil {
-		return nil, "", "", fmt.Errorf("failed to fetch first-week metrics: %w", err)
+		return nil, "", fmt.Errorf("failed to fetch first-week metrics: %w", err)
 	}
 
 	// Then enrich with timing data (day/time extraction and engagement calculation)
@@ -82,40 +83,46 @@ func GenerateTimingRecommendations(ctx context.Context, analytics []publishing.V
 	// Parse embedded template
 	tmpl, err := template.New("analyze-timing").Parse(analyzeTimingTemplate)
 	if err != nil {
-		return nil, "", "", fmt.Errorf("failed to parse template: %w", err)
+		return nil, "", fmt.Errorf("failed to parse template: %w", err)
 	}
 
 	// Execute template to generate prompt
 	var promptBuf bytes.Buffer
 	if err := tmpl.Execute(&promptBuf, data); err != nil {
-		return nil, "", "", fmt.Errorf("failed to execute template: %w", err)
+		return nil, "", fmt.Errorf("failed to execute template: %w", err)
 	}
 
 	prompt := promptBuf.String()
+
+	// Save prompt to audit trail before sending to LLM
+	promptDir := filepath.Join(".", "tmp")
+	if mkErr := os.MkdirAll(promptDir, 0755); mkErr == nil {
+		_ = os.WriteFile(filepath.Join(promptDir, "timing-analysis-prompt.md"), []byte(prompt), 0644)
+	}
 
 	// Generate recommendations using AI provider
 	// Use 4096 tokens to allow for detailed reasoning
 	rawResponse, err := provider.GenerateContent(ctx, prompt, 4096)
 	if err != nil {
-		return nil, prompt, "", fmt.Errorf("AI timing analysis failed: %w", err)
+		return nil, "", fmt.Errorf("AI timing analysis failed: %w", err)
 	}
 
 	if len(rawResponse) == 0 {
-		return nil, prompt, "", fmt.Errorf("AI returned empty timing recommendations")
+		return nil, "", fmt.Errorf("AI returned empty timing recommendations")
 	}
 
 	// Parse JSON response
 	recommendations, err := parseTimingRecommendations(rawResponse)
 	if err != nil {
-		return nil, prompt, rawResponse, fmt.Errorf("failed to parse AI recommendations: %w", err)
+		return nil, rawResponse, fmt.Errorf("failed to parse AI recommendations: %w", err)
 	}
 
 	// Validate recommendations
 	if err := validateRecommendations(recommendations); err != nil {
-		return nil, prompt, rawResponse, fmt.Errorf("invalid recommendations: %w", err)
+		return nil, rawResponse, fmt.Errorf("invalid recommendations: %w", err)
 	}
 
-	return recommendations, prompt, rawResponse, nil
+	return recommendations, rawResponse, nil
 }
 
 // calculateCurrentPattern summarizes the current publishing pattern
