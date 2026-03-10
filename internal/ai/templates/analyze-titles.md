@@ -52,7 +52,7 @@ Return your analysis as a **valid JSON object** with the following structure:
       "example": "Before/after example showing how to apply this"
     }
   ],
-  "titlesMdContent": "Complete replacement content for the titles.md prompt file. This should be a markdown document with sections for patterns to use, patterns to avoid, and specific guidelines. Include {{"{{.ManuscriptContent}}"}} as a placeholder where the manuscript content will be inserted. Base all guidance on the A/B test evidence above."
+  "titlesMdContent": "Complete replacement content for the titles.md prompt file. Must instruct the AI to generate exactly 10 titles as a JSON array of strings. Include {{"{{.ManuscriptContent}}"}} as a placeholder. Structure with high-performing patterns, anti-patterns, and guidelines based on A/B evidence. End with: Response (JSON array only):"
 }
 ```
 
@@ -62,6 +62,13 @@ Return your analysis as a **valid JSON object** with the following structure:
 - **Quantify with share data**: Always cite share percentages as evidence
 - **Be actionable**: Focus on patterns that can be directly implemented in title writing
 - **Prioritize by share impact**: Highlight patterns with biggest share differences (5-7 recommendations max)
-- **titlesMdContent**: Write a complete, self-contained prompt document that can replace the existing titles.md file. Include the literal text `{{"{{.ManuscriptContent}}"}}` as a placeholder. Structure it with clear sections for high-performing patterns, anti-patterns, and actionable rules derived from the A/B data.
+- **titlesMdContent**: Write a complete, self-contained prompt document that can replace the existing titles.md file. Follow these constraints EXACTLY:
+  - Include the literal text `{{"{{.ManuscriptContent}}"}}` as a placeholder where the manuscript will be inserted
+  - Structure it with clear sections for high-performing patterns, anti-patterns, and actionable guidelines derived from the A/B data
+  - The prompt MUST instruct the AI to generate exactly **10** title suggestions (the user picks from these)
+  - The prompt MUST instruct the AI to respond with ONLY a valid JSON array of strings (e.g., `["Title 1", "Title 2", ...]`) — no markdown, no explanations, no annotations
+  - Do NOT ask for rule numbers, pattern references, or any metadata alongside titles — just the titles themselves
+  - Describe patterns by name (e.g., "Bold Opinionated Claim") not by number (e.g., "Rule 1")
+  - Do NOT force specific patterns (e.g., "ensure at least one uses X"). Instead, instruct the AI to choose whichever patterns best fit the manuscript content and aim for diversity across the 10 titles
 
 Your JSON response will be parsed programmatically, so ensure it's valid and follows the exact structure above.

@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"devopstoolkit/youtube-automation/internal/ai"
 	"devopstoolkit/youtube-automation/internal/configuration"
@@ -131,10 +132,52 @@ func (m *MenuHandler) HandleAnalyzeTitles() error {
 	fmt.Println(m.normalStyle.Render(fmt.Sprintf("  • Raw AI response: %s", files.ResponsePath)))
 	fmt.Println(m.normalStyle.Render(fmt.Sprintf("  • Formatted analysis: %s", files.ResultPath)))
 	fmt.Println("")
-	fmt.Println(m.normalStyle.Render("Next steps:"))
-	fmt.Println(m.normalStyle.Render("  1. Review the formatted analysis file"))
-	fmt.Println(m.normalStyle.Render("  2. Review the proposed titles.md update"))
-	fmt.Println(m.normalStyle.Render("  3. Future titles will use improved patterns"))
+
+	// Show proposed titles.md content preview and offer to save
+	if result.TitlesMDContent != "" {
+		fmt.Println(m.normalStyle.Render("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
+		fmt.Println(m.normalStyle.Render("Proposed titles.md content:"))
+		fmt.Println(m.normalStyle.Render("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
+		fmt.Println(m.normalStyle.Render(result.TitlesMDContent))
+		fmt.Println("")
+
+		var updateTemplate bool
+		templateForm := huh.NewForm(
+			huh.NewGroup(
+				huh.NewConfirm().
+					Title("Update titles.md template?").
+					Description("Writes titles.md in the current directory for future title generation").
+					Affirmative("Yes, update").
+					Negative("No, skip").
+					Value(&updateTemplate),
+			),
+		)
+
+		if err := templateForm.Run(); err != nil {
+			return fmt.Errorf("failed to run template update confirmation form: %w", err)
+		}
+
+		if updateTemplate {
+			if err := os.WriteFile("titles.md", []byte(result.TitlesMDContent), 0644); err != nil {
+				fmt.Println(m.errorStyle.Render(fmt.Sprintf("Failed to update titles.md: %v", err)))
+				return err
+			}
+			fmt.Println(m.greenStyle.Render("✓ titles.md updated"))
+			fmt.Println("")
+			fmt.Println(m.normalStyle.Render("Next steps:"))
+			fmt.Println(m.normalStyle.Render("  1. Review the formatted analysis file"))
+			fmt.Println(m.normalStyle.Render("  2. Future titles will use improved patterns automatically"))
+		} else {
+			fmt.Println("")
+			fmt.Println(m.normalStyle.Render("Next steps:"))
+			fmt.Println(m.normalStyle.Render("  1. Review the formatted analysis file"))
+			fmt.Println(m.normalStyle.Render("  2. Re-run analysis to update titles.md when ready"))
+		}
+	} else {
+		fmt.Println("")
+		fmt.Println(m.normalStyle.Render("Next steps:"))
+		fmt.Println(m.normalStyle.Render("  1. Review the formatted analysis file"))
+	}
 
 	return nil
 }

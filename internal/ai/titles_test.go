@@ -3,6 +3,7 @@ package ai
 import (
 	"context"
 	"fmt"
+	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -21,6 +22,31 @@ func (m *MockProvider) GenerateContent(ctx context.Context, prompt string, maxTo
 		return "", m.err
 	}
 	return m.response, nil
+}
+
+// setupTitlesTestDir creates a temp directory with a titles.md file and changes to it.
+// Returns a cleanup function that restores the original working directory.
+func setupTitlesTestDir(t *testing.T) func() {
+	t.Helper()
+	tempDir, err := os.MkdirTemp("", "titles-test-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	originalWd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Failed to get working dir: %v", err)
+	}
+	if err := os.Chdir(tempDir); err != nil {
+		t.Fatalf("Failed to chdir: %v", err)
+	}
+	// Write the default template as titles.md
+	if err := os.WriteFile("titles.md", []byte(defaultTitlesTemplate), 0644); err != nil {
+		t.Fatalf("Failed to write titles.md: %v", err)
+	}
+	return func() {
+		os.Chdir(originalWd)
+		os.RemoveAll(tempDir)
+	}
 }
 
 func TestSuggestTitles(t *testing.T) {
@@ -78,6 +104,9 @@ func TestSuggestTitles(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			cleanup := setupTitlesTestDir(t)
+			defer cleanup()
+
 			mock := &MockProvider{
 				response: tt.mockResponse,
 				err:      tt.mockError,
@@ -160,6 +189,9 @@ func TestTitlesTemplateExecution(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			cleanup := setupTitlesTestDir(t)
+			defer cleanup()
+
 			mock := &MockProvider{
 				response: `["Test Title 1", "Test Title 2"]`,
 				err:      nil,
@@ -186,3 +218,76 @@ func TestTitlesTemplateExecution(t *testing.T) {
 		})
 	}
 }
+
+func TestLoadTitlesTemplate(t *testing.T) {
+	tests := []struct {
+		name         string
+		fileContent  string
+		fileNotExist bool
+		wantErr      bool
+		errContains  string
+	}{
+		{
+			name:        "loads titles.md from working directory",
+			fileContent: "Custom template with {{.ManuscriptContent}}",
+			wantErr:     false,
+		},
+		{
+			name:         "returns error with instructions when file missing",
+			fileNotExist: true,
+			wantErr:      true,
+			errContains:  "titles.md not found",
+		},
+		{
+			name:         "error includes default template content",
+			fileNotExist: true,
+			wantErr:      true,
+			errContains:  "Analyze → Titles",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tempDir, err := os.MkdirTemp("", "load-titles-test-*")
+			if err != nil {
+				t.Fatalf("Failed to create temp dir: %v", err)
+			}
+			defer os.RemoveAll(tempDir)
+
+			originalWd, err := os.Getwd()
+			if err != nil {
+				t.Fatalf("Failed to get working dir: %v", err)
+			}
+			defer os.Chdir(originalWd)
+
+			if err := os.Chdir(tempDir); err != nil {
+				t.Fatalf("Failed to chdir: %v", err)
+			}
+
+			if !tt.fileNotExist {
+				if err := os.WriteFile("titles.md", []byte(tt.fileContent), 0644); err != nil {
+					t.Fatalf("Failed to write titles.md: %v", err)
+				}
+			}
+
+			got, err := LoadTitlesTemplate()
+
+			if tt.wantErr {
+				if err == nil {
+					t.Fatal("Expected error but got none")
+				}
+				if tt.errContains != "" && !strings.Contains(err.Error(), tt.errContains) {
+					t.Errorf("Error %q should contain %q", err.Error(), tt.errContains)
+				}
+			} else {
+				if err != nil {
+					t.Fatalf("Unexpected error: %v", err)
+				}
+				if got != tt.fileContent {
+					t.Errorf("Got %q, want %q", got, tt.fileContent)
+				}
+			}
+		})
+	}
+}
+

@@ -28,9 +28,8 @@ Replace the current "Analyze > Titles" CLI menu item with a new analysis flow th
 3. **Sends to AI** for pattern analysis — which title styles win A/B tests and correlate with high first-week performance.
 4. **Outputs**:
    - A report saved to `./tmp/title-analysis-prompt.md` (prompt) and `./tmp/title-analysis-{date}/` (results).
-   - Recommended updates to `internal/ai/templates/titles.md` (the title generation prompt).
-   - Recommended updates to `settings.yaml` with discovered title patterns.
-5. **Applies updates** to `titles.md` and `settings.yaml` after user approval.
+   - Recommended `titles.md` content with data-driven patterns.
+5. **Applies update** to `titles.md` in the working directory after user approval.
 
 ### Why A/B shares are the primary signal
 
@@ -131,10 +130,9 @@ Titles:
 ### 5.3. User Approval Flow
 
 After AI analysis:
-1. Display the recommended `titles.md` update.
-2. Ask user: "Save updated title patterns to settings.yaml?" (Yes/No).
-3. Ask user: "Update titles.md template?" (Yes/No).
-4. Apply approved changes.
+1. Display the recommended `titles.md` content preview.
+2. Ask user: "Update titles.md template?" (Yes/No).
+3. Write approved `titles.md` to working directory (data repo).
 
 ### 5.4. Graceful Degradation
 
@@ -154,9 +152,8 @@ After AI analysis:
 
 - `internal/app/menu_analyze.go`: Replace `HandleAnalyzeTitles()` with new A/B share analysis flow including approval prompts.
 - `internal/ai/analyze_titles.go`: Update `AnalyzeTitles()` to accept enriched data (videos + analytics), use new template, return structured result with `titles.md` update and settings patterns.
-- `internal/ai/templates/titles.md`: Will be updated by the tool itself after user approval — initial content stays as-is until first analysis run.
-- `internal/configuration/settings.go`: Add `SaveTitlePatterns()` / `LoadTitlePatterns()` following the timing recommendations pattern.
-- `internal/configuration/cli.go`: Add `TitlePatterns` config struct and field in `Settings`.
+- `internal/ai/templates/titles.md`: Kept as embedded default template; runtime reads `titles.md` from working directory.
+- `internal/ai/titles.go`: `SuggestTitles()` loads template from working directory via `LoadTitlesTemplate()`.
 
 ### 6.3. Index File Loading
 
@@ -179,20 +176,31 @@ After AI analysis:
     - Update `AnalyzeTitles()` to use enriched data and new template.
     - Unit tests for template rendering and response parsing.
 
-- [ ] **Milestone 3: Settings + Approval Flow**
-    - Add `TitlePatterns` to settings.yaml (following timing pattern).
-    - Add `SaveTitlePatterns()` / `LoadTitlePatterns()` to configuration.
-    - Update `HandleAnalyzeTitles()` with approval prompts for settings and template updates.
-    - Write updated `titles.md` to disk after approval.
-    - Unit tests for settings save/load.
+- [x] **Milestone 3: Approval Flow + Runtime Template**
+    - `SuggestTitles()` reads `titles.md` from working directory at runtime (no longer embedded at compile time).
+    - If `titles.md` missing, error with instructions to run analysis or create manually (shows default content).
+    - `HandleAnalyzeTitles()` shows proposed `titles.md` preview and prompts user to save.
+    - Writes approved `titles.md` to working directory (data repo, not source repo).
+    - Analysis template updated: generates 10 titles as JSON array, no rule numbers, pattern-diverse.
+    - Unit tests for `LoadTitlesTemplate()` and existing `SuggestTitles()` tests updated.
+
+- [ ] **Milestone 4: Web UI Analyze Section**
+    - Add "ANALYZE" section to sidebar below phases with links: Titles, Timing, Sponsor Page.
+    - Add API endpoints for each analyze feature (title analysis, timing recommendations, sponsor page update).
+    - Build frontend views with "Run Analysis" buttons, loading states, and result display.
+    - Title analysis view: show patterns, recommendations, and offer to save `titles.md`.
+    - Timing view: show current recommendations, generate new ones, save to `settings.yaml`.
+    - Sponsor page view: trigger update, show success/error with file path or PR URL.
+    - Related PRDs: #375 (Title Analysis API & UI), #376 (Timing Recommendations API & UI), #378 (Sponsor Page Analytics Update API & UI).
 
 ## 8. Success Criteria
 
 - **Data quality**: Only videos with actual A/B share data are included in analysis.
 - **Actionable output**: AI produces a concrete `titles.md` replacement, not generic advice.
-- **Settings persistence**: Discovered patterns saved to `settings.yaml` for reference.
-- **User control**: Changes to `titles.md` and `settings.yaml` only applied after explicit approval.
+- **Runtime template**: `titles.md` read from data repo at runtime, not baked into the binary.
+- **User control**: Changes to `titles.md` only applied after explicit approval.
 - **Audit trail**: Full prompt and response saved to `./tmp/` for inspection.
+- **Web UI access**: All three Analyze features accessible from sidebar in the Web UI.
 
 ## 9. Dependencies
 
