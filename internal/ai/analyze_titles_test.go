@@ -199,7 +199,7 @@ func TestAnalyzeTitles(t *testing.T) {
 				return mock, nil
 			}
 
-			gotAnalysis, _, err := AnalyzeTitles(ctx, tt.videos)
+			gotAnalysis, _, err := AnalyzeTitles(ctx, tt.videos, ".")
 
 			if tt.wantErr {
 				if err == nil {
@@ -256,7 +256,7 @@ func TestAnalyzeTitles_TemplateExecution(t *testing.T) {
 		return mockProvider, nil
 	}
 
-	result, rawResponse, err := AnalyzeTitles(ctx, videos)
+	result, rawResponse, err := AnalyzeTitles(ctx, videos, ".")
 	if err != nil {
 		t.Fatalf("AnalyzeTitles() unexpected error = %v", err)
 	}

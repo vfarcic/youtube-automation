@@ -5,12 +5,12 @@
 | **PRD ID** | 344 |
 | **Issue** | [#344](https://github.com/vfarcic/youtube-automation/issues/344) |
 | **Feature Name** | AI Title Generation Improvement |
-| **Status** | In Progress |
+| **Status** | Complete |
 | **Priority** | Medium |
 | **Author** | @vfarcic |
 | **Created** | 2025-11-18 |
 | **Updated** | 2026-03-10 |
-| **Progress** | 75% (3/4 milestones) |
+| **Progress** | 100% (4/4 milestones) |
 
 ## 1. Problem Statement
 
@@ -185,14 +185,14 @@ After AI analysis:
     - Analysis template updated: generates 10 titles as JSON array, no rule numbers, pattern-diverse.
     - Unit tests for `LoadTitlesTemplate()` and existing `SuggestTitles()` tests updated.
 
-- [ ] **Milestone 4: Web UI Analyze Section**
-    - Add "ANALYZE" section to sidebar below phases with links: Titles, Timing, Sponsor Page.
-    - Add API endpoints for each analyze feature (title analysis, timing recommendations, sponsor page update).
-    - Build frontend views with "Run Analysis" buttons, loading states, and result display.
-    - Title analysis view: show patterns, recommendations, and offer to save `titles.md`.
-    - Timing view: show current recommendations, generate new ones, save to `settings.yaml`.
-    - Sponsor page view: trigger update, show success/error with file path or PR URL.
-    - Related PRDs: #375 (Title Analysis API & UI), #376 (Timing Recommendations API & UI), #378 (Sponsor Page Analytics Update API & UI).
+- [x] **Milestone 4: Web UI Title Analysis**
+    - Add "ANALYZE" section to sidebar below phases with "Titles" link.
+    - Add API endpoints: `POST /api/analyze/titles` (run pipeline), `POST /api/analyze/titles/apply` (save & push `titles.md`).
+    - `AnalyzeService` interface + `GitSyncService` interface for testability.
+    - Frontend page: "Run Analysis" button, loading state, results display (patterns, recommendations, proposed `titles.md`).
+    - "Save & Push titles.md" button writes file and commits+pushes via git sync.
+    - Full test coverage: backend handler tests + frontend component tests.
+    - Timing and Sponsor Page analysis deferred to PRDs #376 and #378.
 
 ## 8. Success Criteria
 
@@ -201,7 +201,7 @@ After AI analysis:
 - **Runtime template**: `titles.md` read from data repo at runtime, not baked into the binary.
 - **User control**: Changes to `titles.md` only applied after explicit approval.
 - **Audit trail**: Full prompt and response saved to `./tmp/` for inspection.
-- **Web UI access**: All three Analyze features accessible from sidebar in the Web UI.
+- **Web UI access**: Title Analysis accessible from sidebar in the Web UI (Timing/Sponsor deferred to #376/#378).
 
 ## 9. Dependencies
 
@@ -230,3 +230,9 @@ After AI analysis:
 - Removed settings.yaml title patterns (redundant with `titles.md`)
 - Added Milestone 4 for Web UI Analyze section
 - Tests: `LoadTitlesTemplate`, updated `SuggestTitles` tests
+- Milestone 4 completed: Web UI Title Analysis
+- Backend: `AnalyzeService` + `GitSyncService` interfaces, `POST /api/analyze/titles` + `POST /api/analyze/titles/apply`
+- Frontend: "ANALYZE" sidebar section, `/analyze/titles` page with Run Analysis, results display, Save & Push
+- Fix: `AnalyzeTitles()` takes `baseDir` param so audit trail writes to `{dataDir}/tmp/` (gitignored), not CWD
+- Tests: 8 backend handler tests, 3 frontend component tests, all passing
+- Timing and Sponsor Page UI deferred to PRDs #376 and #378

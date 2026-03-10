@@ -48,12 +48,14 @@ type TitleAnalysisResult struct {
 // Parameters:
 //   - ctx: Context for the AI provider call
 //   - videos: Video A/B test data enriched with analytics
+//   - baseDir: Base directory for writing audit trail files (prompt saved to baseDir/tmp/).
+//     Use "." for CWD (CLI mode) or the data directory path (serve mode).
 //
 // Returns:
 //   - TitleAnalysisResult: Parsed analysis results
 //   - string: Raw AI response (for audit trail)
 //   - error: Any error encountered during template rendering, AI generation, or parsing
-func AnalyzeTitles(ctx context.Context, videos []VideoABData) (TitleAnalysisResult, string, error) {
+func AnalyzeTitles(ctx context.Context, videos []VideoABData, baseDir string) (TitleAnalysisResult, string, error) {
 	var emptyResult TitleAnalysisResult
 
 	if len(videos) == 0 {
@@ -86,7 +88,10 @@ func AnalyzeTitles(ctx context.Context, videos []VideoABData) (TitleAnalysisResu
 	prompt := promptBuf.String()
 
 	// Save prompt to audit trail before sending to LLM (only if tmp/ already exists)
-	promptDir := filepath.Join(".", "tmp")
+	if baseDir == "" {
+		baseDir = "."
+	}
+	promptDir := filepath.Join(baseDir, "tmp")
 	if info, err := os.Stat(promptDir); err == nil && info.IsDir() {
 		_ = os.WriteFile(filepath.Join(promptDir, "title-analysis-prompt.md"), []byte(prompt), 0644)
 	}

@@ -269,4 +269,23 @@ export const handlers = [
   http.post('/api/social/linkedin/:videoName', () => HttpResponse.json(mockSocialPostManual)),
   http.post('/api/social/hackernews/:videoName', () => HttpResponse.json(mockSocialPostManual)),
   http.post('/api/social/dot/:videoName', () => HttpResponse.json(mockSocialPostManual)),
+  // Analyze endpoints
+  http.post('/api/analyze/titles', () =>
+    HttpResponse.json({
+      videoCount: 5,
+      highPerformingPatterns: [
+        { pattern: 'Provocative', description: 'Challenge assumptions', impact: 'high', examples: ['Stop Using X!'] },
+      ],
+      lowPerformingPatterns: [
+        { pattern: 'Listicle', description: 'Generic lists', impact: 'low', examples: ['Top 10 Tools'] },
+      ],
+      recommendations: [
+        { recommendation: 'Use provocative titles', evidence: '55% A/B share', example: 'Why X Is Dead' },
+      ],
+      titlesMdContent: '# Title Patterns\n\n1. Provocative opinions work best',
+    }),
+  ),
+  http.post('/api/analyze/titles/apply', () =>
+    HttpResponse.json({ applied: true }),
+  ),
 ];

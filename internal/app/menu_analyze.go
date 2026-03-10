@@ -96,7 +96,7 @@ func (m *MenuHandler) HandleAnalyzeTitles() error {
 	fmt.Println(m.normalStyle.Render("Analyzing title patterns with AI..."))
 	fmt.Println(m.normalStyle.Render("This may take a moment."))
 
-	result, rawResponse, err := ai.AnalyzeTitles(ctx, enrichedVideos)
+	result, rawResponse, err := ai.AnalyzeTitles(ctx, enrichedVideos, ".")
 	if err != nil {
 		fmt.Println(m.errorStyle.Render(fmt.Sprintf("Failed to analyze titles: %v", err)))
 		return err
