@@ -71,6 +71,14 @@ func main() {
 		distFS, _ := fs.Sub(frontend.DistFS, "dist")
 		srv := api.NewServer(videoService, videoManager, aspectSvc, fsOps, &api.DefaultAIService{}, configuration.GetAPIToken(), distFS)
 
+		// Analyze service: title analysis pipeline
+		srv.SetAnalyzeService(&api.DefaultAnalyzeService{}, dataDir)
+
+		// Git sync: wire into server for commit+push on file writes
+		if gitSync != nil {
+			srv.SetGitSync(gitSync)
+		}
+
 		// Publishing: configure YouTube upload, Hugo, social media
 		{
 			bsCfg := bluesky.GetConfig(

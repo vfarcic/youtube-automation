@@ -37,6 +37,8 @@ AVOID these proven low-performing patterns:
 
 IMPORTANT: You must respond with ONLY a valid JSON array of strings. No explanations, no markdown formatting, no additional text. Just the JSON array.
 
+Choose whichever patterns best fit the manuscript content. Aim for diversity across the 10 titles — use different patterns for each rather than forcing any specific one.
+
 Example format: ["Title 1", "Title 2", "Title 3", "Title 4", "Title 5", "Title 6", "Title 7", "Title 8", "Title 9", "Title 10"]
 
 Video Manuscript:

@@ -53,28 +53,6 @@ func FormatTitleAnalysisMarkdown(result ai.TitleAnalysisResult, videoCount int, 
 		}
 	}
 
-	md.WriteString("## Title Length Analysis\n\n")
-	md.WriteString(fmt.Sprintf("**Optimal Range**: %s\n\n", result.TitleLengthAnalysis.OptimalRange))
-	md.WriteString(fmt.Sprintf("**Finding**: %s\n\n", result.TitleLengthAnalysis.Finding))
-	md.WriteString(fmt.Sprintf("**Data**: %s\n\n", result.TitleLengthAnalysis.Data))
-
-	md.WriteString("## Content Type Analysis\n\n")
-	md.WriteString(fmt.Sprintf("**Finding**: %s\n\n", result.ContentTypeAnalysis.Finding))
-	if len(result.ContentTypeAnalysis.TopPerformers) > 0 {
-		md.WriteString("**Top Performers**:\n")
-		for _, tp := range result.ContentTypeAnalysis.TopPerformers {
-			md.WriteString(fmt.Sprintf("- %s\n", tp))
-		}
-		md.WriteString("\n")
-	}
-	md.WriteString(fmt.Sprintf("**Data**: %s\n\n", result.ContentTypeAnalysis.Data))
-
-	md.WriteString("## Engagement Patterns\n\n")
-	md.WriteString(fmt.Sprintf("**Finding**: %s\n\n", result.EngagementPatterns.Finding))
-	md.WriteString(fmt.Sprintf("**Likes Pattern**: %s\n\n", result.EngagementPatterns.LikesPattern))
-	md.WriteString(fmt.Sprintf("**Comments Pattern**: %s\n\n", result.EngagementPatterns.CommentsPattern))
-	md.WriteString(fmt.Sprintf("**Watch Time Pattern**: %s\n\n", result.EngagementPatterns.WatchTimePattern))
-
 	md.WriteString("## Actionable Recommendations\n\n")
 	for i, rec := range result.Recommendations {
 		md.WriteString(fmt.Sprintf("### %d. %s\n\n", i+1, rec.Recommendation))
@@ -82,19 +60,21 @@ func FormatTitleAnalysisMarkdown(result ai.TitleAnalysisResult, videoCount int, 
 		md.WriteString(fmt.Sprintf("**Example**: %s\n\n", rec.Example))
 	}
 
-	md.WriteString("## Prompt Engineering Suggestions\n\n")
-	for i, suggestion := range result.PromptSuggestions {
-		md.WriteString(fmt.Sprintf("%d. %s\n", i+1, suggestion))
+	if result.TitlesMDContent != "" {
+		md.WriteString("## Proposed titles.md Update\n\n")
+		md.WriteString("The AI has generated the following content to replace the `titles.md` prompt file:\n\n")
+		md.WriteString("```markdown\n")
+		md.WriteString(result.TitlesMDContent)
+		md.WriteString("\n```\n\n")
 	}
-	md.WriteString("\n")
 
 	md.WriteString(`---
 
 ## Next Steps
 
 1. **Review recommendations**: Evaluate which patterns apply to your content strategy
-2. **Update title generation**: Modify internal/ai/titles.go with insights
-3. **Test improved titles**: Generate titles using updated patterns
+2. **Review proposed titles.md**: Check the suggested prompt update above
+3. **Update title generation**: Apply the titles.md update if the patterns look correct
 4. **Monitor results**: Re-run analysis in 3-6 months to measure improvement
 `)
 

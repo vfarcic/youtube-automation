@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"devopstoolkit/youtube-automation/internal/ai"
 	"devopstoolkit/youtube-automation/internal/configuration"
@@ -47,8 +48,25 @@ func (m *MenuHandler) HandleAnalyzeMenu() error {
 	return nil
 }
 
-// HandleAnalyzeTitles fetches video analytics and displays the results
+// HandleAnalyzeTitles loads A/B test data, enriches with analytics, and runs AI analysis
 func (m *MenuHandler) HandleAnalyzeTitles() error {
+	fmt.Println(m.normalStyle.Render("Loading videos with A/B test data..."))
+
+	// Load videos with A/B data from index files
+	videos, err := ai.LoadVideosWithABData("index.yaml", ".", "manuscript")
+	if err != nil {
+		fmt.Println(m.errorStyle.Render(fmt.Sprintf("Failed to load A/B data: %v", err)))
+		return err
+	}
+
+	if len(videos) == 0 {
+		fmt.Println(m.orangeStyle.Render("No videos with A/B test data found."))
+		return nil
+	}
+
+	fmt.Println(m.greenStyle.Render(fmt.Sprintf("✓ Found %d videos with A/B test data", len(videos))))
+
+	// Fetch YouTube analytics to enrich with first-week metrics
 	fmt.Println(m.normalStyle.Render("Fetching video analytics from YouTube..."))
 	fmt.Println(m.normalStyle.Render("This may take a moment and might require re-authentication."))
 
@@ -59,18 +77,26 @@ func (m *MenuHandler) HandleAnalyzeTitles() error {
 		return err
 	}
 
-	if len(analytics) == 0 {
-		fmt.Println(m.orangeStyle.Render("No video analytics found for the last 365 days."))
-		return nil
+	fmt.Println(m.greenStyle.Render(fmt.Sprintf("✓ Fetched analytics for %d videos", len(analytics))))
+
+	// Fetch first-week metrics for each video (separate API calls per video)
+	fmt.Println(m.normalStyle.Render("Fetching first-week metrics for each video..."))
+	analyticsWithFirstWeek, err := publishing.EnrichWithFirstWeekMetrics(ctx, analytics)
+	if err != nil {
+		fmt.Println(m.errorStyle.Render(fmt.Sprintf("Failed to fetch first-week metrics: %v", err)))
+		return err
 	}
 
-	fmt.Println(m.greenStyle.Render(fmt.Sprintf("✓ Successfully fetched analytics for %d videos from the last 365 days", len(analytics))))
+	fmt.Println(m.greenStyle.Render("✓ First-week metrics fetched"))
+
+	// Enrich A/B data with analytics (now including first-week data)
+	enrichedVideos := ai.EnrichWithAnalytics(videos, analyticsWithFirstWeek)
 
 	// Run AI analysis
 	fmt.Println(m.normalStyle.Render("Analyzing title patterns with AI..."))
 	fmt.Println(m.normalStyle.Render("This may take a moment."))
 
-	result, prompt, rawResponse, err := ai.AnalyzeTitles(ctx, analytics)
+	result, rawResponse, err := ai.AnalyzeTitles(ctx, enrichedVideos, ".")
 	if err != nil {
 		fmt.Println(m.errorStyle.Render(fmt.Sprintf("Failed to analyze titles: %v", err)))
 		return err
@@ -80,13 +106,12 @@ func (m *MenuHandler) HandleAnalyzeTitles() error {
 	fmt.Println(m.normalStyle.Render("Saving results to files..."))
 
 	// Format result as markdown
-	formattedResult := FormatTitleAnalysisMarkdown(result, len(analytics), configuration.GlobalSettings.YouTube.ChannelId)
+	formattedResult := FormatTitleAnalysisMarkdown(result, len(enrichedVideos), configuration.GlobalSettings.YouTube.ChannelId)
 
 	// Save complete analysis with all audit trail files
 	files, err := SaveCompleteAnalysis(
 		"title-analysis",
-		analytics,
-		prompt,
+		enrichedVideos,
 		rawResponse,
 		formattedResult,
 		"tmp",
@@ -103,14 +128,56 @@ func (m *MenuHandler) HandleAnalyzeTitles() error {
 	fmt.Println("")
 	fmt.Println(m.normalStyle.Render("Files saved:"))
 	fmt.Println(m.normalStyle.Render(fmt.Sprintf("  • Analytics data: %s", files.AnalyticsPath)))
-	fmt.Println(m.normalStyle.Render(fmt.Sprintf("  • AI prompt: %s", files.PromptPath)))
+	fmt.Println(m.normalStyle.Render("  • AI prompt: tmp/title-analysis-prompt.md"))
 	fmt.Println(m.normalStyle.Render(fmt.Sprintf("  • Raw AI response: %s", files.ResponsePath)))
 	fmt.Println(m.normalStyle.Render(fmt.Sprintf("  • Formatted analysis: %s", files.ResultPath)))
 	fmt.Println("")
-	fmt.Println(m.normalStyle.Render("Next steps:"))
-	fmt.Println(m.normalStyle.Render("  1. Review the formatted analysis file"))
-	fmt.Println(m.normalStyle.Render("  2. Update internal/ai/titles.go with insights"))
-	fmt.Println(m.normalStyle.Render("  3. Future titles will use improved patterns"))
+
+	// Show proposed titles.md content preview and offer to save
+	if result.TitlesMDContent != "" {
+		fmt.Println(m.normalStyle.Render("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
+		fmt.Println(m.normalStyle.Render("Proposed titles.md content:"))
+		fmt.Println(m.normalStyle.Render("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
+		fmt.Println(m.normalStyle.Render(result.TitlesMDContent))
+		fmt.Println("")
+
+		var updateTemplate bool
+		templateForm := huh.NewForm(
+			huh.NewGroup(
+				huh.NewConfirm().
+					Title("Update titles.md template?").
+					Description("Writes titles.md in the current directory for future title generation").
+					Affirmative("Yes, update").
+					Negative("No, skip").
+					Value(&updateTemplate),
+			),
+		)
+
+		if err := templateForm.Run(); err != nil {
+			return fmt.Errorf("failed to run template update confirmation form: %w", err)
+		}
+
+		if updateTemplate {
+			if err := os.WriteFile("titles.md", []byte(result.TitlesMDContent), 0644); err != nil {
+				fmt.Println(m.errorStyle.Render(fmt.Sprintf("Failed to update titles.md: %v", err)))
+				return err
+			}
+			fmt.Println(m.greenStyle.Render("✓ titles.md updated"))
+			fmt.Println("")
+			fmt.Println(m.normalStyle.Render("Next steps:"))
+			fmt.Println(m.normalStyle.Render("  1. Review the formatted analysis file"))
+			fmt.Println(m.normalStyle.Render("  2. Future titles will use improved patterns automatically"))
+		} else {
+			fmt.Println("")
+			fmt.Println(m.normalStyle.Render("Next steps:"))
+			fmt.Println(m.normalStyle.Render("  1. Review the formatted analysis file"))
+			fmt.Println(m.normalStyle.Render("  2. Re-run analysis to update titles.md when ready"))
+		}
+	} else {
+		fmt.Println("")
+		fmt.Println(m.normalStyle.Render("Next steps:"))
+		fmt.Println(m.normalStyle.Render("  1. Review the formatted analysis file"))
+	}
 
 	return nil
 }
@@ -138,7 +205,7 @@ func (m *MenuHandler) HandleAnalyzeTiming() error {
 	fmt.Println(m.normalStyle.Render("Analyzing timing patterns with AI..."))
 	fmt.Println(m.normalStyle.Render("This may take a moment."))
 
-	recommendations, prompt, rawResponse, err := ai.GenerateTimingRecommendations(ctx, analytics)
+	recommendations, rawResponse, err := ai.GenerateTimingRecommendations(ctx, analytics)
 	if err != nil {
 		fmt.Println(m.errorStyle.Render(fmt.Sprintf("Failed to generate timing recommendations: %v", err)))
 		return err
@@ -193,7 +260,6 @@ func (m *MenuHandler) HandleAnalyzeTiming() error {
 	files, err := SaveCompleteAnalysis(
 		"timing-analysis",
 		analytics,
-		prompt,
 		rawResponse,
 		formattedResult,
 		"tmp",
@@ -210,7 +276,7 @@ func (m *MenuHandler) HandleAnalyzeTiming() error {
 	fmt.Println("")
 	fmt.Println(m.normalStyle.Render("Files saved:"))
 	fmt.Println(m.normalStyle.Render(fmt.Sprintf("  • Analytics data: %s", files.AnalyticsPath)))
-	fmt.Println(m.normalStyle.Render(fmt.Sprintf("  • AI prompt: %s", files.PromptPath)))
+	fmt.Println(m.normalStyle.Render("  • AI prompt: tmp/timing-analysis-prompt.md"))
 	fmt.Println(m.normalStyle.Render(fmt.Sprintf("  • Raw AI response: %s", files.ResponsePath)))
 	fmt.Println(m.normalStyle.Render(fmt.Sprintf("  • Formatted analysis: %s", files.ResultPath)))
 	fmt.Println("")

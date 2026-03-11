@@ -32,6 +32,9 @@ type Server struct {
 	emailService      EmailService
 	emailSettings     *configuration.SettingsEmail
 	publishingService PublishingService
+	analyzeService    AnalyzeService
+	gitSync           GitSyncService
+	dataDir           string
 	apiToken          string
 	frontendFS        fs.FS
 }
@@ -47,6 +50,17 @@ func (s *Server) SetDriveService(ds gdrive.DriveService, folderID string) {
 // If ps is nil, publishing endpoints return 501 Not Implemented.
 func (s *Server) SetPublishingService(ps PublishingService) {
 	s.publishingService = ps
+}
+
+// SetAnalyzeService configures the analyze service for title analysis.
+func (s *Server) SetAnalyzeService(as AnalyzeService, dataDir string) {
+	s.analyzeService = as
+	s.dataDir = dataDir
+}
+
+// SetGitSync configures git sync for commit+push after file writes.
+func (s *Server) SetGitSync(gs GitSyncService) {
+	s.gitSync = gs
 }
 
 // NewServer creates a new API server wired to the given service and manager.
@@ -124,6 +138,12 @@ func (s *Server) setupRoutes() {
 			r.Post("/hugo/{videoName}", s.handlePublishHugo)
 			r.Get("/transcript/{videoId}", s.handleGetTranscript)
 			r.Get("/metadata/{videoId}", s.handleGetMetadata)
+		})
+
+		// Analyze (title analysis pipeline)
+		r.Route("/analyze", func(r chi.Router) {
+			r.Post("/titles", s.handleAnalyzeTitles)
+			r.Post("/titles/apply", s.handleApplyTitlesTemplate)
 		})
 
 		// Social media posting

@@ -311,3 +311,31 @@ export interface SocialPostResponse {
   postUrl?: string;
   syncWarning?: string;
 }
+
+// --- Analyze Types ---
+
+export interface TitlePattern {
+  pattern: string;
+  description: string;
+  impact: string;
+  examples: string[];
+}
+
+export interface TitleRecommendation {
+  recommendation: string;
+  evidence: string;
+  example: string;
+}
+
+export interface AnalyzeTitlesResponse {
+  videoCount: number;
+  highPerformingPatterns: TitlePattern[];
+  lowPerformingPatterns: TitlePattern[];
+  recommendations: TitleRecommendation[];
+  titlesMdContent: string;
+}
+
+export interface ApplyTitlesResponse {
+  applied: boolean;
+  syncWarning?: string;
+}

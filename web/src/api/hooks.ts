@@ -25,6 +25,8 @@ import type {
   TranscriptResponse,
   MetadataResponse,
   SocialPostResponse,
+  AnalyzeTitlesResponse,
+  ApplyTitlesResponse,
 } from './types';
 
 export function usePhases() {
@@ -376,5 +378,20 @@ export function useSocialPost() {
         {},
       ),
     onSuccess: (_data, { name, category }) => invalidateVideoQueries(qc, name, category),
+  });
+}
+
+// --- Analyze Hooks ---
+
+export function useAnalyzeTitles() {
+  return useMutation<AnalyzeTitlesResponse, Error, void>({
+    mutationFn: () => post<AnalyzeTitlesResponse>('/api/analyze/titles', {}),
+  });
+}
+
+export function useApplyTitlesTemplate() {
+  return useMutation<ApplyTitlesResponse, Error, { content: string }>({
+    mutationFn: ({ content }) =>
+      post<ApplyTitlesResponse>('/api/analyze/titles/apply', { content }),
   });
 }

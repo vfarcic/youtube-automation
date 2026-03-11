@@ -1,39 +1,25 @@
-# YouTube Title Analysis Task
+# YouTube Title Analysis Task (A/B Test Data)
 
-You are analyzing YouTube video performance data to identify patterns in title effectiveness. Your goal is to provide **specific, actionable, data-backed recommendations** that can be used to improve future title generation.
+You are analyzing YouTube A/B test data to identify patterns in title effectiveness. YouTube runs A/B tests on title variants and reports watch-time share percentages — higher share means that variant kept viewers watching longer compared to alternatives in the same test. This is the primary quality signal.
 
 ## Dataset Overview
 
-- **Total Videos**: {{len .Videos}}
-- **Date Range**: {{.StartDate}} to {{.EndDate}}
+- **Total Videos with A/B Data**: {{.VideoCount}}
 
-## Video Performance Data
-
-{{range .Videos}}
-**"{{.Title}}"**
-- Views: {{.Views}}
-- Avg View Duration: {{printf "%.0f" .AverageViewDuration}} seconds
-- Likes: {{.Likes}}
-- Comments: {{.Comments}}
-- Published: {{.PublishedAt.Format "2006-01-02"}}
-
-{{end}}
+{{.ABData}}
 
 ---
 
 ## Your Analysis Task
 
-Analyze the video performance data above to identify what makes titles successful for this YouTube channel.
+Analyze the A/B test data above to identify what makes titles successful for this YouTube channel. Focus on the **share percentages** as the primary signal — they directly measure which title variant performs better in head-to-head tests, eliminating confounds like video topic or publish timing.
 
-### IMPORTANT: Account for Video Age
+### Key Analysis Principles
 
-When analyzing performance, **always consider the publish date**. Older videos naturally accumulate more views over time, so a video from 2 years ago with 50K views may actually be underperforming compared to a 3-month-old video with 30K views.
-
-**Strategies to account for age:**
-- Compare videos from similar time periods
-- Look at views-per-day or views-per-month rates when possible
-- Focus more on engagement metrics (likes/views ratio, comments/views ratio, avg view duration) which are less affected by age
-- When identifying patterns, check if they hold true across both old and recent videos
+- **Share is the primary signal**: A title with 60%+ share clearly outperformed its variants
+- **Cross-reference with first-week metrics**: Use views, CTR, likes, and engagement as secondary signals
+- **Look for patterns across winning variants**: What do high-share titles have in common?
+- **Identify anti-patterns from losing variants**: What do low-share titles share?
 
 ---
 
@@ -47,55 +33,42 @@ Return your analysis as a **valid JSON object** with the following structure:
     {
       "pattern": "Pattern name (e.g., 'Titles with numbers')",
       "description": "Clear description of the pattern",
-      "impact": "Quantified impact (e.g., '45% more views on average')",
-      "examples": ["Example title 1", "Example title 2"]
+      "impact": "Quantified impact using A/B share data (e.g., 'Variants with numbers averaged 58% share vs 42% without')",
+      "examples": ["Winning title 1 (share: 65%)", "Winning title 2 (share: 70%)"]
     }
   ],
   "lowPerformingPatterns": [
     {
       "pattern": "Anti-pattern name",
-      "description": "What correlates with lower performance",
-      "impact": "Quantified negative impact",
-      "examples": ["Example title 1", "Example title 2"]
+      "description": "What correlates with lower A/B share",
+      "impact": "Quantified negative impact from share data",
+      "examples": ["Losing title 1 (share: 25%)", "Losing title 2 (share: 30%)"]
     }
   ],
-  "titleLengthAnalysis": {
-    "optimalRange": "Character count range (e.g., '50-65 characters')",
-    "finding": "Description of length impact on performance",
-    "data": "Supporting statistics"
-  },
-  "contentTypeAnalysis": {
-    "finding": "Which content types/topics perform best",
-    "topPerformers": ["Content type 1", "Content type 2"],
-    "data": "Supporting statistics"
-  },
-  "engagementPatterns": {
-    "finding": "Title patterns that drive engagement beyond just views",
-    "likesPattern": "Patterns that drive likes",
-    "commentsPattern": "Patterns that drive comments",
-    "watchTimePattern": "Patterns that drive longer watch time"
-  },
   "recommendations": [
     {
-      "recommendation": "Clear, actionable guidance",
-      "evidence": "Data supporting this recommendation with specific metrics",
-      "example": "How to apply this (before/after example or specific approach)"
+      "recommendation": "Clear, actionable guidance for title creation",
+      "evidence": "A/B test data supporting this (cite specific share percentages)",
+      "example": "Before/after example showing how to apply this"
     }
   ],
-  "promptSuggestions": [
-    "Specific modification to title generation prompt (e.g., 'Include numbers in 30-40% of titles')",
-    "Another specific suggestion (e.g., 'Keep titles between 50-65 characters')",
-    "Use comparison format ('X vs Y') for technical tool reviews"
-  ]
+  "titlesMdContent": "Complete replacement content for the titles.md prompt file. Must instruct the AI to generate exactly 10 titles as a JSON array of strings. Include {{"{{.ManuscriptContent}}"}} as a placeholder. Structure with high-performing patterns, anti-patterns, and guidelines based on A/B evidence. End with: Response (JSON array only):"
 }
 ```
 
 **Critical Requirements:**
 - **Return ONLY valid JSON** - no markdown code blocks, no extra text
-- **Be specific**: Use concrete examples from the data, not generic advice
-- **Quantify everything**: Provide percentages, averages, comparisons in impact fields
-- **Be actionable**: Focus on patterns that can be directly implemented
-- **Prioritize impact**: Highlight patterns with biggest performance differences (5-7 recommendations max)
-- **Consider channel context**: Tailor to THIS channel's content and audience
+- **Be specific**: Use concrete A/B share data from the dataset, not generic advice
+- **Quantify with share data**: Always cite share percentages as evidence
+- **Be actionable**: Focus on patterns that can be directly implemented in title writing
+- **Prioritize by share impact**: Highlight patterns with biggest share differences (5-7 recommendations max)
+- **titlesMdContent**: Write a complete, self-contained prompt document that can replace the existing titles.md file. Follow these constraints EXACTLY:
+  - Include the literal text `{{"{{.ManuscriptContent}}"}}` as a placeholder where the manuscript will be inserted
+  - Structure it with clear sections for high-performing patterns, anti-patterns, and actionable guidelines derived from the A/B data
+  - The prompt MUST instruct the AI to generate exactly **10** title suggestions (the user picks from these)
+  - The prompt MUST instruct the AI to respond with ONLY a valid JSON array of strings (e.g., `["Title 1", "Title 2", ...]`) — no markdown, no explanations, no annotations
+  - Do NOT ask for rule numbers, pattern references, or any metadata alongside titles — just the titles themselves
+  - Describe patterns by name (e.g., "Bold Opinionated Claim") not by number (e.g., "Rule 1")
+  - Do NOT force specific patterns (e.g., "ensure at least one uses X"). Instead, instruct the AI to choose whichever patterns best fit the manuscript content and aim for diversity across the 10 titles
 
 Your JSON response will be parsed programmatically, so ensure it's valid and follows the exact structure above.

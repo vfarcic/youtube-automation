@@ -6,12 +6,13 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 	"text/template"
 )
 
 //go:embed templates/titles.md
-var titlesTemplate string
+var defaultTitlesTemplate string
 
 // SuggestedTitle is no longer a struct, AI will return a simple list of strings.
 // type SuggestedTitle struct {
@@ -30,6 +31,12 @@ func SuggestTitles(ctx context.Context, manuscriptContent string, optionalConfig
 	provider, err := GetAIProvider()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create AI provider: %w", err)
+	}
+
+	// Load titles.md from working directory (user-owned, editable template)
+	titlesTemplate, err := LoadTitlesTemplate()
+	if err != nil {
+		return nil, err
 	}
 
 	// Parse and execute template for title generation prompt
@@ -76,6 +83,26 @@ func SuggestTitles(ctx context.Context, manuscriptContent string, optionalConfig
 	}
 
 	return titles, nil
+}
+
+// LoadTitlesTemplate reads titles.md from the working directory.
+// Returns an error with instructions if the file doesn't exist.
+func LoadTitlesTemplate() (string, error) {
+	content, err := os.ReadFile("titles.md")
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", fmt.Errorf(
+				"titles.md not found in the current directory.\n\n"+
+					"To create it, either:\n"+
+					"  1. Run 'Analyze → Titles' to generate one from your A/B test data\n"+
+					"  2. Create titles.md manually with the following default content:\n\n"+
+					"--- START default titles.md ---\n%s\n--- END default titles.md ---",
+				defaultTitlesTemplate,
+			)
+		}
+		return "", fmt.Errorf("failed to read titles.md: %w", err)
+	}
+	return string(content), nil
 }
 
 // TEMPORARY: Compatibility function for old app module - returns empty struct

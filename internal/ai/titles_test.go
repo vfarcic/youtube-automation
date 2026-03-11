@@ -3,6 +3,7 @@ package ai
 import (
 	"context"
 	"fmt"
+	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -10,15 +11,38 @@ import (
 
 // MockProvider implements AIProvider for testing
 type MockProvider struct {
-	response string
-	err      error
+	response   string
+	err        error
+	lastPrompt string
 }
 
 func (m *MockProvider) GenerateContent(ctx context.Context, prompt string, maxTokens int) (string, error) {
+	m.lastPrompt = prompt
 	if m.err != nil {
 		return "", m.err
 	}
 	return m.response, nil
+}
+
+// setupTitlesTestDir creates a temp directory with a titles.md file and changes to it.
+// Returns a cleanup function that restores the original working directory.
+func setupTitlesTestDir(t *testing.T) func() {
+	t.Helper()
+	tempDir := t.TempDir()
+	originalWd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Failed to get working dir: %v", err)
+	}
+	if err := os.Chdir(tempDir); err != nil {
+		t.Fatalf("Failed to chdir: %v", err)
+	}
+	// Write the default template as titles.md
+	if err := os.WriteFile("titles.md", []byte(defaultTitlesTemplate), 0644); err != nil {
+		t.Fatalf("Failed to write titles.md: %v", err)
+	}
+	return func() {
+		os.Chdir(originalWd)
+	}
 }
 
 func TestSuggestTitles(t *testing.T) {
@@ -76,6 +100,9 @@ func TestSuggestTitles(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			cleanup := setupTitlesTestDir(t)
+			defer cleanup()
+
 			mock := &MockProvider{
 				response: tt.mockResponse,
 				err:      tt.mockError,
@@ -109,6 +136,16 @@ func TestSuggestTitles(t *testing.T) {
 
 			if !reflect.DeepEqual(gotTitles, tt.wantTitles) {
 				t.Errorf("SuggestTitles() gotTitles = %v, want %v", gotTitles, tt.wantTitles)
+			}
+
+			// Verify the prompt includes both the titles.md template and the manuscript
+			if !tt.wantErr && mock.lastPrompt != "" {
+				if !strings.Contains(mock.lastPrompt, tt.manuscript) {
+					t.Error("prompt should contain the manuscript")
+				}
+				if !strings.Contains(mock.lastPrompt, "AVOID") {
+					t.Error("prompt should contain titles.md template content")
+				}
 			}
 		})
 	}
@@ -158,6 +195,9 @@ func TestTitlesTemplateExecution(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			cleanup := setupTitlesTestDir(t)
+			defer cleanup()
+
 			mock := &MockProvider{
 				response: `["Test Title 1", "Test Title 2"]`,
 				err:      nil,
@@ -184,3 +224,83 @@ func TestTitlesTemplateExecution(t *testing.T) {
 		})
 	}
 }
+
+func TestLoadTitlesTemplate(t *testing.T) {
+	tests := []struct {
+		name         string
+		fileContent  string
+		fileNotExist bool
+		createAsDir  bool
+		wantErr      bool
+		errContains  string
+	}{
+		{
+			name:        "loads titles.md from working directory",
+			fileContent: "Custom template with {{.ManuscriptContent}}",
+			wantErr:     false,
+		},
+		{
+			name:         "returns error with instructions when file missing",
+			fileNotExist: true,
+			wantErr:      true,
+			errContains:  "titles.md not found",
+		},
+		{
+			name:         "error includes default template content",
+			fileNotExist: true,
+			wantErr:      true,
+			errContains:  "Analyze → Titles",
+		},
+		{
+			name:        "read failure when titles.md is a directory",
+			createAsDir: true,
+			wantErr:     true,
+			errContains: "failed to read titles.md",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tempDir := t.TempDir()
+
+			originalWd, err := os.Getwd()
+			if err != nil {
+				t.Fatalf("Failed to get working dir: %v", err)
+			}
+			defer os.Chdir(originalWd)
+
+			if err := os.Chdir(tempDir); err != nil {
+				t.Fatalf("Failed to chdir: %v", err)
+			}
+
+			if tt.createAsDir {
+				if err := os.Mkdir("titles.md", 0755); err != nil {
+					t.Fatalf("Failed to create titles.md as directory: %v", err)
+				}
+			} else if !tt.fileNotExist {
+				if err := os.WriteFile("titles.md", []byte(tt.fileContent), 0644); err != nil {
+					t.Fatalf("Failed to write titles.md: %v", err)
+				}
+			}
+
+			got, err := LoadTitlesTemplate()
+
+			if tt.wantErr {
+				if err == nil {
+					t.Fatal("Expected error but got none")
+				}
+				if tt.errContains != "" && !strings.Contains(err.Error(), tt.errContains) {
+					t.Errorf("Error %q should contain %q", err.Error(), tt.errContains)
+				}
+			} else {
+				if err != nil {
+					t.Fatalf("Unexpected error: %v", err)
+				}
+				if got != tt.fileContent {
+					t.Errorf("Got %q, want %q", got, tt.fileContent)
+				}
+			}
+		})
+	}
+}
+

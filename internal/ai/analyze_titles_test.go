@@ -5,45 +5,53 @@ import (
 	"fmt"
 	"strings"
 	"testing"
-	"time"
 
-	"devopstoolkit/youtube-automation/internal/publishing"
+	"devopstoolkit/youtube-automation/internal/storage"
 )
 
 func TestAnalyzeTitles(t *testing.T) {
 	ctx := context.Background()
 
-	// Sample analytics data for testing
-	sampleAnalytics := []publishing.VideoAnalytics{
+	// Sample A/B data for testing
+	sampleVideos := []VideoABData{
 		{
-			VideoID:            "video1",
-			Title:              "How to Deploy Kubernetes",
-			Views:              50000,
-			CTR:                5.2,
-			AverageViewDuration: 420.5,
-			Likes:              1200,
-			Comments:           150,
-			PublishedAt:        time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC),
+			Category:            "devops",
+			Date:                "2024-01-15T10:00",
+			DayOfWeek:           "Monday",
+			VideoID:             "video1",
+			Titles:              []storage.TitleVariant{{Index: 1, Text: "How to Deploy Kubernetes", Share: 65.0}, {Index: 2, Text: "Kubernetes Deployment Guide", Share: 35.0}},
+			FirstWeekViews:      50000,
+
+			FirstWeekLikes:      1200,
+			FirstWeekComments:   150,
+			FirstWeekEngagement: 2.7,
+			HasAnalytics:        true,
 		},
 		{
-			VideoID:            "video2",
-			Title:              "Docker vs Podman - Complete Comparison",
-			Views:              35000,
-			CTR:                4.8,
-			AverageViewDuration: 380.0,
-			Likes:              890,
-			Comments:           95,
-			PublishedAt:        time.Date(2024, 3, 20, 14, 30, 0, 0, time.UTC),
+			Category:            "devops",
+			Date:                "2024-03-20T14:30",
+			DayOfWeek:           "Wednesday",
+			VideoID:             "video2",
+			Titles:              []storage.TitleVariant{{Index: 1, Text: "Docker vs Podman - Complete Comparison", Share: 55.0}, {Index: 2, Text: "Podman or Docker?", Share: 45.0}},
+			FirstWeekViews:      35000,
+
+			FirstWeekLikes:      890,
+			FirstWeekComments:   95,
+			FirstWeekEngagement: 2.8,
+			HasAnalytics:        true,
 		},
 		{
-			VideoID:            "video3",
-			Title:              "Top 5 DevOps Tools in 2024",
-			Views:              82000,
-			CTR:                6.1,
-			AverageViewDuration: 510.2,
-			Likes:              2100,
-			Comments:           280,
-			PublishedAt:        time.Date(2024, 2, 10, 9, 15, 0, 0, time.UTC),
+			Category:            "devops",
+			Date:                "2024-02-10T09:15",
+			DayOfWeek:           "Saturday",
+			VideoID:             "video3",
+			Titles:              []storage.TitleVariant{{Index: 1, Text: "Top 5 DevOps Tools in 2024", Share: 70.0}, {Index: 2, Text: "DevOps Tools You Need", Share: 30.0}},
+			FirstWeekViews:      82000,
+
+			FirstWeekLikes:      2100,
+			FirstWeekComments:   280,
+			FirstWeekEngagement: 2.9,
+			HasAnalytics:        true,
 		},
 	}
 
@@ -52,43 +60,24 @@ func TestAnalyzeTitles(t *testing.T) {
 			{
 				"pattern": "Titles with numbers",
 				"description": "Titles containing numbers perform significantly better",
-				"impact": "40% more views on average",
-				"examples": ["Top 5 DevOps Tools", "3 Ways to Deploy Kubernetes"]
+				"impact": "Numbers averaged 67% share vs 33% without",
+				"examples": ["Top 5 DevOps Tools (share: 70%)", "How to Deploy Kubernetes (share: 65%)"]
 			}
 		],
 		"lowPerformingPatterns": [],
-		"titleLengthAnalysis": {
-			"optimalRange": "50-65 characters",
-			"finding": "Mid-length titles perform best",
-			"data": "Average views: 50-65 chars = 45K, <50 chars = 32K, >65 chars = 38K"
-		},
-		"contentTypeAnalysis": {
-			"finding": "Tutorial content outperforms news",
-			"topPerformers": ["Tutorials", "Comparisons"],
-			"data": "Tutorials avg 50K views, News avg 25K views"
-		},
-		"engagementPatterns": {
-			"finding": "Question titles drive more comments",
-			"likesPattern": "Specific outcomes get more likes",
-			"commentsPattern": "Questions generate discussions",
-			"watchTimePattern": "Comprehensive titles have higher retention"
-		},
 		"recommendations": [
 			{
 				"recommendation": "Include numbers in 30-40% of titles",
-				"evidence": "Titles with numbers average 45% more views",
+				"evidence": "Titles with numbers averaged 67% A/B share",
 				"example": "Transform 'Kubernetes Guide' to 'Top 5 Kubernetes Best Practices'"
 			}
 		],
-		"promptSuggestions": [
-			"Include numbers in 30-40% of titles",
-			"Keep titles between 50-65 characters"
-		]
+		"titlesMdContent": "# Title Generation Guidelines\n\nBased on A/B test data:\n- Use numbers in titles\n- Keep titles specific\n\n{{.ManuscriptContent}}"
 	}`
 
 	tests := []struct {
 		name              string
-		analytics         []publishing.VideoAnalytics
+		videos            []VideoABData
 		mockResponse      string
 		mockError         error
 		wantErr           bool
@@ -97,7 +86,7 @@ func TestAnalyzeTitles(t *testing.T) {
 	}{
 		{
 			name:         "Successful analysis with valid data",
-			analytics:    sampleAnalytics,
+			videos:       sampleVideos,
 			mockResponse: validJSONResponse,
 			wantErr:      false,
 			validateResponse: func(t *testing.T, result TitleAnalysisResult) {
@@ -107,111 +96,77 @@ func TestAnalyzeTitles(t *testing.T) {
 				if len(result.Recommendations) == 0 {
 					t.Error("Expected at least one recommendation")
 				}
+				if result.TitlesMDContent == "" {
+					t.Error("Expected non-empty TitlesMDContent")
+				}
 			},
 		},
 		{
-			name:              "Empty analytics data",
-			analytics:         []publishing.VideoAnalytics{},
+			name:              "Empty video data",
+			videos:            []VideoABData{},
 			mockResponse:      "",
 			wantErr:           true,
-			expectedErrSubstr: "no analytics data provided",
+			expectedErrSubstr: "no video data provided",
 		},
 		{
 			name:              "AI returns empty response",
-			analytics:         sampleAnalytics,
+			videos:            sampleVideos,
 			mockResponse:      "",
 			wantErr:           true,
 			expectedErrSubstr: "AI returned empty analysis",
 		},
 		{
 			name:              "AI generation fails",
-			analytics:         sampleAnalytics,
+			videos:            sampleVideos,
 			mockError:         fmt.Errorf("mock AI generation error"),
 			wantErr:           true,
 			expectedErrSubstr: "AI analysis generation failed",
 		},
 		{
 			name: "Single video analysis",
-			analytics: []publishing.VideoAnalytics{
+			videos: []VideoABData{
 				{
-					VideoID:            "video1",
-					Title:              "Test Video",
-					Views:              1000,
-					AverageViewDuration: 200.0,
-					Likes:              50,
-					Comments:           10,
-					PublishedAt:        time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+					Category:  "devops",
+					Date:      "2024-01-01",
+					DayOfWeek: "Monday",
+					VideoID:   "video1",
+					Titles:    []storage.TitleVariant{{Index: 1, Text: "Test Video", Share: 60.0}, {Index: 2, Text: "Alt Title", Share: 40.0}},
 				},
 			},
 			mockResponse: `{
 				"highPerformingPatterns": [],
 				"lowPerformingPatterns": [],
-				"titleLengthAnalysis": {
-					"optimalRange": "N/A",
-					"finding": "Limited data - single video only",
-					"data": "Insufficient data for length analysis"
-				},
-				"contentTypeAnalysis": {
-					"finding": "Single video - no comparison available",
-					"topPerformers": [],
-					"data": "N/A"
-				},
-				"engagementPatterns": {
-					"finding": "Limited data available",
-					"likesPattern": "N/A",
-					"commentsPattern": "N/A",
-					"watchTimePattern": "N/A"
-				},
 				"recommendations": [],
-				"promptSuggestions": ["Need more videos for meaningful analysis"]
+				"titlesMdContent": "# Titles\n\nInsufficient data for meaningful analysis.\n\n{{.ManuscriptContent}}"
 			}`,
-			wantErr:      false,
+			wantErr: false,
 			validateResponse: func(t *testing.T, result TitleAnalysisResult) {
-				if result.TitleLengthAnalysis.Finding == "" {
-					t.Error("Expected non-empty finding for single video analysis")
-				}
-				if len(result.PromptSuggestions) == 0 {
-					t.Error("Expected at least one prompt suggestion")
+				if result.TitlesMDContent == "" {
+					t.Error("Expected non-empty TitlesMDContent for single video analysis")
 				}
 			},
 		},
 		{
-			name:      "Large dataset",
-			analytics: generateLargeAnalyticsDataset(100),
+			name:   "Large dataset",
+			videos: generateLargeABDataset(100),
 			mockResponse: `{
 				"highPerformingPatterns": [
 					{
 						"pattern": "Pattern from 100 videos",
 						"description": "Large dataset analysis reveals trends",
 						"impact": "Significant sample size",
-						"examples": ["Video 1", "Video 2"]
+						"examples": ["Video 1 (share: 65%)", "Video 2 (share: 70%)"]
 					}
 				],
 				"lowPerformingPatterns": [],
-				"titleLengthAnalysis": {
-					"optimalRange": "50-60 characters",
-					"finding": "Clear pattern from large dataset",
-					"data": "Analysis of 100 videos"
-				},
-				"contentTypeAnalysis": {
-					"finding": "Strong patterns with 100 videos",
-					"topPerformers": ["Type A", "Type B"],
-					"data": "Large dataset provides confidence"
-				},
-				"engagementPatterns": {
-					"finding": "Clear engagement trends",
-					"likesPattern": "Pattern identified",
-					"commentsPattern": "Pattern identified",
-					"watchTimePattern": "Pattern identified"
-				},
 				"recommendations": [
 					{
 						"recommendation": "Apply patterns from large dataset",
-						"evidence": "100 videos analyzed",
+						"evidence": "100 videos analyzed with A/B data",
 						"example": "Example based on data"
 					}
 				],
-				"promptSuggestions": ["Pattern 1", "Pattern 2"]
+				"titlesMdContent": "# Title Generation\n\nBased on 100 videos:\n- Pattern A\n- Pattern B\n\n{{.ManuscriptContent}}"
 			}`,
 			wantErr: false,
 			validateResponse: func(t *testing.T, result TitleAnalysisResult) {
@@ -220,6 +175,9 @@ func TestAnalyzeTitles(t *testing.T) {
 				}
 				if len(result.Recommendations) == 0 {
 					t.Error("Expected recommendations from large dataset")
+				}
+				if result.TitlesMDContent == "" {
+					t.Error("Expected non-empty TitlesMDContent from large dataset")
 				}
 			},
 		},
@@ -241,7 +199,7 @@ func TestAnalyzeTitles(t *testing.T) {
 				return mock, nil
 			}
 
-			gotAnalysis, _, _, err := AnalyzeTitles(ctx, tt.analytics)
+			gotAnalysis, _, err := AnalyzeTitles(ctx, tt.videos, ".")
 
 			if tt.wantErr {
 				if err == nil {
@@ -267,15 +225,13 @@ func TestAnalyzeTitles(t *testing.T) {
 func TestAnalyzeTitles_TemplateExecution(t *testing.T) {
 	ctx := context.Background()
 
-	analytics := []publishing.VideoAnalytics{
+	videos := []VideoABData{
 		{
-			VideoID:            "test1",
-			Title:              "Test Title with Special Characters: <>&",
-			Views:              1000,
-			AverageViewDuration: 100.0,
-			Likes:              50,
-			Comments:           10,
-			PublishedAt:        time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+			Category:  "devops",
+			Date:      "2024-01-01",
+			DayOfWeek: "Monday",
+			VideoID:   "test1",
+			Titles:    []storage.TitleVariant{{Index: 1, Text: "Test Title with Special Characters: <>&", Share: 55.0}, {Index: 2, Text: "Alt Title", Share: 45.0}},
 		},
 	}
 
@@ -283,24 +239,8 @@ func TestAnalyzeTitles_TemplateExecution(t *testing.T) {
 	validJSON := `{
 		"highPerformingPatterns": [],
 		"lowPerformingPatterns": [],
-		"titleLengthAnalysis": {
-			"optimalRange": "N/A",
-			"finding": "Special characters test",
-			"data": "Test data"
-		},
-		"contentTypeAnalysis": {
-			"finding": "Template execution successful",
-			"topPerformers": [],
-			"data": "Test"
-		},
-		"engagementPatterns": {
-			"finding": "Test",
-			"likesPattern": "Test",
-			"commentsPattern": "Test",
-			"watchTimePattern": "Test"
-		},
 		"recommendations": [],
-		"promptSuggestions": ["Test suggestion"]
+		"titlesMdContent": "# Titles\n\nSpecial characters handled.\n\n{{.ManuscriptContent}}"
 	}`
 
 	mockProvider := &MockProvider{
@@ -316,43 +256,49 @@ func TestAnalyzeTitles_TemplateExecution(t *testing.T) {
 		return mockProvider, nil
 	}
 
-	result, prompt, rawResponse, err := AnalyzeTitles(ctx, analytics)
+	result, rawResponse, err := AnalyzeTitles(ctx, videos, ".")
 	if err != nil {
 		t.Fatalf("AnalyzeTitles() unexpected error = %v", err)
 	}
 
 	// Verify we got valid results (template was successfully executed and AI returned data)
-	if prompt == "" {
-		t.Errorf("Expected non-empty prompt from AnalyzeTitles")
-	}
 	if rawResponse == "" {
 		t.Errorf("Expected non-empty rawResponse from AnalyzeTitles")
 	}
 
 	// Verify the result was properly parsed
-	if result.TitleLengthAnalysis.Finding == "" {
-		t.Error("Expected non-empty finding in parsed result")
+	if result.TitlesMDContent == "" {
+		t.Error("Expected non-empty TitlesMDContent in parsed result")
 	}
 
-	// Verify special characters in the title were handled correctly in template
-	if !strings.Contains(prompt, "Test Title with Special Characters") {
+	// Verify prompt was saved to the mock provider (contains the A/B data)
+	if !strings.Contains(mockProvider.lastPrompt, "Test Title with Special Characters") {
 		t.Error("Expected prompt to contain the title with special characters")
+	}
+
+	// Verify prompt contains A/B test format markers
+	if !strings.Contains(mockProvider.lastPrompt, "A/B Test") {
+		t.Error("Expected prompt to contain A/B Test section header")
 	}
 }
 
-// Helper function to generate large analytics dataset for testing
-func generateLargeAnalyticsDataset(count int) []publishing.VideoAnalytics {
-	analytics := make([]publishing.VideoAnalytics, count)
+// Helper function to generate large A/B dataset for testing
+func generateLargeABDataset(count int) []VideoABData {
+	videos := make([]VideoABData, count)
 	for i := 0; i < count; i++ {
-		analytics[i] = publishing.VideoAnalytics{
-			VideoID:            fmt.Sprintf("video%d", i),
-			Title:              fmt.Sprintf("Test Video %d", i),
-			Views:              int64(1000 + i*100),
-			AverageViewDuration: float64(200 + i*5),
-			Likes:              int64(50 + i*2),
-			Comments:           int64(10 + i),
-			PublishedAt:        time.Date(2024, 1, 1+i%28, 0, 0, 0, 0, time.UTC),
+		videos[i] = VideoABData{
+			Category:            "devops",
+			Date:                fmt.Sprintf("2024-01-%02dT10:00", (i%28)+1),
+			DayOfWeek:           "Monday",
+			VideoID:             fmt.Sprintf("video%d", i),
+			Titles:              []storage.TitleVariant{{Index: 1, Text: fmt.Sprintf("Test Video %d", i), Share: 55.0 + float64(i%20)}, {Index: 2, Text: fmt.Sprintf("Alt Title %d", i), Share: 45.0 - float64(i%20)}},
+			FirstWeekViews:      int64(1000 + i*100),
+
+			FirstWeekLikes:      int64(50 + i*2),
+			FirstWeekComments:   int64(10 + i),
+			FirstWeekEngagement: float64(2+i%3) + 0.5,
+			HasAnalytics:        true,
 		}
 	}
-	return analytics
+	return videos
 }

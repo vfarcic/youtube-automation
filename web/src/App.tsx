@@ -6,6 +6,7 @@ import { PhaseDashboard } from './pages/PhaseDashboard';
 import { VideoList } from './pages/VideoList';
 import { VideoDetail } from './pages/VideoDetail';
 import { SearchResults } from './pages/SearchResults';
+import { AnalyzeTitles } from './pages/AnalyzeTitles';
 import { AuthScreen } from './pages/AuthScreen';
 import { ApiError } from './api/client';
 
@@ -58,6 +59,7 @@ export default function App() {
             <Route path="/" element={<PhaseDashboard />} />
             <Route path="/phases/:phaseId" element={<VideoList />} />
             <Route path="/search" element={<SearchResults />} />
+            <Route path="/analyze/titles" element={<AnalyzeTitles />} />
             <Route
               path="/videos/:category/:videoName"
               element={<VideoDetail />}
