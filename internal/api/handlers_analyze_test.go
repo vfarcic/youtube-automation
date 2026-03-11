@@ -262,8 +262,12 @@ func TestHandleApplyTitlesTemplate(t *testing.T) {
 				if err != nil {
 					t.Fatalf("titles.md not written: %v", err)
 				}
-				if len(content) == 0 {
-					t.Error("titles.md is empty")
+				var reqBody ApplyTitlesRequest
+				if err := json.Unmarshal([]byte(tt.body), &reqBody); err != nil {
+					t.Fatalf("failed to parse test body: %v", err)
+				}
+				if string(content) != reqBody.Content {
+					t.Errorf("titles.md content = %q, want %q", string(content), reqBody.Content)
 				}
 			}
 

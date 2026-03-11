@@ -137,6 +137,16 @@ func TestSuggestTitles(t *testing.T) {
 			if !reflect.DeepEqual(gotTitles, tt.wantTitles) {
 				t.Errorf("SuggestTitles() gotTitles = %v, want %v", gotTitles, tt.wantTitles)
 			}
+
+			// Verify the prompt includes both the titles.md template and the manuscript
+			if !tt.wantErr && mock.lastPrompt != "" {
+				if !strings.Contains(mock.lastPrompt, tt.manuscript) {
+					t.Error("prompt should contain the manuscript")
+				}
+				if !strings.Contains(mock.lastPrompt, "AVOID") {
+					t.Error("prompt should contain titles.md template content")
+				}
+			}
 		})
 	}
 }

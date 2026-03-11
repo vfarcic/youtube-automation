@@ -1,10 +1,12 @@
 package ai
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"devopstoolkit/youtube-automation/internal/publishing"
 	"devopstoolkit/youtube-automation/internal/storage"
@@ -184,8 +186,8 @@ func setupTestData(t *testing.T, videos map[string]storage.Video, currentIndex, 
 		archiveDir := filepath.Join(dataDir, "index")
 		os.MkdirAll(archiveDir, 0755)
 		data, _ := yaml.Marshal(archiveIndex)
-		// Use a fixed year for deterministic tests (we'll override in the test)
-		archivePath := filepath.Join(archiveDir, "2025.yaml")
+		previousYear := time.Now().Year() - 1
+		archivePath := filepath.Join(archiveDir, fmt.Sprintf("%d.yaml", previousYear))
 		os.WriteFile(archivePath, data, 0644)
 	}
 
@@ -201,6 +203,8 @@ func setupTestData(t *testing.T, videos map[string]storage.Video, currentIndex, 
 	return indexPath, dataDir, manuscriptDir
 }
 
+// splitCategoryName splits "category/name" into [category, name].
+// Fallback: returns {key, key} if no '/' found (shouldn't happen with valid index entries).
 func splitCategoryName(key string) [2]string {
 	for i, c := range key {
 		if c == '/' {

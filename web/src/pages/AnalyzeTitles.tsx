@@ -69,7 +69,7 @@ export function AnalyzeTitles() {
       {result && result.videoCount > 0 && (
         <div className="mt-6 space-y-6">
           <p className="text-gray-300 text-sm">
-            Analyzed <span className="font-semibold text-gray-100">{result.videoCount}</span> videos with A/B test data.
+            Analyzed <span className="font-semibold text-gray-100" data-testid="video-count">{result.videoCount}</span> videos with A/B test data.
           </p>
 
           {result.highPerformingPatterns?.length > 0 && (
