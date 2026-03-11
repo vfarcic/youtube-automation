@@ -148,13 +148,13 @@ export function AnalyzeTitles() {
                   className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded text-sm font-medium"
                 >
                   {applyMutation.isPending
-                    ? 'Saving & Pushing...'
+                    ? 'Saving...'
                     : applied
-                      ? 'Saved & Pushed'
-                      : 'Save & Push titles.md'}
+                      ? 'Saved'
+                      : 'Save titles.md'}
                 </button>
-                {applied && (
-                  <span className="text-green-400 text-sm">titles.md updated and pushed to remote.</span>
+                {applied && !syncWarning && (
+                  <span className="text-green-400 text-sm">titles.md updated.</span>
                 )}
                 {syncWarning && (
                   <span className="text-yellow-400 text-sm">Saved locally, but push failed: {syncWarning}</span>

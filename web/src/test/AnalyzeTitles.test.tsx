@@ -42,7 +42,7 @@ describe('AnalyzeTitles', () => {
     expect(screen.getByText('Use provocative titles')).toBeInTheDocument();
 
     expect(screen.getByText('Proposed titles.md')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Save & Push/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Save titles\.md/ })).toBeInTheDocument();
   });
 
   it('applies titles.md and shows success', async () => {
@@ -52,10 +52,10 @@ describe('AnalyzeTitles', () => {
     await user.click(screen.getByRole('button', { name: 'Run Analysis' }));
     expect(await screen.findByText('Proposed titles.md')).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: /Save & Push/ }));
+    await user.click(screen.getByRole('button', { name: /Save titles\.md/ }));
 
     await waitFor(() => {
-      expect(screen.getByText(/updated and pushed/)).toBeInTheDocument();
+      expect(screen.getByText(/titles\.md updated\./)).toBeInTheDocument();
     });
   });
 });

@@ -230,6 +230,7 @@ func TestLoadTitlesTemplate(t *testing.T) {
 		name         string
 		fileContent  string
 		fileNotExist bool
+		createAsDir  bool
 		wantErr      bool
 		errContains  string
 	}{
@@ -250,6 +251,12 @@ func TestLoadTitlesTemplate(t *testing.T) {
 			wantErr:      true,
 			errContains:  "Analyze → Titles",
 		},
+		{
+			name:        "read failure when titles.md is a directory",
+			createAsDir: true,
+			wantErr:     true,
+			errContains: "failed to read titles.md",
+		},
 	}
 
 	for _, tt := range tests {
@@ -266,7 +273,11 @@ func TestLoadTitlesTemplate(t *testing.T) {
 				t.Fatalf("Failed to chdir: %v", err)
 			}
 
-			if !tt.fileNotExist {
+			if tt.createAsDir {
+				if err := os.Mkdir("titles.md", 0755); err != nil {
+					t.Fatalf("Failed to create titles.md as directory: %v", err)
+				}
+			} else if !tt.fileNotExist {
 				if err := os.WriteFile("titles.md", []byte(tt.fileContent), 0644); err != nil {
 					t.Fatalf("Failed to write titles.md: %v", err)
 				}
