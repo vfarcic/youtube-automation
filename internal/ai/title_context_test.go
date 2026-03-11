@@ -3,6 +3,7 @@ package ai
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"devopstoolkit/youtube-automation/internal/publishing"
@@ -190,12 +191,6 @@ func setupTestData(t *testing.T, videos map[string]storage.Video, currentIndex, 
 
 	// Write video files
 	for key, video := range videos {
-		parts := filepath.SplitList(key)
-		if len(parts) == 0 {
-			// key is "category/name"
-			parts = []string{key}
-		}
-		// Split on /
 		catAndName := splitCategoryName(key)
 		dir := filepath.Join(manuscriptDir, catAndName[0])
 		os.MkdirAll(dir, 0755)
@@ -569,27 +564,27 @@ func TestFormatABDataForPrompt(t *testing.T) {
 		result := FormatABDataForPrompt(videos)
 
 		// Check legend is present
-		if !containsString(result, "## Data Legend") {
+		if !strings.Contains(result, "## Data Legend") {
 			t.Error("missing Data Legend section")
 		}
-		if !containsString(result, "A/B test share") {
+		if !strings.Contains(result, "A/B test share") {
 			t.Error("missing A/B test share explanation")
 		}
 
 		// Check video header
-		if !containsString(result, "### Video: ai | Monday") {
+		if !strings.Contains(result, "### Video: ai | Monday") {
 			t.Error("missing video header")
 		}
 
 		// Check first-week metrics
-		if !containsString(result, "views=15230") {
+		if !strings.Contains(result, "views=15230") {
 			t.Error("missing views")
 		}
 		// Check titles
-		if !containsString(result, `"Why I Changed My Mind About Cursor" (share: 42.1%)`) {
+		if !strings.Contains(result, `"Why I Changed My Mind About Cursor" (share: 42.1%)`) {
 			t.Error("missing first title with share")
 		}
-		if !containsString(result, `"AI Coding Is Broken (Here's the Fix)" (share: 22.4%)`) {
+		if !strings.Contains(result, `"AI Coding Is Broken (Here's the Fix)" (share: 22.4%)`) {
 			t.Error("missing third title with share")
 		}
 	})
@@ -609,10 +604,10 @@ func TestFormatABDataForPrompt(t *testing.T) {
 
 		result := FormatABDataForPrompt(videos)
 
-		if !containsString(result, "(analytics unavailable)") {
+		if !strings.Contains(result, "(analytics unavailable)") {
 			t.Error("missing analytics unavailable marker")
 		}
-		if !containsString(result, `"Stop Using Helm Charts!" (share: 51.2%)`) {
+		if !strings.Contains(result, `"Stop Using Helm Charts!" (share: 51.2%)`) {
 			t.Error("missing title")
 		}
 	})
@@ -643,24 +638,12 @@ func TestFormatABDataForPrompt(t *testing.T) {
 
 		result := FormatABDataForPrompt(videos)
 
-		if !containsString(result, "### Video: ai | Monday") {
+		if !strings.Contains(result, "### Video: ai | Monday") {
 			t.Error("missing first video header")
 		}
-		if !containsString(result, "### Video: devops | Friday") {
+		if !strings.Contains(result, "### Video: devops | Friday") {
 			t.Error("missing second video header")
 		}
 	})
 }
 
-func containsString(s, substr string) bool {
-	return len(s) >= len(substr) && searchString(s, substr)
-}
-
-func searchString(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
-}

@@ -28,10 +28,7 @@ func (m *MockProvider) GenerateContent(ctx context.Context, prompt string, maxTo
 // Returns a cleanup function that restores the original working directory.
 func setupTitlesTestDir(t *testing.T) func() {
 	t.Helper()
-	tempDir, err := os.MkdirTemp("", "titles-test-*")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
+	tempDir := t.TempDir()
 	originalWd, err := os.Getwd()
 	if err != nil {
 		t.Fatalf("Failed to get working dir: %v", err)
@@ -45,7 +42,6 @@ func setupTitlesTestDir(t *testing.T) func() {
 	}
 	return func() {
 		os.Chdir(originalWd)
-		os.RemoveAll(tempDir)
 	}
 }
 
@@ -248,11 +244,7 @@ func TestLoadTitlesTemplate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tempDir, err := os.MkdirTemp("", "load-titles-test-*")
-			if err != nil {
-				t.Fatalf("Failed to create temp dir: %v", err)
-			}
-			defer os.RemoveAll(tempDir)
+			tempDir := t.TempDir()
 
 			originalWd, err := os.Getwd()
 			if err != nil {

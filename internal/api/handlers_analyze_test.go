@@ -165,7 +165,9 @@ func TestHandleAnalyzeTitles(t *testing.T) {
 			}
 			if tt.wantStatus == http.StatusOK {
 				var resp AnalyzeTitlesResponse
-				json.NewDecoder(rr.Body).Decode(&resp)
+				if err := json.NewDecoder(rr.Body).Decode(&resp); err != nil {
+					t.Fatalf("failed to decode response: %v", err)
+				}
 				if resp.VideoCount != tt.wantCount {
 					t.Errorf("videoCount = %d, want %d", resp.VideoCount, tt.wantCount)
 				}
@@ -271,7 +273,9 @@ func TestHandleApplyTitlesTemplate(t *testing.T) {
 				}
 				if tt.gitSync.err != nil {
 					var resp ApplyTitlesResponse
-					json.NewDecoder(rr.Body).Decode(&resp)
+					if err := json.NewDecoder(rr.Body).Decode(&resp); err != nil {
+						t.Fatalf("failed to decode response: %v", err)
+					}
 					if resp.SyncWarning == "" {
 						t.Error("expected sync warning in response")
 					}

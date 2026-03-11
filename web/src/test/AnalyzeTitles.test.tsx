@@ -30,7 +30,7 @@ describe('AnalyzeTitles', () => {
     await user.click(screen.getByRole('button', { name: 'Run Analysis' }));
 
     expect(await screen.findByText(/Analyzed/)).toBeInTheDocument();
-    expect(screen.getByText('5')).toBeInTheDocument();
+    expect(screen.getByText('5')).toBeInTheDocument(); // videoCount from mock handler in test/handlers.ts
 
     expect(screen.getByText('High-Performing Patterns')).toBeInTheDocument();
     expect(screen.getByText('Provocative')).toBeInTheDocument();
