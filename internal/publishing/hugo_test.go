@@ -13,6 +13,7 @@ import (
 
 	"devopstoolkit/youtube-automation/internal/configuration"
 	gitpkg "devopstoolkit/youtube-automation/internal/git"
+	"devopstoolkit/youtube-automation/internal/storage"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -60,6 +61,17 @@ type roundTripFunc func(req *http.Request) (*http.Response, error)
 
 func (f roundTripFunc) Do(req *http.Request) (*http.Response, error) {
 	return f(req)
+}
+
+// testVideo creates a storage.Video for testing with the given parameters.
+func testVideo(gist, title, date, videoId string) *storage.Video {
+	return &storage.Video{
+		Gist:    gist,
+		Titles:  []storage.TitleVariant{{Index: 1, Text: title}},
+		Date:    date,
+		VideoId: videoId,
+		Name:    "test-video",
+	}
 }
 
 // --- NewHugo tests ---
@@ -149,8 +161,9 @@ func TestHugoIntegration(t *testing.T) {
 
 	complexContent := `# Complex Test Post
 
-## Introduction
-This is a complex test post with multiple sections.
+## Intro
+
+This is the intro paragraph for testing.
 
 ## Code Block
 ` + "```go" + `
@@ -168,10 +181,15 @@ func main() {
 	testFilePath := filepath.Join(manuscriptDir, "complex-post.md")
 	require.NoError(t, os.WriteFile(testFilePath, []byte(complexContent), 0644))
 
+	// Create homepage for enrichment
+	homepageContent := "+++\ntitle = \"Test\"\n+++\n\n# Latest Posts\n\n---\n\n"
+	require.NoError(t, os.WriteFile(filepath.Join(tempDir, "content", "_index.md"), []byte(homepageContent), 0644))
+
 	hugo := NewHugo(configuration.SettingsHugo{Path: tempDir})
 
 	t.Run("Post with regular title", func(t *testing.T) {
-		hugoPath, err := hugo.Post(testFilePath, "Test Hugo Post", "2023-05-15T12:00", "testVideoId123")
+		video := testVideo(testFilePath, "Test Hugo Post", "2023-05-15T12:00", "testVideoId123")
+		hugoPath, err := hugo.Post(video, nil)
 		require.NoError(t, err)
 
 		expectedPath := filepath.Join(tempDir, "content", "test-category", "test-hugo-post", "_index.md")
@@ -181,7 +199,7 @@ func main() {
 		require.NoError(t, err)
 
 		for _, expected := range []string{
-			"title = 'Test Hugo Post'",
+			`title = "Test Hugo Post"`,
 			"date = 2023-05-15T12:00:00+00:00",
 			"draft = false",
 			"{{< youtube testVideoId123 >}}",
@@ -189,10 +207,15 @@ func main() {
 		} {
 			assert.Contains(t, string(content), expected)
 		}
+		// Intro should be above <!--more-->
+		assert.Contains(t, string(content), "This is the intro paragraph for testing.")
+		// No FIXME in output
+		assert.NotContains(t, string(content), "FIXME")
 	})
 
 	t.Run("Post with special characters in title", func(t *testing.T) {
-		hugoPath, err := hugo.Post(testFilePath, "Test: Hugo & Post (Special) Characters!'", "2023-05-15T12:00", "anotherIdAbc")
+		video := testVideo(testFilePath, "Test: Hugo & Post (Special) Characters!'", "2023-05-15T12:00", "anotherIdAbc")
+		hugoPath, err := hugo.Post(video, nil)
 		require.NoError(t, err)
 
 		dirName := filepath.Base(filepath.Dir(hugoPath))
@@ -200,27 +223,32 @@ func main() {
 	})
 
 	t.Run("Post with N/A gist", func(t *testing.T) {
-		hugoPath, err := hugo.Post("N/A", "Test Title", "2023-05-15T12:00", "")
+		video := testVideo("N/A", "Test Title", "2023-05-15T12:00", "")
+		hugoPath, err := hugo.Post(video, nil)
 		assert.NoError(t, err)
 		assert.Empty(t, hugoPath)
 	})
 
 	t.Run("Post with non-existent file", func(t *testing.T) {
-		_, err := hugo.Post(filepath.Join(manuscriptDir, "non-existent.md"), "Test Title", "2023-05-15T12:00", "")
+		video := testVideo(filepath.Join(manuscriptDir, "non-existent.md"), "Test Title", "2023-05-15T12:00", "")
+		_, err := hugo.Post(video, nil)
 		assert.Error(t, err)
 	})
 
 	t.Run("Post without VideoID", func(t *testing.T) {
-		hugoPath, err := hugo.Post(testFilePath, "Test Post No Video ID", "2023-05-17T10:00", "")
+		video := testVideo(testFilePath, "Test Post No Video ID", "2023-05-17T10:00", "")
+		hugoPath, err := hugo.Post(video, nil)
 		require.NoError(t, err)
 
 		content, err := os.ReadFile(hugoPath)
 		require.NoError(t, err)
-		assert.Contains(t, string(content), "{{< youtube FIXME: >}}")
+		// No FIXME placeholder — without videoId, youtube shortcode is simply omitted
+		assert.NotContains(t, string(content), "FIXME")
 	})
 
 	t.Run("Post with VideoID", func(t *testing.T) {
-		hugoPath, err := hugo.Post(testFilePath, "Test Post With Video ID", "2023-05-18T10:00", "actualVideoId12345")
+		video := testVideo(testFilePath, "Test Post With Video ID", "2023-05-18T10:00", "actualVideoId12345")
+		hugoPath, err := hugo.Post(video, nil)
 		require.NoError(t, err)
 
 		content, err := os.ReadFile(hugoPath)
@@ -229,7 +257,8 @@ func main() {
 	})
 
 	t.Run("Post with question mark in title", func(t *testing.T) {
-		hugoPath, err := hugo.Post(testFilePath, "What is Go? A Test Post", "2023-05-16T10:00", "whatIsGoVideo789")
+		video := testVideo(testFilePath, "What is Go? A Test Post", "2023-05-16T10:00", "whatIsGoVideo789")
+		hugoPath, err := hugo.Post(video, nil)
 		require.NoError(t, err)
 
 		assert.False(t, strings.Contains(hugoPath, "?"))
@@ -242,8 +271,68 @@ func main() {
 		require.NoError(t, os.MkdirAll(filepath.Dir(blockerPath), 0755))
 		require.NoError(t, os.WriteFile(blockerPath, []byte("blocker"), 0644))
 
-		_, err := hugo.Post(testFilePath, "Test Blocked Dir", "2023-05-15T12:00", "blockedVideoId")
+		video := testVideo(testFilePath, "Test Blocked Dir", "2023-05-15T12:00", "blockedVideoId")
+		_, err := hugo.Post(video, nil)
 		assert.Error(t, err)
+	})
+
+	t.Run("Post removes TODO and FIXME from manuscript", func(t *testing.T) {
+		contentWithTodos := `## Intro
+
+Intro text.
+
+## Body
+
+Real content here.
+TODO: remove this later
+FIXME: broken thing
+More real content.
+`
+		todoFilePath := filepath.Join(manuscriptDir, "todo-post.md")
+		require.NoError(t, os.WriteFile(todoFilePath, []byte(contentWithTodos), 0644))
+
+		video := testVideo(todoFilePath, "Post With Todos", "2023-05-19T10:00", "vid1")
+		hugoPath, err := hugo.Post(video, nil)
+		require.NoError(t, err)
+
+		content, err := os.ReadFile(hugoPath)
+		require.NoError(t, err)
+		assert.NotContains(t, string(content), "TODO:")
+		assert.NotContains(t, string(content), "FIXME:")
+		assert.Contains(t, string(content), "Real content here.")
+		assert.Contains(t, string(content), "More real content.")
+	})
+
+	t.Run("Post extracts intro as excerpt", func(t *testing.T) {
+		introContent := `## Intro
+
+This is the excerpt.
+
+## Main Content
+
+Body goes here.
+`
+		introFilePath := filepath.Join(manuscriptDir, "intro-post.md")
+		require.NoError(t, os.WriteFile(introFilePath, []byte(introContent), 0644))
+
+		video := testVideo(introFilePath, "Intro Excerpt Post", "2023-05-20T10:00", "vid2")
+		hugoPath, err := hugo.Post(video, nil)
+		require.NoError(t, err)
+
+		content, err := os.ReadFile(hugoPath)
+		require.NoError(t, err)
+		s := string(content)
+
+		// Verify intro is above <!--more-->
+		introIdx := strings.Index(s, "This is the excerpt.")
+		moreIdx := strings.Index(s, "<!--more-->")
+		assert.NotEqual(t, -1, introIdx)
+		assert.NotEqual(t, -1, moreIdx)
+		assert.Less(t, introIdx, moreIdx, "intro should come before <!--more-->")
+
+		// Body should be below <!--more-->
+		bodyIdx := strings.Index(s, "Body goes here.")
+		assert.Greater(t, bodyIdx, moreIdx, "body should come after <!--more-->")
 	})
 }
 
@@ -311,7 +400,8 @@ func TestPostViaPR_Success(t *testing.T) {
 		Token:   "ghp_test",
 	}, mock, httpClient)
 
-	prURL, err := hugo.Post(gistFile, "My Test Title", "2024-01-15T10:00", "videoABC")
+	video := testVideo(gistFile, "My Test Title", "2024-01-15T10:00", "videoABC")
+	prURL, err := hugo.Post(video, nil)
 	require.NoError(t, err)
 	assert.Equal(t, "https://github.com/user/hugo-repo/pull/42", prURL)
 
@@ -349,7 +439,8 @@ func TestPostViaPR_CloneFailure(t *testing.T) {
 		Token:   "tok",
 	}, mock, nil)
 
-	_, err := hugo.Post(gistFile, "Title", "2024-01-15T10:00", "vid")
+	video := testVideo(gistFile, "Title", "2024-01-15T10:00", "vid")
+	_, err := hugo.Post(video, nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "git clone failed")
 	// Token must be sanitized
@@ -382,7 +473,8 @@ func TestPostViaPR_PushFailure(t *testing.T) {
 		Token:   "secret",
 	}, mock, nil)
 
-	_, err := hugo.Post(gistFile, "Title", "2024-01-15T10:00", "vid")
+	video := testVideo(gistFile, "Title", "2024-01-15T10:00", "vid")
+	_, err := hugo.Post(video, nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "git push failed")
 	assert.NotContains(t, err.Error(), "secret")
@@ -415,7 +507,8 @@ func TestPostViaPR_PRCreationFailure(t *testing.T) {
 		Token:   "tok",
 	}, mock, httpClient)
 
-	_, err := hugo.Post(gistFile, "Title", "2024-01-15T10:00", "vid")
+	video := testVideo(gistFile, "Title", "2024-01-15T10:00", "vid")
+	_, err := hugo.Post(video, nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "GitHub API returned 422")
 }
@@ -426,7 +519,8 @@ func TestPostViaPR_SkipsForNA(t *testing.T) {
 		Token:   "tok",
 	})
 
-	result, err := hugo.Post("N/A", "Title", "2024-01-15T10:00", "vid")
+	video := testVideo("N/A", "Title", "2024-01-15T10:00", "vid")
+	result, err := hugo.Post(video, nil)
 	assert.NoError(t, err)
 	assert.Empty(t, result)
 }
@@ -465,6 +559,11 @@ func TestPostLocalMode_UsesNewHugo(t *testing.T) {
 	gistFile := filepath.Join(manuscriptDir, "post.md")
 	require.NoError(t, os.WriteFile(gistFile, []byte("# Hello"), 0644))
 
+	// Create homepage
+	require.NoError(t, os.MkdirAll(filepath.Join(tempDir, "content"), 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(tempDir, "content", "_index.md"),
+		[]byte("+++\ntitle = \"Test\"\n+++\n\n# Latest Posts\n\n---\n\n"), 0644))
+
 	originalSettings := configuration.GlobalSettings
 	defer func() { configuration.GlobalSettings = originalSettings }()
 	configuration.GlobalSettings = configuration.Settings{
@@ -472,7 +571,8 @@ func TestPostLocalMode_UsesNewHugo(t *testing.T) {
 	}
 
 	hugo := NewHugo(configuration.SettingsHugo{Path: tempDir})
-	result, err := hugo.Post(gistFile, "Local Post", "2024-06-01T08:00", "vid123")
+	video := testVideo(gistFile, "Local Post", "2024-06-01T08:00", "vid123")
+	result, err := hugo.Post(video, nil)
 	require.NoError(t, err)
 
 	expectedPath := filepath.Join(tempDir, "content", "cat", "local-post", "_index.md")

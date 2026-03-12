@@ -268,7 +268,11 @@ func (s *Server) handlePublishHugo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	hugoPath, err := s.publishingService.CreateHugoPost(r.Context(), video.Gist, title, video.Date, video.VideoId)
+	hugoOpts := &publishing.HugoPostOptions{
+		DriveService:  s.driveService,
+		DriveFolderID: s.driveFolderID,
+	}
+	hugoPath, err := s.publishingService.CreateHugoPost(r.Context(), &video, hugoOpts)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "Hugo post creation failed", err.Error())
 		return

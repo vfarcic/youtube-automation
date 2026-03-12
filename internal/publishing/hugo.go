@@ -2,6 +2,7 @@ package publishing
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -11,7 +12,9 @@ import (
 	"strings"
 
 	"devopstoolkit/youtube-automation/internal/configuration"
+	"devopstoolkit/youtube-automation/internal/gdrive"
 	gitpkg "devopstoolkit/youtube-automation/internal/git"
+	"devopstoolkit/youtube-automation/internal/storage"
 )
 
 // Hugo handles creating Hugo blog posts either locally or via GitHub PR.
@@ -56,18 +59,34 @@ func NewHugoWithDeps(cfg configuration.SettingsHugo, executor gitpkg.CommandExec
 	return h
 }
 
-func (r *Hugo) Post(gist, title, date, videoId string) (string, error) {
-	if gist == "N/A" {
+// HugoPostOptions carries optional dependencies for enriching Hugo posts.
+// Pass nil from CLI mode to gracefully skip Drive-dependent steps.
+type HugoPostOptions struct {
+	DriveService  gdrive.DriveService
+	DriveFolderID string
+}
+
+func (r *Hugo) Post(video *storage.Video, opts *HugoPostOptions) (string, error) {
+	if video.Gist == "N/A" {
 		return "", nil
 	}
-	post, err := r.getPost(gist, title, date, videoId)
+	title := video.GetUploadTitle()
+	post, err := r.getPost(video.Gist, title, video.Date, video.VideoId)
 	if err != nil {
 		return "", err
 	}
 	if r.repoURL != "" {
-		return r.postViaPR(gist, title, post)
+		return r.postViaPR(video, title, post, opts)
 	}
-	return r.hugoFromMarkdown(gist, title, post, r.basePath())
+	basePath := r.basePath()
+	hugoPath, err := r.hugoFromMarkdown(video.Gist, title, post, basePath)
+	if err != nil {
+		return "", err
+	}
+	if err := r.enrichPostDir(context.Background(), video, title, filepath.Dir(hugoPath), basePath, opts); err != nil {
+		fmt.Printf("Warning: post enrichment failed: %v\n", err)
+	}
+	return hugoPath, nil
 }
 
 // basePath returns the local Hugo repo path, falling back to the global config.
@@ -140,34 +159,65 @@ func (r *Hugo) hugoFromMarkdown(filePath, title, post, basePath string) (string,
 func (r *Hugo) getPost(filePath, title, date, videoId string) (string, error) {
 	contentBytes, err := os.ReadFile(filePath)
 	if err != nil {
-		return "", err // Return error instead of log.Fatal for better testability
+		return "", err
 	}
-	youtubeShortcode := ""
-	if videoId != "" {
-		youtubeShortcode = fmt.Sprintf("{{< youtube %s >}}", videoId)
-	} else {
-		youtubeShortcode = "{{< youtube FIXME: >}}" // Keep FIXME if no videoId
+
+	manuscript := string(contentBytes)
+
+	// Extract intro and clean up the manuscript
+	intro, body := ExtractIntro(manuscript)
+	body = RemoveTODOAndFIXMELines(body)
+
+	return BuildHugoPost(title, date, videoId, intro, body), nil
+}
+
+// enrichPostDir performs post-creation enrichment: copies images, thumbnail,
+// and updates the home page. Non-fatal errors are logged as warnings.
+func (r *Hugo) enrichPostDir(ctx context.Context, video *storage.Video, title, postDir, basePath string, opts *HugoPostOptions) error {
+	// Read manuscript for image references
+	contentBytes, err := os.ReadFile(video.Gist)
+	if err != nil {
+		// Not fatal — manuscript might not be accessible in PR workflow
+		return nil
 	}
-	content := fmt.Sprintf(`
-+++
-title = '%s'
-date = %s:00+00:00
-draft = false
-+++
 
-FIXME:
+	imageFiles := ParseImageReferences(string(contentBytes))
 
-<!--more-->
+	var driveService gdrive.DriveService
+	var driveFolderID string
+	if opts != nil {
+		driveService = opts.DriveService
+		driveFolderID = opts.DriveFolderID
+	}
 
-%s
+	// Copy images from Drive
+	if err := CopyImagesFromDrive(ctx, driveService, video.Name, driveFolderID, postDir, imageFiles); err != nil {
+		fmt.Printf("Warning: failed to copy images: %v\n", err)
+	}
 
-%s
-`, title, date, youtubeShortcode, string(contentBytes)) // Use youtubeShortcode variable
-	return content, nil
+	// Copy thumbnail from Drive
+	if err := CopyThumbnailFromDrive(ctx, driveService, video.ThumbnailVariants, postDir); err != nil {
+		fmt.Printf("Warning: failed to copy thumbnail: %v\n", err)
+	}
+
+	// Update home page
+	category := GetCategoryFromFilePath(video.Gist)
+	slug := SanitizeTitle(title)
+	intro, _ := ExtractIntro(string(contentBytes))
+
+	if err := AddHomepageEntry(basePath, category, slug, title, intro); err != nil {
+		fmt.Printf("Warning: failed to add homepage entry: %v\n", err)
+	}
+
+	if err := TrimHomepageEntries(basePath, 10); err != nil {
+		fmt.Printf("Warning: failed to trim homepage entries: %v\n", err)
+	}
+
+	return nil
 }
 
 // postViaPR clones the Hugo repo, writes the post, pushes a branch, and creates a GitHub PR.
-func (r *Hugo) postViaPR(gist, title, post string) (string, error) {
+func (r *Hugo) postViaPR(video *storage.Video, title, post string, opts *HugoPostOptions) (string, error) {
 	tmpDir, err := os.MkdirTemp("", "hugo-pr-*")
 	if err != nil {
 		return "", fmt.Errorf("creating temp dir: %w", err)
@@ -196,8 +246,14 @@ func (r *Hugo) postViaPR(gist, title, post string) (string, error) {
 	}
 
 	// Write post file into the cloned repo
-	if _, err := r.hugoFromMarkdown(gist, title, post, tmpDir); err != nil {
+	hugoPath, err := r.hugoFromMarkdown(video.Gist, title, post, tmpDir)
+	if err != nil {
 		return "", fmt.Errorf("writing hugo post: %w", err)
+	}
+
+	// Enrich the post directory (images, thumbnail, homepage)
+	if err := r.enrichPostDir(context.Background(), video, title, filepath.Dir(hugoPath), tmpDir, opts); err != nil {
+		fmt.Printf("Warning: post enrichment failed: %v\n", err)
 	}
 
 	// Stage + commit

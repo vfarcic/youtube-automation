@@ -43,7 +43,7 @@ func (m *mockPublishingService) UploadThumbnail(_ context.Context, _, _ string) 
 func (m *mockPublishingService) UploadShort(_ context.Context, _ string, _ storage.Short, _ string) (string, error) {
 	return m.uploadShortID, m.uploadShortErr
 }
-func (m *mockPublishingService) CreateHugoPost(_ context.Context, _, _, _, _ string) (string, error) {
+func (m *mockPublishingService) CreateHugoPost(_ context.Context, _ *storage.Video, _ *publishing.HugoPostOptions) (string, error) {
 	return m.hugoPath, m.hugoErr
 }
 func (m *mockPublishingService) GetTranscript(_ context.Context, _ string) (string, error) {

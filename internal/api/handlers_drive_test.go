@@ -12,6 +12,7 @@ import (
 	"net/textproto"
 	"testing"
 
+	"devopstoolkit/youtube-automation/internal/gdrive"
 	"devopstoolkit/youtube-automation/internal/storage"
 )
 
@@ -41,6 +42,10 @@ func (m *mockDriveService) FindOrCreateFolder(_ context.Context, _ string, paren
 		return "", m.returnErr
 	}
 	return parentID + "-subfolder", nil
+}
+
+func (m *mockDriveService) ListFilesInFolder(_ context.Context, _ string) ([]gdrive.DriveFileInfo, error) {
+	return nil, m.returnErr
 }
 
 func (m *mockDriveService) GetFile(_ context.Context, _ string) (io.ReadCloser, string, string, error) {

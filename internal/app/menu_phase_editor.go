@@ -515,7 +515,7 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 				// The additional updatedVideo.VideoId != "" check here is for extra safety but might be redundant.
 				if createHugo && updatedVideo.VideoId != "" && updatedVideo.HugoPath == "" && originalHugoPath == "" { // Create new Hugo post only if VideoId is present
 					hugoPublisher := publishing.NewHugo(configuration.GlobalSettings.Hugo)
-					createdPath, hugoErr := hugoPublisher.Post(updatedVideo.Gist, updatedVideo.GetUploadTitle(), updatedVideo.Date, updatedVideo.VideoId)
+					createdPath, hugoErr := hugoPublisher.Post(&updatedVideo, nil)
 					if hugoErr != nil {
 						log.Print(m.errorStyle.Render(fmt.Sprintf("Failed to create Hugo post: %v", hugoErr)))
 						updatedVideo.HugoPath = originalHugoPath // Revert intent
