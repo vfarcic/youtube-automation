@@ -35,7 +35,7 @@ export function RandomTimingButton({ category, videoName, onApply }: RandomTimin
       {mutation.error && (
         <p className="text-xs text-red-400 mt-1">{mutation.error.message}</p>
       )}
-      {mutation.data && (
+      {mutation.data && !mutation.error && (
         <div className="mt-2 p-3 bg-gray-800 rounded space-y-1">
           <p className="text-sm text-gray-300">
             <span className="text-gray-500">Day:</span> {mutation.data.day}

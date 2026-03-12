@@ -72,4 +72,5 @@ client_secret_spanish.json
 web/node_modules/
 web/dist/
 web/.vite/
-internal/frontend/dist/assets/
+internal/frontend/dist/*
+!internal/frontend/dist/index.html
