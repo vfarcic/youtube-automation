@@ -14,8 +14,8 @@ export function RandomTimingButton({ category, videoName, onApply }: RandomTimin
       { name: videoName, category },
       {
         onSuccess: (data) => {
-          // datetime-local needs "YYYY-MM-DDTHH:mm" — strip seconds and Z
-          const formatted = data.newDate.replace(/:\d{2}Z$/, '').replace(/Z$/, '');
+          // datetime-local needs "YYYY-MM-DDTHH:mm" (16 chars)
+          const formatted = data.newDate.slice(0, 16);
           onApply(formatted);
         },
       },

@@ -291,7 +291,7 @@ export const handlers = [
   // Random timing endpoint
   http.post('/api/videos/:videoName/apply-random-timing', () =>
     HttpResponse.json({
-      newDate: '2026-01-14T14:30:00Z',
+      newDate: '2026-01-14T14:30',
       originalDate: '2026-01-15',
       day: 'Wednesday',
       time: '14:30',

@@ -41,7 +41,7 @@ func (s *Server) handleApplyRandomTiming(w http.ResponseWriter, r *http.Request)
 
 	recommendations, err := configuration.LoadTimingRecommendations()
 	if err != nil {
-		respondError(w, http.StatusBadRequest, "Failed to load timing recommendations", err.Error())
+		respondError(w, http.StatusInternalServerError, "Failed to load timing recommendations", err.Error())
 		return
 	}
 	if len(recommendations) == 0 {

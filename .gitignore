@@ -68,7 +68,8 @@ scripts/prd_*.txt
 .taskmaster/reports/
 client_secret_spanish.json
 
-# Frontend build artifacts (keep placeholder in internal/frontend/dist/)
+# Frontend build artifacts
 web/node_modules/
 web/dist/
 web/.vite/
+internal/frontend/dist/assets/

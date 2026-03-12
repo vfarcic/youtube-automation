@@ -26,7 +26,7 @@ describe('useApplyRandomTiming', () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
     expect(result.current.data).toEqual({
-      newDate: '2026-01-14T14:30:00Z',
+      newDate: '2026-01-14T14:30',
       originalDate: '2026-01-15',
       day: 'Wednesday',
       time: '14:30',
@@ -95,7 +95,7 @@ describe('useApplyRandomTiming', () => {
     server.use(
       http.post('/api/videos/:videoName/apply-random-timing', () =>
         HttpResponse.json({
-          newDate: '2026-01-14T14:30:00Z',
+          newDate: '2026-01-14T14:30',
           originalDate: '2026-01-15',
           day: 'Wednesday',
           time: '14:30',
