@@ -31,7 +31,7 @@ func (m *mockDriveService) FindOrCreateFolder(_ context.Context, _ string, paren
 }
 
 func (m *mockDriveService) GetFile(_ context.Context, _ string) (io.ReadCloser, string, string, error) {
-	return nil, "", "", nil
+	return io.NopCloser(strings.NewReader("")), "", "", nil
 }
 
 func (m *mockDriveService) ListFilesInFolder(_ context.Context, _ string) ([]DriveFileInfo, error) {
