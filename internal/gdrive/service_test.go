@@ -2,10 +2,15 @@ package gdrive
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"google.golang.org/api/drive/v3"
+	"google.golang.org/api/option"
 )
 
 // mockDriveService implements DriveService for testing.
@@ -98,6 +103,120 @@ func TestMockDriveService_UploadFile_EmptyFolder(t *testing.T) {
 	}
 	if mock.uploadedFolderID != "" {
 		t.Errorf("expected empty folderID, got '%s'", mock.uploadedFolderID)
+	}
+}
+
+func newTestDriveService(t *testing.T, handler http.Handler) *driveService {
+	t.Helper()
+	ts := httptest.NewServer(handler)
+	t.Cleanup(ts.Close)
+
+	srv, err := drive.NewService(context.Background(),
+		option.WithHTTPClient(ts.Client()),
+		option.WithEndpoint(ts.URL),
+	)
+	if err != nil {
+		t.Fatalf("creating test drive service: %v", err)
+	}
+	return &driveService{service: srv}
+}
+
+func TestListFilesInFolder_SinglePage(t *testing.T) {
+	ds := newTestDriveService(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		resp := map[string]any{
+			"files": []map[string]string{
+				{"id": "f1", "name": "image1.png", "mimeType": "image/png"},
+				{"id": "f2", "name": "image2.jpg", "mimeType": "image/jpeg"},
+			},
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	}))
+
+	files, err := ds.ListFilesInFolder(context.Background(), "folder-abc")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(files) != 2 {
+		t.Fatalf("expected 2 files, got %d", len(files))
+	}
+	if files[0].ID != "f1" || files[0].Name != "image1.png" {
+		t.Errorf("unexpected first file: %+v", files[0])
+	}
+	if files[1].ID != "f2" || files[1].Name != "image2.jpg" {
+		t.Errorf("unexpected second file: %+v", files[1])
+	}
+}
+
+func TestListFilesInFolder_Pagination(t *testing.T) {
+	callCount := 0
+	ds := newTestDriveService(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		callCount++
+		var resp map[string]any
+		if r.URL.Query().Get("pageToken") == "" {
+			resp = map[string]any{
+				"nextPageToken": "page2-token",
+				"files": []map[string]string{
+					{"id": "f1", "name": "a.png", "mimeType": "image/png"},
+				},
+			}
+		} else {
+			resp = map[string]any{
+				"files": []map[string]string{
+					{"id": "f2", "name": "b.png", "mimeType": "image/png"},
+					{"id": "f3", "name": "c.png", "mimeType": "image/png"},
+				},
+			}
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	}))
+
+	files, err := ds.ListFilesInFolder(context.Background(), "folder-xyz")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(files) != 3 {
+		t.Fatalf("expected 3 files, got %d", len(files))
+	}
+	if callCount != 2 {
+		t.Errorf("expected 2 API calls for pagination, got %d", callCount)
+	}
+	if files[2].ID != "f3" || files[2].Name != "c.png" {
+		t.Errorf("unexpected third file: %+v", files[2])
+	}
+}
+
+func TestListFilesInFolder_Error(t *testing.T) {
+	ds := newTestDriveService(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error": {"message": "internal error", "code": 500}}`))
+	}))
+
+	_, err := ds.ListFilesInFolder(context.Background(), "folder-bad")
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "unable to list files in folder") {
+		t.Errorf("expected wrapped error message, got: %v", err)
+	}
+}
+
+func TestListFilesInFolder_EmptyFolder(t *testing.T) {
+	ds := newTestDriveService(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		resp := map[string]any{
+			"files": []map[string]string{},
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	}))
+
+	files, err := ds.ListFilesInFolder(context.Background(), "empty-folder")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(files) != 0 {
+		t.Errorf("expected 0 files, got %d", len(files))
 	}
 }
 
