@@ -339,3 +339,14 @@ export interface ApplyTitlesResponse {
   applied: boolean;
   syncWarning?: string;
 }
+
+// --- Random Timing Types ---
+
+export interface ApplyRandomTimingResponse {
+  newDate: string;
+  originalDate: string;
+  day: string;
+  time: string;
+  reasoning: string;
+  syncWarning?: string;
+}

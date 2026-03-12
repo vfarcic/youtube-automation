@@ -1,7 +1,7 @@
 # PRD: Apply Random Timing in Web UI
 
 **Issue**: #383
-**Status**: Not Started
+**Status**: Complete
 **Priority**: Medium
 **Created**: 2026-03-12
 
@@ -20,13 +20,13 @@ The CLI has an "Apply Random Timing" feature that lets users apply AI-generated 
 ## Success Criteria
 
 ### Must Have
-- [ ] Backend endpoint applies random timing and returns new date + reasoning
-- [ ] Web UI shows an "Apply Random Timing" button next to the date field
-- [ ] Clicking the button updates the date field with the AI-recommended timing
-- [ ] User sees which recommendation was applied (day, time, reasoning)
-- [ ] Button is disabled or hidden when no timing recommendations exist in settings
-- [ ] 80% test coverage maintained on new/modified code
-- [ ] All existing tests continue to pass
+- [x] Backend endpoint applies random timing and returns new date + reasoning
+- [x] Web UI shows an "Apply Random Timing" button next to the date field
+- [x] Clicking the button updates the date field with the AI-recommended timing
+- [x] User sees which recommendation was applied (day, time, reasoning)
+- [x] Button is disabled or hidden when no timing recommendations exist in settings
+- [x] 80% test coverage maintained on new/modified code
+- [x] All existing tests continue to pass
 
 ### Nice to Have
 - [ ] Let user pick from all recommendations instead of random selection
@@ -76,10 +76,10 @@ The CLI has an "Apply Random Timing" feature that lets users apply AI-generated 
 
 ## Implementation Milestones
 
-- [ ] **Backend endpoint**: Create `POST /api/videos/{videoName}/apply-random-timing` handler that loads recommendations from settings, calls `ApplyRandomTiming()` with the video's current date, and returns `{ newDate, recommendation: { day, time, reasoning } }`. Include handler tests.
-- [ ] **Frontend hook + types**: Add `useApplyRandomTiming` mutation hook and response types. Add MSW test handler.
-- [ ] **UI integration**: Add "Apply Random Timing" button next to the date field. Clicking it calls the mutation, updates the date form value, and shows the applied recommendation's reasoning. Button disabled when no recommendations configured.
-- [ ] **Testing + validation**: Component tests for the button. End-to-end validation. 80% coverage maintained.
+- [x] **Backend endpoint**: Create `POST /api/videos/{videoName}/apply-random-timing` handler that loads recommendations from settings, calls `ApplyRandomTiming()` with the video's current date, and returns `{ newDate, recommendation: { day, time, reasoning } }`. Include handler tests.
+- [x] **Frontend hook + types**: Add `useApplyRandomTiming` mutation hook and response types. Add MSW test handler.
+- [x] **UI integration**: Add "Apply Random Timing" button next to the date field. Clicking it calls the mutation, updates the date form value, and shows the applied recommendation's reasoning. Button disabled when no recommendations configured.
+- [x] **Testing + validation**: Component tests for the button. End-to-end validation. 80% coverage maintained.
 
 ## Dependencies
 
@@ -100,3 +100,6 @@ The CLI has an "Apply Random Timing" feature that lets users apply AI-generated 
 ### 2026-03-12
 - PRD created
 - GitHub issue #383 opened
+- Backend endpoint implemented: `handlers_timing.go` with handler, response type, route, and 5 test cases
+- Frontend hook + types implemented: `useApplyRandomTiming` mutation hook in `hooks.ts`, `ApplyRandomTimingResponse` type in `types.ts`, MSW test handler, and 5 hook tests
+- UI integration complete: `RandomTimingButton.tsx` component, wired into `DynamicForm.tsx` for date fields, 6 component tests + 2 DynamicForm integration tests, all 119 tests passing

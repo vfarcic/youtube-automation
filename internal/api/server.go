@@ -164,6 +164,7 @@ func (s *Server) setupRoutes() {
 			r.Get("/{videoName}/progress/{aspect}", s.handleGetVideoAspectProgress)
 			r.Get("/{videoName}/manuscript", s.handleGetVideoManuscript)
 			r.Get("/{videoName}/animations", s.handleGetVideoAnimations)
+			r.Post("/{videoName}/apply-random-timing", s.handleApplyRandomTiming)
 		})
 	})
 
