@@ -17,6 +17,8 @@ export interface VideoListItem {
   title?: string;
   phase: number;
   progress: ProgressInfo;
+  sponsored?: boolean;
+  isFarFuture?: boolean;
 }
 
 export interface Sponsorship {

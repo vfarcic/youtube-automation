@@ -36,4 +36,26 @@ describe('VideoList', () => {
     const cells = await screen.findAllByText('devops');
     expect(cells.length).toBeGreaterThan(0);
   });
+
+  it('shows sponsored indicator for sponsored videos', async () => {
+    renderWithRoute('1');
+    await screen.findByText('Test Video Title');
+    const sponsoredIcons = screen.getAllByTitle('Sponsored');
+    expect(sponsoredIcons).toHaveLength(1);
+    expect(sponsoredIcons[0]).toHaveTextContent('$');
+    expect(sponsoredIcons[0]).toHaveClass('text-orange-400');
+  });
+
+  it('applies far-future styling to far-future videos', async () => {
+    renderWithRoute('1');
+    const farFutureName = await screen.findByText('Another Video');
+    expect(farFutureName.closest('td')).toHaveClass('text-cyan-400');
+  });
+
+  it('does not apply far-future styling to normal videos', async () => {
+    renderWithRoute('1');
+    const normalName = await screen.findByText('Test Video Title');
+    expect(normalName.closest('td')).toHaveClass('text-gray-100');
+    expect(normalName.closest('td')).not.toHaveClass('text-cyan-400');
+  });
 });

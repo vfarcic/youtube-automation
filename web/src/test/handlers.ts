@@ -27,14 +27,18 @@ export const mockVideoList: VideoListItem[] = [
     title: 'Test Video Title',
     phase: 1,
     progress: { completed: 5, total: 20 },
+    sponsored: true,
+    isFarFuture: false,
   },
   {
     id: 'devops/another-video',
     name: 'another-video',
     category: 'devops',
     title: 'Another Video',
-    phase: 1,
+    phase: 4,
     progress: { completed: 10, total: 20 },
+    sponsored: false,
+    isFarFuture: true,
   },
 ];
 

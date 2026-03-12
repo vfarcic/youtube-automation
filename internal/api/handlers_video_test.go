@@ -228,6 +228,93 @@ func TestHandleGetVideosList(t *testing.T) {
 		if items[0].Name != "list-video" {
 			t.Errorf("name = %q, want %q", items[0].Name, "list-video")
 		}
+		if items[0].Sponsored {
+			t.Error("expected sponsored = false for video without sponsorship")
+		}
+		if items[0].IsFarFuture {
+			t.Error("expected isFarFuture = false for video without date")
+		}
+	})
+
+	t.Run("sponsored video", func(t *testing.T) {
+		env := setupTestEnv(t)
+		seedVideo(t, env, storage.Video{
+			Name:     "sponsored-video",
+			Category: "devops",
+			Sponsorship: storage.Sponsorship{
+				Amount: "1000",
+			},
+		})
+
+		req := httptest.NewRequest(http.MethodGet, "/api/videos/list?phase=7", nil)
+		w := httptest.NewRecorder()
+		env.server.Router().ServeHTTP(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("status = %d, want %d; body: %s", w.Code, http.StatusOK, w.Body.String())
+		}
+
+		var items []VideoListItem
+		json.NewDecoder(w.Body).Decode(&items)
+		if len(items) != 1 {
+			t.Fatalf("got %d items, want 1", len(items))
+		}
+		if !items[0].Sponsored {
+			t.Error("expected sponsored = true for video with sponsorship amount")
+		}
+	})
+
+	t.Run("blocked sponsorship is not sponsored", func(t *testing.T) {
+		env := setupTestEnv(t)
+		seedVideo(t, env, storage.Video{
+			Name:     "blocked-video",
+			Category: "devops",
+			Sponsorship: storage.Sponsorship{
+				Amount:  "1000",
+				Blocked: "reason",
+			},
+		})
+
+		// Blocked sponsorship videos go to phase 6 (SponsoredBlocked)
+		req := httptest.NewRequest(http.MethodGet, "/api/videos/list?phase=6", nil)
+		w := httptest.NewRecorder()
+		env.server.Router().ServeHTTP(w, req)
+
+		var items []VideoListItem
+		json.NewDecoder(w.Body).Decode(&items)
+		if len(items) != 1 {
+			t.Fatalf("got %d items, want 1", len(items))
+		}
+		if items[0].Sponsored {
+			t.Error("expected sponsored = false when blocked is set")
+		}
+	})
+
+	t.Run("far future started video", func(t *testing.T) {
+		env := setupTestEnv(t)
+		// A date far in the future (>3 months) with only a date set → Started phase (4)
+		seedVideo(t, env, storage.Video{
+			Name:     "far-future-video",
+			Category: "devops",
+			Date:     "2099-12-31T10:00",
+		})
+
+		req := httptest.NewRequest(http.MethodGet, "/api/videos/list?phase=4", nil)
+		w := httptest.NewRecorder()
+		env.server.Router().ServeHTTP(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("status = %d, want %d; body: %s", w.Code, http.StatusOK, w.Body.String())
+		}
+
+		var items []VideoListItem
+		json.NewDecoder(w.Body).Decode(&items)
+		if len(items) != 1 {
+			t.Fatalf("got %d items, want 1", len(items))
+		}
+		if !items[0].IsFarFuture {
+			t.Error("expected isFarFuture = true for far-future Started video")
+		}
 	})
 
 	t.Run("missing phase", func(t *testing.T) {

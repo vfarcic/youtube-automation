@@ -4,9 +4,12 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"time"
 
 	"devopstoolkit/youtube-automation/internal/storage"
 	"devopstoolkit/youtube-automation/internal/video"
+	"devopstoolkit/youtube-automation/internal/workflow"
+	"devopstoolkit/youtube-automation/pkg/utils"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -33,13 +36,34 @@ type VideoResponse struct {
 
 // VideoListItem is a lightweight representation of a video.
 type VideoListItem struct {
-	ID       string `json:"id"`
-	Name     string `json:"name"`
-	Category string `json:"category"`
-	Date     string `json:"date,omitempty"`
-	Title    string `json:"title,omitempty"`
-	Phase    int    `json:"phase"`
-	Progress ProgressInfo `json:"progress"`
+	ID          string       `json:"id"`
+	Name        string       `json:"name"`
+	Category    string       `json:"category"`
+	Date        string       `json:"date,omitempty"`
+	Title       string       `json:"title,omitempty"`
+	Phase       int          `json:"phase"`
+	Progress    ProgressInfo `json:"progress"`
+	Sponsored   bool         `json:"sponsored"`
+	IsFarFuture bool         `json:"isFarFuture"`
+}
+
+// isSponsored returns true if the video has a non-trivial sponsorship amount and is not blocked.
+func isSponsored(v storage.Video) bool {
+	amount := v.Sponsorship.Amount
+	return amount != "" && amount != "-" && amount != "N/A" && v.Sponsorship.Blocked == ""
+}
+
+// isFarFuture returns true if the video's date is more than 3 months in the future
+// and the video is in the Started phase.
+func isFarFuture(v storage.Video, phase int) bool {
+	if phase != workflow.PhaseStarted || v.Date == "" {
+		return false
+	}
+	farFuture, err := utils.IsFarFutureDate(v.Date, "2006-01-02T15:04", time.Now())
+	if err != nil {
+		return false
+	}
+	return farFuture
 }
 
 // createVideoRequest is the body for POST /api/videos.
@@ -124,14 +148,17 @@ func (s *Server) handleGetVideosList(w http.ResponseWriter, r *http.Request) {
 	for _, v := range videos {
 		title := v.GetUploadTitle()
 		overallC, overallT := s.videoManager.CalculateOverallProgress(v)
+		p := video.CalculateVideoPhase(v)
 		items = append(items, VideoListItem{
-			ID:       v.Category + "/" + v.Name,
-			Name:     v.Name,
-			Category: v.Category,
-			Date:     v.Date,
-			Title:    title,
-			Phase:    video.CalculateVideoPhase(v),
-			Progress: ProgressInfo{Completed: overallC, Total: overallT},
+			ID:          v.Category + "/" + v.Name,
+			Name:        v.Name,
+			Category:    v.Category,
+			Date:        v.Date,
+			Title:       title,
+			Phase:       p,
+			Progress:    ProgressInfo{Completed: overallC, Total: overallT},
+			Sponsored:   isSponsored(v),
+			IsFarFuture: isFarFuture(v, p),
 		})
 	}
 	respondJSON(w, http.StatusOK, items)
@@ -155,14 +182,17 @@ func (s *Server) handleSearchVideos(w http.ResponseWriter, r *http.Request) {
 	for _, v := range videos {
 		title := v.GetUploadTitle()
 		overallC, overallT := s.videoManager.CalculateOverallProgress(v)
+		p := video.CalculateVideoPhase(v)
 		items = append(items, VideoListItem{
-			ID:       v.Category + "/" + v.Name,
-			Name:     v.Name,
-			Category: v.Category,
-			Date:     v.Date,
-			Title:    title,
-			Phase:    video.CalculateVideoPhase(v),
-			Progress: ProgressInfo{Completed: overallC, Total: overallT},
+			ID:          v.Category + "/" + v.Name,
+			Name:        v.Name,
+			Category:    v.Category,
+			Date:        v.Date,
+			Title:       title,
+			Phase:       p,
+			Progress:    ProgressInfo{Completed: overallC, Total: overallT},
+			Sponsored:   isSponsored(v),
+			IsFarFuture: isFarFuture(v, p),
 		})
 	}
 	respondJSON(w, http.StatusOK, items)

@@ -63,8 +63,9 @@ export function VideoList() {
                     }
                     className="border-b border-gray-700 hover:bg-gray-800 cursor-pointer"
                   >
-                    <td className="py-2 pr-4 text-gray-100">
+                    <td className={`py-2 pr-4 ${v.isFarFuture ? 'text-cyan-400' : 'text-gray-100'}`}>
                       {v.title || v.name}
+                      {v.sponsored && <span className="ml-1.5 text-orange-400" title="Sponsored">$</span>}
                     </td>
                     <td className="py-2 pr-4 text-gray-400">{v.category}</td>
                     <td className="py-2 pr-4 text-gray-400">
