@@ -27,6 +27,7 @@ import type {
   SocialPostResponse,
   AnalyzeTitlesResponse,
   ApplyTitlesResponse,
+  ApplyRandomTimingResponse,
 } from './types';
 
 export function usePhases() {
@@ -393,5 +394,24 @@ export function useApplyTitlesTemplate() {
   return useMutation<ApplyTitlesResponse, Error, { content: string }>({
     mutationFn: ({ content }) =>
       post<ApplyTitlesResponse>('/api/analyze/titles/apply', { content }),
+  });
+}
+
+// --- Random Timing Hooks ---
+
+export function useApplyRandomTiming() {
+  const qc = useQueryClient();
+  return useMutation<ApplyRandomTimingResponse, Error, { name: string; category: string }>({
+    mutationFn: ({ name, category }) =>
+      post<ApplyRandomTimingResponse>(
+        `/api/videos/${encodeURIComponent(name)}/apply-random-timing?category=${encodeURIComponent(category)}`,
+        {},
+      ),
+    onSuccess: (_data, { name, category }) => {
+      qc.invalidateQueries({ queryKey: ['video', name, category] });
+      qc.invalidateQueries({ queryKey: ['videoProgress', name, category] });
+      qc.invalidateQueries({ queryKey: ['videosList'] });
+      qc.invalidateQueries({ queryKey: ['phases'] });
+    },
   });
 }

@@ -288,4 +288,14 @@ export const handlers = [
   http.post('/api/analyze/titles/apply', () =>
     HttpResponse.json({ applied: true }),
   ),
+  // Random timing endpoint
+  http.post('/api/videos/:videoName/apply-random-timing', () =>
+    HttpResponse.json({
+      newDate: '2026-01-14T14:30:00Z',
+      originalDate: '2026-01-15',
+      day: 'Wednesday',
+      time: '14:30',
+      reasoning: 'Mid-week afternoon uploads show 20% higher initial engagement',
+    }),
+  ),
 ];
