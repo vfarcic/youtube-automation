@@ -5,7 +5,7 @@ default:
   just --list
 
 # Build the binary and move it to `/usr/local/bin`.
-build:
+build: frontend-build
   go build -o youtube-release ./cmd/youtube-automation
   chmod +x youtube-release
   sudo mv youtube-release /usr/local/bin
