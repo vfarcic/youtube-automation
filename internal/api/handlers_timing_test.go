@@ -74,6 +74,53 @@ func TestHandleApplyRandomTiming_NoRecommendations(t *testing.T) {
 	}
 }
 
+func TestHandleApplyRandomTiming_WithDataDir(t *testing.T) {
+	env := setupTestEnv(t)
+	seedVideo(t, env, storage.Video{
+		Name:     "test-video",
+		Category: "devops",
+		Date:     "2025-12-02T16:00", // Tuesday
+	})
+
+	// Create a separate data directory (not CWD) for settings.yaml
+	dataDir := t.TempDir()
+	env.server.SetDataDir(dataDir)
+
+	// Write settings.yaml in the data directory, NOT in CWD
+	settingsContent := `timing:
+  recommendations:
+    - day: Wednesday
+      time: "14:00"
+      reasoning: "Mid-week engagement peak"
+    - day: Wednesday
+      time: "14:00"
+      reasoning: "Mid-week engagement peak"
+`
+	if err := os.WriteFile(filepath.Join(dataDir, "settings.yaml"), []byte(settingsContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/api/videos/test-video/apply-random-timing?category=devops", nil)
+	w := httptest.NewRecorder()
+	env.server.Router().ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var resp ApplyRandomTimingResponse
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+
+	if resp.Day != "Wednesday" {
+		t.Errorf("expected day 'Wednesday', got '%s'", resp.Day)
+	}
+	if resp.NewDate != "2025-12-03T14:00" {
+		t.Errorf("expected newDate '2025-12-03T14:00', got '%s'", resp.NewDate)
+	}
+}
+
 func TestHandleApplyRandomTiming_Success(t *testing.T) {
 	env := setupTestEnv(t)
 	seedVideo(t, env, storage.Video{

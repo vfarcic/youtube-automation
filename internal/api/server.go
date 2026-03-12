@@ -52,10 +52,14 @@ func (s *Server) SetPublishingService(ps PublishingService) {
 	s.publishingService = ps
 }
 
-// SetAnalyzeService configures the analyze service for title analysis.
-func (s *Server) SetAnalyzeService(as AnalyzeService, dataDir string) {
-	s.analyzeService = as
+// SetDataDir configures the data directory for serve mode.
+func (s *Server) SetDataDir(dataDir string) {
 	s.dataDir = dataDir
+}
+
+// SetAnalyzeService configures the analyze service for title analysis.
+func (s *Server) SetAnalyzeService(as AnalyzeService) {
+	s.analyzeService = as
 }
 
 // SetGitSync configures git sync for commit+push after file writes.

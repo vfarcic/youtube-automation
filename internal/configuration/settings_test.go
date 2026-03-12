@@ -2,6 +2,7 @@ package configuration
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -152,7 +153,7 @@ timing:
 			}
 
 			// Test the function
-			got, err := LoadTimingRecommendations()
+			got, err := LoadTimingRecommendations("settings.yaml")
 
 			// Check error condition
 			if tt.wantErr {
@@ -269,7 +270,7 @@ hugo:
 			}
 
 			// Test the function
-			err = SaveTimingRecommendations(tt.recommendations)
+			err = SaveTimingRecommendations("settings.yaml", tt.recommendations)
 
 			// Check error condition
 			if tt.wantErr {
@@ -280,7 +281,7 @@ hugo:
 			assert.NoError(t, err, "Unexpected error: %v", err)
 
 			// Verify the saved recommendations
-			savedRecommendations, err := LoadTimingRecommendations()
+			savedRecommendations, err := LoadTimingRecommendations("settings.yaml")
 			require.NoError(t, err, "Failed to load saved recommendations")
 			assert.Equal(t, tt.recommendations, savedRecommendations, "Saved recommendations don't match")
 
@@ -367,11 +368,11 @@ hugo:
 	}
 
 	// Save recommendations
-	err = SaveTimingRecommendations(originalRecommendations)
+	err = SaveTimingRecommendations("settings.yaml", originalRecommendations)
 	require.NoError(t, err, "Failed to save recommendations")
 
 	// Load recommendations
-	loadedRecommendations, err := LoadTimingRecommendations()
+	loadedRecommendations, err := LoadTimingRecommendations("settings.yaml")
 	require.NoError(t, err, "Failed to load recommendations")
 
 	// Verify they match exactly
@@ -436,11 +437,57 @@ hugo:
 	recommendations := []TimingRecommendation{
 		{Day: "Monday", Time: "16:00", Reasoning: "Test"},
 	}
-	err = SaveTimingRecommendations(recommendations)
+	err = SaveTimingRecommendations("settings.yaml", recommendations)
 
 	// Should get an error
 	assert.Error(t, err, "Expected error when writing to read-only file")
 	assert.Contains(t, err.Error(), "failed to write settings.yaml", "Error message should mention write failure")
+}
+
+// TestLoadTimingRecommendationsAbsolutePath tests using an absolute path instead of CWD
+func TestLoadTimingRecommendationsAbsolutePath(t *testing.T) {
+	tempDir := t.TempDir()
+
+	settingsPath := filepath.Join(tempDir, "settings.yaml")
+	yamlContent := `timing:
+  recommendations:
+    - day: "Friday"
+      time: "15:00"
+      reasoning: "End of week"
+`
+	err := os.WriteFile(settingsPath, []byte(yamlContent), 0644)
+	require.NoError(t, err)
+
+	recs, err := LoadTimingRecommendations(settingsPath)
+	require.NoError(t, err)
+	assert.Len(t, recs, 1)
+	assert.Equal(t, "Friday", recs[0].Day)
+	assert.Equal(t, "15:00", recs[0].Time)
+}
+
+// TestSaveTimingRecommendationsAbsolutePath tests saving with an absolute path
+func TestSaveTimingRecommendationsAbsolutePath(t *testing.T) {
+	tempDir := t.TempDir()
+
+	settingsPath := filepath.Join(tempDir, "settings.yaml")
+	initialYAML := `email:
+  from: test@example.com
+  thumbnailTo: thumb@example.com
+  editTo: edit@example.com
+  financeTo: finance@example.com
+`
+	err := os.WriteFile(settingsPath, []byte(initialYAML), 0644)
+	require.NoError(t, err)
+
+	recs := []TimingRecommendation{
+		{Day: "Saturday", Time: "10:00", Reasoning: "Weekend morning"},
+	}
+	err = SaveTimingRecommendations(settingsPath, recs)
+	require.NoError(t, err)
+
+	loaded, err := LoadTimingRecommendations(settingsPath)
+	require.NoError(t, err)
+	assert.Equal(t, recs, loaded)
 }
 
 // TestLoadTimingRecommendationsWithSpecialCharacters tests handling of special characters
@@ -494,7 +541,7 @@ timing:
 	require.NoError(t, err, "Failed to write settings file")
 
 	// Load recommendations
-	recommendations, err := LoadTimingRecommendations()
+	recommendations, err := LoadTimingRecommendations("settings.yaml")
 	require.NoError(t, err, "Failed to load recommendations with special characters")
 
 	// Verify special characters are preserved

@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"path/filepath"
 
 	"devopstoolkit/youtube-automation/internal/app"
 	"devopstoolkit/youtube-automation/internal/configuration"
@@ -39,7 +40,13 @@ func (s *Server) handleApplyRandomTiming(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	recommendations, err := configuration.LoadTimingRecommendations()
+	dataDir := s.dataDir
+	if dataDir == "" {
+		dataDir = "."
+	}
+	settingsPath := filepath.Join(dataDir, "settings.yaml")
+
+	recommendations, err := configuration.LoadTimingRecommendations(settingsPath)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "Failed to load timing recommendations", err.Error())
 		return

@@ -244,7 +244,7 @@ func (m *MenuHandler) HandleAnalyzeTiming() error {
 
 	if saveToSettings {
 		// Save to settings.yaml
-		if err := configuration.SaveTimingRecommendations(recommendations); err != nil {
+		if err := configuration.SaveTimingRecommendations("settings.yaml", recommendations); err != nil {
 			fmt.Println(m.errorStyle.Render(fmt.Sprintf("Failed to save to settings.yaml: %v", err)))
 			return err
 		}
