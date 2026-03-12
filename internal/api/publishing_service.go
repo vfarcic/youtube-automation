@@ -14,7 +14,7 @@ type PublishingService interface {
 	UploadVideo(ctx context.Context, video *storage.Video) (string, error)
 	UploadThumbnail(ctx context.Context, videoID, thumbnailPath string) error
 	UploadShort(ctx context.Context, filePath string, short storage.Short, mainVideoID string) (string, error)
-	CreateHugoPost(ctx context.Context, gist, title, date, videoID string) (string, error)
+	CreateHugoPost(ctx context.Context, video *storage.Video, opts *publishing.HugoPostOptions) (string, error)
 	GetTranscript(ctx context.Context, videoID string) (string, error)
 	GetVideoMetadata(ctx context.Context, videoID string) (*publishing.VideoMetadata, error)
 	PostBlueSky(ctx context.Context, text, videoID, thumbnailPath string) error
@@ -49,11 +49,11 @@ func (d *DefaultPublishingService) UploadShort(_ context.Context, filePath strin
 	return publishing.UploadShort(filePath, short, mainVideoID)
 }
 
-func (d *DefaultPublishingService) CreateHugoPost(_ context.Context, gist, title, date, videoID string) (string, error) {
+func (d *DefaultPublishingService) CreateHugoPost(_ context.Context, video *storage.Video, opts *publishing.HugoPostOptions) (string, error) {
 	if d.hugo == nil {
 		return "", nil
 	}
-	return d.hugo.Post(gist, title, date, videoID)
+	return d.hugo.Post(video, opts)
 }
 
 func (d *DefaultPublishingService) GetTranscript(_ context.Context, videoID string) (string, error) {

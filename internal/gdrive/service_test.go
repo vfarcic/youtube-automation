@@ -25,6 +25,14 @@ func (m *mockDriveService) FindOrCreateFolder(_ context.Context, _ string, paren
 	return parentID + "-subfolder", nil
 }
 
+func (m *mockDriveService) GetFile(_ context.Context, _ string) (io.ReadCloser, string, string, error) {
+	return nil, "", "", nil
+}
+
+func (m *mockDriveService) ListFilesInFolder(_ context.Context, _ string) ([]DriveFileInfo, error) {
+	return nil, m.returnErr
+}
+
 func (m *mockDriveService) UploadFile(_ context.Context, filename string, content io.Reader, mimeType string, folderID string) (string, error) {
 	m.uploadedFilename = filename
 	m.uploadedMimeType = mimeType

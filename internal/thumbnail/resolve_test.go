@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"devopstoolkit/youtube-automation/internal/gdrive"
 	"devopstoolkit/youtube-automation/internal/storage"
 )
 
@@ -26,6 +27,10 @@ func (m *mockDriveService) UploadFile(ctx context.Context, filename string, cont
 
 func (m *mockDriveService) FindOrCreateFolder(ctx context.Context, name string, parentID string) (string, error) {
 	return "", nil
+}
+
+func (m *mockDriveService) ListFilesInFolder(_ context.Context, _ string) ([]gdrive.DriveFileInfo, error) {
+	return nil, nil
 }
 
 func (m *mockDriveService) GetFile(ctx context.Context, fileID string) (io.ReadCloser, string, string, error) {

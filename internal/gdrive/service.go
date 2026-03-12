@@ -10,11 +10,19 @@ import (
 	"google.golang.org/api/option"
 )
 
+// DriveFileInfo holds basic metadata about a file in Google Drive.
+type DriveFileInfo struct {
+	ID       string
+	Name     string
+	MimeType string
+}
+
 // DriveService abstracts Google Drive file operations for easy mocking in tests.
 type DriveService interface {
 	UploadFile(ctx context.Context, filename string, content io.Reader, mimeType string, folderID string) (fileID string, err error)
 	FindOrCreateFolder(ctx context.Context, name string, parentID string) (folderID string, err error)
 	GetFile(ctx context.Context, fileID string) (content io.ReadCloser, mimeType string, filename string, err error)
+	ListFilesInFolder(ctx context.Context, folderID string) ([]DriveFileInfo, error)
 }
 
 type driveService struct {
@@ -98,4 +106,34 @@ func (d *driveService) FindOrCreateFolder(ctx context.Context, name string, pare
 		return "", fmt.Errorf("unable to create folder: %w", err)
 	}
 	return created.Id, nil
+}
+
+// ListFilesInFolder lists all non-trashed files in the given folder.
+// It handles pagination to return all files, not just the first page.
+func (d *driveService) ListFilesInFolder(ctx context.Context, folderID string) ([]DriveFileInfo, error) {
+	q := fmt.Sprintf("'%s' in parents and trashed = false", folderID)
+	var files []DriveFileInfo
+	pageToken := ""
+	for {
+		call := d.service.Files.List().Q(q).Fields("nextPageToken, files(id, name, mimeType)").SupportsAllDrives(true).IncludeItemsFromAllDrives(true).Context(ctx)
+		if pageToken != "" {
+			call = call.PageToken(pageToken)
+		}
+		result, err := call.Do()
+		if err != nil {
+			return nil, fmt.Errorf("unable to list files in folder: %w", err)
+		}
+		for _, f := range result.Files {
+			files = append(files, DriveFileInfo{
+				ID:       f.Id,
+				Name:     f.Name,
+				MimeType: f.MimeType,
+			})
+		}
+		if result.NextPageToken == "" {
+			break
+		}
+		pageToken = result.NextPageToken
+	}
+	return files, nil
 }
