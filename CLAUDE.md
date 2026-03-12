@@ -56,6 +56,17 @@ make bump-minor    # Bump minor version
 make bump-major    # Bump major version
 ```
 
+### Code Review (Pre-PR)
+Before creating a PR, always run a local CodeRabbit review against the base branch:
+```bash
+coderabbit review --base main --plain --config CLAUDE.md
+```
+- Use `--base` to compare against the target branch (usually `main`)
+- Use `--plain` for non-interactive output
+- Use `--config CLAUDE.md` to give CodeRabbit project context
+- Address all findings before creating the PR
+- Prefer this CLI-based review over the CodeRabbit MCP tools
+
 ## Architecture Overview
 
 ### Core System Design
