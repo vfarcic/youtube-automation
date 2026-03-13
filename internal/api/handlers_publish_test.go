@@ -839,24 +839,49 @@ func TestHandleAMAGenerate(t *testing.T) {
 		name       string
 		body       string
 		pubMock    *mockPublishingService
+		aiMock     *mockAIService
 		wantStatus int
 	}{
 		{
-			name:       "success",
-			body:       `{"videoId":"abc123"}`,
-			pubMock:    &mockPublishingService{transcript: "Hello, welcome to the AMA"},
+			name:    "success",
+			body:    `{"videoId":"abc123"}`,
+			pubMock: &mockPublishingService{transcript: "Hello, welcome to the AMA"},
+			aiMock: &mockAIService{
+				amaContent: &ai.AMAContent{
+					Title:       "Generated AMA Title",
+					Description: "Generated AMA Description",
+					Tags:        "ama,generated",
+					Timecodes:   "00:00 Intro\n01:00 Q1",
+				},
+			},
 			wantStatus: http.StatusOK,
 		},
 		{
 			name:       "missing videoId",
 			body:       `{}`,
 			pubMock:    &mockPublishingService{},
+			aiMock:     &mockAIService{},
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name:       "invalid JSON",
+			body:       `{invalid}`,
+			pubMock:    &mockPublishingService{},
+			aiMock:     &mockAIService{},
 			wantStatus: http.StatusBadRequest,
 		},
 		{
 			name:       "transcript error",
 			body:       `{"videoId":"abc123"}`,
 			pubMock:    &mockPublishingService{transcriptErr: errors.New("no captions")},
+			aiMock:     &mockAIService{},
+			wantStatus: http.StatusInternalServerError,
+		},
+		{
+			name:    "ai generation error",
+			body:    `{"videoId":"abc123"}`,
+			pubMock: &mockPublishingService{transcript: "Hello"},
+			aiMock:  &mockAIService{err: errors.New("ai failed")},
 			wantStatus: http.StatusInternalServerError,
 		},
 	}
@@ -865,14 +890,7 @@ func TestHandleAMAGenerate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			env := setupTestEnv(t)
 			env.server.publishingService = tt.pubMock
-			env.server.aiService = &mockAIService{
-				amaContent: &ai.AMAContent{
-					Title:       "Generated AMA Title",
-					Description: "Generated AMA Description",
-					Tags:        "ama,generated",
-					Timecodes:   "00:00 Intro\n01:00 Q1",
-				},
-			}
+			env.server.aiService = tt.aiMock
 			req := httptest.NewRequest(http.MethodPost, "/api/ama/generate", strings.NewReader(tt.body))
 			req.Header.Set("Authorization", "Bearer test-token")
 			req.Header.Set("Content-Type", "application/json")

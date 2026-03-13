@@ -27,6 +27,7 @@ export function TranslationPanel({ category, videoName, onApply }: TranslationPa
     if (translateMut.data.shortTitles && translateMut.data.shortTitles.length > 0) {
       fields.shortTitles = translateMut.data.shortTitles.join('\n');
     }
+    if (Object.keys(fields).length === 0) return;
     onApply(fields);
     translateMut.reset();
     setExpanded(false);

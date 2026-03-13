@@ -576,6 +576,10 @@ func (s *Server) handleAMAGenerate(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusInternalServerError, "AI generation failed", err.Error())
 		return
 	}
+	if content == nil {
+		respondError(w, http.StatusInternalServerError, "AI generation returned empty content", "")
+		return
+	}
 
 	respondJSON(w, http.StatusOK, AMAGenerateResponse{
 		Title:       content.Title,
