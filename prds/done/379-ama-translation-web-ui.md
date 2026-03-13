@@ -1,7 +1,8 @@
 # PRD: AMA + Translation Web UI Integration
 
 **Issue**: #379
-**Status**: Not Started
+**Status**: Complete
+**Completed**: 2026-03-13
 **Priority**: Medium
 **Created**: 2026-03-07
 **Parent**: Split from PRD #372 (HTTP API + React Frontend), Milestone 13

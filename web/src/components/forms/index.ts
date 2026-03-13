@@ -11,3 +11,4 @@ export { FileUploadInput } from './FileUploadInput';
 export { VideoUploadInput } from './VideoUploadInput';
 export { DynamicForm } from './DynamicForm';
 export { ActionButton, isActionField } from './ActionButton';
+export { TranslationPanel } from './TranslationPanel';

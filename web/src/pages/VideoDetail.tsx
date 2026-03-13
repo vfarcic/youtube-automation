@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useVideo, useVideoProgress, useAspects, usePatchVideo, useDeleteVideo } from '../api/hooks';
 import { ProgressBar } from '../components/ProgressBar';
-import { DynamicForm } from '../components/forms';
+import { DynamicForm, TranslationPanel } from '../components/forms';
 import { ASPECT_LABELS } from '../lib/constants';
 
 export function VideoDetail() {
@@ -88,6 +88,57 @@ export function VideoDetail() {
             Overall Progress
           </h3>
           <ProgressBar progress={progress.overall} color="bg-green-500" />
+        </div>
+      )}
+
+      {category && videoName && (
+        <div className="mb-6">
+          <TranslationPanel
+            category={category}
+            videoName={videoName}
+            onApply={(translatedFields) => {
+              // Apply translated fields to the definition aspect
+              const definitionFields: Record<string, unknown> = {};
+              if (translatedFields.title) definitionFields.title = translatedFields.title;
+              if (translatedFields.description) definitionFields.description = translatedFields.description;
+              if (translatedFields.tags) definitionFields.tags = translatedFields.tags;
+
+              const postProdFields: Record<string, unknown> = {};
+              if (translatedFields.timecodes) postProdFields.timecodes = translatedFields.timecodes;
+
+              if (Object.keys(definitionFields).length > 0) {
+                patchVideo.mutate(
+                  { name: videoName, category, aspect: 'definition', fields: definitionFields },
+                  {
+                    onSuccess: (data) => {
+                      if (data.syncWarning) {
+                        setSaveMsg({ type: 'warning', text: data.syncWarning });
+                      }
+                    },
+                    onError: (err) => setSaveMsg({ type: 'error', text: err.message || 'Translation apply failed.' }),
+                  },
+                );
+              }
+              if (Object.keys(postProdFields).length > 0) {
+                patchVideo.mutate(
+                  { name: videoName, category, aspect: 'post-production', fields: postProdFields },
+                  {
+                    onSuccess: (data) => {
+                      if (data.syncWarning) {
+                        setSaveMsg({ type: 'warning', text: data.syncWarning });
+                      } else if (Object.keys(definitionFields).length === 0) {
+                        setSaveMsg({ type: 'success', text: 'Translation applied.' });
+                      }
+                    },
+                    onError: (err) => setSaveMsg({ type: 'error', text: err.message || 'Translation apply failed.' }),
+                  },
+                );
+              }
+              if (Object.keys(definitionFields).length > 0 && Object.keys(postProdFields).length === 0) {
+                setSaveMsg({ type: 'success', text: 'Translation applied.' });
+              }
+            }}
+          />
         </div>
       )}
 

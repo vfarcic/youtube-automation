@@ -342,6 +342,20 @@ export interface ApplyTitlesResponse {
   syncWarning?: string;
 }
 
+// --- AMA Types ---
+
+export interface AMAGenerateResponse {
+  title: string;
+  description: string;
+  tags: string;
+  timecodes: string;
+  transcript: string;
+}
+
+export interface AMAApplyResponse {
+  success: boolean;
+}
+
 // --- Random Timing Types ---
 
 export interface ApplyRandomTimingResponse {

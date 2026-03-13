@@ -13,6 +13,7 @@ import (
 	"strings"
 	"testing"
 
+	"devopstoolkit/youtube-automation/internal/ai"
 	"devopstoolkit/youtube-automation/internal/publishing"
 	"devopstoolkit/youtube-automation/internal/storage"
 )
@@ -32,6 +33,7 @@ type mockPublishingService struct {
 	metadataErr       error
 	blueSkyErr        error
 	slackErr          error
+	updateAMAErr      error
 }
 
 func (m *mockPublishingService) UploadVideo(_ context.Context, _ *storage.Video) (string, error) {
@@ -57,6 +59,9 @@ func (m *mockPublishingService) PostBlueSky(_ context.Context, _, _, _ string) e
 }
 func (m *mockPublishingService) PostSlack(_ context.Context, _ *storage.Video, _ string) error {
 	return m.slackErr
+}
+func (m *mockPublishingService) UpdateAMAVideo(_ context.Context, _, _, _, _, _ string) error {
+	return m.updateAMAErr
 }
 
 func setupPublishTestEnv(t *testing.T, mock *mockPublishingService) *testEnv {
@@ -736,6 +741,143 @@ func TestCreateTempFromReader(t *testing.T) {
 			}
 			if string(content) != tt.wantBody {
 				t.Errorf("content = %q, want %q", string(content), tt.wantBody)
+			}
+		})
+	}
+}
+
+// --- AMA Apply Tests ---
+
+func TestHandleAMAApply(t *testing.T) {
+	tests := []struct {
+		name       string
+		body       string
+		mock       *mockPublishingService
+		wantStatus int
+	}{
+		{
+			name:       "success",
+			body:       `{"videoId":"abc123","title":"AMA Title","description":"AMA Desc","tags":"ama,q&a","timecodes":"00:00 Intro"}`,
+			mock:       &mockPublishingService{},
+			wantStatus: http.StatusOK,
+		},
+		{
+			name:       "missing videoId",
+			body:       `{"title":"AMA Title"}`,
+			mock:       &mockPublishingService{},
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name:       "update error",
+			body:       `{"videoId":"abc123","title":"AMA Title"}`,
+			mock:       &mockPublishingService{updateAMAErr: errors.New("YouTube API error")},
+			wantStatus: http.StatusInternalServerError,
+		},
+		{
+			name:       "invalid JSON",
+			body:       `{invalid}`,
+			mock:       &mockPublishingService{},
+			wantStatus: http.StatusBadRequest,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			env := setupPublishTestEnv(t, tt.mock)
+			req := httptest.NewRequest(http.MethodPost, "/api/ama/apply", strings.NewReader(tt.body))
+			req.Header.Set("Authorization", "Bearer test-token")
+			req.Header.Set("Content-Type", "application/json")
+			rec := httptest.NewRecorder()
+			env.server.Router().ServeHTTP(rec, req)
+			if rec.Code != tt.wantStatus {
+				t.Errorf("status = %d, want %d; body = %s", rec.Code, tt.wantStatus, rec.Body.String())
+			}
+			if tt.wantStatus == http.StatusOK {
+				var resp AMAApplyResponse
+				if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
+					t.Fatalf("failed to decode response: %v", err)
+				}
+				if !resp.Success {
+					t.Error("expected success = true")
+				}
+			}
+		})
+	}
+}
+
+func TestHandleAMAApplyNotConfigured(t *testing.T) {
+	env := setupTestEnv(t)
+	// Don't set publishingService
+	req := httptest.NewRequest(http.MethodPost, "/api/ama/apply", strings.NewReader(`{"videoId":"abc"}`))
+	req.Header.Set("Authorization", "Bearer test-token")
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	env.server.Router().ServeHTTP(rec, req)
+	if rec.Code != http.StatusNotImplemented {
+		t.Errorf("status = %d, want %d", rec.Code, http.StatusNotImplemented)
+	}
+}
+
+// --- AMA Generate Tests ---
+
+func TestHandleAMAGenerate(t *testing.T) {
+	tests := []struct {
+		name       string
+		body       string
+		pubMock    *mockPublishingService
+		wantStatus int
+	}{
+		{
+			name:       "success",
+			body:       `{"videoId":"abc123"}`,
+			pubMock:    &mockPublishingService{transcript: "Hello, welcome to the AMA"},
+			wantStatus: http.StatusOK,
+		},
+		{
+			name:       "missing videoId",
+			body:       `{}`,
+			pubMock:    &mockPublishingService{},
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name:       "transcript error",
+			body:       `{"videoId":"abc123"}`,
+			pubMock:    &mockPublishingService{transcriptErr: errors.New("no captions")},
+			wantStatus: http.StatusInternalServerError,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			env := setupTestEnv(t)
+			env.server.publishingService = tt.pubMock
+			env.server.aiService = &mockAIService{
+				amaContent: &ai.AMAContent{
+					Title:       "Generated AMA Title",
+					Description: "Generated AMA Description",
+					Tags:        "ama,generated",
+					Timecodes:   "00:00 Intro\n01:00 Q1",
+				},
+			}
+			req := httptest.NewRequest(http.MethodPost, "/api/ama/generate", strings.NewReader(tt.body))
+			req.Header.Set("Authorization", "Bearer test-token")
+			req.Header.Set("Content-Type", "application/json")
+			rec := httptest.NewRecorder()
+			env.server.Router().ServeHTTP(rec, req)
+			if rec.Code != tt.wantStatus {
+				t.Errorf("status = %d, want %d; body = %s", rec.Code, tt.wantStatus, rec.Body.String())
+			}
+			if tt.wantStatus == http.StatusOK {
+				var resp AMAGenerateResponse
+				if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
+					t.Fatalf("failed to decode response: %v", err)
+				}
+				if resp.Title != "Generated AMA Title" {
+					t.Errorf("title = %q, want %q", resp.Title, "Generated AMA Title")
+				}
+				if resp.Transcript != "Hello, welcome to the AMA" {
+					t.Errorf("transcript = %q, want %q", resp.Transcript, "Hello, welcome to the AMA")
+				}
 			}
 		})
 	}

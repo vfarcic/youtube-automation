@@ -19,6 +19,7 @@ type PublishingService interface {
 	GetVideoMetadata(ctx context.Context, videoID string) (*publishing.VideoMetadata, error)
 	PostBlueSky(ctx context.Context, text, videoID, thumbnailPath string) error
 	PostSlack(ctx context.Context, video *storage.Video, videoPath string) error
+	UpdateAMAVideo(ctx context.Context, videoID, title, description, tags, timecodes string) error
 }
 
 // DefaultPublishingService delegates to existing publishing functions.
@@ -73,4 +74,8 @@ func (d *DefaultPublishingService) PostSlack(_ context.Context, video *storage.V
 		return nil
 	}
 	return d.slackService.PostVideo(video, videoPath)
+}
+
+func (d *DefaultPublishingService) UpdateAMAVideo(_ context.Context, videoID, title, description, tags, timecodes string) error {
+	return publishing.UpdateAMAVideo(videoID, title, description, tags, timecodes)
 }
