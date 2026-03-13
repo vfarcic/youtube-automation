@@ -19,10 +19,10 @@ export function AskMeAnything() {
       { videoId: videoId.trim() },
       {
         onSuccess: (data) => {
-          setTitle(data.title);
-          setDescription(data.description);
-          setTags(data.tags);
-          setTimecodes(data.timecodes);
+          setTitle(data.title ?? '');
+          setDescription(data.description ?? '');
+          setTags(data.tags ?? '');
+          setTimecodes(data.timecodes ?? '');
           setStatus({ type: 'success', text: 'Content generated. Review and edit, then apply to YouTube.' });
         },
         onError: (err) => setStatus({ type: 'error', text: err.message || 'Failed to generate content.' }),

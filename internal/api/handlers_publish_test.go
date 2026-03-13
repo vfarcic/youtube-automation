@@ -818,6 +818,20 @@ func TestHandleAMAApplyNotConfigured(t *testing.T) {
 	}
 }
 
+func TestHandleAMAGenerateAINotConfigured(t *testing.T) {
+	env := setupTestEnv(t)
+	env.server.publishingService = &mockPublishingService{transcript: "Hello"}
+	env.server.aiService = nil
+	req := httptest.NewRequest(http.MethodPost, "/api/ama/generate", strings.NewReader(`{"videoId":"abc123"}`))
+	req.Header.Set("Authorization", "Bearer test-token")
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	env.server.Router().ServeHTTP(rec, req)
+	if rec.Code != http.StatusNotImplemented {
+		t.Errorf("status = %d, want %d", rec.Code, http.StatusNotImplemented)
+	}
+}
+
 // --- AMA Generate Tests ---
 
 func TestHandleAMAGenerate(t *testing.T) {

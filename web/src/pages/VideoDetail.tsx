@@ -113,6 +113,8 @@ export function VideoDetail() {
                     onSuccess: (data) => {
                       if (data.syncWarning) {
                         setSaveMsg({ type: 'warning', text: data.syncWarning });
+                      } else if (Object.keys(postProdFields).length === 0) {
+                        setSaveMsg({ type: 'success', text: 'Translation applied.' });
                       }
                     },
                     onError: (err) => setSaveMsg({ type: 'error', text: err.message || 'Translation apply failed.' }),
@@ -126,16 +128,13 @@ export function VideoDetail() {
                     onSuccess: (data) => {
                       if (data.syncWarning) {
                         setSaveMsg({ type: 'warning', text: data.syncWarning });
-                      } else if (Object.keys(definitionFields).length === 0) {
+                      } else {
                         setSaveMsg({ type: 'success', text: 'Translation applied.' });
                       }
                     },
                     onError: (err) => setSaveMsg({ type: 'error', text: err.message || 'Translation apply failed.' }),
                   },
                 );
-              }
-              if (Object.keys(definitionFields).length > 0 && Object.keys(postProdFields).length === 0) {
-                setSaveMsg({ type: 'success', text: 'Translation applied.' });
               }
             }}
           />

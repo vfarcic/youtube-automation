@@ -550,6 +550,10 @@ func (s *Server) handleAMAGenerate(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusNotImplemented, "Publishing not configured", "")
 		return
 	}
+	if s.aiService == nil {
+		respondError(w, http.StatusNotImplemented, "AI service not configured", "")
+		return
+	}
 
 	var req AMAGenerateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
