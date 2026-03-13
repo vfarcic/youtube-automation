@@ -97,7 +97,6 @@ export function VideoDetail() {
             category={category}
             videoName={videoName}
             onApply={(translatedFields) => {
-              // Apply translated fields to the definition aspect
               const definitionFields: Record<string, unknown> = {};
               if (translatedFields.title) definitionFields.title = translatedFields.title;
               if (translatedFields.description) definitionFields.description = translatedFields.description;
@@ -106,35 +105,28 @@ export function VideoDetail() {
               const postProdFields: Record<string, unknown> = {};
               if (translatedFields.timecodes) postProdFields.timecodes = translatedFields.timecodes;
 
+              const patches: Promise<typeof video>[] = [];
               if (Object.keys(definitionFields).length > 0) {
-                patchVideo.mutate(
-                  { name: videoName, category, aspect: 'definition', fields: definitionFields },
-                  {
-                    onSuccess: (data) => {
-                      if (data.syncWarning) {
-                        setSaveMsg({ type: 'warning', text: data.syncWarning });
-                      } else if (Object.keys(postProdFields).length === 0) {
-                        setSaveMsg({ type: 'success', text: 'Translation applied.' });
-                      }
-                    },
-                    onError: (err) => setSaveMsg({ type: 'error', text: err.message || 'Translation apply failed.' }),
-                  },
+                patches.push(
+                  patchVideo.mutateAsync({ name: videoName, category, aspect: 'definition', fields: definitionFields })
                 );
               }
               if (Object.keys(postProdFields).length > 0) {
-                patchVideo.mutate(
-                  { name: videoName, category, aspect: 'post-production', fields: postProdFields },
-                  {
-                    onSuccess: (data) => {
-                      if (data.syncWarning) {
-                        setSaveMsg({ type: 'warning', text: data.syncWarning });
-                      } else {
-                        setSaveMsg({ type: 'success', text: 'Translation applied.' });
-                      }
-                    },
-                    onError: (err) => setSaveMsg({ type: 'error', text: err.message || 'Translation apply failed.' }),
-                  },
+                patches.push(
+                  patchVideo.mutateAsync({ name: videoName, category, aspect: 'post-production', fields: postProdFields })
                 );
+              }
+              if (patches.length > 0) {
+                Promise.all(patches)
+                  .then((results) => {
+                    const warning = results.find((r) => r?.syncWarning)?.syncWarning;
+                    if (warning) {
+                      setSaveMsg({ type: 'warning', text: warning });
+                    } else {
+                      setSaveMsg({ type: 'success', text: 'Translation applied.' });
+                    }
+                  })
+                  .catch((err) => setSaveMsg({ type: 'error', text: err.message || 'Translation apply failed.' }));
               }
             }}
           />

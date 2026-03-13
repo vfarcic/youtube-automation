@@ -53,9 +53,10 @@ export function AskMeAnything() {
 
       <div className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-1">YouTube Video ID</label>
+          <label htmlFor="ama-video-id" className="block text-sm font-medium text-gray-300 mb-1">YouTube Video ID</label>
           <div className="flex gap-2">
             <input
+              id="ama-video-id"
               type="text"
               value={videoId}
               onChange={(e) => setVideoId(e.target.value)}
@@ -74,8 +75,9 @@ export function AskMeAnything() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-1">Title</label>
+          <label htmlFor="ama-title" className="block text-sm font-medium text-gray-300 mb-1">Title</label>
           <input
+            id="ama-title"
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -85,8 +87,9 @@ export function AskMeAnything() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-1">Description</label>
+          <label htmlFor="ama-description" className="block text-sm font-medium text-gray-300 mb-1">Description</label>
           <textarea
+            id="ama-description"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Video description"
@@ -96,8 +99,9 @@ export function AskMeAnything() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-1">Tags</label>
+          <label htmlFor="ama-tags" className="block text-sm font-medium text-gray-300 mb-1">Tags</label>
           <textarea
+            id="ama-tags"
             value={tags}
             onChange={(e) => setTags(e.target.value)}
             placeholder="Comma-separated tags (max 450 characters)"
@@ -108,8 +112,9 @@ export function AskMeAnything() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-1">Timecodes</label>
+          <label htmlFor="ama-timecodes" className="block text-sm font-medium text-gray-300 mb-1">Timecodes</label>
           <textarea
+            id="ama-timecodes"
             value={timecodes}
             onChange={(e) => setTimecodes(e.target.value)}
             placeholder="Timestamped Q&A segments"

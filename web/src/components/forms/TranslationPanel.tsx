@@ -1,11 +1,17 @@
 import { useState } from 'react';
 import { useAITranslate } from '../../api/hooks';
 
+type TranslatedFields = Partial<
+  Record<'title' | 'description' | 'tags' | 'timecodes' | 'shortTitles', string>
+>;
+
 interface TranslationPanelProps {
   category: string;
   videoName: string;
-  onApply: (translatedFields: Record<string, string>) => void;
+  onApply: (translatedFields: TranslatedFields) => void;
 }
+
+export type { TranslatedFields };
 
 export function TranslationPanel({ category, videoName, onApply }: TranslationPanelProps) {
   const [expanded, setExpanded] = useState(false);
@@ -19,7 +25,7 @@ export function TranslationPanel({ category, videoName, onApply }: TranslationPa
 
   const handleApplyAll = () => {
     if (!translateMut.data) return;
-    const fields: Record<string, string> = {};
+    const fields: TranslatedFields = {};
     if (translateMut.data.title) fields.title = translateMut.data.title;
     if (translateMut.data.description) fields.description = translateMut.data.description;
     if (translateMut.data.tags) fields.tags = translateMut.data.tags;
@@ -60,7 +66,11 @@ export function TranslationPanel({ category, videoName, onApply }: TranslationPa
       </div>
 
       <div className="flex gap-2">
+        <label htmlFor="translation-target-language" className="sr-only">
+          Target language
+        </label>
         <input
+          id="translation-target-language"
           type="text"
           value={targetLanguage}
           onChange={(e) => setTargetLanguage(e.target.value)}
