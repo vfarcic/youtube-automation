@@ -560,6 +560,7 @@ func (s *Server) handleAMAGenerate(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, "Invalid request body", err.Error())
 		return
 	}
+	req.VideoID = strings.TrimSpace(req.VideoID)
 	if req.VideoID == "" {
 		respondError(w, http.StatusBadRequest, "videoId is required", "")
 		return
@@ -603,6 +604,7 @@ func (s *Server) handleAMAApply(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, "Invalid request body", err.Error())
 		return
 	}
+	req.VideoID = strings.TrimSpace(req.VideoID)
 	if req.VideoID == "" {
 		respondError(w, http.StatusBadRequest, "videoId is required", "")
 		return

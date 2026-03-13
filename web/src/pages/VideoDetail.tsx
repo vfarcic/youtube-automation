@@ -101,6 +101,7 @@ export function VideoDetail() {
               if (translatedFields.title) definitionFields.title = translatedFields.title;
               if (translatedFields.description) definitionFields.description = translatedFields.description;
               if (translatedFields.tags) definitionFields.tags = translatedFields.tags;
+              if (translatedFields.shortTitles) definitionFields.shortTitles = translatedFields.shortTitles;
 
               const postProdFields: Record<string, unknown> = {};
               if (translatedFields.timecodes) postProdFields.timecodes = translatedFields.timecodes;

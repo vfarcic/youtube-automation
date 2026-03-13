@@ -33,7 +33,12 @@ type mockPublishingService struct {
 	metadataErr       error
 	blueSkyErr        error
 	slackErr          error
-	updateAMAErr      error
+	updateAMAErr       error
+	lastAMAVideoID     string
+	lastAMATitle       string
+	lastAMADescription string
+	lastAMATags        string
+	lastAMATimecodes   string
 }
 
 func (m *mockPublishingService) UploadVideo(_ context.Context, _ *storage.Video) (string, error) {
@@ -60,7 +65,12 @@ func (m *mockPublishingService) PostBlueSky(_ context.Context, _, _, _ string) e
 func (m *mockPublishingService) PostSlack(_ context.Context, _ *storage.Video, _ string) error {
 	return m.slackErr
 }
-func (m *mockPublishingService) UpdateAMAVideo(_ context.Context, _, _, _, _, _ string) error {
+func (m *mockPublishingService) UpdateAMAVideo(_ context.Context, videoID, title, description, tags, timecodes string) error {
+	m.lastAMAVideoID = videoID
+	m.lastAMATitle = title
+	m.lastAMADescription = description
+	m.lastAMATags = tags
+	m.lastAMATimecodes = timecodes
 	return m.updateAMAErr
 }
 
@@ -800,6 +810,21 @@ func TestHandleAMAApply(t *testing.T) {
 				if !resp.Success {
 					t.Error("expected success = true")
 				}
+				if tt.mock.lastAMAVideoID != "abc123" {
+					t.Errorf("videoID = %q, want %q", tt.mock.lastAMAVideoID, "abc123")
+				}
+				if tt.mock.lastAMATitle != "AMA Title" {
+					t.Errorf("title = %q, want %q", tt.mock.lastAMATitle, "AMA Title")
+				}
+				if tt.mock.lastAMADescription != "AMA Desc" {
+					t.Errorf("description = %q, want %q", tt.mock.lastAMADescription, "AMA Desc")
+				}
+				if tt.mock.lastAMATags != "ama,q&a" {
+					t.Errorf("tags = %q, want %q", tt.mock.lastAMATags, "ama,q&a")
+				}
+				if tt.mock.lastAMATimecodes != "00:00 Intro" {
+					t.Errorf("timecodes = %q, want %q", tt.mock.lastAMATimecodes, "00:00 Intro")
+				}
 			}
 		})
 	}
@@ -809,6 +834,19 @@ func TestHandleAMAApplyNotConfigured(t *testing.T) {
 	env := setupTestEnv(t)
 	// Don't set publishingService
 	req := httptest.NewRequest(http.MethodPost, "/api/ama/apply", strings.NewReader(`{"videoId":"abc"}`))
+	req.Header.Set("Authorization", "Bearer test-token")
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	env.server.Router().ServeHTTP(rec, req)
+	if rec.Code != http.StatusNotImplemented {
+		t.Errorf("status = %d, want %d", rec.Code, http.StatusNotImplemented)
+	}
+}
+
+func TestHandleAMAGenerateNotConfigured(t *testing.T) {
+	env := setupTestEnv(t)
+	// Don't set publishingService
+	req := httptest.NewRequest(http.MethodPost, "/api/ama/generate", strings.NewReader(`{"videoId":"abc123"}`))
 	req.Header.Set("Authorization", "Bearer test-token")
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
@@ -884,6 +922,13 @@ func TestHandleAMAGenerate(t *testing.T) {
 			aiMock:  &mockAIService{err: errors.New("ai failed")},
 			wantStatus: http.StatusInternalServerError,
 		},
+		{
+			name:       "ai returns nil content",
+			body:       `{"videoId":"abc123"}`,
+			pubMock:    &mockPublishingService{transcript: "Hello"},
+			aiMock:     &mockAIService{},
+			wantStatus: http.StatusInternalServerError,
+		},
 	}
 
 	for _, tt := range tests {
@@ -906,6 +951,15 @@ func TestHandleAMAGenerate(t *testing.T) {
 				}
 				if resp.Title != "Generated AMA Title" {
 					t.Errorf("title = %q, want %q", resp.Title, "Generated AMA Title")
+				}
+				if resp.Description != "Generated AMA Description" {
+					t.Errorf("description = %q, want %q", resp.Description, "Generated AMA Description")
+				}
+				if resp.Tags != "ama,generated" {
+					t.Errorf("tags = %q, want %q", resp.Tags, "ama,generated")
+				}
+				if resp.Timecodes != "00:00 Intro\n01:00 Q1" {
+					t.Errorf("timecodes = %q, want %q", resp.Timecodes, "00:00 Intro\n01:00 Q1")
 				}
 				if resp.Transcript != "Hello, welcome to the AMA" {
 					t.Errorf("transcript = %q, want %q", resp.Transcript, "Hello, welcome to the AMA")
