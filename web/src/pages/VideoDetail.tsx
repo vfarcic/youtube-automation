@@ -118,16 +118,21 @@ export function VideoDetail() {
                 );
               }
               if (patches.length > 0) {
-                Promise.all(patches)
-                  .then((results) => {
-                    const warning = results.find((r) => r?.syncWarning)?.syncWarning;
-                    if (warning) {
-                      setSaveMsg({ type: 'warning', text: warning });
-                    } else {
-                      setSaveMsg({ type: 'success', text: 'Translation applied.' });
-                    }
-                  })
-                  .catch((err) => setSaveMsg({ type: 'error', text: err.message || 'Translation apply failed.' }));
+                Promise.allSettled(patches).then((results) => {
+                  const fulfilled = results.filter((r): r is PromiseFulfilledResult<typeof video> => r.status === 'fulfilled');
+                  const rejected = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected');
+                  const warning = fulfilled.find((r) => r.value?.syncWarning)?.value?.syncWarning;
+
+                  if (rejected.length > 0 && fulfilled.length > 0) {
+                    setSaveMsg({ type: 'warning', text: 'Translation partially applied. Please retry failed fields.' });
+                  } else if (rejected.length > 0) {
+                    setSaveMsg({ type: 'error', text: rejected[0].reason?.message || 'Translation apply failed.' });
+                  } else if (warning) {
+                    setSaveMsg({ type: 'warning', text: warning });
+                  } else {
+                    setSaveMsg({ type: 'success', text: 'Translation applied.' });
+                  }
+                });
               }
             }}
           />
