@@ -292,6 +292,15 @@ export const handlers = [
   http.post('/api/analyze/titles/apply', () =>
     HttpResponse.json({ applied: true }),
   ),
+  // AMA endpoints
+  http.post('/api/ama/generate', () => HttpResponse.json({
+    title: 'Generated AMA Title',
+    description: 'Generated AMA Description',
+    tags: 'ama,generated,tags',
+    timecodes: '00:00 Intro\n01:00 First Question',
+    transcript: 'Hello welcome to the AMA',
+  })),
+  http.post('/api/ama/apply', () => HttpResponse.json({ success: true })),
   // Random timing endpoint
   http.post('/api/videos/:videoName/apply-random-timing', () =>
     HttpResponse.json({

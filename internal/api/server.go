@@ -150,6 +150,12 @@ func (s *Server) setupRoutes() {
 			r.Post("/titles/apply", s.handleApplyTitlesTemplate)
 		})
 
+		// AMA workflow (generate from YouTube video, apply to YouTube)
+		r.Route("/ama", func(r chi.Router) {
+			r.Post("/generate", s.handleAMAGenerate)
+			r.Post("/apply", s.handleAMAApply)
+		})
+
 		// Social media posting
 		r.Post("/social/{platform}/{videoName}", s.handleSocialPost)
 

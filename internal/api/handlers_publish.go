@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -510,6 +511,112 @@ func formatDOTMessage(video *storage.Video) string {
 		b.WriteString("Blog: " + hugoURL + "\n")
 	}
 	return b.String()
+}
+
+// --- AMA Handlers ---
+
+// AMAApplyRequest is the request body for applying AMA content to YouTube.
+type AMAApplyRequest struct {
+	VideoID     string `json:"videoId"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	Tags        string `json:"tags"`
+	Timecodes   string `json:"timecodes"`
+}
+
+// AMAApplyResponse is the response for the AMA apply endpoint.
+type AMAApplyResponse struct {
+	Success bool `json:"success"`
+}
+
+// AMAGenerateRequest is the request body for generating AMA content from a YouTube video ID.
+type AMAGenerateRequest struct {
+	VideoID string `json:"videoId"`
+}
+
+// AMAGenerateResponse is the response for the AMA generate endpoint.
+type AMAGenerateResponse struct {
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	Tags        string `json:"tags"`
+	Timecodes   string `json:"timecodes"`
+	Transcript  string `json:"transcript"`
+}
+
+// handleAMAGenerate fetches a YouTube video's transcript and generates AMA content.
+// POST /api/ama/generate
+func (s *Server) handleAMAGenerate(w http.ResponseWriter, r *http.Request) {
+	if s.publishingService == nil {
+		respondError(w, http.StatusNotImplemented, "Publishing not configured", "")
+		return
+	}
+	if s.aiService == nil {
+		respondError(w, http.StatusNotImplemented, "AI service not configured", "")
+		return
+	}
+
+	var req AMAGenerateRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "Invalid request body", err.Error())
+		return
+	}
+	req.VideoID = strings.TrimSpace(req.VideoID)
+	if req.VideoID == "" {
+		respondError(w, http.StatusBadRequest, "videoId is required", "")
+		return
+	}
+
+	transcript, err := s.publishingService.GetTranscript(r.Context(), req.VideoID)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "Failed to fetch transcript", err.Error())
+		return
+	}
+
+	content, err := s.aiService.GenerateAMAContent(r.Context(), transcript)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "AI generation failed", err.Error())
+		return
+	}
+	if content == nil {
+		respondError(w, http.StatusInternalServerError, "AI generation returned empty content", "")
+		return
+	}
+
+	respondJSON(w, http.StatusOK, AMAGenerateResponse{
+		Title:       content.Title,
+		Description: content.Description,
+		Tags:        content.Tags,
+		Timecodes:   content.Timecodes,
+		Transcript:  transcript,
+	})
+}
+
+// handleAMAApply applies AMA content to a YouTube video.
+// POST /api/ama/apply
+func (s *Server) handleAMAApply(w http.ResponseWriter, r *http.Request) {
+	if s.publishingService == nil {
+		respondError(w, http.StatusNotImplemented, "Publishing not configured", "")
+		return
+	}
+
+	var req AMAApplyRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "Invalid request body", err.Error())
+		return
+	}
+	req.VideoID = strings.TrimSpace(req.VideoID)
+	if req.VideoID == "" {
+		respondError(w, http.StatusBadRequest, "videoId is required", "")
+		return
+	}
+
+	err := s.publishingService.UpdateAMAVideo(r.Context(), req.VideoID, req.Title, req.Description, req.Tags, req.Timecodes)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "Failed to update YouTube video", err.Error())
+		return
+	}
+
+	respondJSON(w, http.StatusOK, AMAApplyResponse{Success: true})
 }
 
 // --- Helpers ---

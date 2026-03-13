@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useVideo, useVideoProgress, useAspects, usePatchVideo, useDeleteVideo } from '../api/hooks';
 import { ProgressBar } from '../components/ProgressBar';
-import { DynamicForm } from '../components/forms';
+import { DynamicForm, TranslationPanel } from '../components/forms';
 import { ASPECT_LABELS } from '../lib/constants';
 
 export function VideoDetail() {
@@ -88,6 +88,54 @@ export function VideoDetail() {
             Overall Progress
           </h3>
           <ProgressBar progress={progress.overall} color="bg-green-500" />
+        </div>
+      )}
+
+      {category && videoName && (
+        <div className="mb-6">
+          <TranslationPanel
+            category={category}
+            videoName={videoName}
+            onApply={(translatedFields) => {
+              const definitionFields: Record<string, unknown> = {};
+              if (translatedFields.title) definitionFields.title = translatedFields.title;
+              if (translatedFields.description) definitionFields.description = translatedFields.description;
+              if (translatedFields.tags) definitionFields.tags = translatedFields.tags;
+              if (translatedFields.shortTitles) definitionFields.shortTitles = translatedFields.shortTitles;
+
+              const postProdFields: Record<string, unknown> = {};
+              if (translatedFields.timecodes) postProdFields.timecodes = translatedFields.timecodes;
+
+              const patches: Promise<typeof video>[] = [];
+              if (Object.keys(definitionFields).length > 0) {
+                patches.push(
+                  patchVideo.mutateAsync({ name: videoName, category, aspect: 'definition', fields: definitionFields })
+                );
+              }
+              if (Object.keys(postProdFields).length > 0) {
+                patches.push(
+                  patchVideo.mutateAsync({ name: videoName, category, aspect: 'post-production', fields: postProdFields })
+                );
+              }
+              if (patches.length > 0) {
+                Promise.allSettled(patches).then((results) => {
+                  const fulfilled = results.filter((r): r is PromiseFulfilledResult<typeof video> => r.status === 'fulfilled');
+                  const rejected = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected');
+                  const warning = fulfilled.find((r) => r.value?.syncWarning)?.value?.syncWarning;
+
+                  if (rejected.length > 0 && fulfilled.length > 0) {
+                    setSaveMsg({ type: 'warning', text: 'Translation partially applied. Please retry failed fields.' });
+                  } else if (rejected.length > 0) {
+                    setSaveMsg({ type: 'error', text: rejected[0].reason?.message || 'Translation apply failed.' });
+                  } else if (warning) {
+                    setSaveMsg({ type: 'warning', text: warning });
+                  } else {
+                    setSaveMsg({ type: 'success', text: 'Translation applied.' });
+                  }
+                });
+              }
+            }}
+          />
         </div>
       )}
 

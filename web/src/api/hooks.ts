@@ -28,6 +28,8 @@ import type {
   AnalyzeTitlesResponse,
   ApplyTitlesResponse,
   ApplyRandomTimingResponse,
+  AMAGenerateResponse,
+  AMAApplyResponse,
 } from './types';
 
 export function usePhases() {
@@ -413,5 +415,19 @@ export function useApplyRandomTiming() {
       qc.invalidateQueries({ queryKey: ['videosList'] });
       qc.invalidateQueries({ queryKey: ['phases'] });
     },
+  });
+}
+
+// --- AMA Hooks ---
+
+export function useAMAGenerate() {
+  return useMutation<AMAGenerateResponse, Error, { videoId: string }>({
+    mutationFn: (body) => post<AMAGenerateResponse>('/api/ama/generate', body),
+  });
+}
+
+export function useAMAApply() {
+  return useMutation<AMAApplyResponse, Error, { videoId: string; title: string; description: string; tags: string; timecodes: string }>({
+    mutationFn: (body) => post<AMAApplyResponse>('/api/ama/apply', body),
   });
 }

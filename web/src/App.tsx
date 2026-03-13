@@ -7,6 +7,7 @@ import { VideoList } from './pages/VideoList';
 import { VideoDetail } from './pages/VideoDetail';
 import { SearchResults } from './pages/SearchResults';
 import { AnalyzeTitles } from './pages/AnalyzeTitles';
+import { AskMeAnything } from './pages/AskMeAnything';
 import { AuthScreen } from './pages/AuthScreen';
 import { ApiError } from './api/client';
 
@@ -60,6 +61,7 @@ export default function App() {
             <Route path="/phases/:phaseId" element={<VideoList />} />
             <Route path="/search" element={<SearchResults />} />
             <Route path="/analyze/titles" element={<AnalyzeTitles />} />
+            <Route path="/ama" element={<AskMeAnything />} />
             <Route
               path="/videos/:category/:videoName"
               element={<VideoDetail />}
