@@ -223,6 +223,23 @@ func init() {
 	if GlobalSettings.Email.From == "" {
 		markRequired("email-from")
 	}
+	// Check email environment variables
+	if envFrom := os.Getenv("EMAIL_FROM"); envFrom != "" {
+		GlobalSettings.Email.From = envFrom
+	}
+	if envThumbnailTo := os.Getenv("EMAIL_THUMBNAIL_TO"); envThumbnailTo != "" {
+		GlobalSettings.Email.ThumbnailTo = envThumbnailTo
+	}
+	if envEditTo := os.Getenv("EMAIL_EDIT_TO"); envEditTo != "" {
+		GlobalSettings.Email.EditTo = envEditTo
+	}
+	if envFinanceTo := os.Getenv("EMAIL_FINANCE_TO"); envFinanceTo != "" {
+		GlobalSettings.Email.FinanceTo = envFinanceTo
+	}
+	if envPassword := os.Getenv("EMAIL_PASSWORD"); envPassword != "" {
+		GlobalSettings.Email.Password = envPassword
+	}
+
 	if GlobalSettings.Email.ThumbnailTo == "" {
 		markRequired("email-thumbnail-to")
 	}
@@ -232,11 +249,7 @@ func init() {
 	if GlobalSettings.Email.FinanceTo == "" {
 		markRequired("email-finance-to")
 	}
-
-	// Check environment variables
-	if envPassword := os.Getenv("EMAIL_PASSWORD"); envPassword != "" {
-		GlobalSettings.Email.Password = envPassword
-	} else if GlobalSettings.Email.Password == "" {
+	if GlobalSettings.Email.Password == "" {
 		markRequired("email-password")
 	}
 

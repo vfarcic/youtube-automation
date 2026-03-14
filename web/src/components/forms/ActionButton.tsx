@@ -36,7 +36,7 @@ export function ActionButton({ fieldName, value, category, videoName }: ActionBu
         onError: (err) => setError(err.message),
         onSuccess: (data) => {
           if (data.emailError) {
-            setError(`Email failed: ${data.emailError}`);
+            setError(data.emailError);
           }
         },
       },

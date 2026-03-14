@@ -136,6 +136,9 @@ func TestHandleRequestThumbnail_NoEmailConfigured(t *testing.T) {
 	if resp.EmailSent {
 		t.Error("expected emailSent to be false when email not configured")
 	}
+	if resp.EmailError == "" {
+		t.Error("expected emailError to explain why email was not sent")
+	}
 	if resp.Video.RequestThumbnail != true {
 		t.Error("expected video.requestThumbnail to be true even without email")
 	}
@@ -260,6 +263,101 @@ func TestHandleRequestEdit_Success(t *testing.T) {
 	if !resp.Video.RequestEdit {
 		t.Error("expected video.requestEdit to be true")
 	}
+}
+
+func TestHandleRequestEdit_NoEmailConfigured(t *testing.T) {
+	env := setupTestEnv(t)
+	// No email service configured
+
+	seedVideo(t, env, storage.Video{
+		Name:     "test-video",
+		Category: "devops",
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/api/actions/request-edit/test-video?category=devops", nil)
+	w := httptest.NewRecorder()
+	env.server.Router().ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var resp ActionResponse
+	json.NewDecoder(w.Body).Decode(&resp)
+
+	if resp.EmailSent {
+		t.Error("expected emailSent to be false when email not configured")
+	}
+	if resp.EmailError == "" {
+		t.Error("expected emailError to explain why email was not sent")
+	}
+	if !resp.Video.RequestEdit {
+		t.Error("expected video.requestEdit to be true even without email")
+	}
+}
+
+func TestEmailNotConfiguredMessage(t *testing.T) {
+	tests := []struct {
+		name           string
+		svc            EmailService
+		settings       *configuration.SettingsEmail
+		recipientField string
+		wantContains   string
+	}{
+		{
+			name:           "nil service",
+			svc:            nil,
+			settings:       nil,
+			recipientField: "ThumbnailTo",
+			wantContains:   "EMAIL_PASSWORD",
+		},
+		{
+			name:           "nil settings",
+			svc:            &mockEmailService{},
+			settings:       nil,
+			recipientField: "ThumbnailTo",
+			wantContains:   "email settings are missing",
+		},
+		{
+			name:           "empty from",
+			svc:            &mockEmailService{},
+			settings:       &configuration.SettingsEmail{},
+			recipientField: "ThumbnailTo",
+			wantContains:   "EMAIL_FROM",
+		},
+		{
+			name:           "missing recipient",
+			svc:            &mockEmailService{},
+			settings:       &configuration.SettingsEmail{From: "a@b.com"},
+			recipientField: "EditTo",
+			wantContains:   "EditTo",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			msg := emailNotConfiguredMessage(tt.svc, tt.settings, tt.recipientField)
+			if msg == "" {
+				t.Fatal("expected non-empty message")
+			}
+			if !contains(msg, tt.wantContains) {
+				t.Errorf("message %q does not contain %q", msg, tt.wantContains)
+			}
+		})
+	}
+}
+
+func contains(s, substr string) bool {
+	return len(s) >= len(substr) && (s == substr || len(s) > 0 && containsStr(s, substr))
+}
+
+func containsStr(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
 }
 
 var errTestEmail = fmt.Errorf("smtp connection failed")

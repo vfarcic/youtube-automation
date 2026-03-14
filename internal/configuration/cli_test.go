@@ -250,6 +250,10 @@ func TestEnvVarHandling(t *testing.T) {
 	// List of environment variables to save and restore
 	envVars := []string{
 		"EMAIL_PASSWORD",
+		"EMAIL_FROM",
+		"EMAIL_THUMBNAIL_TO",
+		"EMAIL_EDIT_TO",
+		"EMAIL_FINANCE_TO",
 		"AI_KEY",
 		"YOUTUBE_API_KEY",
 		"BLUESKY_PASSWORD",
@@ -281,6 +285,10 @@ hugo:
 
 	// Setup environment variables
 	os.Setenv("EMAIL_PASSWORD", "env-email-password")
+	os.Setenv("EMAIL_FROM", "env-from@example.com")
+	os.Setenv("EMAIL_THUMBNAIL_TO", "env-thumbnail@example.com")
+	os.Setenv("EMAIL_EDIT_TO", "env-edit@example.com")
+	os.Setenv("EMAIL_FINANCE_TO", "env-finance@example.com")
 	os.Setenv("AI_KEY", "env-ai-key")
 	os.Setenv("YOUTUBE_API_KEY", "env-youtube-key")
 	os.Setenv("BLUESKY_PASSWORD", "env-bluesky-password")
@@ -313,6 +321,18 @@ hugo:
 	testCmd.Flags().StringVar(&testSettings.Bluesky.URL, "bluesky-url", testSettings.Bluesky.URL, "")
 
 	// Process environment variables similar to how init() does it
+	if envFrom := os.Getenv("EMAIL_FROM"); envFrom != "" {
+		testSettings.Email.From = envFrom
+	}
+	if envThumbnailTo := os.Getenv("EMAIL_THUMBNAIL_TO"); envThumbnailTo != "" {
+		testSettings.Email.ThumbnailTo = envThumbnailTo
+	}
+	if envEditTo := os.Getenv("EMAIL_EDIT_TO"); envEditTo != "" {
+		testSettings.Email.EditTo = envEditTo
+	}
+	if envFinanceTo := os.Getenv("EMAIL_FINANCE_TO"); envFinanceTo != "" {
+		testSettings.Email.FinanceTo = envFinanceTo
+	}
 	if envPassword := os.Getenv("EMAIL_PASSWORD"); envPassword != "" {
 		testSettings.Email.Password = envPassword
 	}
@@ -330,6 +350,18 @@ hugo:
 	}
 
 	// Check that environment variables were correctly applied
+	if testSettings.Email.From != "env-from@example.com" {
+		t.Errorf("Email.From = %s, want env-from@example.com", testSettings.Email.From)
+	}
+	if testSettings.Email.ThumbnailTo != "env-thumbnail@example.com" {
+		t.Errorf("Email.ThumbnailTo = %s, want env-thumbnail@example.com", testSettings.Email.ThumbnailTo)
+	}
+	if testSettings.Email.EditTo != "env-edit@example.com" {
+		t.Errorf("Email.EditTo = %s, want env-edit@example.com", testSettings.Email.EditTo)
+	}
+	if testSettings.Email.FinanceTo != "env-finance@example.com" {
+		t.Errorf("Email.FinanceTo = %s, want env-finance@example.com", testSettings.Email.FinanceTo)
+	}
 	if testSettings.Email.Password != "env-email-password" {
 		t.Errorf("Email.Password = %s, want env-email-password", testSettings.Email.Password)
 	}
@@ -346,11 +378,12 @@ hugo:
 		t.Errorf("Bluesky.Password = %s, want env-bluesky-password", testSettings.Bluesky.Password)
 	}
 
-	// Check that settings from file were loaded correctly
-	if testSettings.Email.From != "default@example.com" {
-		t.Errorf("Email.From = %s, want default@example.com", testSettings.Email.From)
+	// Check that env vars override settings from file
+	if testSettings.Email.From != "env-from@example.com" {
+		t.Errorf("Email.From = %s, want env-from@example.com", testSettings.Email.From)
 	}
 
+	// Check that settings from file were loaded correctly (when no env var override)
 	if testSettings.AI.Azure.Endpoint != "https://default-endpoint.com" {
 		t.Errorf("AI.Azure.Endpoint = %s, want https://default-endpoint.com", testSettings.AI.Azure.Endpoint)
 	}

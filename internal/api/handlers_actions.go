@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 
 	"devopstoolkit/youtube-automation/internal/configuration"
@@ -8,6 +9,21 @@ import (
 
 	"github.com/go-chi/chi/v5"
 )
+
+// emailNotConfiguredMessage returns a user-friendly message explaining why email was not sent.
+func emailNotConfiguredMessage(svc EmailService, settings *configuration.SettingsEmail, recipientField string) string {
+	if svc == nil {
+		return "Email not configured: EMAIL_PASSWORD is not set"
+	}
+	if settings == nil {
+		return "Email not configured: email settings are missing"
+	}
+	if settings.From == "" {
+		return "Email not configured: EMAIL_FROM (or email.from in settings.yaml) is not set"
+	}
+	return fmt.Sprintf("Email not configured: %s address is not set (use EMAIL_%s env var or email settings in settings.yaml)",
+		recipientField, recipientField)
+}
 
 // EmailService abstracts email sending for action endpoints.
 type EmailService interface {
@@ -69,6 +85,8 @@ func (s *Server) handleRequestThumbnail(w http.ResponseWriter, r *http.Request) 
 		} else {
 			resp.EmailSent = true
 		}
+	} else {
+		resp.EmailError = emailNotConfiguredMessage(s.emailService, s.emailSettings, "ThumbnailTo")
 	}
 
 	if syncErr := s.videoService.LastSyncError(); syncErr != nil {
@@ -124,6 +142,8 @@ func (s *Server) handleRequestEdit(w http.ResponseWriter, r *http.Request) {
 		} else {
 			resp.EmailSent = true
 		}
+	} else {
+		resp.EmailError = emailNotConfiguredMessage(s.emailService, s.emailSettings, "EditTo")
 	}
 
 	if syncErr := s.videoService.LastSyncError(); syncErr != nil {
