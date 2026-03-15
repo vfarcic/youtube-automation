@@ -1,9 +1,10 @@
 # PRD: Automate X (Twitter) Posting
 
 **Issue**: #382
-**Status**: Not Started
+**Status**: No Longer Needed
 **Priority**: Medium
 **Created**: 2026-03-12
+**Closed**: 2026-03-15
 
 ---
 
