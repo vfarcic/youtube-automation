@@ -22,6 +22,7 @@ interface DynamicFormProps {
   fields: AspectField[];
   video: VideoResponse;
   onSave: (changedFields: Record<string, unknown>) => void;
+  onSaveCrossAspect?: (aspect: string, fields: Record<string, unknown>) => void;
   saving?: boolean;
   category?: string;
   videoName?: string;
@@ -38,7 +39,7 @@ function getFieldValue(video: VideoResponse, fieldName: string): unknown {
   return current;
 }
 
-export function DynamicForm({ fields, video, onSave, saving, category, videoName }: DynamicFormProps) {
+export function DynamicForm({ fields, video, onSave, onSaveCrossAspect, saving, category, videoName }: DynamicFormProps) {
   const initialValues = useMemo(() => {
     const vals: Record<string, unknown> = {};
     for (const field of fields) {
@@ -98,7 +99,16 @@ export function DynamicForm({ fields, video, onSave, saving, category, videoName
   }, []);
 
   const handleSave = () => {
-    if (isDirty) onSave(dirtyFields);
+    if (!isDirty) return;
+    // Only send fields that belong to the current aspect
+    const aspectFieldNames = new Set(fields.map((f) => f.fieldName));
+    const filtered: Record<string, unknown> = {};
+    for (const [key, val] of Object.entries(dirtyFields)) {
+      if (aspectFieldNames.has(key)) {
+        filtered[key] = val;
+      }
+    }
+    if (Object.keys(filtered).length > 0) onSave(filtered);
   };
 
   const handleReset = () => {
@@ -130,7 +140,9 @@ export function DynamicForm({ fields, video, onSave, saving, category, videoName
                 videoName={videoName}
                 onApply={(animations, timecodes) => {
                   handleChange('animations', animations);
-                  if (timecodes) handleChange('timecodes', timecodes);
+                  if (timecodes && onSaveCrossAspect) {
+                    onSaveCrossAspect('post-production', { timecodes });
+                  }
                 }}
               />
             )}

@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"time"
 
 	"devopstoolkit/youtube-automation/internal/aspect"
 	"devopstoolkit/youtube-automation/internal/configuration"
@@ -214,8 +215,9 @@ func (s *Server) spaHandler() http.HandlerFunc {
 func (s *Server) Start(host string, port int) error {
 	addr := fmt.Sprintf("%s:%d", host, port)
 	s.httpServer = &http.Server{
-		Addr:    addr,
-		Handler: s.router,
+		Addr:         addr,
+		Handler:      s.router,
+		WriteTimeout: 5 * time.Minute,
 	}
 	slog.Info("starting API server", "addr", addr)
 	return s.httpServer.ListenAndServe()

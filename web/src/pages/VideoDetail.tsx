@@ -187,6 +187,20 @@ export function VideoDetail() {
               fields={currentAspect.fields}
               video={video}
               onSave={handleSave}
+              onSaveCrossAspect={(aspect, fields) => {
+                if (!videoName || !category) return;
+                patchVideo.mutate(
+                  { name: videoName, category, aspect, fields },
+                  {
+                    onSuccess: (data) => {
+                      if (data.syncWarning) {
+                        setSaveMsg({ type: 'warning', text: data.syncWarning });
+                      }
+                    },
+                    onError: (err) => setSaveMsg({ type: 'error', text: err.message || 'Cross-aspect save failed.' }),
+                  },
+                );
+              }}
               saving={patchVideo.isPending}
               category={category}
               videoName={videoName}
