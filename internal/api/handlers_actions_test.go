@@ -265,6 +265,39 @@ func TestHandleRequestEdit_Success(t *testing.T) {
 	}
 }
 
+func TestHandleRequestEdit_DoesNotCorruptGistPath(t *testing.T) {
+	env := setupTestEnv(t)
+	mock := &mockEmailService{}
+	env.server.SetEmailService(mock, &configuration.SettingsEmail{
+		From:   "from@test.com",
+		EditTo: "edit@test.com",
+	})
+
+	originalGist := "manuscript/devops/test.md"
+	seedVideo(t, env, storage.Video{
+		Name:     "test-video",
+		Category: "devops",
+		Gist:     originalGist,
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/api/actions/request-edit/test-video?category=devops", nil)
+	w := httptest.NewRecorder()
+	env.server.Router().ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	// Read back the persisted video and verify Gist was not modified
+	saved, err := env.server.videoService.GetVideo("test-video", "devops")
+	if err != nil {
+		t.Fatalf("failed to read back video: %v", err)
+	}
+	if saved.Gist != originalGist {
+		t.Errorf("Gist was corrupted: got %q, want %q", saved.Gist, originalGist)
+	}
+}
+
 func TestHandleRequestEdit_NoEmailConfigured(t *testing.T) {
 	env := setupTestEnv(t)
 	// No email service configured

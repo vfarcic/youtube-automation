@@ -121,11 +121,6 @@ func (s *Server) handleRequestEdit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Resolve the gist path so the email attachment works
-	if video.Gist != "" && s.filesystem != nil {
-		video.Gist = s.filesystem.ResolvePath(video.Gist)
-	}
-
 	video.RequestEdit = true
 	if err := s.videoService.UpdateVideo(video); err != nil {
 		respondError(w, http.StatusInternalServerError, "Failed to save video", err.Error())
@@ -136,8 +131,14 @@ func (s *Server) handleRequestEdit(w http.ResponseWriter, r *http.Request) {
 		Video: s.enrichVideo(video),
 	}
 
+	// Resolve the gist path for the email attachment only — don't persist the resolved path
+	emailVideo := video
+	if emailVideo.Gist != "" && s.filesystem != nil {
+		emailVideo.Gist = s.filesystem.ResolvePath(emailVideo.Gist)
+	}
+
 	if s.emailService != nil && s.emailSettings != nil && s.emailSettings.From != "" && s.emailSettings.EditTo != "" {
-		if err := s.emailService.SendEdit(s.emailSettings.From, s.emailSettings.EditTo, video); err != nil {
+		if err := s.emailService.SendEdit(s.emailSettings.From, s.emailSettings.EditTo, emailVideo); err != nil {
 			resp.EmailError = err.Error()
 		} else {
 			resp.EmailSent = true

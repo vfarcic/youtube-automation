@@ -75,9 +75,15 @@ func (o *Operations) GetBaseDir() string {
 
 // ResolvePath converts a storage-relative path back to an absolute path.
 // When rootDir is empty (CLI mode), the path is returned unchanged.
+// If the path already starts with rootDir, it is returned as-is to avoid double-prefixing.
 func (o *Operations) ResolvePath(storagePath string) string {
 	if o.rootDir == "" || filepath.IsAbs(storagePath) {
 		return storagePath
+	}
+	cleanRoot := filepath.Clean(o.rootDir)
+	cleanPath := filepath.Clean(storagePath)
+	if strings.HasPrefix(cleanPath, cleanRoot+string(filepath.Separator)) || cleanPath == cleanRoot {
+		return cleanPath
 	}
 	return filepath.Join(o.rootDir, storagePath)
 }

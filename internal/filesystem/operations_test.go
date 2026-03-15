@@ -116,6 +116,18 @@ func TestResolvePath(t *testing.T) {
 			storagePath: "/absolute/path/to/file.md",
 			expected:    "/absolute/path/to/file.md",
 		},
+		{
+			name:        "already prefixed with rootDir is not doubled",
+			ops:         NewOperationsWithBaseDir("tmp", "manuscript"),
+			storagePath: "tmp/manuscript/devops/my-video.md",
+			expected:    "tmp/manuscript/devops/my-video.md",
+		},
+		{
+			name:        "already prefixed with ./rootDir is not doubled",
+			ops:         NewOperationsWithBaseDir("./tmp", "manuscript"),
+			storagePath: "tmp/manuscript/devops/my-video.md",
+			expected:    "tmp/manuscript/devops/my-video.md",
+		},
 	}
 
 	for _, tt := range tests {
