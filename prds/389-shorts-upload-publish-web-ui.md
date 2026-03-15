@@ -67,6 +67,11 @@ r.Post("/upload/short/{videoName}/{shortId}", s.handleDriveUploadShort)
 r.Get("/download/short/{videoName}/{shortId}", s.handleDriveDownloadShort)
 ```
 
+#### 6. Insert TODO markers into manuscript on shorts generation
+**File**: `internal/api/handlers_ai.go`
+
+Update `handleAIShorts` to call `manuscript.InsertShortMarkers(video.Gist, shorts)` after returning candidates, matching the CLI behavior in `internal/app/menu_shorts.go`. This inserts `TODO: Short (id: shortX) (start/end)` markers into the manuscript file so the text segments are visually annotated for reference.
+
 ### Frontend Changes
 
 #### 6. Add API hooks for short Drive upload
@@ -113,6 +118,7 @@ Follow existing patterns:
 
 - [x] Add `DriveFileID` to Short struct and Drive upload/download endpoints for shorts
 - [x] Update `handlePublishShort` to resolve `drive://` file paths (download from Drive before YouTube upload)
+- [ ] Insert TODO markers into manuscript when shorts are generated via Web UI (parity with CLI `manuscript.InsertShortMarkers`)
 - [ ] Add `useUploadShortToDrive` hook and per-short upload UI with progress in ArrayInput
 - [ ] Add per-short "Publish to YouTube" button using existing `usePublishShort` hook
 - [ ] Tests covering: Drive upload for shorts, Drive-to-YouTube publish flow, UI prerequisites validation
