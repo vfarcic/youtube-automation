@@ -340,6 +340,68 @@ func TestHandlePublishShort(t *testing.T) {
 	}
 }
 
+// --- Short Publish Drive Resolution Tests ---
+
+func TestHandlePublishShort_DriveResolution(t *testing.T) {
+	env := setupTestEnv(t)
+	mock := &mockPublishingService{uploadShortID: "yt-short-drive"}
+	env.server.publishingService = mock
+
+	driveMock := &mockDriveService{
+		getFileContent: "short-video-data",
+		getFileMIME:    "video/mp4",
+		getFileName:    "short1.mp4",
+	}
+	env.server.SetDriveService(driveMock, "")
+
+	// Seed video with a Drive-hosted short (no local FilePath, only DriveFileID)
+	seedVideo(t, env, storage.Video{
+		Name:     "test-video",
+		Category: "devops",
+		VideoId:  "yt-abc123",
+		Shorts: []storage.Short{
+			{ID: "short1", Title: "Short One", DriveFileID: "drive-short-id"},
+		},
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/api/publish/youtube/test-video/shorts/short1?category=devops", nil)
+	rr := httptest.NewRecorder()
+	env.server.Router().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rr.Code, rr.Body.String())
+	}
+	var resp PublishShortResponse
+	json.NewDecoder(rr.Body).Decode(&resp)
+	if resp.YouTubeID != "yt-short-drive" {
+		t.Errorf("youtubeId = %q, want %q", resp.YouTubeID, "yt-short-drive")
+	}
+}
+
+func TestHandlePublishShort_NoFileAtAll(t *testing.T) {
+	env := setupTestEnv(t)
+	mock := &mockPublishingService{uploadShortID: "yt-short"}
+	env.server.publishingService = mock
+
+	// Seed video with a short that has no FilePath and no DriveFileID
+	seedVideo(t, env, storage.Video{
+		Name:     "test-video",
+		Category: "devops",
+		VideoId:  "yt-abc123",
+		Shorts: []storage.Short{
+			{ID: "short1", Title: "Short One"},
+		},
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/api/publish/youtube/test-video/shorts/short1?category=devops", nil)
+	rr := httptest.NewRecorder()
+	env.server.Router().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusBadRequest {
+		t.Errorf("expected 400, got %d: %s", rr.Code, rr.Body.String())
+	}
+}
+
 // --- Hugo Publish Tests ---
 
 func TestHandlePublishHugo(t *testing.T) {

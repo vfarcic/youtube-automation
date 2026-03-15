@@ -51,6 +51,7 @@ type Short struct {
 	Title         string `yaml:"title" json:"title"`                                       // Short title
 	Text          string `yaml:"text" json:"text"`                                         // Extracted manuscript segment
 	FilePath      string `yaml:"file_path,omitempty" json:"file_path,omitempty" ui:"auto"`           // Path to the short video file (set during publishing)
+	DriveFileID   string `yaml:"drive_file_id,omitempty" json:"drive_file_id,omitempty" ui:"auto"` // Google Drive file ID (set during Drive upload)
 	ScheduledDate string `yaml:"scheduled_date,omitempty" json:"scheduled_date,omitempty" ui:"auto"` // ISO format publish timestamp (set during publishing)
 	YouTubeID     string `yaml:"youtube_id,omitempty" json:"youtube_id,omitempty" ui:"auto"`         // Short's YouTube video ID (set after upload)
 }

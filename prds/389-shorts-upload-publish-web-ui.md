@@ -1,6 +1,6 @@
 # PRD #389: Shorts Upload & Publish in Web UI
 
-**Status**: Draft
+**Status**: In Progress
 **Priority**: High
 **Created**: 2026-03-15
 **GitHub Issue**: #389
@@ -111,8 +111,8 @@ Follow existing patterns:
 
 ## Milestones
 
-- [ ] Add `DriveFileID` to Short struct and Drive upload/download endpoints for shorts
-- [ ] Update `handlePublishShort` to resolve `drive://` file paths (download from Drive before YouTube upload)
+- [x] Add `DriveFileID` to Short struct and Drive upload/download endpoints for shorts
+- [x] Update `handlePublishShort` to resolve `drive://` file paths (download from Drive before YouTube upload)
 - [ ] Add `useUploadShortToDrive` hook and per-short upload UI with progress in ArrayInput
 - [ ] Add per-short "Publish to YouTube" button using existing `usePublishShort` hook
 - [ ] Tests covering: Drive upload for shorts, Drive-to-YouTube publish flow, UI prerequisites validation

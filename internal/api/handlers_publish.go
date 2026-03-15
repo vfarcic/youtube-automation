@@ -220,12 +220,32 @@ func (s *Server) handlePublishShort(w http.ResponseWriter, r *http.Request) {
 	}
 
 	short := video.Shorts[shortIdx]
-	if short.FilePath == "" {
+
+	// Resolve short file: if Drive-hosted, download to temp file
+	uploadPath := short.FilePath
+	if short.DriveFileID != "" && s.driveService != nil {
+		content, _, filename, driveErr := s.driveService.GetFile(r.Context(), short.DriveFileID)
+		if driveErr != nil {
+			respondError(w, http.StatusInternalServerError, "Failed to download short from Drive", driveErr.Error())
+			return
+		}
+		defer content.Close()
+
+		tmpFile, tmpErr := createTempFromReader(content, filename)
+		if tmpErr != nil {
+			respondError(w, http.StatusInternalServerError, "Failed to create temp short file", tmpErr.Error())
+			return
+		}
+		defer os.Remove(tmpFile)
+		uploadPath = tmpFile
+	}
+
+	if uploadPath == "" {
 		respondError(w, http.StatusBadRequest, "Short has no file path", "")
 		return
 	}
 
-	ytID, err := s.publishingService.UploadShort(r.Context(), short.FilePath, short, video.VideoId)
+	ytID, err := s.publishingService.UploadShort(r.Context(), uploadPath, short, video.VideoId)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "Short upload failed", err.Error())
 		return
