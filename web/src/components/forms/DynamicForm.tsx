@@ -13,6 +13,7 @@ import { PublishButton, isPublishField } from './PublishButton';
 import { SocialPostButton, isSocialField } from './SocialPostButton';
 import { AIGenerateButton } from './AIGenerateButton';
 import { RandomTimingButton } from './RandomTimingButton';
+import { GenerateAnimationsButton } from './GenerateAnimationsButton';
 import { VideoUploadInput } from './VideoUploadInput';
 import { FieldLabel } from './FieldLabel';
 import { AI_FIELD_CONFIG } from '../../lib/aiFields';
@@ -121,6 +122,16 @@ export function DynamicForm({ fields, video, onSave, saving, category, videoName
                 category={category}
                 videoName={videoName}
                 onApply={(value) => handleChange(field.fieldName, value)}
+              />
+            )}
+            {category && videoName && field.fieldName === 'animations' && (
+              <GenerateAnimationsButton
+                category={category}
+                videoName={videoName}
+                onApply={(animations, timecodes) => {
+                  handleChange('animations', animations);
+                  if (timecodes) handleChange('timecodes', timecodes);
+                }}
               />
             )}
             {category && videoName && field.type === 'date' && field.fieldName === 'date' && (

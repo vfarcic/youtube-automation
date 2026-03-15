@@ -28,6 +28,7 @@ import type {
   AnalyzeTitlesResponse,
   ApplyTitlesResponse,
   ApplyRandomTimingResponse,
+  AnimationsResponse,
   AMAGenerateResponse,
   AMAApplyResponse,
 } from './types';
@@ -415,6 +416,17 @@ export function useApplyRandomTiming() {
       qc.invalidateQueries({ queryKey: ['videosList'] });
       qc.invalidateQueries({ queryKey: ['phases'] });
     },
+  });
+}
+
+// --- Animations Hooks ---
+
+export function useGenerateAnimations() {
+  return useMutation<AnimationsResponse, Error, { name: string; category: string }>({
+    mutationFn: ({ name, category }) =>
+      get<AnimationsResponse>(
+        `/api/videos/${encodeURIComponent(name)}/animations?category=${encodeURIComponent(category)}`,
+      ),
   });
 }
 

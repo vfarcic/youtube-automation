@@ -301,6 +301,13 @@ export const handlers = [
     transcript: 'Hello welcome to the AMA',
   })),
   http.post('/api/ama/apply', () => HttpResponse.json({ success: true })),
+  // Animations endpoint
+  http.get('/api/videos/:videoName/animations', () =>
+    HttpResponse.json({
+      animations: ['Add fade transition', 'Section: Main Demo', 'Show terminal output'],
+      sections: ['Section: Main Demo'],
+    }),
+  ),
   // Random timing endpoint
   http.post('/api/videos/:videoName/apply-random-timing', () =>
     HttpResponse.json({

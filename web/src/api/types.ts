@@ -356,6 +356,13 @@ export interface AMAApplyResponse {
   success: boolean;
 }
 
+// --- Animations Types ---
+
+export interface AnimationsResponse {
+  animations: string[];
+  sections: string[];
+}
+
 // --- Random Timing Types ---
 
 export interface ApplyRandomTimingResponse {
