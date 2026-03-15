@@ -8,7 +8,7 @@ import (
 
 // AIService abstracts AI content generation for testability.
 type AIService interface {
-	SuggestTitles(ctx context.Context, manuscript string) ([]string, error)
+	SuggestTitles(ctx context.Context, manuscript string, dataDir string) ([]string, error)
 	SuggestDescription(ctx context.Context, manuscript string) (string, error)
 	SuggestTags(ctx context.Context, manuscript string) (string, error)
 	SuggestTweets(ctx context.Context, manuscript string) ([]string, error)
@@ -25,8 +25,8 @@ type AIService interface {
 // DefaultAIService delegates to the ai package functions.
 type DefaultAIService struct{}
 
-func (d *DefaultAIService) SuggestTitles(ctx context.Context, manuscript string) ([]string, error) {
-	return ai.SuggestTitles(ctx, manuscript)
+func (d *DefaultAIService) SuggestTitles(ctx context.Context, manuscript string, dataDir string) ([]string, error) {
+	return ai.SuggestTitles(ctx, manuscript, dataDir)
 }
 
 func (d *DefaultAIService) SuggestDescription(ctx context.Context, manuscript string) (string, error) {

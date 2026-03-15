@@ -283,7 +283,7 @@ func TestLoadTitlesTemplate(t *testing.T) {
 				}
 			}
 
-			got, err := LoadTitlesTemplate()
+			got, err := LoadTitlesTemplate("")
 
 			if tt.wantErr {
 				if err == nil {

@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"text/template"
 )
@@ -27,14 +28,25 @@ type titlesTemplateData struct {
 
 // SuggestTitles generates video title suggestions using the configured AI provider.
 // It returns a simple JSON array of strings.
+// The optional dataDir parameter specifies where to look for titles.md;
+// if empty, falls back to the current working directory.
 func SuggestTitles(ctx context.Context, manuscriptContent string, optionalConfig ...interface{}) ([]string, error) {
 	provider, err := GetAIProvider()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create AI provider: %w", err)
 	}
 
-	// Load titles.md from working directory (user-owned, editable template)
-	titlesTemplate, err := LoadTitlesTemplate()
+	// Extract dataDir from optionalConfig if provided (first string argument)
+	var dataDir string
+	for _, cfg := range optionalConfig {
+		if s, ok := cfg.(string); ok {
+			dataDir = s
+			break
+		}
+	}
+
+	// Load titles.md from data directory (user-owned, editable template)
+	titlesTemplate, err := LoadTitlesTemplate(dataDir)
 	if err != nil {
 		return nil, err
 	}
@@ -85,10 +97,14 @@ func SuggestTitles(ctx context.Context, manuscriptContent string, optionalConfig
 	return titles, nil
 }
 
-// LoadTitlesTemplate reads titles.md from the working directory.
+// LoadTitlesTemplate reads titles.md from the given dataDir (or the working directory if empty).
 // Returns an error with instructions if the file doesn't exist.
-func LoadTitlesTemplate() (string, error) {
-	content, err := os.ReadFile("titles.md")
+func LoadTitlesTemplate(dataDir string) (string, error) {
+	titlesPath := "titles.md"
+	if dataDir != "" {
+		titlesPath = filepath.Join(dataDir, "titles.md")
+	}
+	content, err := os.ReadFile(titlesPath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return "", fmt.Errorf(

@@ -32,7 +32,7 @@ type mockAIService struct {
 	err             error
 }
 
-func (m *mockAIService) SuggestTitles(ctx context.Context, manuscript string) ([]string, error) {
+func (m *mockAIService) SuggestTitles(ctx context.Context, manuscript string, dataDir string) ([]string, error) {
 	return m.titles, m.err
 }
 func (m *mockAIService) SuggestDescription(ctx context.Context, manuscript string) (string, error) {

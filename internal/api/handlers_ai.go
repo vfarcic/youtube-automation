@@ -96,7 +96,7 @@ func (s *Server) handleAITitles(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	titles, err := s.aiService.SuggestTitles(r.Context(), manuscript)
+	titles, err := s.aiService.SuggestTitles(r.Context(), manuscript, s.dataDir)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "AI generation failed", err.Error())
 		return
