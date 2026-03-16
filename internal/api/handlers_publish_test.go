@@ -23,8 +23,10 @@ type mockPublishingService struct {
 	uploadVideoID     string
 	uploadVideoErr    error
 	uploadThumbnailErr error
-	uploadShortID     string
-	uploadShortErr    error
+	uploadShortID       string
+	uploadShortErr      error
+	lastShortFilePath   string
+	lastShortArg        storage.Short
 	hugoPath          string
 	hugoErr           error
 	transcript        string
@@ -47,7 +49,9 @@ func (m *mockPublishingService) UploadVideo(_ context.Context, _ *storage.Video)
 func (m *mockPublishingService) UploadThumbnail(_ context.Context, _, _ string) error {
 	return m.uploadThumbnailErr
 }
-func (m *mockPublishingService) UploadShort(_ context.Context, _ string, _ storage.Short, _ string) (string, error) {
+func (m *mockPublishingService) UploadShort(_ context.Context, filePath string, short storage.Short, _ string) (string, error) {
+	m.lastShortFilePath = filePath
+	m.lastShortArg = short
 	return m.uploadShortID, m.uploadShortErr
 }
 func (m *mockPublishingService) CreateHugoPost(_ context.Context, _ *storage.Video, _ *publishing.HugoPostOptions) (string, error) {
@@ -354,13 +358,13 @@ func TestHandlePublishShort_DriveResolution(t *testing.T) {
 	}
 	env.server.SetDriveService(driveMock, "")
 
-	// Seed video with a Drive-hosted short (no local FilePath, only DriveFileID)
+	// Seed video with a Drive-hosted short using drive:// prefix in FilePath
 	seedVideo(t, env, storage.Video{
 		Name:     "test-video",
 		Category: "devops",
 		VideoId:  "yt-abc123",
 		Shorts: []storage.Short{
-			{ID: "short1", Title: "Short One", DriveFileID: "drive-short-id"},
+			{ID: "short1", Title: "Short One", FilePath: "drive://drive-short-id", DriveFileID: "drive-short-id"},
 		},
 	})
 
@@ -375,6 +379,17 @@ func TestHandlePublishShort_DriveResolution(t *testing.T) {
 	json.NewDecoder(rr.Body).Decode(&resp)
 	if resp.YouTubeID != "yt-short-drive" {
 		t.Errorf("youtubeId = %q, want %q", resp.YouTubeID, "yt-short-drive")
+	}
+
+	// Verify Drive resolution actually happened: mock should have received a real temp file path, not drive://
+	if strings.HasPrefix(mock.lastShortFilePath, "drive://") {
+		t.Errorf("UploadShort received unresolved drive:// path: %s", mock.lastShortFilePath)
+	}
+	if mock.lastShortFilePath == "" {
+		t.Error("UploadShort received empty filePath — Drive resolution did not produce a temp file")
+	}
+	if mock.lastShortArg.ID != "short1" {
+		t.Errorf("UploadShort received short ID = %q, want %q", mock.lastShortArg.ID, "short1")
 	}
 }
 

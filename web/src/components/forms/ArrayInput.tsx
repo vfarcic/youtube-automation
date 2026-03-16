@@ -170,11 +170,11 @@ export function ArrayInput({
                   </div>
                 ))}
               </div>
-              {isShorts && category && videoName && (
+              {isShorts && category && videoName && typeof item.id === 'string' && item.id.trim() !== '' && (
                 <ShortItemActions
                   videoName={videoName}
                   category={category}
-                  shortId={String(item.id ?? '')}
+                  shortId={item.id}
                   driveFileId={item.driveFileId as string | undefined}
                   filePath={item.filePath as string | undefined}
                   scheduledDate={item.scheduledDate as string | undefined}

@@ -191,6 +191,8 @@ func (s *Server) handleAIShorts(w http.ResponseWriter, r *http.Request) {
 		video, videoErr := s.videoService.GetVideo(name, category)
 		if videoErr != nil {
 			markersWarning = fmt.Sprintf("could not resolve manuscript path: %v", videoErr)
+		} else if s.filesystem == nil {
+			markersWarning = "could not resolve manuscript path: filesystem not configured"
 		} else {
 			resolvedPath := s.filesystem.ResolvePath(video.Gist)
 			markerErr := manuscriptpkg.InsertShortMarkers(resolvedPath, shorts)

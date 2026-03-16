@@ -792,6 +792,32 @@ func TestHandleDriveDownloadShort_ShortNotFound(t *testing.T) {
 	}
 }
 
+func TestHandleDriveDownloadShort_DriveError(t *testing.T) {
+	env := setupTestEnv(t)
+	mock := &mockDriveService{
+		returnFileID: "abc",
+		getFileErr:   fmt.Errorf("drive API unavailable"),
+	}
+	env.server.SetDriveService(mock, "")
+
+	seedVideo(t, env, storage.Video{
+		Name:     "test-video",
+		Category: "devops",
+		Shorts: []storage.Short{
+			{ID: "short1", Title: "Short One", DriveFileID: "drive-short-456"},
+		},
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/api/drive/download/short/test-video/short1?category=devops", nil)
+	w := httptest.NewRecorder()
+
+	env.server.Router().ServeHTTP(w, req)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Errorf("expected 500, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
 func TestExtensionFromMIME(t *testing.T) {
 	tests := []struct {
 		mime string

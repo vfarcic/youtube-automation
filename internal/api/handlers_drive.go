@@ -326,9 +326,10 @@ func (s *Server) handleDriveUploadShort(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// Update the short's Drive fields
+	// Update the short's Drive fields; clear stale YouTubeID since the file changed
 	video.Shorts[shortIdx].DriveFileID = fileID
 	video.Shorts[shortIdx].FilePath = "drive://" + fileID
+	video.Shorts[shortIdx].YouTubeID = ""
 	if err := s.videoService.UpdateVideo(video); err != nil {
 		respondError(w, http.StatusInternalServerError, "Failed to save video", err.Error())
 		return
