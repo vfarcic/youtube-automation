@@ -13,9 +13,16 @@ import (
 
 // mockEmailService implements EmailService for testing.
 type mockEmailService struct {
-	sendThumbnailCalled bool
-	sendEditCalled      bool
-	returnErr           error
+	sendThumbnailCalled   bool
+	sendEditCalled        bool
+	sendSponsorsCalled    bool
+	sendSponsorsFrom      string
+	sendSponsorsTo        string
+	sendSponsorsVideoID   string
+	sendSponsorsPrice     string
+	sendSponsorsTitle     string
+	returnErr             error
+	sendSponsorsErr       error
 }
 
 func (m *mockEmailService) SendThumbnail(from, to string, video storage.Video) error {
@@ -25,6 +32,19 @@ func (m *mockEmailService) SendThumbnail(from, to string, video storage.Video) e
 
 func (m *mockEmailService) SendEdit(from, to string, video storage.Video) error {
 	m.sendEditCalled = true
+	return m.returnErr
+}
+
+func (m *mockEmailService) SendSponsors(from, to string, videoID, sponsorshipPrice, videoTitle string) error {
+	m.sendSponsorsCalled = true
+	m.sendSponsorsFrom = from
+	m.sendSponsorsTo = to
+	m.sendSponsorsVideoID = videoID
+	m.sendSponsorsPrice = sponsorshipPrice
+	m.sendSponsorsTitle = videoTitle
+	if m.sendSponsorsErr != nil {
+		return m.sendSponsorsErr
+	}
 	return m.returnErr
 }
 
@@ -394,3 +414,178 @@ func containsStr(s, substr string) bool {
 }
 
 var errTestEmail = fmt.Errorf("smtp connection failed")
+
+func TestHandleNotifySponsors(t *testing.T) {
+	tests := []struct {
+		name               string
+		url                string
+		seedVideo          *storage.Video
+		emailService       *mockEmailService
+		emailSettings      *configuration.SettingsEmail
+		wantStatus         int
+		wantAlreadyReq     bool
+		wantEmailSent      bool
+		wantEmailError     bool
+		wantNotified       bool
+		wantSponsorsCalled bool
+	}{
+		{
+			name:       "missing category",
+			url:        "/api/actions/notify-sponsors/test-video",
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name:       "video not found",
+			url:        "/api/actions/notify-sponsors/nonexistent?category=devops",
+			wantStatus: http.StatusNotFound,
+		},
+		{
+			name: "already notified",
+			url:  "/api/actions/notify-sponsors/test-video?category=devops",
+			seedVideo: &storage.Video{
+				Name: "test-video", Category: "devops", NotifiedSponsors: true,
+				Sponsorship: storage.Sponsorship{Amount: "1000", Emails: "sponsor@test.com"},
+			},
+			wantStatus:     http.StatusOK,
+			wantAlreadyReq: true,
+			wantNotified:   true,
+		},
+		{
+			name: "empty sponsorship amount",
+			url:  "/api/actions/notify-sponsors/test-video?category=devops",
+			seedVideo: &storage.Video{
+				Name: "test-video", Category: "devops",
+				Sponsorship: storage.Sponsorship{Amount: "", Emails: "sponsor@test.com"},
+			},
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name: "N/A sponsorship amount",
+			url:  "/api/actions/notify-sponsors/test-video?category=devops",
+			seedVideo: &storage.Video{
+				Name: "test-video", Category: "devops",
+				Sponsorship: storage.Sponsorship{Amount: "N/A", Emails: "sponsor@test.com"},
+			},
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name: "dash sponsorship amount",
+			url:  "/api/actions/notify-sponsors/test-video?category=devops",
+			seedVideo: &storage.Video{
+				Name: "test-video", Category: "devops",
+				Sponsorship: storage.Sponsorship{Amount: "-", Emails: "sponsor@test.com"},
+			},
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name: "no sponsor emails",
+			url:  "/api/actions/notify-sponsors/test-video?category=devops",
+			seedVideo: &storage.Video{
+				Name: "test-video", Category: "devops",
+				Sponsorship: storage.Sponsorship{Amount: "1000", Emails: ""},
+			},
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name: "success",
+			url:  "/api/actions/notify-sponsors/test-video?category=devops",
+			seedVideo: &storage.Video{
+				Name: "test-video", Category: "devops", VideoId: "abc123",
+				Sponsorship: storage.Sponsorship{Amount: "1000", Emails: "sponsor@test.com"},
+			},
+			emailService:       &mockEmailService{},
+			emailSettings:      &configuration.SettingsEmail{From: "from@test.com"},
+			wantStatus:         http.StatusOK,
+			wantEmailSent:      true,
+			wantNotified:       true,
+			wantSponsorsCalled: true,
+		},
+		{
+			name: "no email configured",
+			url:  "/api/actions/notify-sponsors/test-video?category=devops",
+			seedVideo: &storage.Video{
+				Name: "test-video", Category: "devops",
+				Sponsorship: storage.Sponsorship{Amount: "1000", Emails: "sponsor@test.com"},
+			},
+			wantStatus:     http.StatusOK,
+			wantEmailError: true,
+		},
+		{
+			name: "email failure",
+			url:  "/api/actions/notify-sponsors/test-video?category=devops",
+			seedVideo: &storage.Video{
+				Name: "test-video", Category: "devops", VideoId: "abc123",
+				Sponsorship: storage.Sponsorship{Amount: "1000", Emails: "sponsor@test.com"},
+			},
+			emailService:       &mockEmailService{sendSponsorsErr: errTestEmail},
+			emailSettings:      &configuration.SettingsEmail{From: "from@test.com"},
+			wantStatus:         http.StatusOK,
+			wantEmailError:     true,
+			wantSponsorsCalled: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			env := setupTestEnv(t)
+
+			if tt.emailService != nil {
+				env.server.SetEmailService(tt.emailService, tt.emailSettings)
+			}
+			if tt.seedVideo != nil {
+				seedVideo(t, env, *tt.seedVideo)
+			}
+
+			req := httptest.NewRequest(http.MethodPost, tt.url, nil)
+			w := httptest.NewRecorder()
+			env.server.Router().ServeHTTP(w, req)
+
+			if w.Code != tt.wantStatus {
+				t.Fatalf("expected %d, got %d: %s", tt.wantStatus, w.Code, w.Body.String())
+			}
+
+			if tt.wantStatus != http.StatusOK {
+				return
+			}
+
+			var resp ActionResponse
+			json.NewDecoder(w.Body).Decode(&resp)
+
+			if resp.AlreadyRequested != tt.wantAlreadyReq {
+				t.Errorf("alreadyRequested = %v, want %v", resp.AlreadyRequested, tt.wantAlreadyReq)
+			}
+			if resp.EmailSent != tt.wantEmailSent {
+				t.Errorf("emailSent = %v, want %v", resp.EmailSent, tt.wantEmailSent)
+			}
+			if tt.wantEmailError && resp.EmailError == "" {
+				t.Error("expected emailError to be set")
+			}
+			if !tt.wantEmailError && resp.EmailError != "" {
+				t.Errorf("unexpected emailError: %s", resp.EmailError)
+			}
+			if resp.Video.NotifiedSponsors != tt.wantNotified {
+				t.Errorf("notifiedSponsors = %v, want %v", resp.Video.NotifiedSponsors, tt.wantNotified)
+			}
+			if tt.emailService != nil && tt.emailService.sendSponsorsCalled != tt.wantSponsorsCalled {
+				t.Errorf("sendSponsorsCalled = %v, want %v", tt.emailService.sendSponsorsCalled, tt.wantSponsorsCalled)
+			}
+			if tt.wantSponsorsCalled && tt.seedVideo != nil && tt.emailSettings != nil {
+				if tt.emailService.sendSponsorsFrom != tt.emailSettings.From {
+					t.Errorf("sendSponsors from = %q, want %q", tt.emailService.sendSponsorsFrom, tt.emailSettings.From)
+				}
+				if tt.emailService.sendSponsorsTo != tt.seedVideo.Sponsorship.Emails {
+					t.Errorf("sendSponsors to = %q, want %q", tt.emailService.sendSponsorsTo, tt.seedVideo.Sponsorship.Emails)
+				}
+				if tt.emailService.sendSponsorsVideoID != tt.seedVideo.VideoId {
+					t.Errorf("sendSponsors videoID = %q, want %q", tt.emailService.sendSponsorsVideoID, tt.seedVideo.VideoId)
+				}
+				if tt.emailService.sendSponsorsPrice != tt.seedVideo.Sponsorship.Amount {
+					t.Errorf("sendSponsors price = %q, want %q", tt.emailService.sendSponsorsPrice, tt.seedVideo.Sponsorship.Amount)
+				}
+				if tt.emailService.sendSponsorsTitle != tt.seedVideo.GetUploadTitle() {
+					t.Errorf("sendSponsors title = %q, want %q", tt.emailService.sendSponsorsTitle, tt.seedVideo.GetUploadTitle())
+				}
+			}
+		})
+	}
+}

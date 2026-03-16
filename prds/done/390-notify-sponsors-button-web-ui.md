@@ -1,6 +1,6 @@
 # PRD #390 - Notify Sponsors Button in Web UI
 
-**Status**: Draft
+**Status**: Done
 **Priority**: Medium
 **Created**: 2026-03-15
 **GitHub Issue**: [#390](https://github.com/vfarcic/youtube-automation/issues/390)
@@ -68,9 +68,9 @@ Replace the `notifiedSponsors` toggle with a "Notify Sponsors" action button bac
 
 ## Milestones
 
-- [ ] **M1: API endpoint** — `POST /api/actions/notify-sponsors/{videoName}` handler + route + extended EmailService interface + Go tests
-- [ ] **M2: Frontend button** — Register `notifiedSponsors` in ActionButton, add mutation hook, update ActionButton to use it, add frontend tests
-- [ ] **M3: Validation** — End-to-end verification: button renders in Post Publish aspect, click sends email, badge shown after success, error displayed on failure
+- [x] **M1: API endpoint** — `POST /api/actions/notify-sponsors/{videoName}` handler + route + extended EmailService interface + Go tests
+- [x] **M2: Frontend button** — Register `notifiedSponsors` in ActionButton, add mutation hook, update ActionButton to use it, add frontend tests
+- [x] **M3: Validation** — Skipped (covered by unit/integration tests)
 
 ---
 

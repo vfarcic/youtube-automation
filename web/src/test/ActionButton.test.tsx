@@ -29,6 +29,10 @@ describe('isActionField', () => {
     expect(isActionField('requestEdit')).toBe(true);
   });
 
+  it('returns true for notifiedSponsors', () => {
+    expect(isActionField('notifiedSponsors')).toBe(true);
+  });
+
   it('returns false for regular boolean fields', () => {
     expect(isActionField('delayed')).toBe(false);
     expect(isActionField('code')).toBe(false);
@@ -71,6 +75,26 @@ describe('ActionButton', () => {
   it('calls request-edit endpoint on click', async () => {
     renderActionButton('requestEdit', false);
     const btn = screen.getByRole('button', { name: 'Request Edit' });
+    await userEvent.click(btn);
+    await waitFor(() => {
+      expect(screen.queryByText(/Email failed/)).not.toBeInTheDocument();
+    });
+  });
+
+  it('renders button with correct label for notifiedSponsors', () => {
+    renderActionButton('notifiedSponsors', false);
+    expect(screen.getByRole('button', { name: 'Notify Sponsors' })).toBeInTheDocument();
+  });
+
+  it('shows "Sponsors Notified" when value is true', () => {
+    renderActionButton('notifiedSponsors', true);
+    expect(screen.getByText('Sponsors Notified')).toBeInTheDocument();
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+  });
+
+  it('calls notify-sponsors endpoint on click', async () => {
+    renderActionButton('notifiedSponsors', false);
+    const btn = screen.getByRole('button', { name: 'Notify Sponsors' });
     await userEvent.click(btn);
     await waitFor(() => {
       expect(screen.queryByText(/Email failed/)).not.toBeInTheDocument();

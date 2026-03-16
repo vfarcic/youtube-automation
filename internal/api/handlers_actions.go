@@ -29,6 +29,7 @@ func emailNotConfiguredMessage(svc EmailService, settings *configuration.Setting
 type EmailService interface {
 	SendThumbnail(from, to string, video storage.Video) error
 	SendEdit(from, to string, video storage.Video) error
+	SendSponsors(from, to string, videoID, sponsorshipPrice, videoTitle string) error
 }
 
 // ActionResponse is the JSON response for action endpoints.
@@ -146,6 +147,73 @@ func (s *Server) handleRequestEdit(w http.ResponseWriter, r *http.Request) {
 	} else {
 		resp.EmailError = emailNotConfiguredMessage(s.emailService, s.emailSettings, "EditTo")
 	}
+
+	if syncErr := s.videoService.LastSyncError(); syncErr != nil {
+		resp.SyncWarning = "git sync failed: " + syncErr.Error()
+	} else if !s.videoService.IsSyncConfigured() {
+		resp.SyncWarning = "git sync not configured — changes saved locally only"
+	}
+
+	respondJSON(w, http.StatusOK, resp)
+}
+
+// handleNotifySponsors handles POST /api/actions/notify-sponsors/{videoName}?category=X
+func (s *Server) handleNotifySponsors(w http.ResponseWriter, r *http.Request) {
+	videoName := chi.URLParam(r, "videoName")
+	category := r.URL.Query().Get("category")
+	if category == "" {
+		respondError(w, http.StatusBadRequest, "Missing category", "Query parameter 'category' is required")
+		return
+	}
+
+	video, err := s.videoService.GetVideo(videoName, category)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "Video not found", err.Error())
+		return
+	}
+
+	if video.NotifiedSponsors {
+		respondJSON(w, http.StatusOK, ActionResponse{
+			AlreadyRequested: true,
+			Video:            s.enrichVideo(video),
+		})
+		return
+	}
+
+	// Validate sponsorship exists
+	amount := video.Sponsorship.Amount
+	if amount == "" || amount == "N/A" || amount == "-" {
+		respondError(w, http.StatusBadRequest, "No sponsorship", "Video has no valid sponsorship amount")
+		return
+	}
+	if video.Sponsorship.Emails == "" {
+		respondError(w, http.StatusBadRequest, "No sponsor emails", "Video has no sponsor email addresses configured")
+		return
+	}
+
+	resp := ActionResponse{
+		Video: s.enrichVideo(video),
+	}
+
+	if s.emailService == nil || s.emailSettings == nil || s.emailSettings.From == "" {
+		resp.EmailError = emailNotConfiguredMessage(s.emailService, s.emailSettings, "From")
+		respondJSON(w, http.StatusOK, resp)
+		return
+	}
+
+	if err := s.emailService.SendSponsors(s.emailSettings.From, video.Sponsorship.Emails, video.VideoId, video.Sponsorship.Amount, video.GetUploadTitle()); err != nil {
+		resp.EmailError = err.Error()
+		respondJSON(w, http.StatusOK, resp)
+		return
+	}
+
+	resp.EmailSent = true
+	video.NotifiedSponsors = true
+	if err := s.videoService.UpdateVideo(video); err != nil {
+		respondError(w, http.StatusInternalServerError, "Failed to save video", err.Error())
+		return
+	}
+	resp.Video = s.enrichVideo(video)
 
 	if syncErr := s.videoService.LastSyncError(); syncErr != nil {
 		resp.SyncWarning = "git sync failed: " + syncErr.Error()

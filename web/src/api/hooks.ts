@@ -259,6 +259,18 @@ export function useRequestEdit() {
   });
 }
 
+export function useNotifySponsors() {
+  const qc = useQueryClient();
+  return useMutation<ActionResponse, Error, { name: string; category: string }>({
+    mutationFn: ({ name, category }) =>
+      post<ActionResponse>(
+        `/api/actions/notify-sponsors/${encodeURIComponent(name)}?category=${encodeURIComponent(category)}`,
+        {},
+      ),
+    onSuccess: (_data, { name, category }) => invalidateVideoQueries(qc, name, category),
+  });
+}
+
 export function useUploadVideoToDrive() {
   const qc = useQueryClient();
   return useMutation<

@@ -135,6 +135,7 @@ func (s *Server) setupRoutes() {
 		r.Route("/actions", func(r chi.Router) {
 			r.Post("/request-thumbnail/{videoName}", s.handleRequestThumbnail)
 			r.Post("/request-edit/{videoName}", s.handleRequestEdit)
+			r.Post("/notify-sponsors/{videoName}", s.handleNotifySponsors)
 		})
 
 		// Publishing (YouTube upload, Hugo, transcript, metadata)
