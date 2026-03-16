@@ -309,6 +309,24 @@ function invalidateVideoQueries(qc: ReturnType<typeof useQueryClient>, name: str
   qc.invalidateQueries({ queryKey: ['phases'] });
 }
 
+export function useUploadShortToDrive() {
+  const qc = useQueryClient();
+  return useMutation<
+    { driveFileId: string; filePath: string; syncWarning?: string },
+    Error,
+    { name: string; category: string; shortId: string; file: File; onProgress?: (percent: number) => void }
+  >({
+    mutationFn: ({ name, category, shortId, file, onProgress }) =>
+      uploadFileWithProgress<{ driveFileId: string; filePath: string; syncWarning?: string }>(
+        `/api/drive/upload/short/${encodeURIComponent(name)}/${encodeURIComponent(shortId)}?category=${encodeURIComponent(category)}`,
+        file,
+        'short',
+        onProgress,
+      ),
+    onSuccess: (_data, { name, category }) => invalidateVideoQueries(qc, name, category),
+  });
+}
+
 export function usePublishYouTube() {
   const qc = useQueryClient();
   return useMutation<PublishYouTubeResponse, Error, { name: string; category: string }>({

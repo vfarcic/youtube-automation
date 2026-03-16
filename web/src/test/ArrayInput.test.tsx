@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, it, expect, vi } from 'vitest';
 import { ArrayInput } from '../components/forms/ArrayInput';
 import type { ItemField } from '../api/types';
@@ -94,5 +95,47 @@ describe('ArrayInput', () => {
     const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1];
     expect(lastCall[0]).toBe('titles');
     expect(lastCall[1][0].text).toBe('First Title!');
+  });
+
+  it('renders ShortItemActions for shorts fieldName', () => {
+    const shortFields: ItemField[] = [
+      { name: 'Title', fieldName: 'title', type: 'string', order: 1 },
+      { name: 'Text', fieldName: 'text', type: 'string', order: 2 },
+    ];
+    const shortItems = [
+      { id: 'short1', title: 'My Short', text: 'Some text', scheduledDate: '2026-01-15' },
+    ];
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+    render(
+      <QueryClientProvider client={qc}>
+        <ArrayInput
+          name="Shorts"
+          fieldName="shorts"
+          value={shortItems}
+          onChange={() => {}}
+          itemFields={shortFields}
+          category="devops"
+          videoName="test-video"
+        />
+      </QueryClientProvider>,
+    );
+    expect(screen.getByText('Upload to Drive')).toBeInTheDocument();
+    expect(screen.getByText('Publish to YouTube')).toBeInTheDocument();
+  });
+
+  it('does NOT render ShortItemActions for non-shorts array fields', () => {
+    render(
+      <ArrayInput
+        name="Titles"
+        fieldName="titles"
+        value={sampleItems}
+        onChange={() => {}}
+        itemFields={titleItemFields}
+        category="devops"
+        videoName="test-video"
+      />,
+    );
+    expect(screen.queryByText('Upload to Drive')).not.toBeInTheDocument();
+    expect(screen.queryByText('Publish to YouTube')).not.toBeInTheDocument();
   });
 });

@@ -245,6 +245,9 @@ export const handlers = [
   http.post('/api/drive/upload/thumbnail/:videoName', () =>
     HttpResponse.json({ driveFileId: 'mock-drive-id-123', variantIndex: 0 }),
   ),
+  http.post('/api/drive/upload/short/:videoName/:shortId', () =>
+    HttpResponse.json({ driveFileId: 'short-drive-id-789', filePath: 'drive://short-drive-id-789' }),
+  ),
   // Action endpoints
   http.post('/api/actions/request-thumbnail/:videoName', () =>
     HttpResponse.json({
