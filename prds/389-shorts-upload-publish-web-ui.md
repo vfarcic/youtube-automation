@@ -118,7 +118,7 @@ Follow existing patterns:
 
 - [x] Add `DriveFileID` to Short struct and Drive upload/download endpoints for shorts
 - [x] Update `handlePublishShort` to resolve `drive://` file paths (download from Drive before YouTube upload)
-- [ ] Insert TODO markers into manuscript when shorts are generated via Web UI (parity with CLI `manuscript.InsertShortMarkers`)
+- [x] Insert TODO markers into manuscript when shorts are generated via Web UI (parity with CLI `manuscript.InsertShortMarkers`)
 - [x] Add `useUploadShortToDrive` hook and per-short upload UI with progress in ArrayInput
 - [x] Add per-short "Publish to YouTube" button using existing `usePublishShort` hook
 - [x] Tests covering: Drive upload for shorts, Drive-to-YouTube publish flow, UI prerequisites validation

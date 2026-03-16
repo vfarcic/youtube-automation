@@ -2,9 +2,12 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"devopstoolkit/youtube-automation/internal/ai"
+	manuscriptpkg "devopstoolkit/youtube-automation/internal/manuscript"
+	"devopstoolkit/youtube-automation/internal/storage"
 	"devopstoolkit/youtube-automation/internal/thumbnail"
 
 	"github.com/go-chi/chi/v5"
@@ -33,7 +36,8 @@ type AIDescriptionTagsResponse struct {
 }
 
 type AIShortsResponse struct {
-	Candidates []ai.ShortCandidate `json:"candidates"`
+	Candidates     []ai.ShortCandidate `json:"candidates"`
+	MarkersWarning string              `json:"markersWarning,omitempty"`
 }
 
 type AIThumbnailsResponse struct {
@@ -161,6 +165,7 @@ func (s *Server) handleAIDescriptionTags(w http.ResponseWriter, r *http.Request)
 }
 
 // handleAIShorts analyzes the manuscript for potential YouTube Shorts.
+// After AI analysis, it inserts TODO markers into the manuscript file (best-effort).
 func (s *Server) handleAIShorts(w http.ResponseWriter, r *http.Request) {
 	manuscript, ok := s.getManuscriptFromPath(w, r)
 	if !ok {
@@ -171,7 +176,34 @@ func (s *Server) handleAIShorts(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusInternalServerError, "AI generation failed", err.Error())
 		return
 	}
-	respondJSON(w, http.StatusOK, AIShortsResponse{Candidates: candidates})
+
+	// Best-effort marker insertion: never fails the response.
+	var markersWarning string
+	if len(candidates) > 0 {
+		category := chi.URLParam(r, "category")
+		name := chi.URLParam(r, "name")
+
+		shorts := make([]storage.Short, len(candidates))
+		for i, c := range candidates {
+			shorts[i] = storage.Short{ID: c.ID, Title: c.Title, Text: c.Text}
+		}
+
+		video, videoErr := s.videoService.GetVideo(name, category)
+		if videoErr != nil {
+			markersWarning = fmt.Sprintf("could not resolve manuscript path: %v", videoErr)
+		} else {
+			resolvedPath := s.filesystem.ResolvePath(video.Gist)
+			markerErr := manuscriptpkg.InsertShortMarkers(resolvedPath, shorts)
+			if markerErr != nil {
+				markersWarning = markerErr.Error()
+			}
+		}
+	}
+
+	respondJSON(w, http.StatusOK, AIShortsResponse{
+		Candidates:     candidates,
+		MarkersWarning: markersWarning,
+	})
 }
 
 // --- Body-based handlers (6 endpoints) ---
