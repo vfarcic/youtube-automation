@@ -259,6 +259,23 @@ export function useRequestEdit() {
   });
 }
 
+export function useNotifySponsors() {
+  const qc = useQueryClient();
+  return useMutation<ActionResponse, Error, { name: string; category: string }>({
+    mutationFn: ({ name, category }) =>
+      post<ActionResponse>(
+        `/api/actions/notify-sponsors/${encodeURIComponent(name)}?category=${encodeURIComponent(category)}`,
+        {},
+      ),
+    onSuccess: (_data, { name, category }) => {
+      qc.invalidateQueries({ queryKey: ['video', name, category] });
+      qc.invalidateQueries({ queryKey: ['videoProgress', name, category] });
+      qc.invalidateQueries({ queryKey: ['videosList'] });
+      qc.invalidateQueries({ queryKey: ['phases'] });
+    },
+  });
+}
+
 export function useUploadVideoToDrive() {
   const qc = useQueryClient();
   return useMutation<

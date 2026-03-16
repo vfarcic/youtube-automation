@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { useRequestThumbnail, useRequestEdit } from '../../api/hooks';
+import { useRequestThumbnail, useRequestEdit, useNotifySponsors } from '../../api/hooks';
 
 /** Field names that should render as action buttons instead of toggles. */
 const ACTION_FIELDS: Record<string, { label: string; sentLabel: string }> = {
   requestThumbnail: { label: 'Request Thumbnail', sentLabel: 'Thumbnail Requested' },
   requestEdit: { label: 'Request Edit', sentLabel: 'Edit Requested' },
+  notifiedSponsors: { label: 'Notify Sponsors', sentLabel: 'Sponsors Notified' },
 };
 
 /** Returns true if a field name should be rendered as an ActionButton. */
@@ -23,9 +24,10 @@ export function ActionButton({ fieldName, value, category, videoName }: ActionBu
   const config = ACTION_FIELDS[fieldName];
   const requestThumbnail = useRequestThumbnail();
   const requestEdit = useRequestEdit();
+  const notifySponsors = useNotifySponsors();
   const [error, setError] = useState<string | null>(null);
 
-  const mutation = fieldName === 'requestThumbnail' ? requestThumbnail : requestEdit;
+  const mutation = fieldName === 'requestThumbnail' ? requestThumbnail : fieldName === 'notifiedSponsors' ? notifySponsors : requestEdit;
   const isLoading = mutation.isPending;
 
   const handleClick = () => {
