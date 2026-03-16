@@ -1,35 +1,39 @@
 import { useState } from 'react';
 import { useRequestThumbnail, useRequestEdit, useNotifySponsors } from '../../api/hooks';
+import type { ActionResponse } from '../../api/types';
 
 /** Field names that should render as action buttons instead of toggles. */
-const ACTION_FIELDS: Record<string, { label: string; sentLabel: string }> = {
+const ACTION_FIELDS = {
   requestThumbnail: { label: 'Request Thumbnail', sentLabel: 'Thumbnail Requested' },
   requestEdit: { label: 'Request Edit', sentLabel: 'Edit Requested' },
   notifiedSponsors: { label: 'Notify Sponsors', sentLabel: 'Sponsors Notified' },
-};
+} as const;
+
+type ActionFieldName = keyof typeof ACTION_FIELDS;
 
 /** Returns true if a field name should be rendered as an ActionButton. */
-export function isActionField(fieldName: string): boolean {
+export function isActionField(fieldName: string): fieldName is ActionFieldName {
   return fieldName in ACTION_FIELDS;
 }
 
 interface ActionButtonProps {
-  fieldName: keyof typeof ACTION_FIELDS;
+  fieldName: string;
   value: boolean;
   category: string;
   videoName: string;
 }
 
 export function ActionButton({ fieldName, value, category, videoName }: ActionButtonProps) {
-  const config = ACTION_FIELDS[fieldName];
+  const key = fieldName as ActionFieldName;
+  const config = ACTION_FIELDS[key];
   const mutationMap = {
     requestThumbnail: useRequestThumbnail(),
     requestEdit: useRequestEdit(),
     notifiedSponsors: useNotifySponsors(),
-  } as const;
+  };
   const [error, setError] = useState<string | null>(null);
 
-  const mutation = mutationMap[fieldName];
+  const mutation = mutationMap[key];
   const isLoading = mutation.isPending;
 
   const handleClick = () => {
@@ -37,8 +41,8 @@ export function ActionButton({ fieldName, value, category, videoName }: ActionBu
     mutation.mutate(
       { name: videoName, category },
       {
-        onError: (err) => setError(err.message),
-        onSuccess: (data) => {
+        onError: (err: Error) => setError(err.message),
+        onSuccess: (data: ActionResponse) => {
           if (data.emailError) {
             setError(data.emailError);
           }
