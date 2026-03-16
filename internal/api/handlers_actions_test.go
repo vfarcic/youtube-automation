@@ -13,11 +13,16 @@ import (
 
 // mockEmailService implements EmailService for testing.
 type mockEmailService struct {
-	sendThumbnailCalled  bool
-	sendEditCalled       bool
-	sendSponsorsCalled   bool
-	returnErr            error
-	sendSponsorsErr      error
+	sendThumbnailCalled   bool
+	sendEditCalled        bool
+	sendSponsorsCalled    bool
+	sendSponsorsFrom      string
+	sendSponsorsTo        string
+	sendSponsorsVideoID   string
+	sendSponsorsPrice     string
+	sendSponsorsTitle     string
+	returnErr             error
+	sendSponsorsErr       error
 }
 
 func (m *mockEmailService) SendThumbnail(from, to string, video storage.Video) error {
@@ -32,6 +37,11 @@ func (m *mockEmailService) SendEdit(from, to string, video storage.Video) error 
 
 func (m *mockEmailService) SendSponsors(from, to string, videoID, sponsorshipPrice, videoTitle string) error {
 	m.sendSponsorsCalled = true
+	m.sendSponsorsFrom = from
+	m.sendSponsorsTo = to
+	m.sendSponsorsVideoID = videoID
+	m.sendSponsorsPrice = sponsorshipPrice
+	m.sendSponsorsTitle = videoTitle
 	if m.sendSponsorsErr != nil {
 		return m.sendSponsorsErr
 	}
@@ -480,7 +490,7 @@ func TestHandleNotifySponsors(t *testing.T) {
 			name: "success",
 			url:  "/api/actions/notify-sponsors/test-video?category=devops",
 			seedVideo: &storage.Video{
-				Name: "test-video", Category: "devops",
+				Name: "test-video", Category: "devops", VideoId: "abc123",
 				Sponsorship: storage.Sponsorship{Amount: "1000", Emails: "sponsor@test.com"},
 			},
 			emailService:       &mockEmailService{},
@@ -504,7 +514,7 @@ func TestHandleNotifySponsors(t *testing.T) {
 			name: "email failure",
 			url:  "/api/actions/notify-sponsors/test-video?category=devops",
 			seedVideo: &storage.Video{
-				Name: "test-video", Category: "devops",
+				Name: "test-video", Category: "devops", VideoId: "abc123",
 				Sponsorship: storage.Sponsorship{Amount: "1000", Emails: "sponsor@test.com"},
 			},
 			emailService:       &mockEmailService{sendSponsorsErr: errTestEmail},
@@ -558,6 +568,23 @@ func TestHandleNotifySponsors(t *testing.T) {
 			}
 			if tt.emailService != nil && tt.emailService.sendSponsorsCalled != tt.wantSponsorsCalled {
 				t.Errorf("sendSponsorsCalled = %v, want %v", tt.emailService.sendSponsorsCalled, tt.wantSponsorsCalled)
+			}
+			if tt.wantSponsorsCalled && tt.seedVideo != nil && tt.emailSettings != nil {
+				if tt.emailService.sendSponsorsFrom != tt.emailSettings.From {
+					t.Errorf("sendSponsors from = %q, want %q", tt.emailService.sendSponsorsFrom, tt.emailSettings.From)
+				}
+				if tt.emailService.sendSponsorsTo != tt.seedVideo.Sponsorship.Emails {
+					t.Errorf("sendSponsors to = %q, want %q", tt.emailService.sendSponsorsTo, tt.seedVideo.Sponsorship.Emails)
+				}
+				if tt.emailService.sendSponsorsVideoID != tt.seedVideo.VideoId {
+					t.Errorf("sendSponsors videoID = %q, want %q", tt.emailService.sendSponsorsVideoID, tt.seedVideo.VideoId)
+				}
+				if tt.emailService.sendSponsorsPrice != tt.seedVideo.Sponsorship.Amount {
+					t.Errorf("sendSponsors price = %q, want %q", tt.emailService.sendSponsorsPrice, tt.seedVideo.Sponsorship.Amount)
+				}
+				if tt.emailService.sendSponsorsTitle != tt.seedVideo.GetUploadTitle() {
+					t.Errorf("sendSponsors title = %q, want %q", tt.emailService.sendSponsorsTitle, tt.seedVideo.GetUploadTitle())
+				}
 			}
 		})
 	}
