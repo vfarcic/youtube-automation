@@ -71,12 +71,12 @@ export function PublishButton({ fieldName, value, category, videoName, video }: 
             {isLoading ? 'Publishing...' : config.label}
           </button>
         )}
+        {!hasPrerequisites && !displayValue && (
+          <p className="text-xs text-yellow-400">
+            {fieldName === 'videoId' ? 'Upload a video file first' : 'Publish to YouTube first'}
+          </p>
+        )}
       </div>
-      {!hasPrerequisites && !displayValue && (
-        <p className="mt-1 text-xs text-yellow-400">
-          {fieldName === 'videoId' ? 'Upload a video file first' : 'Publish to YouTube first'}
-        </p>
-      )}
       {error && <p className="mt-1 text-xs text-red-400">{error}</p>}
     </div>
   );
