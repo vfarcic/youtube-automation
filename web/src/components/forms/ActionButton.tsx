@@ -14,7 +14,7 @@ export function isActionField(fieldName: string): boolean {
 }
 
 interface ActionButtonProps {
-  fieldName: string;
+  fieldName: keyof typeof ACTION_FIELDS;
   value: boolean;
   category: string;
   videoName: string;
@@ -22,12 +22,14 @@ interface ActionButtonProps {
 
 export function ActionButton({ fieldName, value, category, videoName }: ActionButtonProps) {
   const config = ACTION_FIELDS[fieldName];
-  const requestThumbnail = useRequestThumbnail();
-  const requestEdit = useRequestEdit();
-  const notifySponsors = useNotifySponsors();
+  const mutationMap = {
+    requestThumbnail: useRequestThumbnail(),
+    requestEdit: useRequestEdit(),
+    notifiedSponsors: useNotifySponsors(),
+  } as const;
   const [error, setError] = useState<string | null>(null);
 
-  const mutation = fieldName === 'requestThumbnail' ? requestThumbnail : fieldName === 'notifiedSponsors' ? notifySponsors : requestEdit;
+  const mutation = mutationMap[fieldName];
   const isLoading = mutation.isPending;
 
   const handleClick = () => {

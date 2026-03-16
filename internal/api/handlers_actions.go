@@ -191,25 +191,29 @@ func (s *Server) handleNotifySponsors(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	resp := ActionResponse{
+		Video: s.enrichVideo(video),
+	}
+
+	if s.emailService == nil || s.emailSettings == nil || s.emailSettings.From == "" {
+		resp.EmailError = emailNotConfiguredMessage(s.emailService, s.emailSettings, "From")
+		respondJSON(w, http.StatusOK, resp)
+		return
+	}
+
+	if err := s.emailService.SendSponsors(s.emailSettings.From, video.Sponsorship.Emails, video.VideoId, video.Sponsorship.Amount, video.GetUploadTitle()); err != nil {
+		resp.EmailError = err.Error()
+		respondJSON(w, http.StatusOK, resp)
+		return
+	}
+
+	resp.EmailSent = true
 	video.NotifiedSponsors = true
 	if err := s.videoService.UpdateVideo(video); err != nil {
 		respondError(w, http.StatusInternalServerError, "Failed to save video", err.Error())
 		return
 	}
-
-	resp := ActionResponse{
-		Video: s.enrichVideo(video),
-	}
-
-	if s.emailService != nil && s.emailSettings != nil && s.emailSettings.From != "" {
-		if err := s.emailService.SendSponsors(s.emailSettings.From, video.Sponsorship.Emails, video.Name, video.Sponsorship.Amount, video.Name); err != nil {
-			resp.EmailError = err.Error()
-		} else {
-			resp.EmailSent = true
-		}
-	} else {
-		resp.EmailError = emailNotConfiguredMessage(s.emailService, s.emailSettings, "From")
-	}
+	resp.Video = s.enrichVideo(video)
 
 	if syncErr := s.videoService.LastSyncError(); syncErr != nil {
 		resp.SyncWarning = "git sync failed: " + syncErr.Error()

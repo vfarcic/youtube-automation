@@ -267,12 +267,7 @@ export function useNotifySponsors() {
         `/api/actions/notify-sponsors/${encodeURIComponent(name)}?category=${encodeURIComponent(category)}`,
         {},
       ),
-    onSuccess: (_data, { name, category }) => {
-      qc.invalidateQueries({ queryKey: ['video', name, category] });
-      qc.invalidateQueries({ queryKey: ['videoProgress', name, category] });
-      qc.invalidateQueries({ queryKey: ['videosList'] });
-      qc.invalidateQueries({ queryKey: ['phases'] });
-    },
+    onSuccess: (_data, { name, category }) => invalidateVideoQueries(qc, name, category),
   });
 }
 
