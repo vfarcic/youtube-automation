@@ -1,6 +1,6 @@
 # PRD #389: Shorts Upload & Publish in Web UI
 
-**Status**: Draft
+**Status**: Complete
 **Priority**: High
 **Created**: 2026-03-15
 **GitHub Issue**: #389
@@ -67,6 +67,11 @@ r.Post("/upload/short/{videoName}/{shortId}", s.handleDriveUploadShort)
 r.Get("/download/short/{videoName}/{shortId}", s.handleDriveDownloadShort)
 ```
 
+#### 6. Insert TODO markers into manuscript on shorts generation
+**File**: `internal/api/handlers_ai.go`
+
+Update `handleAIShorts` to call `manuscript.InsertShortMarkers(video.Gist, shorts)` after returning candidates, matching the CLI behavior in `internal/app/menu_shorts.go`. This inserts `TODO: Short (id: shortX) (start/end)` markers into the manuscript file so the text segments are visually annotated for reference.
+
 ### Frontend Changes
 
 #### 6. Add API hooks for short Drive upload
@@ -111,12 +116,13 @@ Follow existing patterns:
 
 ## Milestones
 
-- [ ] Add `DriveFileID` to Short struct and Drive upload/download endpoints for shorts
-- [ ] Update `handlePublishShort` to resolve `drive://` file paths (download from Drive before YouTube upload)
-- [ ] Add `useUploadShortToDrive` hook and per-short upload UI with progress in ArrayInput
-- [ ] Add per-short "Publish to YouTube" button using existing `usePublishShort` hook
-- [ ] Tests covering: Drive upload for shorts, Drive-to-YouTube publish flow, UI prerequisites validation
-- [ ] End-to-end validation: generate shorts → upload files → publish to YouTube entirely from Web UI
+- [x] Add `DriveFileID` to Short struct and Drive upload/download endpoints for shorts
+- [x] Update `handlePublishShort` to resolve `drive://` file paths (download from Drive before YouTube upload)
+- [x] Insert TODO markers into manuscript when shorts are generated via Web UI (parity with CLI `manuscript.InsertShortMarkers`)
+- [x] Add `useUploadShortToDrive` hook and per-short upload UI with progress in ArrayInput
+- [x] Add per-short "Publish to YouTube" button using existing `usePublishShort` hook
+- [x] Tests covering: Drive upload for shorts, Drive-to-YouTube publish flow, UI prerequisites validation
+- [x] End-to-end validation: generate shorts → upload files → publish to YouTube entirely from Web UI
 
 ## Risks & Considerations
 

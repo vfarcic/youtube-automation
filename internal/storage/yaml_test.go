@@ -598,6 +598,8 @@ func TestShortStruct(t *testing.T) {
 			ID:            "short1",
 			Title:         "Quick Kubernetes Tip",
 			Text:          "Here's a quick tip about Kubernetes...",
+			FilePath:      "drive://file-123",
+			DriveFileID:   "file-123",
 			ScheduledDate: "2025-01-15T14:30:00Z",
 			YouTubeID:     "abc123xyz",
 		}
@@ -612,8 +614,10 @@ func TestShortStruct(t *testing.T) {
 		assert.Equal(t, "short1", jsonMap["id"])
 		assert.Equal(t, "Quick Kubernetes Tip", jsonMap["title"])
 		assert.Equal(t, "Here's a quick tip about Kubernetes...", jsonMap["text"])
-		assert.Equal(t, "2025-01-15T14:30:00Z", jsonMap["scheduled_date"])
-		assert.Equal(t, "abc123xyz", jsonMap["youtube_id"])
+		assert.Equal(t, "drive://file-123", jsonMap["filePath"])
+		assert.Equal(t, "file-123", jsonMap["driveFileId"])
+		assert.Equal(t, "2025-01-15T14:30:00Z", jsonMap["scheduledDate"])
+		assert.Equal(t, "abc123xyz", jsonMap["youtubeId"])
 	})
 
 	t.Run("Short struct deserializes from JSON correctly", func(t *testing.T) {
@@ -621,8 +625,10 @@ func TestShortStruct(t *testing.T) {
 			"id": "short2",
 			"title": "DevOps Best Practice",
 			"text": "One important DevOps practice is...",
-			"scheduled_date": "2025-01-16T10:00:00Z",
-			"youtube_id": "def456uvw"
+			"filePath": "drive://file-456",
+			"driveFileId": "file-456",
+			"scheduledDate": "2025-01-16T10:00:00Z",
+			"youtubeId": "def456uvw"
 		}`
 
 		var short Short
@@ -632,6 +638,8 @@ func TestShortStruct(t *testing.T) {
 		assert.Equal(t, "short2", short.ID)
 		assert.Equal(t, "DevOps Best Practice", short.Title)
 		assert.Equal(t, "One important DevOps practice is...", short.Text)
+		assert.Equal(t, "drive://file-456", short.FilePath)
+		assert.Equal(t, "file-456", short.DriveFileID)
 		assert.Equal(t, "2025-01-16T10:00:00Z", short.ScheduledDate)
 		assert.Equal(t, "def456uvw", short.YouTubeID)
 	})
@@ -653,8 +661,8 @@ func TestShortStruct(t *testing.T) {
 		require.NoError(t, err)
 
 		// YouTubeID should not be present when empty (omitempty)
-		_, exists := jsonMap["youtube_id"]
-		assert.False(t, exists, "youtube_id should be omitted when empty")
+		_, exists := jsonMap["youtubeId"]
+		assert.False(t, exists, "youtubeId should be omitted when empty")
 	})
 
 	t.Run("Short struct serializes to YAML correctly", func(t *testing.T) {

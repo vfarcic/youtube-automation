@@ -81,8 +81,17 @@ func (s *Server) handlePublishYouTube(w http.ResponseWriter, r *http.Request) {
 
 	// Resolve video file: if Drive-hosted, download to temp file
 	uploadPath := video.UploadVideo
-	if video.VideoDriveFileID != "" && s.driveService != nil {
-		content, _, filename, err := s.driveService.GetFile(r.Context(), video.VideoDriveFileID)
+	driveFileID := video.VideoDriveFileID
+	if driveFileID == "" && strings.HasPrefix(video.UploadVideo, "drive://") {
+		driveFileID = strings.TrimPrefix(video.UploadVideo, "drive://")
+		uploadPath = ""
+	}
+	if driveFileID != "" {
+		if s.driveService == nil {
+			respondError(w, http.StatusNotImplemented, "Google Drive not configured", "Drive-backed videos require Drive access")
+			return
+		}
+		content, _, filename, err := s.driveService.GetFile(r.Context(), driveFileID)
 		if err != nil {
 			respondError(w, http.StatusInternalServerError, "Failed to download video from Drive", err.Error())
 			return
@@ -220,12 +229,41 @@ func (s *Server) handlePublishShort(w http.ResponseWriter, r *http.Request) {
 	}
 
 	short := video.Shorts[shortIdx]
-	if short.FilePath == "" {
+
+	// Resolve short file: if Drive-hosted, download to temp file
+	uploadPath := short.FilePath
+	shortDriveFileID := short.DriveFileID
+	if shortDriveFileID == "" && strings.HasPrefix(short.FilePath, "drive://") {
+		shortDriveFileID = strings.TrimPrefix(short.FilePath, "drive://")
+		uploadPath = ""
+	}
+	if shortDriveFileID != "" {
+		if s.driveService == nil {
+			respondError(w, http.StatusNotImplemented, "Google Drive not configured", "Drive-backed shorts require Drive access")
+			return
+		}
+		content, _, filename, driveErr := s.driveService.GetFile(r.Context(), shortDriveFileID)
+		if driveErr != nil {
+			respondError(w, http.StatusInternalServerError, "Failed to download short from Drive", driveErr.Error())
+			return
+		}
+		defer content.Close()
+
+		tmpFile, tmpErr := createTempFromReader(content, filename)
+		if tmpErr != nil {
+			respondError(w, http.StatusInternalServerError, "Failed to create temp short file", tmpErr.Error())
+			return
+		}
+		defer os.Remove(tmpFile)
+		uploadPath = tmpFile
+	}
+
+	if uploadPath == "" {
 		respondError(w, http.StatusBadRequest, "Short has no file path", "")
 		return
 	}
 
-	ytID, err := s.publishingService.UploadShort(r.Context(), short.FilePath, short, video.VideoId)
+	ytID, err := s.publishingService.UploadShort(r.Context(), uploadPath, short, video.VideoId)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "Short upload failed", err.Error())
 		return

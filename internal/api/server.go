@@ -126,7 +126,9 @@ func (s *Server) setupRoutes() {
 		r.Route("/drive", func(r chi.Router) {
 			r.Post("/upload/thumbnail/{videoName}", s.handleDriveUploadThumbnail)
 			r.Post("/upload/video/{videoName}", s.handleDriveUploadVideo)
+			r.Post("/upload/short/{videoName}/{shortId}", s.handleDriveUploadShort)
 			r.Get("/download/video/{videoName}", s.handleDriveDownloadVideo)
+			r.Get("/download/short/{videoName}/{shortId}", s.handleDriveDownloadShort)
 		})
 
 		// Action buttons (send emails, set flags)

@@ -47,6 +47,7 @@ export interface Short {
   title: string;
   text: string;
   filePath: string;
+  driveFileId?: string;
   scheduledDate: string;
   youtubeId: string;
 }

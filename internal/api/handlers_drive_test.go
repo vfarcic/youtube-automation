@@ -526,6 +526,298 @@ func TestVideoExtensionFromMIME(t *testing.T) {
 	}
 }
 
+// --- Short Upload Tests ---
+
+func TestHandleDriveUploadShort_Success(t *testing.T) {
+	env := setupTestEnv(t)
+	mock := &mockDriveService{returnFileID: "short-drive-123"}
+	env.server.SetDriveService(mock, "folder-abc")
+
+	seedVideo(t, env, storage.Video{
+		Name:     "test-video",
+		Category: "devops",
+		Shorts: []storage.Short{
+			{ID: "short1", Title: "Short One"},
+		},
+	})
+
+	body, contentType := createMultipartBodyWithMIME(t, "short", "short1.mp4", "fake-short-data", "video/mp4")
+	req := httptest.NewRequest(http.MethodPost, "/api/drive/upload/short/test-video/short1?category=devops", body)
+	req.Header.Set("Content-Type", contentType)
+	w := httptest.NewRecorder()
+
+	env.server.Router().ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var resp map[string]interface{}
+	json.NewDecoder(w.Body).Decode(&resp)
+	if resp["driveFileId"] != "short-drive-123" {
+		t.Errorf("expected driveFileId 'short-drive-123', got '%v'", resp["driveFileId"])
+	}
+	if resp["filePath"] != "drive://short-drive-123" {
+		t.Errorf("expected filePath 'drive://short-drive-123', got '%v'", resp["filePath"])
+	}
+
+	// Verify the video was updated
+	v, err := env.server.videoService.GetVideo("test-video", "devops")
+	if err != nil {
+		t.Fatalf("failed to get video: %v", err)
+	}
+	if v.Shorts[0].DriveFileID != "short-drive-123" {
+		t.Errorf("expected DriveFileID 'short-drive-123', got '%s'", v.Shorts[0].DriveFileID)
+	}
+	if v.Shorts[0].FilePath != "drive://short-drive-123" {
+		t.Errorf("expected FilePath 'drive://short-drive-123', got '%s'", v.Shorts[0].FilePath)
+	}
+
+	// Verify nested folder: video folder → shorts subfolder
+	// mock returns parentID + "-subfolder" so: folder-abc-subfolder (video) → folder-abc-subfolder-subfolder (shorts)
+	if mock.lastFolderID != "folder-abc-subfolder-subfolder" {
+		t.Errorf("expected folder 'folder-abc-subfolder-subfolder', got '%s'", mock.lastFolderID)
+	}
+	if mock.lastFilename != "short1.mp4" {
+		t.Errorf("expected filename 'short1.mp4', got '%s'", mock.lastFilename)
+	}
+}
+
+func TestHandleDriveUploadShort_NoDriveService(t *testing.T) {
+	env := setupTestEnv(t)
+
+	body, contentType := createMultipartBody(t, "short", "short1.mp4", "data")
+	req := httptest.NewRequest(http.MethodPost, "/api/drive/upload/short/test-video/short1?category=devops", body)
+	req.Header.Set("Content-Type", contentType)
+	w := httptest.NewRecorder()
+
+	env.server.Router().ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotImplemented {
+		t.Errorf("expected 501, got %d", w.Code)
+	}
+}
+
+func TestHandleDriveUploadShort_MissingCategory(t *testing.T) {
+	env := setupTestEnv(t)
+	mock := &mockDriveService{returnFileID: "abc"}
+	env.server.SetDriveService(mock, "")
+
+	body, contentType := createMultipartBody(t, "short", "short1.mp4", "data")
+	req := httptest.NewRequest(http.MethodPost, "/api/drive/upload/short/test-video/short1", body)
+	req.Header.Set("Content-Type", contentType)
+	w := httptest.NewRecorder()
+
+	env.server.Router().ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected 400, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestHandleDriveUploadShort_MissingFile(t *testing.T) {
+	env := setupTestEnv(t)
+	mock := &mockDriveService{returnFileID: "abc"}
+	env.server.SetDriveService(mock, "")
+
+	req := httptest.NewRequest(http.MethodPost, "/api/drive/upload/short/test-video/short1?category=devops", nil)
+	w := httptest.NewRecorder()
+
+	env.server.Router().ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected 400, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestHandleDriveUploadShort_VideoNotFound(t *testing.T) {
+	env := setupTestEnv(t)
+	mock := &mockDriveService{returnFileID: "abc"}
+	env.server.SetDriveService(mock, "")
+
+	body, contentType := createMultipartBody(t, "short", "short1.mp4", "data")
+	req := httptest.NewRequest(http.MethodPost, "/api/drive/upload/short/nonexistent/short1?category=devops", body)
+	req.Header.Set("Content-Type", contentType)
+	w := httptest.NewRecorder()
+
+	env.server.Router().ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected 404, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestHandleDriveUploadShort_ShortNotFound(t *testing.T) {
+	env := setupTestEnv(t)
+	mock := &mockDriveService{returnFileID: "abc"}
+	env.server.SetDriveService(mock, "")
+
+	seedVideo(t, env, storage.Video{
+		Name:     "test-video",
+		Category: "devops",
+		Shorts: []storage.Short{
+			{ID: "short1", Title: "Short One"},
+		},
+	})
+
+	body, contentType := createMultipartBody(t, "short", "short1.mp4", "data")
+	req := httptest.NewRequest(http.MethodPost, "/api/drive/upload/short/test-video/nonexistent?category=devops", body)
+	req.Header.Set("Content-Type", contentType)
+	w := httptest.NewRecorder()
+
+	env.server.Router().ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected 404, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestHandleDriveUploadShort_DriveError(t *testing.T) {
+	env := setupTestEnv(t)
+	mock := &mockDriveService{returnErr: fmt.Errorf("drive quota exceeded")}
+	env.server.SetDriveService(mock, "")
+
+	seedVideo(t, env, storage.Video{
+		Name:     "test-video",
+		Category: "devops",
+		Shorts: []storage.Short{
+			{ID: "short1", Title: "Short One"},
+		},
+	})
+
+	body, contentType := createMultipartBody(t, "short", "short1.mp4", "data")
+	req := httptest.NewRequest(http.MethodPost, "/api/drive/upload/short/test-video/short1?category=devops", body)
+	req.Header.Set("Content-Type", contentType)
+	w := httptest.NewRecorder()
+
+	env.server.Router().ServeHTTP(w, req)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Errorf("expected 500, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+// --- Short Download Tests ---
+
+func TestHandleDriveDownloadShort_Success(t *testing.T) {
+	env := setupTestEnv(t)
+	mock := &mockDriveService{
+		returnFileID:   "abc",
+		getFileContent: "short-video-bytes",
+		getFileMIME:    "video/mp4",
+		getFileName:    "short1.mp4",
+	}
+	env.server.SetDriveService(mock, "")
+
+	seedVideo(t, env, storage.Video{
+		Name:     "test-video",
+		Category: "devops",
+		Shorts: []storage.Short{
+			{ID: "short1", Title: "Short One", DriveFileID: "drive-short-456"},
+		},
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/api/drive/download/short/test-video/short1?category=devops", nil)
+	w := httptest.NewRecorder()
+
+	env.server.Router().ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	if w.Header().Get("Content-Type") != "video/mp4" {
+		t.Errorf("expected Content-Type 'video/mp4', got '%s'", w.Header().Get("Content-Type"))
+	}
+	if w.Body.String() != "short-video-bytes" {
+		t.Errorf("expected body 'short-video-bytes', got '%s'", w.Body.String())
+	}
+}
+
+func TestHandleDriveDownloadShort_NoFileID(t *testing.T) {
+	env := setupTestEnv(t)
+	mock := &mockDriveService{returnFileID: "abc"}
+	env.server.SetDriveService(mock, "")
+
+	seedVideo(t, env, storage.Video{
+		Name:     "test-video",
+		Category: "devops",
+		Shorts: []storage.Short{
+			{ID: "short1", Title: "Short One"},
+		},
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/api/drive/download/short/test-video/short1?category=devops", nil)
+	w := httptest.NewRecorder()
+
+	env.server.Router().ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected 404, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestHandleDriveDownloadShort_NoDriveService(t *testing.T) {
+	env := setupTestEnv(t)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/drive/download/short/test-video/short1?category=devops", nil)
+	w := httptest.NewRecorder()
+
+	env.server.Router().ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotImplemented {
+		t.Errorf("expected 501, got %d", w.Code)
+	}
+}
+
+func TestHandleDriveDownloadShort_ShortNotFound(t *testing.T) {
+	env := setupTestEnv(t)
+	mock := &mockDriveService{returnFileID: "abc"}
+	env.server.SetDriveService(mock, "")
+
+	seedVideo(t, env, storage.Video{
+		Name:     "test-video",
+		Category: "devops",
+		Shorts: []storage.Short{
+			{ID: "short1", Title: "Short One", DriveFileID: "drive-short-456"},
+		},
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/api/drive/download/short/test-video/nonexistent?category=devops", nil)
+	w := httptest.NewRecorder()
+
+	env.server.Router().ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected 404, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestHandleDriveDownloadShort_DriveError(t *testing.T) {
+	env := setupTestEnv(t)
+	mock := &mockDriveService{
+		returnFileID: "abc",
+		getFileErr:   fmt.Errorf("drive API unavailable"),
+	}
+	env.server.SetDriveService(mock, "")
+
+	seedVideo(t, env, storage.Video{
+		Name:     "test-video",
+		Category: "devops",
+		Shorts: []storage.Short{
+			{ID: "short1", Title: "Short One", DriveFileID: "drive-short-456"},
+		},
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/api/drive/download/short/test-video/short1?category=devops", nil)
+	w := httptest.NewRecorder()
+
+	env.server.Router().ServeHTTP(w, req)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Errorf("expected 500, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
 func TestExtensionFromMIME(t *testing.T) {
 	tests := []struct {
 		mime string

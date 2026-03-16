@@ -376,28 +376,60 @@ func TestHandleAIDescriptionTags(t *testing.T) {
 }
 
 func TestHandleAIShorts(t *testing.T) {
-	candidates := []ai.ShortCandidate{
-		{ID: "short1", Title: "Short One", Text: "text", Rationale: "reason"},
-	}
 	tests := []struct {
-		name       string
-		videoName  string
-		mock       *mockAIService
-		hasManus   bool
-		wantStatus int
+		name            string
+		videoName       string
+		mock            *mockAIService
+		hasManus        bool
+		manuscriptBody  string
+		wantStatus      int
+		wantWarning     string   // substring expected in markersWarning ("" = no warning)
+		wantMarkerIDs   []string // short IDs whose markers should appear in the file
+		wantNoMarkerIDs []string // short IDs whose markers should NOT appear
 	}{
 		{
-			name:       "success",
-			videoName:  "test-video",
-			mock:       &mockAIService{shorts: candidates},
-			hasManus:   true,
-			wantStatus: http.StatusOK,
+			name:      "markers inserted",
+			videoName: "test-video",
+			mock: &mockAIService{shorts: []ai.ShortCandidate{
+				{ID: "short1", Title: "Short One", Text: "Target text", Rationale: "reason"},
+			}},
+			hasManus:       true,
+			manuscriptBody: "Intro.\n\nTarget text\n\nOutro.",
+			wantStatus:     http.StatusOK,
+			wantMarkerIDs:  []string{"short1"},
+		},
+		{
+			name:      "partial failure",
+			videoName: "test-video",
+			mock: &mockAIService{shorts: []ai.ShortCandidate{
+				{ID: "short1", Title: "Found", Text: "Found text", Rationale: "r"},
+				{ID: "short2", Title: "Missing", Text: "Missing text", Rationale: "r"},
+			}},
+			hasManus:        true,
+			manuscriptBody:  "Intro.\n\nFound text\n\nOutro.",
+			wantStatus:      http.StatusOK,
+			wantWarning:     "markers inserted",
+			wantMarkerIDs:   []string{"short1"},
+			wantNoMarkerIDs: []string{"short2"},
+		},
+		{
+			name:      "no segments found",
+			videoName: "test-video",
+			mock: &mockAIService{shorts: []ai.ShortCandidate{
+				{ID: "short1", Title: "Nope", Text: "Nonexistent text", Rationale: "r"},
+			}},
+			hasManus:        true,
+			manuscriptBody:  "Completely different content",
+			wantStatus:      http.StatusOK,
+			wantWarning:     "no short segments found",
+			wantNoMarkerIDs: []string{"short1"},
 		},
 		{
 			name:       "AI error",
 			videoName:  "test-video",
 			mock:       &mockAIService{err: fmt.Errorf("AI failed")},
 			hasManus:   true,
+			manuscriptBody: "# Manuscript",
 			wantStatus: http.StatusInternalServerError,
 		},
 		{
@@ -412,8 +444,12 @@ func TestHandleAIShorts(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			env := setupAITestEnv(t, tt.mock)
+			manuscriptContent := tt.manuscriptBody
+			if manuscriptContent == "" {
+				manuscriptContent = "# Manuscript"
+			}
 			if tt.hasManus {
-				seedVideoWithManuscript(t, env, tt.videoName, "devops", "# Manuscript")
+				seedVideoWithManuscript(t, env, tt.videoName, "devops", manuscriptContent)
 			}
 
 			req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/api/ai/shorts/devops/%s", tt.videoName), nil)
@@ -423,11 +459,48 @@ func TestHandleAIShorts(t *testing.T) {
 			if rr.Code != tt.wantStatus {
 				t.Errorf("status = %d, want %d; body: %s", rr.Code, tt.wantStatus, rr.Body.String())
 			}
-			if tt.wantStatus == http.StatusOK {
-				var resp AIShortsResponse
-				json.NewDecoder(rr.Body).Decode(&resp)
-				if len(resp.Candidates) != 1 || resp.Candidates[0].ID != "short1" {
-					t.Errorf("unexpected shorts response: %+v", resp)
+			if tt.wantStatus != http.StatusOK {
+				return
+			}
+
+			var resp AIShortsResponse
+			if err := json.NewDecoder(rr.Body).Decode(&resp); err != nil {
+				t.Fatalf("failed to decode response: %v", err)
+			}
+			if len(resp.Candidates) != len(tt.mock.shorts) {
+				t.Errorf("candidates count = %d, want %d", len(resp.Candidates), len(tt.mock.shorts))
+			}
+
+			// Check warning
+			if tt.wantWarning == "" && resp.MarkersWarning != "" {
+				t.Errorf("unexpected markersWarning = %q", resp.MarkersWarning)
+			}
+			if tt.wantWarning != "" && !strings.Contains(resp.MarkersWarning, tt.wantWarning) {
+				t.Errorf("markersWarning = %q, want substring %q", resp.MarkersWarning, tt.wantWarning)
+			}
+
+			// Read manuscript file to verify markers on disk
+			mdPath := filepath.Join(env.tmpDir, "manuscript", "devops", tt.videoName+".md")
+			fileBytes, err := os.ReadFile(mdPath)
+			if err != nil {
+				t.Fatalf("failed to read manuscript file: %v", err)
+			}
+			fileContent := string(fileBytes)
+
+			for _, id := range tt.wantMarkerIDs {
+				startMarker := fmt.Sprintf("TODO: Short (id: %s) (start)", id)
+				endMarker := fmt.Sprintf("TODO: Short (id: %s) (end)", id)
+				if !strings.Contains(fileContent, startMarker) {
+					t.Errorf("manuscript missing start marker for %s", id)
+				}
+				if !strings.Contains(fileContent, endMarker) {
+					t.Errorf("manuscript missing end marker for %s", id)
+				}
+			}
+			for _, id := range tt.wantNoMarkerIDs {
+				startMarker := fmt.Sprintf("TODO: Short (id: %s) (start)", id)
+				if strings.Contains(fileContent, startMarker) {
+					t.Errorf("manuscript should NOT contain marker for %s but does", id)
 				}
 			}
 		})
