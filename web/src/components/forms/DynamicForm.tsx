@@ -17,6 +17,10 @@ import { GenerateAnimationsButton } from './GenerateAnimationsButton';
 import { VideoUploadInput } from './VideoUploadInput';
 import { FieldLabel } from './FieldLabel';
 import { AI_FIELD_CONFIG } from '../../lib/aiFields';
+import { ShortsSection } from './ShortsSection';
+import { ShortUploadAction } from './ShortUploadAction';
+import { ShortPublishAction } from './ShortPublishAction';
+import type { Short } from '../../api/types';
 
 interface DynamicFormProps {
   fields: AspectField[];
@@ -26,6 +30,7 @@ interface DynamicFormProps {
   saving?: boolean;
   category?: string;
   videoName?: string;
+  aspectKey?: string;
 }
 
 /** Resolve a possibly dot-notated path like "sponsorship.amount" from a video object. */
@@ -39,7 +44,7 @@ function getFieldValue(video: VideoResponse, fieldName: string): unknown {
   return current;
 }
 
-export function DynamicForm({ fields, video, onSave, onSaveCrossAspect, saving, category, videoName }: DynamicFormProps) {
+export function DynamicForm({ fields, video, onSave, onSaveCrossAspect, saving, category, videoName, aspectKey }: DynamicFormProps) {
   const initialValues = useMemo(() => {
     const vals: Record<string, unknown> = {};
     for (const field of fields) {
@@ -156,6 +161,39 @@ export function DynamicForm({ fields, video, onSave, onSaveCrossAspect, saving, 
           </div>
         ))}
       </div>
+
+      {category && videoName && aspectKey === 'post-production' && video.shorts?.length > 0 && (
+        <ShortsSection
+          shorts={video.shorts as Short[]}
+          title="Shorts Upload"
+          renderAction={(short) => (
+            <ShortUploadAction
+              videoName={videoName}
+              category={category}
+              shortId={short.id}
+              driveFileId={short.driveFileId}
+            />
+          )}
+        />
+      )}
+
+      {category && videoName && aspectKey === 'publishing' && video.shorts?.length > 0 && (
+        <ShortsSection
+          shorts={video.shorts as Short[]}
+          title="Shorts Publish"
+          renderAction={(short) => (
+            <ShortPublishAction
+              videoName={videoName}
+              category={category}
+              shortId={short.id}
+              driveFileId={short.driveFileId}
+              filePath={short.filePath}
+              scheduledDate={short.scheduledDate}
+              youtubeId={short.youtubeId}
+            />
+          )}
+        />
+      )}
 
       <div className="flex gap-3 mt-6 pt-4 border-t border-gray-700">
         <button

@@ -1,6 +1,5 @@
 import { FieldLabel } from './FieldLabel';
 import { FileUploadInput } from './FileUploadInput';
-import { ShortItemActions } from './ShortItemActions';
 import type { ItemField } from '../../api/types';
 
 interface ArrayInputProps {
@@ -30,8 +29,6 @@ export function ArrayInput({
   const isSingleField = itemFields.length === 1;
   const isThumbnailVariants = fieldName === 'thumbnailVariants';
   const isUploadOnly = isThumbnailVariants && itemFields.length === 0;
-  const isShorts = fieldName === 'shorts';
-
   const handleItemChange = (index: number, subField: string, subValue: unknown) => {
     const updated = items.map((item, i) =>
       i === index ? { ...item, [subField]: subValue } : item,
@@ -170,17 +167,6 @@ export function ArrayInput({
                   </div>
                 ))}
               </div>
-              {isShorts && category && videoName && typeof item.id === 'string' && item.id.trim() !== '' && (
-                <ShortItemActions
-                  videoName={videoName}
-                  category={category}
-                  shortId={item.id}
-                  driveFileId={item.driveFileId as string | undefined}
-                  filePath={item.filePath as string | undefined}
-                  scheduledDate={item.scheduledDate as string | undefined}
-                  youtubeId={item.youtubeId as string | undefined}
-                />
-              )}
             </div>
           ),
         )}

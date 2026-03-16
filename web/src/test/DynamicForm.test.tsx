@@ -235,4 +235,87 @@ describe('DynamicForm', () => {
     );
     expect(screen.queryByRole('button', { name: 'Apply Random Timing' })).not.toBeInTheDocument();
   });
+
+  it('renders Shorts Upload section when aspectKey is post-production', () => {
+    const videoWithShorts = {
+      ...mockVideo,
+      shorts: [
+        { id: 'short1', title: 'My Short', text: 'text', filePath: '', scheduledDate: '2026-01-15', youtubeId: '', driveFileId: '' },
+      ],
+    };
+    render(
+      <DynamicForm
+        fields={sampleFields}
+        video={videoWithShorts}
+        onSave={() => {}}
+        category="devops"
+        videoName="test-video"
+        aspectKey="post-production"
+      />,
+      { wrapper: createWrapper() },
+    );
+    expect(screen.getByText('Shorts Upload')).toBeInTheDocument();
+    expect(screen.getByText('Upload to Drive')).toBeInTheDocument();
+    expect(screen.queryByText('Publish to YouTube')).not.toBeInTheDocument();
+  });
+
+  it('renders Shorts Publish section when aspectKey is publishing', () => {
+    const videoWithShorts = {
+      ...mockVideo,
+      shorts: [
+        { id: 'short1', title: 'My Short', text: 'text', filePath: '', scheduledDate: '2026-01-15', youtubeId: '', driveFileId: 'some-id' },
+      ],
+    };
+    render(
+      <DynamicForm
+        fields={sampleFields}
+        video={videoWithShorts}
+        onSave={() => {}}
+        category="devops"
+        videoName="test-video"
+        aspectKey="publishing"
+      />,
+      { wrapper: createWrapper() },
+    );
+    expect(screen.getByText('Shorts Publish')).toBeInTheDocument();
+    expect(screen.getByText('Publish to YouTube')).toBeInTheDocument();
+    expect(screen.queryByText('Upload to Drive')).not.toBeInTheDocument();
+  });
+
+  it('does not render shorts sections when aspectKey is definition', () => {
+    const videoWithShorts = {
+      ...mockVideo,
+      shorts: [
+        { id: 'short1', title: 'My Short', text: 'text', filePath: '', scheduledDate: '2026-01-15', youtubeId: '', driveFileId: '' },
+      ],
+    };
+    render(
+      <DynamicForm
+        fields={sampleFields}
+        video={videoWithShorts}
+        onSave={() => {}}
+        category="devops"
+        videoName="test-video"
+        aspectKey="definition"
+      />,
+      { wrapper: createWrapper() },
+    );
+    expect(screen.queryByText('Shorts Upload')).not.toBeInTheDocument();
+    expect(screen.queryByText('Shorts Publish')).not.toBeInTheDocument();
+  });
+
+  it('does not render shorts sections when video has no shorts', () => {
+    render(
+      <DynamicForm
+        fields={sampleFields}
+        video={mockVideo}
+        onSave={() => {}}
+        category="devops"
+        videoName="test-video"
+        aspectKey="post-production"
+      />,
+      { wrapper: createWrapper() },
+    );
+    expect(screen.queryByText('Shorts Upload')).not.toBeInTheDocument();
+  });
 });

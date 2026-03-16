@@ -187,6 +187,7 @@ export function VideoDetail() {
               fields={currentAspect.fields}
               video={video}
               onSave={handleSave}
+              aspectKey={currentAspect.key}
               onSaveCrossAspect={(aspect, fields) => {
                 if (!videoName || !category) return;
                 patchVideo.mutate(
