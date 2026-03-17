@@ -38,7 +38,7 @@ export function ArrayInput({
 
   const handleAdd = () => {
     if (isUploadOnly) {
-      onChange(fieldName, [...items, {}]);
+      onChange(fieldName, [...items, { index: items.length + 1 }]);
       return;
     }
     const empty: Record<string, unknown> = {};

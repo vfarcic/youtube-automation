@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"devopstoolkit/youtube-automation/internal/publishing"
+	"devopstoolkit/youtube-automation/internal/storage"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -68,11 +69,16 @@ func (s *Server) handleDriveUploadThumbnail(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	// Validate variant index
-	if variantIndex < 0 || variantIndex >= len(video.ThumbnailVariants) {
+	// Validate variant index; auto-create the variant if it's the next slot
+	if variantIndex < 0 || variantIndex > len(video.ThumbnailVariants) {
 		respondError(w, http.StatusBadRequest, "Invalid variantIndex",
 			fmt.Sprintf("variantIndex %d out of range (video has %d variants)", variantIndex, len(video.ThumbnailVariants)))
 		return
+	}
+	if variantIndex == len(video.ThumbnailVariants) {
+		video.ThumbnailVariants = append(video.ThumbnailVariants, storage.ThumbnailVariant{
+			Index: variantIndex + 1,
+		})
 	}
 
 	// Find or create a subfolder named after the video

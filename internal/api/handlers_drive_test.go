@@ -231,6 +231,44 @@ func TestHandleDriveUploadThumbnail_InvalidVariantIndex(t *testing.T) {
 	}
 }
 
+func TestHandleDriveUploadThumbnail_AutoCreateVariant(t *testing.T) {
+	env := setupTestEnv(t)
+	mock := &mockDriveService{returnFileID: "drive-new-123"}
+	env.server.SetDriveService(mock, "")
+
+	// Seed a video with NO thumbnail variants
+	seedVideo(t, env, storage.Video{
+		Name:     "test-video",
+		Category: "devops",
+	})
+
+	body, contentType := createMultipartBody(t, "thumbnail", "thumb.png", "fake-image-data")
+	req := httptest.NewRequest(http.MethodPost, "/api/drive/upload/thumbnail/test-video?category=devops&variantIndex=0", body)
+	req.Header.Set("Content-Type", contentType)
+	w := httptest.NewRecorder()
+
+	env.server.Router().ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	// Verify a variant was auto-created with the DriveFileID
+	v, err := env.server.videoService.GetVideo("test-video", "devops")
+	if err != nil {
+		t.Fatalf("failed to get video: %v", err)
+	}
+	if len(v.ThumbnailVariants) != 1 {
+		t.Fatalf("expected 1 variant, got %d", len(v.ThumbnailVariants))
+	}
+	if v.ThumbnailVariants[0].DriveFileID != "drive-new-123" {
+		t.Errorf("expected DriveFileID 'drive-new-123', got '%s'", v.ThumbnailVariants[0].DriveFileID)
+	}
+	if v.ThumbnailVariants[0].Index != 1 {
+		t.Errorf("expected Index 1, got %d", v.ThumbnailVariants[0].Index)
+	}
+}
+
 func TestHandleDriveUploadThumbnail_DriveUploadError(t *testing.T) {
 	env := setupTestEnv(t)
 	mock := &mockDriveService{returnErr: fmt.Errorf("drive quota exceeded")}
