@@ -1,10 +1,11 @@
 # PRD: Newsletter System for YouTube Channel
 
 **Issue**: #340
-**Status**: Planning
+**Status**: No Longer Needed
 **Priority**: Medium
 **Created**: 2025-11-11
-**Last Updated**: 2026-02-04
+**Last Updated**: 2026-03-17
+**Closed**: 2026-03-17
 
 ---
 
