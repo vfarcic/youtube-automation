@@ -157,16 +157,23 @@ func TestCommitAndPush_FullSequence(t *testing.T) {
 	err := sm.CommitAndPush("test commit")
 	require.NoError(t, err)
 
-	// Verify command sequence: add, status, commit, pull, push
-	require.GreaterOrEqual(t, len(mock.calls), 5)
+	// Verify command sequence: add (x3 for *.yaml, *.yml, *.md), status, commit, pull, push
+	require.GreaterOrEqual(t, len(mock.calls), 7)
 	assert.Equal(t, "add", mock.calls[0].Args[0])
-	assert.Equal(t, "status", mock.calls[1].Args[0])
-	assert.Equal(t, "commit", mock.calls[2].Args[0])
-	assert.Equal(t, "pull", mock.calls[3].Args[0])
-	assert.Equal(t, "push", mock.calls[4].Args[0])
+	assert.Equal(t, "add", mock.calls[1].Args[0])
+	assert.Equal(t, "add", mock.calls[2].Args[0])
+	assert.Equal(t, "status", mock.calls[3].Args[0])
+	assert.Equal(t, "commit", mock.calls[4].Args[0])
+	assert.Equal(t, "pull", mock.calls[5].Args[0])
+	assert.Equal(t, "push", mock.calls[6].Args[0])
+
+	// Verify add patterns
+	assert.Contains(t, mock.calls[0].Args, "*.yaml")
+	assert.Contains(t, mock.calls[1].Args, "*.yml")
+	assert.Contains(t, mock.calls[2].Args, "*.md")
 
 	// Verify commit message
-	commitCall := mock.calls[2]
+	commitCall := mock.calls[4]
 	assert.Contains(t, commitCall.Args, "-m")
 	assert.Contains(t, commitCall.Args, "test commit")
 }
@@ -185,10 +192,12 @@ func TestCommitAndPush_SkipsWhenClean(t *testing.T) {
 	err := sm.CommitAndPush("test commit")
 	require.NoError(t, err)
 
-	// Should only have add and status calls, no commit/push
-	assert.Equal(t, 2, len(mock.calls))
+	// Should only have add (x3) and status calls, no commit/push
+	assert.Equal(t, 4, len(mock.calls))
 	assert.Equal(t, "add", mock.calls[0].Args[0])
-	assert.Equal(t, "status", mock.calls[1].Args[0])
+	assert.Equal(t, "add", mock.calls[1].Args[0])
+	assert.Equal(t, "add", mock.calls[2].Args[0])
+	assert.Equal(t, "status", mock.calls[3].Args[0])
 }
 
 func TestCommitAndPush_PushFailure(t *testing.T) {

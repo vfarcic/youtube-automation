@@ -85,9 +85,12 @@ func (s *SyncManager) CommitAndPush(message string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	// Stage all changes
-	if output, err := s.executor.Run(s.dataDir, "git", "add", "-A"); err != nil {
-		return fmt.Errorf("git add failed: %s: %w", SanitizeOutput(output, s.token), err)
+	// Stage only data files (YAML + Markdown) to avoid accidentally committing
+	// large temporary files (videos, images) that may exist in the working tree.
+	for _, pattern := range []string{"*.yaml", "*.yml", "*.md"} {
+		if output, err := s.executor.Run(s.dataDir, "git", "add", "--all", "--", pattern); err != nil {
+			return fmt.Errorf("git add %s failed: %s: %w", pattern, SanitizeOutput(output, s.token), err)
+		}
 	}
 
 	// Check if there are changes to commit

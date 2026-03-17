@@ -661,7 +661,7 @@ func (s *Server) handleAMAApply(w http.ResponseWriter, r *http.Request) {
 // --- Helpers ---
 
 // syncTimeout is the maximum time to wait for async git sync to complete.
-const syncTimeout = 30 * time.Second
+const syncTimeout = 120 * time.Second
 
 // addSyncWarningStr waits for the async git sync to finish (up to syncTimeout)
 // and populates a sync warning string pointer from the result.
