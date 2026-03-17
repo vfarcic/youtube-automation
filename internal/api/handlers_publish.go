@@ -323,6 +323,11 @@ func (s *Server) handlePublishHugo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Resolve relative gist path against data directory for server mode
+	if s.dataDir != "" && video.Gist != "" && video.Gist != "N/A" && !filepath.IsAbs(video.Gist) {
+		video.Gist = filepath.Join(s.dataDir, video.Gist)
+	}
+
 	hugoOpts := &publishing.HugoPostOptions{
 		DriveService:  s.driveService,
 		DriveFolderID: s.driveFolderID,
