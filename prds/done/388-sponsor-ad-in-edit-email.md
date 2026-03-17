@@ -1,6 +1,7 @@
 # PRD #388: Include Sponsor Ad Content in Edit Request Emails
 
-**Status**: In Progress
+**Status**: Complete
+**Completed**: 2026-03-17
 **Priority**: Medium
 **Created**: 2026-03-14
 **GitHub Issue**: #388
@@ -57,7 +58,7 @@ Add an `AdFile` field to the `Sponsorship` struct that stores the filename of a 
 - [x] Handle file resolution for both CLI and server modes
 - [x] Add `AdFile` to CLI forms and Web UI sponsorship fields
 - [x] Tests covering: sponsored video with ad file, non-sponsored video, missing ad file error handling
-- [ ] End-to-end validation: request edit for a sponsored video and verify email content
+- [x] End-to-end validation: request edit for a sponsored video and verify email content
 
 ## Risks & Considerations
 
