@@ -305,6 +305,13 @@ function renderField(
       );
     case 'boolean':
       if (isActionField(fieldName) && category && videoName) {
+        // Hide "Notify Sponsors" when there's no valid sponsorship data
+        if (fieldName === 'notifiedSponsors' && video) {
+          const amount = video.sponsorship?.amount ?? '';
+          if (!amount || amount === 'N/A' || amount === '-') {
+            return null;
+          }
+        }
         return (
           <ActionButton
             fieldName={fieldName}
