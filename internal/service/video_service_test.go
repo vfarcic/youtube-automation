@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"devopstoolkit/youtube-automation/internal/filesystem"
 	"devopstoolkit/youtube-automation/internal/storage"
@@ -660,13 +661,16 @@ func TestVideoService_OnMutate_CreateVideo(t *testing.T) {
 	defer cleanup()
 
 	var mutateMessages []string
+	done := make(chan struct{}, 1)
 	service.SetOnMutate(func(msg string) error {
 		mutateMessages = append(mutateMessages, msg)
+		done <- struct{}{}
 		return nil
 	})
 
 	_, err := service.CreateVideo("callback-test", "test-category", "")
 	require.NoError(t, err)
+	<-done
 	assert.Len(t, mutateMessages, 1)
 	assert.Contains(t, mutateMessages[0], "create video")
 }
@@ -679,8 +683,10 @@ func TestVideoService_OnMutate_UpdateVideo(t *testing.T) {
 	require.NoError(t, err)
 
 	var mutateMessages []string
+	done := make(chan struct{}, 1)
 	service.SetOnMutate(func(msg string) error {
 		mutateMessages = append(mutateMessages, msg)
+		done <- struct{}{}
 		return nil
 	})
 
@@ -689,6 +695,7 @@ func TestVideoService_OnMutate_UpdateVideo(t *testing.T) {
 	video.Description = "updated"
 	err = service.UpdateVideo(video)
 	require.NoError(t, err)
+	<-done
 	assert.Len(t, mutateMessages, 1)
 	assert.Contains(t, mutateMessages[0], "update video")
 }
@@ -701,13 +708,16 @@ func TestVideoService_OnMutate_DeleteVideo(t *testing.T) {
 	require.NoError(t, err)
 
 	var mutateMessages []string
+	done := make(chan struct{}, 1)
 	service.SetOnMutate(func(msg string) error {
 		mutateMessages = append(mutateMessages, msg)
+		done <- struct{}{}
 		return nil
 	})
 
 	err = service.DeleteVideo("delete-cb-test", "test-category")
 	require.NoError(t, err)
+	<-done
 	assert.Len(t, mutateMessages, 1)
 	assert.Contains(t, mutateMessages[0], "delete video")
 }
@@ -741,13 +751,20 @@ func TestVideoService_OnMutate_ErrorIsLogged(t *testing.T) {
 	service, _, cleanup := setupTestVideoService(t)
 	defer cleanup()
 
+	done := make(chan struct{}, 1)
 	service.SetOnMutate(func(msg string) error {
+		defer func() { done <- struct{}{} }()
 		return fmt.Errorf("push failed")
 	})
 
-	// Should succeed even though callback returns error
+	// Should succeed even though callback returns error (sync is async)
 	_, err := service.CreateVideo("error-cb-test", "test-category", "")
 	assert.NoError(t, err)
+	<-done
+	// Allow the goroutine in notifyMutation to store the error after the callback returns
+	assert.Eventually(t, func() bool {
+		return service.LastSyncError() != nil
+	}, time.Second, 10*time.Millisecond, "expected LastSyncError to be set after async callback failure")
 }
 
 func TestVideoService_SanitizedNamesIntegration(t *testing.T) {

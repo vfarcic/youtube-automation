@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"devopstoolkit/youtube-automation/internal/filesystem"
@@ -28,6 +29,7 @@ type VideoService struct {
 	filesystem    *filesystem.Operations
 	videoManager  *video.Manager
 	onMutate      func(message string) error
+	syncMu        sync.RWMutex
 	lastSyncError error
 }
 
@@ -46,20 +48,30 @@ func (s *VideoService) SetOnMutate(fn func(message string) error) {
 	s.onMutate = fn
 }
 
-// notifyMutation calls the onMutate callback if set; errors are logged and stored.
+// notifyMutation fires the onMutate callback asynchronously so that HTTP
+// handlers are not blocked by slow git operations (commit + push).
 func (s *VideoService) notifyMutation(message string) {
+	s.syncMu.Lock()
 	s.lastSyncError = nil
+	s.syncMu.Unlock()
+
 	if s.onMutate == nil {
 		return
 	}
-	if err := s.onMutate(message); err != nil {
-		slog.Error("git sync failed after mutation", "message", message, "error", err)
-		s.lastSyncError = err
-	}
+	go func() {
+		if err := s.onMutate(message); err != nil {
+			slog.Error("git sync failed after mutation", "message", message, "error", err)
+			s.syncMu.Lock()
+			s.lastSyncError = err
+			s.syncMu.Unlock()
+		}
+	}()
 }
 
 // LastSyncError returns the error from the most recent git sync, if any.
 func (s *VideoService) LastSyncError() error {
+	s.syncMu.RLock()
+	defer s.syncMu.RUnlock()
 	return s.lastSyncError
 }
 
