@@ -88,7 +88,7 @@ export const mockVideo: VideoResponse = {
   appliedLanguage: '',
   appliedAudioLanguage: '',
   audioLanguage: '',
-  sponsorship: { amount: '', emails: '', blocked: '', name: '', url: '' },
+  sponsorship: { amount: '', emails: '', blocked: '', name: '', url: '', adFile: '' },
   notifiedSponsors: false,
   videoId: '',
   linkedInPosted: false,

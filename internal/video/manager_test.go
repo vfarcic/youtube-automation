@@ -584,9 +584,9 @@ func TestCalculateInitialDetailsProgress(t *testing.T) {
 		{
 			name:              "Empty_video",
 			video:             storage.Video{},
-			expectedCompleted: 3, // Sponsorship.Emails (conditional, no amount), Sponsorship.Blocked (empty_or_filled), Delayed (false_only)
-			expectedTotal:     10,
-			description:       "Empty video should have 3 completed conditions",
+			expectedCompleted: 4, // Sponsorship.Emails (conditional, no amount), Sponsorship.Blocked (empty_or_filled), Sponsorship.AdFile (empty_or_filled), Delayed (false_only)
+			expectedTotal:     11,
+			description:       "Empty video should have 4 completed conditions",
 		},
 		{
 			name: "All_general_fields_complete",
@@ -596,8 +596,8 @@ func TestCalculateInitialDetailsProgress(t *testing.T) {
 				Gist:        "path/to/gist",
 				Date:        "2023-01-01",
 			},
-			expectedCompleted: 7, // 4 general + emails(conditional) + blocked(empty_or_filled) + delayed(false_only)
-			expectedTotal:     10,
+			expectedCompleted: 8, // 4 general + emails(conditional) + blocked(empty_or_filled) + adFile(empty_or_filled) + delayed(false_only)
+			expectedTotal:     11,
 			description:       "All general fields should be counted",
 		},
 		{
@@ -605,8 +605,8 @@ func TestCalculateInitialDetailsProgress(t *testing.T) {
 			video: storage.Video{
 				Sponsorship: storage.Sponsorship{Amount: "1000"},
 			},
-			expectedCompleted: 3, // Amount(filled_only) + Blocked(empty_or_filled) + Delayed(false_only)
-			expectedTotal:     10,
+			expectedCompleted: 4, // Amount(filled_only) + Blocked(empty_or_filled) + AdFile(empty_or_filled) + Delayed(false_only)
+			expectedTotal:     11,
 			description:       "Sponsorship amount should be counted",
 		},
 		{
@@ -617,8 +617,8 @@ func TestCalculateInitialDetailsProgress(t *testing.T) {
 					Emails: "sponsor@example.com",
 				},
 			},
-			expectedCompleted: 4, // Amount + Emails + Blocked(empty_or_filled) + Delayed(false_only)
-			expectedTotal:     10,
+			expectedCompleted: 5, // Amount + Emails + Blocked(empty_or_filled) + AdFile(empty_or_filled) + Delayed(false_only)
+			expectedTotal:     11,
 			description:       "Sponsorship emails should be counted when amount is set",
 		},
 		{
@@ -626,8 +626,8 @@ func TestCalculateInitialDetailsProgress(t *testing.T) {
 			video: storage.Video{
 				Sponsorship: storage.Sponsorship{Blocked: "Some reason"},
 			},
-			expectedCompleted: 2, // Emails(conditional, no amount=pass) + Delayed(false_only)
-			expectedTotal:     10,
+			expectedCompleted: 3, // Emails(conditional, no amount=pass) + AdFile(empty_or_filled) + Delayed(false_only)
+			expectedTotal:     11,
 			description:       "Sponsorship blocked should fail the blocked condition",
 		},
 		{
@@ -635,8 +635,8 @@ func TestCalculateInitialDetailsProgress(t *testing.T) {
 			video: storage.Video{
 				Delayed: true,
 			},
-			expectedCompleted: 2, // Emails(conditional) + Blocked(empty_or_filled)
-			expectedTotal:     10,
+			expectedCompleted: 3, // Emails(conditional) + Blocked(empty_or_filled) + AdFile(empty_or_filled)
+			expectedTotal:     11,
 			description:       "Delayed video should fail the delayed condition",
 		},
 		{
@@ -644,8 +644,8 @@ func TestCalculateInitialDetailsProgress(t *testing.T) {
 			video: storage.Video{
 				Sponsorship: storage.Sponsorship{Amount: "N/A"},
 			},
-			expectedCompleted: 4, // Amount + Emails(conditional, N/A=pass) + Blocked(empty_or_filled) + Delayed(false_only)
-			expectedTotal:     10,
+			expectedCompleted: 5, // Amount + Emails(conditional, N/A=pass) + Blocked(empty_or_filled) + AdFile(empty_or_filled) + Delayed(false_only)
+			expectedTotal:     11,
 			description:       "N/A sponsorship amount should pass emails condition",
 		},
 		{
@@ -653,8 +653,8 @@ func TestCalculateInitialDetailsProgress(t *testing.T) {
 			video: storage.Video{
 				Sponsorship: storage.Sponsorship{Amount: "-"},
 			},
-			expectedCompleted: 3, // Emails(conditional, dash=pass) + Blocked(empty_or_filled) + Delayed(false_only); Amount("-") fails filled_only
-			expectedTotal:     10,
+			expectedCompleted: 4, // Emails(conditional, dash=pass) + Blocked(empty_or_filled) + AdFile(empty_or_filled) + Delayed(false_only); Amount("-") fails filled_only
+			expectedTotal:     11,
 			description:       "Dash sponsorship amount should pass emails condition",
 		},
 	}

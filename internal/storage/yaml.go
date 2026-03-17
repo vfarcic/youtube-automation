@@ -114,6 +114,7 @@ type Video struct {
 	Gist                 string      `yaml:"gist,omitempty" json:"gist,omitempty" completion:"filled_only" ui:"label"`
 	Code                 bool        `yaml:"code,omitempty" json:"code,omitempty" completion:"true_only"`
 	Shorts               []Short                `yaml:"shorts,omitempty" json:"shorts,omitempty" completion:"filled_only"` // YouTube Shorts extracted from this video
+	AdContent            string                 `json:"-" yaml:"-"`                                                       // Transient: ad file content resolved at runtime
 }
 
 // Sponsorship holds details about video sponsorship.
@@ -130,6 +131,7 @@ type Sponsorship struct {
 	Blocked string `json:"blocked" completion:"empty_or_filled"`
 	Name    string `json:"name" completion:"empty_or_filled"`
 	URL     string `json:"url" completion:"empty_or_filled"`
+	AdFile  string `json:"adFile" completion:"empty_or_filled"`
 }
 
 // NewYAML creates a new YAML instance with default values

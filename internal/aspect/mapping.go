@@ -39,7 +39,7 @@ func GetVideoAspectMappings() []AspectMapping {
 	// Define which fields belong to which aspects (this is the only configuration needed)
 	aspectFieldGroups := map[string][]string{
 		AspectKeyInitialDetails: {
-			"ProjectName", "ProjectURL", "Sponsorship.Name", "Sponsorship.URL", "Sponsorship.Amount", "Sponsorship.Emails", "Sponsorship.Blocked", "Date", "Delayed", "Gist",
+			"ProjectName", "ProjectURL", "Sponsorship.Name", "Sponsorship.URL", "Sponsorship.Amount", "Sponsorship.Emails", "Sponsorship.Blocked", "Sponsorship.AdFile", "Date", "Delayed", "Gist",
 		},
 		AspectKeyWorkProgress: {
 			"Code", "Head", "Screen", "RelatedVideos", "Thumbnails", "Diagrams",

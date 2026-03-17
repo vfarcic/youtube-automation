@@ -27,6 +27,7 @@ export interface Sponsorship {
   blocked: string;
   name: string;
   url: string;
+  adFile: string;
 }
 
 export interface TitleVariant {

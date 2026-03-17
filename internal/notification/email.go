@@ -2,6 +2,7 @@ package notification
 
 import (
 	"fmt"
+	"html"
 	"strings"
 
 	"devopstoolkit/youtube-automation/internal/configuration"
@@ -125,6 +126,13 @@ All the material is available at %s.
 </ul>
 `, video.Location, animationsString)
 	body = strings.ReplaceAll(body, "\n<li></li>", "")
+	if video.AdContent != "" {
+		body += fmt.Sprintf(`<br/><br/>
+<strong>Sponsor Information:</strong>
+<br/><br/>
+<pre>%s</pre>
+`, html.EscapeString(video.AdContent))
+	}
 	attachmentPath = video.Gist
 	return subject, body, attachmentPath, nil
 }

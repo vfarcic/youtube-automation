@@ -3,6 +3,8 @@ package api
 import (
 	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 
 	"devopstoolkit/youtube-automation/internal/configuration"
 	"devopstoolkit/youtube-automation/internal/storage"
@@ -136,6 +138,17 @@ func (s *Server) handleRequestEdit(w http.ResponseWriter, r *http.Request) {
 	emailVideo := video
 	if emailVideo.Gist != "" && s.filesystem != nil {
 		emailVideo.Gist = s.filesystem.ResolvePath(emailVideo.Gist)
+	}
+
+	// Resolve and read sponsor ad file content for the email
+	if emailVideo.Sponsorship.AdFile != "" && s.filesystem != nil {
+		adPath := s.filesystem.ResolvePath(filepath.Join("manuscript", "ads", filepath.Base(emailVideo.Sponsorship.AdFile)))
+		adBytes, err := os.ReadFile(adPath)
+		if err != nil {
+			emailVideo.AdContent = fmt.Sprintf("[Warning: Ad file '%s' could not be read: %s]", emailVideo.Sponsorship.AdFile, err.Error())
+		} else {
+			emailVideo.AdContent = string(adBytes)
+		}
 	}
 
 	if s.emailService != nil && s.emailSettings != nil && s.emailSettings.From != "" && s.emailSettings.EditTo != "" {

@@ -220,7 +220,7 @@ func (s *Server) Start(host string, port int) error {
 	s.httpServer = &http.Server{
 		Addr:         addr,
 		Handler:      s.router,
-		WriteTimeout: 5 * time.Minute,
+		WriteTimeout: 1 * time.Hour,
 	}
 	slog.Info("starting API server", "addr", addr)
 	return s.httpServer.ListenAndServe()
