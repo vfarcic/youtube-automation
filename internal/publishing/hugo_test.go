@@ -584,3 +584,47 @@ func TestPostLocalMode_UsesNewHugo(t *testing.T) {
 func TestDefaultExecutorSatisfiesInterface(t *testing.T) {
 	var _ gitpkg.CommandExecutor = &gitpkg.DefaultExecutor{}
 }
+
+func TestGetCategoryFromFilePath(t *testing.T) {
+	tests := []struct {
+		name     string
+		filePath string
+		want     string
+	}{
+		{"relative path", "manuscript/ai/knowledge-to-ai.md", "ai"},
+		{"absolute path", "/data/tmp/manuscript/ai/knowledge-to-ai.md", "ai"},
+		{"absolute path devops", "/data/tmp/manuscript/devops/some-video.md", "devops"},
+		{"nested manuscript", "/some/deep/path/manuscript/k8s/video.md", "k8s"},
+		{"fallback no manuscript", "some/other/path/video.md", "path"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := GetCategoryFromFilePath(tt.filePath)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestRemoveTODOFromIntro(t *testing.T) {
+	manuscript := `## Intro
+
+This is the intro.
+
+TODO: remove this line
+
+More intro text.
+
+## Section
+
+Body content.
+TODO: body todo
+`
+	intro, body := ExtractIntro(manuscript)
+	intro = RemoveTODOAndFIXMELines(intro)
+	body = RemoveTODOAndFIXMELines(body)
+
+	assert.NotContains(t, intro, "TODO:")
+	assert.NotContains(t, body, "TODO:")
+	assert.Contains(t, intro, "This is the intro.")
+	assert.Contains(t, body, "Body content.")
+}

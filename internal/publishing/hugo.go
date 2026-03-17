@@ -116,14 +116,26 @@ func SanitizeTitle(title string) string {
 	return postDir
 }
 
-// GetCategoryFromFilePath extracts the category from a manuscript file path
+// GetCategoryFromFilePath extracts the category from a manuscript file path.
+// It finds the "manuscript/" segment in the path and returns the directory
+// immediately after it (e.g. "ai" from ".../manuscript/ai/foo.md").
+// This works for both relative and absolute paths regardless of Hugo.Path.
 func GetCategoryFromFilePath(filePath string) string {
-	relPath, err := filepath.Rel(filepath.Join(configuration.GlobalSettings.Hugo.Path, "manuscript"), filepath.Dir(filePath))
-	if err != nil {
-		// If we can't make a relative path, try to extract the category from the path structure
-		relPath = filepath.Base(filepath.Dir(filePath))
+	// Normalize separators
+	normalized := filepath.ToSlash(filePath)
+	// Find "manuscript/" in the path
+	const marker = "manuscript/"
+	idx := strings.LastIndex(normalized, marker)
+	if idx >= 0 {
+		after := normalized[idx+len(marker):]
+		// Take only the first path segment (the category)
+		parts := strings.SplitN(after, "/", 2)
+		if len(parts) > 0 && parts[0] != "" {
+			return parts[0]
+		}
 	}
-	return relPath
+	// Fallback: directory name of the file
+	return filepath.Base(filepath.Dir(filePath))
 }
 
 // ConstructHugoURL constructs the Hugo URL based on title and category without creating the post
@@ -166,6 +178,7 @@ func (r *Hugo) getPost(filePath, title, date, videoId string) (string, error) {
 
 	// Extract intro and clean up the manuscript
 	intro, body := ExtractIntro(manuscript)
+	intro = RemoveTODOAndFIXMELines(intro)
 	body = RemoveTODOAndFIXMELines(body)
 
 	return BuildHugoPost(title, date, videoId, intro, body), nil
@@ -204,6 +217,7 @@ func (r *Hugo) enrichPostDir(ctx context.Context, video *storage.Video, title, p
 	category := GetCategoryFromFilePath(video.Gist)
 	slug := SanitizeTitle(title)
 	intro, _ := ExtractIntro(string(contentBytes))
+	intro = RemoveTODOAndFIXMELines(intro)
 
 	if err := AddHomepageEntry(basePath, category, slug, title, intro); err != nil {
 		fmt.Printf("Warning: failed to add homepage entry: %v\n", err)
