@@ -660,6 +660,44 @@ func TestGenerateEditEmailContent(t *testing.T) {
 			},
 			expectAttachment: "/gist.md",
 		},
+		{
+			name: "With ad content",
+			video: storage.Video{
+				ProjectName: "Sponsored Project",
+				Location:    "/vids/sponsored",
+				Titles:      []storage.TitleVariant{{Index: 1, Text: "Sponsored Title", Share: 0}},
+				ProjectURL:  "http://sponsored.url/",
+				Animations:  "",
+				Members:     "",
+				Gist:        "/gist.md",
+				AdContent:   "## Kilo Ad\nPlease read the following script at the 5 minute mark.",
+			},
+			expectErr:     false,
+			expectSubject: "Video: Sponsored Title",
+			expectBodyContains: []string{
+				"<strong>Sponsor Information:</strong>",
+				"<pre>## Kilo Ad\nPlease read the following script at the 5 minute mark.</pre>",
+			},
+			expectAttachment: "/gist.md",
+		},
+		{
+			name: "Without ad content has no sponsor section",
+			video: storage.Video{
+				ProjectName: "Regular Project",
+				Location:    "/vids/regular",
+				Titles:      []storage.TitleVariant{{Index: 1, Text: "Regular Title", Share: 0}},
+				ProjectURL:  "http://regular.url/",
+				Animations:  "",
+				Members:     "",
+				Gist:        "/gist.md",
+			},
+			expectErr:        false,
+			expectSubject:    "Video: Regular Title",
+			expectBodyContains: []string{
+				"All the material is available at /vids/regular",
+			},
+			expectAttachment: "/gist.md",
+		},
 	}
 
 	for _, tt := range tests {
@@ -680,6 +718,11 @@ func TestGenerateEditEmailContent(t *testing.T) {
 
 			for _, expectedSubstring := range tt.expectBodyContains {
 				assert.Contains(t, body, expectedSubstring)
+			}
+
+			// Verify no sponsor section when AdContent is empty
+			if tt.video.AdContent == "" {
+				assert.NotContains(t, body, "Sponsor Information")
 			}
 
 			// Check for absence of empty <li> from animations

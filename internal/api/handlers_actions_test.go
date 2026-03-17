@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"devopstoolkit/youtube-automation/internal/configuration"
@@ -15,6 +18,7 @@ import (
 type mockEmailService struct {
 	sendThumbnailCalled   bool
 	sendEditCalled        bool
+	sendEditVideo         storage.Video
 	sendSponsorsCalled    bool
 	sendSponsorsFrom      string
 	sendSponsorsTo        string
@@ -32,6 +36,7 @@ func (m *mockEmailService) SendThumbnail(from, to string, video storage.Video) e
 
 func (m *mockEmailService) SendEdit(from, to string, video storage.Video) error {
 	m.sendEditCalled = true
+	m.sendEditVideo = video
 	return m.returnErr
 }
 
@@ -346,6 +351,118 @@ func TestHandleRequestEdit_NoEmailConfigured(t *testing.T) {
 	}
 	if !resp.Video.RequestEdit {
 		t.Error("expected video.requestEdit to be true even without email")
+	}
+}
+
+func TestHandleRequestEdit_WithAdFile(t *testing.T) {
+	env := setupTestEnv(t)
+	mock := &mockEmailService{}
+	env.server.SetEmailService(mock, &configuration.SettingsEmail{
+		From:   "from@test.com",
+		EditTo: "edit@test.com",
+	})
+
+	// Create the ads directory and ad file
+	adsDir := filepath.Join(env.tmpDir, "manuscript", "ads")
+	if err := os.MkdirAll(adsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	adContent := "## Kilo Ad\nPlease read this script at the 5 minute mark."
+	if err := os.WriteFile(filepath.Join(adsDir, "kilo.md"), []byte(adContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	seedVideo(t, env, storage.Video{
+		Name:     "test-video",
+		Category: "devops",
+		Gist:     "test.md",
+		Sponsorship: storage.Sponsorship{
+			AdFile: "kilo.md",
+		},
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/api/actions/request-edit/test-video?category=devops", nil)
+	w := httptest.NewRecorder()
+	env.server.Router().ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	if !mock.sendEditCalled {
+		t.Fatal("expected SendEdit to be called")
+	}
+	if mock.sendEditVideo.AdContent != adContent {
+		t.Errorf("expected AdContent %q, got %q", adContent, mock.sendEditVideo.AdContent)
+	}
+}
+
+func TestHandleRequestEdit_WithMissingAdFile(t *testing.T) {
+	env := setupTestEnv(t)
+	mock := &mockEmailService{}
+	env.server.SetEmailService(mock, &configuration.SettingsEmail{
+		From:   "from@test.com",
+		EditTo: "edit@test.com",
+	})
+
+	seedVideo(t, env, storage.Video{
+		Name:     "test-video",
+		Category: "devops",
+		Gist:     "test.md",
+		Sponsorship: storage.Sponsorship{
+			AdFile: "nonexistent.md",
+		},
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/api/actions/request-edit/test-video?category=devops", nil)
+	w := httptest.NewRecorder()
+	env.server.Router().ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var resp ActionResponse
+	json.NewDecoder(w.Body).Decode(&resp)
+
+	if !resp.EmailSent {
+		t.Error("expected email to still be sent even with missing ad file")
+	}
+	if !mock.sendEditCalled {
+		t.Fatal("expected SendEdit to be called")
+	}
+	if !strings.Contains(mock.sendEditVideo.AdContent, "[Warning:") {
+		t.Errorf("expected AdContent to contain warning, got %q", mock.sendEditVideo.AdContent)
+	}
+}
+
+func TestHandleRequestEdit_NoAdFileForNonSponsored(t *testing.T) {
+	env := setupTestEnv(t)
+	mock := &mockEmailService{}
+	env.server.SetEmailService(mock, &configuration.SettingsEmail{
+		From:   "from@test.com",
+		EditTo: "edit@test.com",
+	})
+
+	seedVideo(t, env, storage.Video{
+		Name:     "test-video",
+		Category: "devops",
+		Gist:     "test.md",
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/api/actions/request-edit/test-video?category=devops", nil)
+	w := httptest.NewRecorder()
+	env.server.Router().ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	if !mock.sendEditCalled {
+		t.Fatal("expected SendEdit to be called")
+	}
+	if mock.sendEditVideo.AdContent != "" {
+		t.Errorf("expected empty AdContent for non-sponsored video, got %q", mock.sendEditVideo.AdContent)
 	}
 }
 

@@ -341,7 +341,7 @@ func TestGetAspectsOverview(t *testing.T) {
 	t.Run("Should have correct field counts for each aspect", func(t *testing.T) {
 		// Test expected field counts based on actual mapping
 		expectedFieldCounts := map[string]int{
-			AspectKeyInitialDetails: 10, // actual count from mapping (includes sponsor name and URL)
+			AspectKeyInitialDetails: 11, // actual count from mapping (includes sponsor name, URL, and adFile)
 			AspectKeyWorkProgress:   11, // actual count from mapping
 			AspectKeyDefinition:     10, // actual count from mapping (includes Titles array, Shorts, Members, RequestEdit)
 			AspectKeyPostProduction: 4,  // actual count from mapping (ThumbnailVariants, Timecodes, VideoFile, Slides)

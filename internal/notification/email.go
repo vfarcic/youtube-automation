@@ -125,6 +125,13 @@ All the material is available at %s.
 </ul>
 `, video.Location, animationsString)
 	body = strings.ReplaceAll(body, "\n<li></li>", "")
+	if video.AdContent != "" {
+		body += fmt.Sprintf(`<br/><br/>
+<strong>Sponsor Information:</strong>
+<br/><br/>
+<pre>%s</pre>
+`, video.AdContent)
+	}
 	attachmentPath = video.Gist
 	return subject, body, attachmentPath, nil
 }
