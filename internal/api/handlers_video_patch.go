@@ -122,11 +122,7 @@ func (s *Server) handlePatchVideoAspect(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	resp := s.enrichVideo(updated)
-	if syncErr := s.videoService.LastSyncError(); syncErr != nil {
-		resp.SyncWarning = "git sync failed: " + syncErr.Error()
-	} else if !s.videoService.IsSyncConfigured() {
-		resp.SyncWarning = "git sync not configured — changes saved locally only"
-	}
+	addSyncWarningStr(&resp.SyncWarning, s.videoService)
 	respondJSON(w, http.StatusOK, resp)
 }
 

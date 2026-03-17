@@ -77,11 +77,7 @@ func (s *Server) handleApplyRandomTiming(w http.ResponseWriter, r *http.Request)
 		Reasoning:    selectedRec.Reasoning,
 	}
 
-	if syncErr := s.videoService.LastSyncError(); syncErr != nil {
-		resp.SyncWarning = "git sync failed: " + syncErr.Error()
-	} else if !s.videoService.IsSyncConfigured() {
-		resp.SyncWarning = "git sync not configured — changes saved locally only"
-	}
+	addSyncWarningStr(&resp.SyncWarning, s.videoService)
 
 	respondJSON(w, http.StatusOK, resp)
 }

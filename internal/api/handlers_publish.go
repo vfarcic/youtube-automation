@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"devopstoolkit/youtube-automation/internal/publishing"
 	"devopstoolkit/youtube-automation/internal/storage"
@@ -659,17 +660,31 @@ func (s *Server) handleAMAApply(w http.ResponseWriter, r *http.Request) {
 
 // --- Helpers ---
 
-// addSyncWarningStr populates a sync warning string pointer from service state.
+// syncTimeout is the maximum time to wait for async git sync to complete.
+const syncTimeout = 30 * time.Second
+
+// addSyncWarningStr waits for the async git sync to finish (up to syncTimeout)
+// and populates a sync warning string pointer from the result.
 func addSyncWarningStr(target *string, vs videoServiceSyncer) {
-	if syncErr := vs.LastSyncError(); syncErr != nil {
+	if syncErr := vs.AwaitSync(syncTimeout); syncErr != nil {
 		*target = "git sync failed: " + syncErr.Error()
 	} else if !vs.IsSyncConfigured() {
 		*target = "git sync not configured — changes saved locally only"
 	}
 }
 
+// addSyncWarningMap is like addSyncWarningStr but for map-based responses.
+func addSyncWarningMap(resp map[string]interface{}, vs videoServiceSyncer) {
+	if syncErr := vs.AwaitSync(syncTimeout); syncErr != nil {
+		resp["syncWarning"] = "git sync failed: " + syncErr.Error()
+	} else if !vs.IsSyncConfigured() {
+		resp["syncWarning"] = "git sync not configured — changes saved locally only"
+	}
+}
+
 // videoServiceSyncer is an interface for sync status checking.
 type videoServiceSyncer interface {
+	AwaitSync(timeout time.Duration) error
 	LastSyncError() error
 	IsSyncConfigured() bool
 }

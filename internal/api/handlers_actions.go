@@ -92,11 +92,7 @@ func (s *Server) handleRequestThumbnail(w http.ResponseWriter, r *http.Request) 
 		resp.EmailError = emailNotConfiguredMessage(s.emailService, s.emailSettings, "ThumbnailTo")
 	}
 
-	if syncErr := s.videoService.LastSyncError(); syncErr != nil {
-		resp.SyncWarning = "git sync failed: " + syncErr.Error()
-	} else if !s.videoService.IsSyncConfigured() {
-		resp.SyncWarning = "git sync not configured — changes saved locally only"
-	}
+	addSyncWarningStr(&resp.SyncWarning, s.videoService)
 
 	respondJSON(w, http.StatusOK, resp)
 }
@@ -161,11 +157,7 @@ func (s *Server) handleRequestEdit(w http.ResponseWriter, r *http.Request) {
 		resp.EmailError = emailNotConfiguredMessage(s.emailService, s.emailSettings, "EditTo")
 	}
 
-	if syncErr := s.videoService.LastSyncError(); syncErr != nil {
-		resp.SyncWarning = "git sync failed: " + syncErr.Error()
-	} else if !s.videoService.IsSyncConfigured() {
-		resp.SyncWarning = "git sync not configured — changes saved locally only"
-	}
+	addSyncWarningStr(&resp.SyncWarning, s.videoService)
 
 	respondJSON(w, http.StatusOK, resp)
 }
@@ -228,11 +220,7 @@ func (s *Server) handleNotifySponsors(w http.ResponseWriter, r *http.Request) {
 	}
 	resp.Video = s.enrichVideo(video)
 
-	if syncErr := s.videoService.LastSyncError(); syncErr != nil {
-		resp.SyncWarning = "git sync failed: " + syncErr.Error()
-	} else if !s.videoService.IsSyncConfigured() {
-		resp.SyncWarning = "git sync not configured — changes saved locally only"
-	}
+	addSyncWarningStr(&resp.SyncWarning, s.videoService)
 
 	respondJSON(w, http.StatusOK, resp)
 }

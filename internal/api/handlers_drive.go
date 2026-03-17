@@ -105,11 +105,7 @@ func (s *Server) handleDriveUploadThumbnail(w http.ResponseWriter, r *http.Reque
 		"driveFileId":  fileID,
 		"variantIndex": variantIndex,
 	}
-	if syncErr := s.videoService.LastSyncError(); syncErr != nil {
-		resp["syncWarning"] = "git sync failed: " + syncErr.Error()
-	} else if !s.videoService.IsSyncConfigured() {
-		resp["syncWarning"] = "git sync not configured — changes saved locally only"
-	}
+	addSyncWarningMap(resp, s.videoService)
 	respondJSON(w, http.StatusOK, resp)
 }
 
@@ -193,11 +189,7 @@ func (s *Server) handleDriveUploadVideo(w http.ResponseWriter, r *http.Request) 
 		"driveFileId": fileID,
 		"videoFile":   video.VideoFile,
 	}
-	if syncErr := s.videoService.LastSyncError(); syncErr != nil {
-		resp["syncWarning"] = "git sync failed: " + syncErr.Error()
-	} else if !s.videoService.IsSyncConfigured() {
-		resp["syncWarning"] = "git sync not configured — changes saved locally only"
-	}
+	addSyncWarningMap(resp, s.videoService)
 	respondJSON(w, http.StatusOK, resp)
 }
 
@@ -339,11 +331,7 @@ func (s *Server) handleDriveUploadShort(w http.ResponseWriter, r *http.Request) 
 		"driveFileId": fileID,
 		"filePath":    "drive://" + fileID,
 	}
-	if syncErr := s.videoService.LastSyncError(); syncErr != nil {
-		resp["syncWarning"] = "git sync failed: " + syncErr.Error()
-	} else if !s.videoService.IsSyncConfigured() {
-		resp["syncWarning"] = "git sync not configured — changes saved locally only"
-	}
+	addSyncWarningMap(resp, s.videoService)
 	respondJSON(w, http.StatusOK, resp)
 }
 

@@ -24,13 +24,14 @@ import (
 
 // VideoService provides data operations for videos in CLI
 type VideoService struct {
-	indexPath     string
-	yamlStorage   *storage.YAML
-	filesystem    *filesystem.Operations
-	videoManager  *video.Manager
-	onMutate      func(message string) error
-	syncMu        sync.RWMutex
-	lastSyncError error
+	indexPath      string
+	yamlStorage    *storage.YAML
+	filesystem     *filesystem.Operations
+	videoManager   *video.Manager
+	onMutate       func(message string) error
+	syncMu         sync.RWMutex
+	lastSyncError  error
+	lastSyncChan   <-chan struct{}
 }
 
 // NewVideoService creates a new video service
@@ -48,24 +49,55 @@ func (s *VideoService) SetOnMutate(fn func(message string) error) {
 	s.onMutate = fn
 }
 
-// notifyMutation fires the onMutate callback asynchronously so that HTTP
-// handlers are not blocked by slow git operations (commit + push).
+// notifyMutation fires the onMutate callback in a background goroutine and
+// returns a channel that receives the result (nil on success). Callers that
+// need to report sync status can wait on the channel; callers that don't care
+// can ignore it.
 func (s *VideoService) notifyMutation(message string) {
+	ch := make(chan struct{})
+
 	s.syncMu.Lock()
 	s.lastSyncError = nil
+	s.lastSyncChan = ch
 	s.syncMu.Unlock()
 
 	if s.onMutate == nil {
+		close(ch)
 		return
 	}
 	go func() {
-		if err := s.onMutate(message); err != nil {
+		err := s.onMutate(message)
+		if err != nil {
 			slog.Error("git sync failed after mutation", "message", message, "error", err)
-			s.syncMu.Lock()
-			s.lastSyncError = err
-			s.syncMu.Unlock()
 		}
+		s.syncMu.Lock()
+		s.lastSyncError = err
+		s.syncMu.Unlock()
+		close(ch)
 	}()
+}
+
+// AwaitSync blocks until the most recent async git sync completes and returns
+// its error (nil on success). The timeout limits how long to wait; if zero or
+// negative, it waits indefinitely.
+func (s *VideoService) AwaitSync(timeout time.Duration) error {
+	s.syncMu.RLock()
+	ch := s.lastSyncChan
+	s.syncMu.RUnlock()
+
+	if ch == nil {
+		return nil
+	}
+	if timeout <= 0 {
+		<-ch
+	} else {
+		select {
+		case <-ch:
+		case <-time.After(timeout):
+			return fmt.Errorf("git sync timed out after %s", timeout)
+		}
+	}
+	return s.LastSyncError()
 }
 
 // LastSyncError returns the error from the most recent git sync, if any.
