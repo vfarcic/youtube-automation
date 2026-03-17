@@ -38,7 +38,7 @@ describe('ShortPublishAction', () => {
     expect(screen.getByText('Upload a file first')).toBeInTheDocument();
   });
 
-  it('disables publish with "Set scheduled date first" when no date', () => {
+  it('enables publish when file exists but no scheduled date (backend auto-calculates)', () => {
     renderWithClient(
       <ShortPublishAction
         videoName="test-video"
@@ -47,8 +47,8 @@ describe('ShortPublishAction', () => {
         driveFileId="some-id"
       />,
     );
-    expect(screen.getByText('Publish to YouTube')).toBeDisabled();
-    expect(screen.getByText('Set scheduled date first')).toBeInTheDocument();
+    const btn = screen.getByText('Publish to YouTube');
+    expect(btn).not.toBeDisabled();
   });
 
   it('shows published badge when youtubeId exists', () => {

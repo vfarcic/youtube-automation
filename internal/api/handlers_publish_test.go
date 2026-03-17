@@ -417,6 +417,42 @@ func TestHandlePublishShort_NoFileAtAll(t *testing.T) {
 	}
 }
 
+func TestHandlePublishShort_AutoSchedule(t *testing.T) {
+	env := setupTestEnv(t)
+	mock := &mockPublishingService{uploadShortID: "yt-short-auto"}
+	env.server.publishingService = mock
+
+	// Seed video with main date but short has NO scheduled date
+	seedVideo(t, env, storage.Video{
+		Name:     "test-video",
+		Category: "devops",
+		Date:     "2026-03-20T14:30",
+		VideoId:  "yt-abc123",
+		Shorts: []storage.Short{
+			{ID: "short1", Title: "Short One", FilePath: "/tmp/short1.mp4"},
+		},
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/api/publish/youtube/test-video/shorts/short1?category=devops", nil)
+	rr := httptest.NewRecorder()
+	env.server.Router().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rr.Code, rr.Body.String())
+	}
+
+	// Verify the short's scheduled date was auto-set
+	if mock.lastShortArg.ScheduledDate == "" {
+		t.Error("expected ScheduledDate to be auto-calculated, got empty")
+	}
+
+	var resp PublishShortResponse
+	json.NewDecoder(rr.Body).Decode(&resp)
+	if resp.YouTubeID != "yt-short-auto" {
+		t.Errorf("youtubeId = %q, want %q", resp.YouTubeID, "yt-short-auto")
+	}
+}
+
 // --- Hugo Publish Tests ---
 
 func TestHandlePublishHugo(t *testing.T) {

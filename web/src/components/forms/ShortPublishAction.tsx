@@ -17,14 +17,12 @@ export function ShortPublishAction({
   shortId,
   driveFileId,
   filePath,
-  scheduledDate,
   youtubeId,
 }: ShortPublishActionProps) {
   const publishMutation = usePublishShort();
   const [publishError, setPublishError] = useState<string | null>(null);
 
   const hasFile = Boolean(driveFileId || filePath);
-  const hasScheduledDate = Boolean(scheduledDate);
   const publishedId = publishMutation.data?.youtubeId ?? youtubeId;
 
   const handlePublish = () => {
@@ -41,7 +39,7 @@ export function ShortPublishAction({
         <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-green-400 bg-green-900/30 border border-green-700 rounded">
           Published: <code className="text-xs">{publishedId}</code>
         </span>
-      ) : hasFile && hasScheduledDate ? (
+      ) : hasFile ? (
         <button
           type="button"
           onClick={handlePublish}
@@ -61,9 +59,6 @@ export function ShortPublishAction({
       )}
       {!publishedId && !hasFile && (
         <p className="text-xs text-yellow-400">Upload a file first</p>
-      )}
-      {!publishedId && hasFile && !hasScheduledDate && (
-        <p className="text-xs text-yellow-400">Set scheduled date first</p>
       )}
       {publishError && <p className="text-xs text-red-400">{publishError}</p>}
     </div>

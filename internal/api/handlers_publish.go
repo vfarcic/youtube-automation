@@ -231,6 +231,21 @@ func (s *Server) handlePublishShort(w http.ResponseWriter, r *http.Request) {
 
 	short := video.Shorts[shortIdx]
 
+	// Auto-calculate scheduled date from main video date if not set (same as CLI)
+	if short.ScheduledDate == "" && video.Date != "" {
+		mainDate, parseErr := time.Parse("2006-01-02T15:04", video.Date)
+		if parseErr != nil {
+			mainDate, parseErr = time.Parse("2006-01-02T15:04:05Z", video.Date)
+		}
+		if parseErr == nil {
+			schedules := publishing.CalculateShortsSchedule(mainDate, len(video.Shorts))
+			if shortIdx < len(schedules) {
+				short.ScheduledDate = publishing.FormatScheduleISO(schedules[shortIdx])
+				video.Shorts[shortIdx].ScheduledDate = short.ScheduledDate
+			}
+		}
+	}
+
 	// Resolve short file: if Drive-hosted, download to temp file
 	uploadPath := short.FilePath
 	shortDriveFileID := short.DriveFileID
