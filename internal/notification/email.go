@@ -2,6 +2,7 @@ package notification
 
 import (
 	"fmt"
+	"html"
 	"strings"
 
 	"devopstoolkit/youtube-automation/internal/configuration"
@@ -130,7 +131,7 @@ All the material is available at %s.
 <strong>Sponsor Information:</strong>
 <br/><br/>
 <pre>%s</pre>
-`, video.AdContent)
+`, html.EscapeString(video.AdContent))
 	}
 	attachmentPath = video.Gist
 	return subject, body, attachmentPath, nil

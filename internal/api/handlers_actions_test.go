@@ -354,115 +354,109 @@ func TestHandleRequestEdit_NoEmailConfigured(t *testing.T) {
 	}
 }
 
-func TestHandleRequestEdit_WithAdFile(t *testing.T) {
-	env := setupTestEnv(t)
-	mock := &mockEmailService{}
-	env.server.SetEmailService(mock, &configuration.SettingsEmail{
-		From:   "from@test.com",
-		EditTo: "edit@test.com",
-	})
-
-	// Create the ads directory and ad file
-	adsDir := filepath.Join(env.tmpDir, "manuscript", "ads")
-	if err := os.MkdirAll(adsDir, 0755); err != nil {
-		t.Fatal(err)
-	}
-	adContent := "## Kilo Ad\nPlease read this script at the 5 minute mark."
-	if err := os.WriteFile(filepath.Join(adsDir, "kilo.md"), []byte(adContent), 0644); err != nil {
-		t.Fatal(err)
-	}
-
-	seedVideo(t, env, storage.Video{
-		Name:     "test-video",
-		Category: "devops",
-		Gist:     "test.md",
-		Sponsorship: storage.Sponsorship{
-			AdFile: "kilo.md",
+func TestHandleRequestEdit_AdFile(t *testing.T) {
+	tests := []struct {
+		name            string
+		adFile          string
+		createAdFile    bool
+		adFileContent   string
+		expectEmailSent bool
+		checkAdContent  func(t *testing.T, adContent string)
+	}{
+		{
+			name:            "with valid ad file",
+			adFile:          "kilo.md",
+			createAdFile:    true,
+			adFileContent:   "## Kilo Ad\nPlease read this script at the 5 minute mark.",
+			expectEmailSent: true,
+			checkAdContent: func(t *testing.T, adContent string) {
+				if adContent != "## Kilo Ad\nPlease read this script at the 5 minute mark." {
+					t.Errorf("expected ad file content, got %q", adContent)
+				}
+			},
 		},
-	})
-
-	req := httptest.NewRequest(http.MethodPost, "/api/actions/request-edit/test-video?category=devops", nil)
-	w := httptest.NewRecorder()
-	env.server.Router().ServeHTTP(w, req)
-
-	if w.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
-	}
-
-	if !mock.sendEditCalled {
-		t.Fatal("expected SendEdit to be called")
-	}
-	if mock.sendEditVideo.AdContent != adContent {
-		t.Errorf("expected AdContent %q, got %q", adContent, mock.sendEditVideo.AdContent)
-	}
-}
-
-func TestHandleRequestEdit_WithMissingAdFile(t *testing.T) {
-	env := setupTestEnv(t)
-	mock := &mockEmailService{}
-	env.server.SetEmailService(mock, &configuration.SettingsEmail{
-		From:   "from@test.com",
-		EditTo: "edit@test.com",
-	})
-
-	seedVideo(t, env, storage.Video{
-		Name:     "test-video",
-		Category: "devops",
-		Gist:     "test.md",
-		Sponsorship: storage.Sponsorship{
-			AdFile: "nonexistent.md",
+		{
+			name:            "with missing ad file",
+			adFile:          "nonexistent.md",
+			createAdFile:    false,
+			expectEmailSent: true,
+			checkAdContent: func(t *testing.T, adContent string) {
+				if !strings.Contains(adContent, "[Warning:") {
+					t.Errorf("expected AdContent to contain warning, got %q", adContent)
+				}
+			},
 		},
-	})
-
-	req := httptest.NewRequest(http.MethodPost, "/api/actions/request-edit/test-video?category=devops", nil)
-	w := httptest.NewRecorder()
-	env.server.Router().ServeHTTP(w, req)
-
-	if w.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+		{
+			name:            "no ad file for non-sponsored video",
+			adFile:          "",
+			createAdFile:    false,
+			expectEmailSent: true,
+			checkAdContent: func(t *testing.T, adContent string) {
+				if adContent != "" {
+					t.Errorf("expected empty AdContent for non-sponsored video, got %q", adContent)
+				}
+			},
+		},
+		{
+			name:            "path traversal attempt is sanitized",
+			adFile:          "../../../etc/passwd",
+			createAdFile:    false,
+			expectEmailSent: true,
+			checkAdContent: func(t *testing.T, adContent string) {
+				// filepath.Base strips directory traversal, so it looks for "passwd" in manuscript/ads/
+				if !strings.Contains(adContent, "[Warning:") {
+					t.Errorf("expected warning for traversal attempt, got %q", adContent)
+				}
+				// Ensure the resolved path stayed within manuscript/ads/ (not /etc/passwd)
+				if strings.Contains(adContent, "etc/passwd") && !strings.Contains(adContent, "manuscript/ads/passwd") {
+					t.Errorf("path traversal should be confined to manuscript/ads/, got %q", adContent)
+				}
+			},
+		},
 	}
 
-	var resp ActionResponse
-	json.NewDecoder(w.Body).Decode(&resp)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			env := setupTestEnv(t)
+			mock := &mockEmailService{}
+			env.server.SetEmailService(mock, &configuration.SettingsEmail{
+				From:   "from@test.com",
+				EditTo: "edit@test.com",
+			})
 
-	if !resp.EmailSent {
-		t.Error("expected email to still be sent even with missing ad file")
-	}
-	if !mock.sendEditCalled {
-		t.Fatal("expected SendEdit to be called")
-	}
-	if !strings.Contains(mock.sendEditVideo.AdContent, "[Warning:") {
-		t.Errorf("expected AdContent to contain warning, got %q", mock.sendEditVideo.AdContent)
-	}
-}
+			if tt.createAdFile {
+				adsDir := filepath.Join(env.tmpDir, "manuscript", "ads")
+				if err := os.MkdirAll(adsDir, 0755); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(filepath.Join(adsDir, tt.adFile), []byte(tt.adFileContent), 0644); err != nil {
+					t.Fatal(err)
+				}
+			}
 
-func TestHandleRequestEdit_NoAdFileForNonSponsored(t *testing.T) {
-	env := setupTestEnv(t)
-	mock := &mockEmailService{}
-	env.server.SetEmailService(mock, &configuration.SettingsEmail{
-		From:   "from@test.com",
-		EditTo: "edit@test.com",
-	})
+			video := storage.Video{
+				Name:     "test-video",
+				Category: "devops",
+				Gist:     "test.md",
+			}
+			if tt.adFile != "" {
+				video.Sponsorship = storage.Sponsorship{AdFile: tt.adFile}
+			}
+			seedVideo(t, env, video)
 
-	seedVideo(t, env, storage.Video{
-		Name:     "test-video",
-		Category: "devops",
-		Gist:     "test.md",
-	})
+			req := httptest.NewRequest(http.MethodPost, "/api/actions/request-edit/test-video?category=devops", nil)
+			w := httptest.NewRecorder()
+			env.server.Router().ServeHTTP(w, req)
 
-	req := httptest.NewRequest(http.MethodPost, "/api/actions/request-edit/test-video?category=devops", nil)
-	w := httptest.NewRecorder()
-	env.server.Router().ServeHTTP(w, req)
+			if w.Code != http.StatusOK {
+				t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+			}
 
-	if w.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
-	}
-
-	if !mock.sendEditCalled {
-		t.Fatal("expected SendEdit to be called")
-	}
-	if mock.sendEditVideo.AdContent != "" {
-		t.Errorf("expected empty AdContent for non-sponsored video, got %q", mock.sendEditVideo.AdContent)
+			if !mock.sendEditCalled {
+				t.Fatal("expected SendEdit to be called")
+			}
+			tt.checkAdContent(t, mock.sendEditVideo.AdContent)
+		})
 	}
 }
 

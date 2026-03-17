@@ -142,7 +142,7 @@ func (s *Server) handleRequestEdit(w http.ResponseWriter, r *http.Request) {
 
 	// Resolve and read sponsor ad file content for the email
 	if emailVideo.Sponsorship.AdFile != "" && s.filesystem != nil {
-		adPath := s.filesystem.ResolvePath(filepath.Join("manuscript", "ads", emailVideo.Sponsorship.AdFile))
+		adPath := s.filesystem.ResolvePath(filepath.Join("manuscript", "ads", filepath.Base(emailVideo.Sponsorship.AdFile)))
 		adBytes, err := os.ReadFile(adPath)
 		if err != nil {
 			emailVideo.AdContent = fmt.Sprintf("[Warning: Ad file '%s' could not be read: %s]", emailVideo.Sponsorship.AdFile, err.Error())
