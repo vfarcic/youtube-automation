@@ -1,7 +1,7 @@
 # PRD: Timing Recommendations API & UI
 
 **Issue**: #376
-**Status**: Draft
+**Status**: Complete
 **Priority**: Medium
 **Created**: 2026-03-07
 
@@ -27,9 +27,9 @@ Add timing recommendation endpoints using the existing `GenerateTimingRecommenda
 ### What Needs to Be Built
 
 1. **API endpoints**:
-   - `POST /api/analytics/timing` — generate new timing recommendations (expensive, AI-powered)
-   - `GET /api/config/timing` — read current recommendations from settings
-   - `PUT /api/config/timing` — save/update recommendations
+   - `POST /api/analyze/timing/generate` — generate new timing recommendations (expensive, AI-powered)
+   - `GET /api/analyze/timing` — read current recommendations from settings
+   - `PUT /api/analyze/timing` — save/update recommendations
 2. **Frontend view**: Display current recommendations, button to generate new ones, save confirmation
 3. **Apply Random Timing integration**: Button next to date field in video editing form
 
@@ -41,33 +41,33 @@ Add timing recommendation endpoints using the existing `GenerateTimingRecommenda
 
 ## Success Criteria
 
-- [ ] `POST /api/analytics/timing` generates and returns timing recommendations
-- [ ] `GET /api/config/timing` returns current recommendations from settings
-- [ ] `PUT /api/config/timing` saves recommendations to settings.yaml
-- [ ] Frontend displays recommendations with day, time (UTC), and reasoning
-- [ ] "Generate New Recommendations" button with loading state
-- [ ] "Apply Random Timing" button next to date field in video editing form
-- [ ] Tests passing on all endpoints
+- [x] `POST /api/analyze/timing/generate` generates and returns timing recommendations
+- [x] `GET /api/analyze/timing` returns current recommendations from settings
+- [x] `PUT /api/analyze/timing` saves recommendations to settings.yaml
+- [x] Frontend displays recommendations with day, time (UTC), and reasoning
+- [x] "Generate New Recommendations" button with loading state
+- [x] "Apply Random Timing" button next to date field in video editing form (PRD-383)
+- [x] Tests passing on all endpoints (11 backend + 5 frontend)
 
 ## Technical Scope
 
 ### API Endpoints
 
-```
-POST /api/analytics/timing
-→ Response: { "recommendations": TimingRecommendation[], "saved": bool }
+```text
+POST /api/analyze/timing/generate
+→ Response: { "recommendations": TimingRecommendation[], "videoCount": int, "syncWarning"?: string }
 
-GET /api/config/timing
+GET /api/analyze/timing
 → Response: { "recommendations": TimingRecommendation[] }
 
-PUT /api/config/timing
+PUT /api/analyze/timing
 → Body: { "recommendations": TimingRecommendation[] }
-→ Response: { "saved": true }
+→ Response: { "saved": true, "syncWarning"?: string }
 ```
 
 ### Frontend
 
-- New route: `/analytics/timing`
+- New route: `/analyze/timing`
 - Table/cards showing current recommendations: Day, Time (UTC), Reasoning
 - "Generate New" button (triggers `POST`, shows loading ~60s)
 - Save confirmation after generation
@@ -90,13 +90,23 @@ PUT /api/config/timing
 
 ## Milestones
 
-- [ ] **Config endpoints**: `GET /PUT /api/config/timing` for reading/saving recommendations. Tests passing.
-- [ ] **Generate endpoint**: `POST /api/analytics/timing` using existing `GenerateTimingRecommendations()`. Tests passing.
-- [ ] **Frontend timing view**: Route, recommendation display, generate/save buttons, loading states. Tests passing.
-- [ ] **Apply Random Timing in date field**: Button next to date input in video editing form, client-side date calculation. Tests passing.
+- [x] **Config endpoints**: `GET /PUT /api/analyze/timing` for reading/saving recommendations. Tests passing.
+- [x] **Generate endpoint**: `POST /api/analyze/timing/generate` using existing `GenerateTimingRecommendations()`. Tests passing.
+- [x] **Frontend timing view**: Route `/analyze/timing`, recommendation table, generate button, loading/error/success states. Tests passing.
+- [x] **Apply Random Timing in date field**: Button next to date input in video editing form, server-side via `POST /api/videos/{name}/apply-random-timing`. Tests passing. (PRD-383)
 
 ## Progress Log
 
 ### 2026-03-07
 - PRD created
 - GitHub issue #376 opened
+
+### 2026-03-18
+- Implemented all 3 API endpoints (GET/PUT/POST) in `internal/api/handlers_analyze_timing.go`
+- Added `GenerateTimingRecommendations` to `AnalyzeService` interface for testability
+- Registered routes under `/api/analyze/timing` in `server.go`
+- Created `AnalyzeTiming.tsx` page with recommendations table, generate button, loading/error states
+- Added sidebar navigation link (teal dot) and route in `App.tsx`
+- Added TypeScript types, React Query hooks, MSW mock handlers
+- 11 backend tests + 5 frontend tests, all passing (165 total frontend tests)
+- PRD marked complete

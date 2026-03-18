@@ -148,10 +148,13 @@ func (s *Server) setupRoutes() {
 			r.Get("/metadata/{videoId}", s.handleGetMetadata)
 		})
 
-		// Analyze (title analysis pipeline)
+		// Analyze (title analysis pipeline, timing recommendations)
 		r.Route("/analyze", func(r chi.Router) {
 			r.Post("/titles", s.handleAnalyzeTitles)
 			r.Post("/titles/apply", s.handleApplyTitlesTemplate)
+			r.Get("/timing", s.handleGetTimingRecommendations)
+			r.Put("/timing", s.handlePutTimingRecommendations)
+			r.Post("/timing/generate", s.handleGenerateTimingRecommendations)
 		})
 
 		// AMA workflow (generate from YouTube video, apply to YouTube)
