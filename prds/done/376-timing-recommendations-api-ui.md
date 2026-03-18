@@ -27,9 +27,9 @@ Add timing recommendation endpoints using the existing `GenerateTimingRecommenda
 ### What Needs to Be Built
 
 1. **API endpoints**:
-   - `POST /api/analytics/timing` — generate new timing recommendations (expensive, AI-powered)
-   - `GET /api/config/timing` — read current recommendations from settings
-   - `PUT /api/config/timing` — save/update recommendations
+   - `POST /api/analyze/timing/generate` — generate new timing recommendations (expensive, AI-powered)
+   - `GET /api/analyze/timing` — read current recommendations from settings
+   - `PUT /api/analyze/timing` — save/update recommendations
 2. **Frontend view**: Display current recommendations, button to generate new ones, save confirmation
 3. **Apply Random Timing integration**: Button next to date field in video editing form
 

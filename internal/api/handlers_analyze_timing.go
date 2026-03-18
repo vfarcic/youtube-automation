@@ -142,5 +142,8 @@ func ensureSettingsFile(settingsPath string) error {
 	} else if !os.IsNotExist(err) {
 		return err
 	}
+	if err := os.MkdirAll(filepath.Dir(settingsPath), 0755); err != nil {
+		return err
+	}
 	return os.WriteFile(settingsPath, []byte("{}\n"), 0644)
 }
