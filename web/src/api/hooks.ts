@@ -444,12 +444,8 @@ export function useTimingRecommendations() {
 }
 
 export function useGenerateTimingRecommendations() {
-  const qc = useQueryClient();
   return useMutation<GenerateTimingResponse, Error, void>({
     mutationFn: () => post<GenerateTimingResponse>('/api/analyze/timing/generate', {}),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['timingRecommendations'] });
-    },
   });
 }
 

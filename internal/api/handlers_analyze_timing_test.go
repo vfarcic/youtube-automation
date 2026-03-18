@@ -238,11 +238,6 @@ func TestHandleGenerateTimingRecommendations(t *testing.T) {
 			dataDir := t.TempDir()
 			env.server.SetDataDir(dataDir)
 
-			// Write settings.yaml so auto-save works
-			if err := os.WriteFile(filepath.Join(dataDir, "settings.yaml"), []byte("timing:\n  recommendations: []\n"), 0644); err != nil {
-				t.Fatal(err)
-			}
-
 			req := httptest.NewRequest(http.MethodPost, "/api/analyze/timing/generate", nil)
 			rr := httptest.NewRecorder()
 			env.server.Router().ServeHTTP(rr, req)
@@ -261,6 +256,12 @@ func TestHandleGenerateTimingRecommendations(t *testing.T) {
 				}
 				if resp.VideoCount != tt.wantVideo {
 					t.Errorf("videoCount = %d, want %d", resp.VideoCount, tt.wantVideo)
+				}
+
+				// Generate should NOT write settings.yaml (save is a separate step)
+				settingsPath := filepath.Join(dataDir, "settings.yaml")
+				if _, err := os.Stat(settingsPath); err == nil {
+					t.Error("generate handler should not create settings.yaml")
 				}
 			}
 		})

@@ -45,7 +45,7 @@ describe('AnalyzeTiming', () => {
     expect(await screen.findByText(/No timing recommendations configured yet/)).toBeInTheDocument();
   });
 
-  it('generates new recommendations and shows results', async () => {
+  it('generates new recommendations and shows preview with Save button', async () => {
     const user = userEvent.setup();
     renderWithProviders(<AnalyzeTiming />);
 
@@ -53,7 +53,48 @@ describe('AnalyzeTiming', () => {
 
     // Wait for generation results
     expect(await screen.findByTestId('video-count')).toHaveTextContent('42');
-    expect(screen.getByText(/Recommendations saved automatically/)).toBeInTheDocument();
+    expect(screen.getByText(/Review the recommendations below/)).toBeInTheDocument();
+
+    // Preview table should show generated recommendations
+    expect(screen.getByText('Thursday')).toBeInTheDocument();
+    expect(screen.getByText('16:00')).toBeInTheDocument();
+
+    // Save & Push button should be present
+    expect(screen.getByRole('button', { name: 'Save & Push' })).toBeInTheDocument();
+  });
+
+  it('saves generated recommendations when Save & Push is clicked', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<AnalyzeTiming />);
+
+    await user.click(screen.getByRole('button', { name: 'Generate New Recommendations' }));
+
+    // Wait for generation
+    expect(await screen.findByRole('button', { name: 'Save & Push' })).toBeInTheDocument();
+
+    // Click Save & Push
+    await user.click(screen.getByRole('button', { name: 'Save & Push' }));
+
+    // Should show success message
+    expect(await screen.findByText('Recommendations saved.')).toBeInTheDocument();
+  });
+
+  it('shows sync warning after save when present', async () => {
+    server.use(
+      http.put('/api/analyze/timing', () =>
+        HttpResponse.json({ saved: true, syncWarning: 'git sync not configured' }),
+      ),
+    );
+
+    const user = userEvent.setup();
+    renderWithProviders(<AnalyzeTiming />);
+
+    await user.click(screen.getByRole('button', { name: 'Generate New Recommendations' }));
+    expect(await screen.findByRole('button', { name: 'Save & Push' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Save & Push' }));
+
+    expect(await screen.findByText(/git sync not configured/)).toBeInTheDocument();
   });
 
   it('shows loading state during generation', async () => {
@@ -106,24 +147,5 @@ describe('AnalyzeTiming', () => {
     await waitFor(() => {
       expect(screen.getByText(/Failed to load timing recommendations|Internal server error/)).toBeInTheDocument();
     });
-  });
-
-  it('shows sync warning when present', async () => {
-    server.use(
-      http.post('/api/analyze/timing/generate', () =>
-        HttpResponse.json({
-          recommendations: [{ day: 'Wednesday', time: '14:00', reasoning: 'test' }],
-          videoCount: 5,
-          syncWarning: 'git sync not configured',
-        }),
-      ),
-    );
-
-    const user = userEvent.setup();
-    renderWithProviders(<AnalyzeTiming />);
-
-    await user.click(screen.getByRole('button', { name: 'Generate New Recommendations' }));
-
-    expect(await screen.findByText(/git sync not configured/)).toBeInTheDocument();
   });
 });

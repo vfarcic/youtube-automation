@@ -27,7 +27,6 @@ type PutTimingResponse struct {
 type GenerateTimingResponse struct {
 	Recommendations []configuration.TimingRecommendation `json:"recommendations"`
 	VideoCount      int                                  `json:"videoCount"`
-	SyncWarning     string                               `json:"syncWarning,omitempty"`
 }
 
 // handleGetTimingRecommendations returns the current timing recommendations from settings.yaml.
@@ -104,35 +103,10 @@ func (s *Server) handleGenerateTimingRecommendations(w http.ResponseWriter, r *h
 		return
 	}
 
-	dataDir := s.dataDir
-	if dataDir == "" {
-		dataDir = "."
-	}
-	settingsPath := filepath.Join(dataDir, "settings.yaml")
-
-	if err := ensureSettingsFile(settingsPath); err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to initialize settings", err.Error())
-		return
-	}
-
-	// Auto-save recommendations
-	if saveErr := configuration.SaveTimingRecommendations(settingsPath, recs); saveErr != nil {
-		respondError(w, http.StatusInternalServerError, "failed to save timing recommendations", saveErr.Error())
-		return
-	}
-
-	resp := GenerateTimingResponse{
+	respondJSON(w, http.StatusOK, GenerateTimingResponse{
 		Recommendations: recs,
 		VideoCount:      len(analytics),
-	}
-
-	if s.gitSync != nil {
-		if err := s.gitSync.CommitAndPush("Update timing recommendations from AI analysis"); err != nil {
-			resp.SyncWarning = err.Error()
-		}
-	}
-
-	respondJSON(w, http.StatusOK, resp)
+	})
 }
 
 // ensureSettingsFile creates settings.yaml with minimal valid YAML if it doesn't exist.

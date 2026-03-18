@@ -314,17 +314,15 @@ export const handlers = [
     mockTimingRecommendations = body.recommendations;
     return HttpResponse.json({ saved: true });
   }),
-  http.post('/api/analyze/timing/generate', () => {
-    const generated = [
-      { day: 'Thursday', time: '16:00', reasoning: 'Late-week spike' },
-      { day: 'Saturday', time: '10:00', reasoning: 'Weekend morning views' },
-    ];
-    mockTimingRecommendations = generated;
-    return HttpResponse.json({
-      recommendations: generated,
+  http.post('/api/analyze/timing/generate', () =>
+    HttpResponse.json({
+      recommendations: [
+        { day: 'Thursday', time: '16:00', reasoning: 'Late-week spike' },
+        { day: 'Saturday', time: '10:00', reasoning: 'Weekend morning views' },
+      ],
       videoCount: 42,
-    });
-  }),
+    }),
+  ),
   // AMA endpoints
   http.post('/api/ama/generate', () => HttpResponse.json({
     title: 'Generated AMA Title',

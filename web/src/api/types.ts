@@ -396,5 +396,4 @@ export interface PutTimingResponse {
 export interface GenerateTimingResponse {
   recommendations: TimingRecommendation[];
   videoCount: number;
-  syncWarning?: string;
 }

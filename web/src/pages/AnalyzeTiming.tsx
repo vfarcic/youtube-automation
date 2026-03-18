@@ -1,4 +1,4 @@
-import { useTimingRecommendations, useGenerateTimingRecommendations } from '../api/hooks';
+import { useTimingRecommendations, useGenerateTimingRecommendations, useSaveTimingRecommendations } from '../api/hooks';
 import type { TimingRecommendation } from '../api/types';
 
 function RecommendationsTable({ recommendations }: { recommendations: TimingRecommendation[] }) {
@@ -33,9 +33,17 @@ function RecommendationsTable({ recommendations }: { recommendations: TimingReco
 export function AnalyzeTiming() {
   const { data: currentData, isLoading, isError: isLoadError, error: loadError } = useTimingRecommendations();
   const generateMutation = useGenerateTimingRecommendations();
+  const saveMutation = useSaveTimingRecommendations();
 
   const handleGenerate = () => {
+    saveMutation.reset();
     generateMutation.mutate();
+  };
+
+  const handleSave = () => {
+    if (generateMutation.data?.recommendations) {
+      saveMutation.mutate({ recommendations: generateMutation.data.recommendations });
+    }
   };
 
   return (
@@ -43,7 +51,6 @@ export function AnalyzeTiming() {
       <h1 className="text-2xl font-bold text-gray-100 mb-2">Timing Recommendations</h1>
       <p className="text-gray-400 text-sm mb-6">
         Analyze YouTube analytics to find optimal publishing days and times.
-        Recommendations are auto-saved to settings.yaml.
       </p>
 
       <button
@@ -71,11 +78,32 @@ export function AnalyzeTiming() {
         <div className="mt-4 space-y-3">
           <p className="text-gray-300 text-sm">
             Generated from <span className="font-semibold text-gray-100" data-testid="video-count">{generateMutation.data.videoCount}</span> videos.
-            Recommendations saved automatically.
+            Review the recommendations below, then save to apply.
           </p>
-          {generateMutation.data.syncWarning && (
+
+          <RecommendationsTable recommendations={generateMutation.data.recommendations} />
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleSave}
+              disabled={saveMutation.isPending}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded text-sm font-medium"
+            >
+              {saveMutation.isPending ? 'Saving...' : 'Save & Push'}
+            </button>
+
+            {saveMutation.isSuccess && (
+              <span className="text-green-400 text-sm">Recommendations saved.</span>
+            )}
+
+            {saveMutation.isError && (
+              <span className="text-red-400 text-sm">{saveMutation.error.message}</span>
+            )}
+          </div>
+
+          {saveMutation.isSuccess && saveMutation.data?.syncWarning && (
             <div className="p-3 bg-yellow-900/30 border border-yellow-700 rounded text-yellow-300 text-sm">
-              {generateMutation.data.syncWarning}
+              {saveMutation.data.syncWarning}
             </div>
           )}
         </div>
