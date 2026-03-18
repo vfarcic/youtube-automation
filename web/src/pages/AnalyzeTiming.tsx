@@ -18,8 +18,8 @@ function RecommendationsTable({ recommendations }: { recommendations: TimingReco
         </tr>
       </thead>
       <tbody>
-        {recommendations.map((rec, i) => (
-          <tr key={i} className="border-t border-gray-700">
+        {recommendations.map((rec) => (
+          <tr key={`${rec.day}-${rec.time}`} className="border-t border-gray-700">
             <td className="px-4 py-2 text-gray-100">{rec.day}</td>
             <td className="px-4 py-2 text-gray-100 font-mono">{rec.time}</td>
             <td className="px-4 py-2 text-gray-400">{rec.reasoning}</td>
@@ -31,7 +31,7 @@ function RecommendationsTable({ recommendations }: { recommendations: TimingReco
 }
 
 export function AnalyzeTiming() {
-  const { data: currentData, isLoading } = useTimingRecommendations();
+  const { data: currentData, isLoading, isError: isLoadError, error: loadError } = useTimingRecommendations();
   const generateMutation = useGenerateTimingRecommendations();
 
   const handleGenerate = () => {
@@ -85,6 +85,10 @@ export function AnalyzeTiming() {
         <h2 className="text-lg font-semibold text-gray-100 mb-3">Current Recommendations</h2>
         {isLoading ? (
           <p className="text-gray-500 text-sm">Loading...</p>
+        ) : isLoadError ? (
+          <div className="p-3 bg-red-900/30 border border-red-700 rounded text-red-300 text-sm">
+            {loadError instanceof Error ? loadError.message : 'Failed to load timing recommendations.'}
+          </div>
         ) : (
           <RecommendationsTable recommendations={currentData?.recommendations ?? []} />
         )}

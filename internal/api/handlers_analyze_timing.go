@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"net/http"
+	"os"
 	"path/filepath"
 
 	"devopstoolkit/youtube-automation/internal/configuration"
@@ -62,6 +63,11 @@ func (s *Server) handlePutTimingRecommendations(w http.ResponseWriter, r *http.R
 	}
 	settingsPath := filepath.Join(dataDir, "settings.yaml")
 
+	if err := ensureSettingsFile(settingsPath); err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to initialize settings", err.Error())
+		return
+	}
+
 	if err := configuration.SaveTimingRecommendations(settingsPath, req.Recommendations); err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to save timing recommendations", err.Error())
 		return
@@ -104,6 +110,11 @@ func (s *Server) handleGenerateTimingRecommendations(w http.ResponseWriter, r *h
 	}
 	settingsPath := filepath.Join(dataDir, "settings.yaml")
 
+	if err := ensureSettingsFile(settingsPath); err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to initialize settings", err.Error())
+		return
+	}
+
 	// Auto-save recommendations
 	if saveErr := configuration.SaveTimingRecommendations(settingsPath, recs); saveErr != nil {
 		respondError(w, http.StatusInternalServerError, "failed to save timing recommendations", saveErr.Error())
@@ -122,4 +133,14 @@ func (s *Server) handleGenerateTimingRecommendations(w http.ResponseWriter, r *h
 	}
 
 	respondJSON(w, http.StatusOK, resp)
+}
+
+// ensureSettingsFile creates settings.yaml with minimal valid YAML if it doesn't exist.
+func ensureSettingsFile(settingsPath string) error {
+	if _, err := os.Stat(settingsPath); err == nil {
+		return nil
+	} else if !os.IsNotExist(err) {
+		return err
+	}
+	return os.WriteFile(settingsPath, []byte("{}\n"), 0644)
 }

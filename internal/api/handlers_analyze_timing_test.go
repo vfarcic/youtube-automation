@@ -124,10 +124,11 @@ func TestHandlePutTimingRecommendations(t *testing.T) {
 			wantStatus: http.StatusBadRequest,
 		},
 		{
-			name:       "settings file missing causes save error",
+			name:       "settings file missing bootstraps and succeeds",
 			body:       `{"recommendations":[{"day":"Monday","time":"09:00","reasoning":"test"}]}`,
 			noSettings: true,
-			wantStatus: http.StatusInternalServerError,
+			wantStatus: http.StatusOK,
+			wantSaved:  true,
 		},
 	}
 

@@ -94,6 +94,20 @@ describe('AnalyzeTiming', () => {
     });
   });
 
+  it('shows error state when loading recommendations fails', async () => {
+    server.use(
+      http.get('/api/analyze/timing', () =>
+        new HttpResponse('Internal server error', { status: 500 }),
+      ),
+    );
+
+    renderWithProviders(<AnalyzeTiming />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Failed to load timing recommendations|Internal server error/)).toBeInTheDocument();
+    });
+  });
+
   it('shows sync warning when present', async () => {
     server.use(
       http.post('/api/analyze/timing/generate', () =>

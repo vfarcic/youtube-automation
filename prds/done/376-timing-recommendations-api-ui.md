@@ -53,7 +53,7 @@ Add timing recommendation endpoints using the existing `GenerateTimingRecommenda
 
 ### API Endpoints
 
-```
+```text
 POST /api/analyze/timing/generate
 → Response: { "recommendations": TimingRecommendation[], "videoCount": int, "syncWarning"?: string }
 

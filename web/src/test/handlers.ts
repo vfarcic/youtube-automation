@@ -211,6 +211,11 @@ const mockMetadata = { title: 'Test Title', description: 'Test Desc', tags: ['ta
 const mockSocialPostAutomated = { posted: true };
 const mockSocialPostManual = { posted: false, message: 'Copy this text to post manually.' };
 
+let mockTimingRecommendations = [
+  { day: 'Wednesday', time: '14:00', reasoning: 'Mid-week peak' },
+  { day: 'Monday', time: '09:00', reasoning: 'Week start momentum' },
+];
+
 export const handlers = [
   http.get('/api/videos/phases', () => HttpResponse.json(mockPhases)),
   http.get('/api/videos/list', () => HttpResponse.json(mockVideoList)),
@@ -295,27 +300,31 @@ export const handlers = [
   http.post('/api/analyze/titles/apply', () =>
     HttpResponse.json({ applied: true }),
   ),
-  // Timing recommendation endpoints
+  // Timing recommendation endpoints (stateful mocks)
   http.get('/api/analyze/timing', () =>
-    HttpResponse.json({
-      recommendations: [
-        { day: 'Wednesday', time: '14:00', reasoning: 'Mid-week peak' },
-        { day: 'Monday', time: '09:00', reasoning: 'Week start momentum' },
-      ],
-    }),
+    HttpResponse.json({ recommendations: mockTimingRecommendations }),
   ),
-  http.put('/api/analyze/timing', () =>
-    HttpResponse.json({ saved: true }),
-  ),
-  http.post('/api/analyze/timing/generate', () =>
-    HttpResponse.json({
-      recommendations: [
-        { day: 'Wednesday', time: '14:00', reasoning: 'Mid-week peak' },
-        { day: 'Monday', time: '09:00', reasoning: 'Week start momentum' },
-      ],
+  http.put('/api/analyze/timing', async ({ request }) => {
+    const body = (await request.json()) as {
+      recommendations?: typeof mockTimingRecommendations;
+    };
+    if (!Array.isArray(body.recommendations)) {
+      return HttpResponse.json({ error: 'invalid recommendations payload' }, { status: 400 });
+    }
+    mockTimingRecommendations = body.recommendations;
+    return HttpResponse.json({ saved: true });
+  }),
+  http.post('/api/analyze/timing/generate', () => {
+    const generated = [
+      { day: 'Thursday', time: '16:00', reasoning: 'Late-week spike' },
+      { day: 'Saturday', time: '10:00', reasoning: 'Weekend morning views' },
+    ];
+    mockTimingRecommendations = generated;
+    return HttpResponse.json({
+      recommendations: generated,
       videoCount: 42,
-    }),
-  ),
+    });
+  }),
   // AMA endpoints
   http.post('/api/ama/generate', () => HttpResponse.json({
     title: 'Generated AMA Title',
