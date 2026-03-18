@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"devopstoolkit/youtube-automation/internal/ai"
+	"devopstoolkit/youtube-automation/internal/configuration"
 	"devopstoolkit/youtube-automation/internal/publishing"
 )
 
@@ -26,6 +27,9 @@ type mockAnalyzeService struct {
 	analysisResult  ai.TitleAnalysisResult
 	analysisRaw     string
 	analysisErr     error
+	timingRecs      []configuration.TimingRecommendation
+	timingRaw       string
+	timingErr       error
 }
 
 func (m *mockAnalyzeService) LoadVideosWithABData(indexPath, dataDir, manuscriptDir string) ([]ai.VideoABData, error) {
@@ -52,6 +56,10 @@ func (m *mockAnalyzeService) EnrichWithAnalytics(videos []ai.VideoABData, analyt
 
 func (m *mockAnalyzeService) AnalyzeTitles(ctx context.Context, videos []ai.VideoABData, baseDir string) (ai.TitleAnalysisResult, string, error) {
 	return m.analysisResult, m.analysisRaw, m.analysisErr
+}
+
+func (m *mockAnalyzeService) GenerateTimingRecommendations(ctx context.Context, analytics []publishing.VideoAnalytics) ([]configuration.TimingRecommendation, string, error) {
+	return m.timingRecs, m.timingRaw, m.timingErr
 }
 
 // mockGitSync is a configurable mock for GitSyncService.

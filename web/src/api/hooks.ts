@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { get, patch, post, del, uploadFile, uploadFileWithProgress } from './client';
+import { get, patch, post, put, del, uploadFile, uploadFileWithProgress } from './client';
 import type {
   PhaseInfo,
   VideoListItem,
@@ -31,6 +31,10 @@ import type {
   AnimationsResponse,
   AMAGenerateResponse,
   AMAApplyResponse,
+  GetTimingResponse,
+  GenerateTimingResponse,
+  PutTimingResponse,
+  TimingRecommendation,
 } from './types';
 
 export function usePhases() {
@@ -427,6 +431,35 @@ export function useApplyTitlesTemplate() {
   return useMutation<ApplyTitlesResponse, Error, { content: string }>({
     mutationFn: ({ content }) =>
       post<ApplyTitlesResponse>('/api/analyze/titles/apply', { content }),
+  });
+}
+
+// --- Timing Recommendation Hooks ---
+
+export function useTimingRecommendations() {
+  return useQuery<GetTimingResponse>({
+    queryKey: ['timingRecommendations'],
+    queryFn: () => get<GetTimingResponse>('/api/analyze/timing'),
+  });
+}
+
+export function useGenerateTimingRecommendations() {
+  const qc = useQueryClient();
+  return useMutation<GenerateTimingResponse, Error, void>({
+    mutationFn: () => post<GenerateTimingResponse>('/api/analyze/timing/generate', {}),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['timingRecommendations'] });
+    },
+  });
+}
+
+export function useSaveTimingRecommendations() {
+  const qc = useQueryClient();
+  return useMutation<PutTimingResponse, Error, { recommendations: TimingRecommendation[] }>({
+    mutationFn: (body) => put<PutTimingResponse>('/api/analyze/timing', body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['timingRecommendations'] });
+    },
   });
 }
 

@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"devopstoolkit/youtube-automation/internal/ai"
+	"devopstoolkit/youtube-automation/internal/configuration"
 	"devopstoolkit/youtube-automation/internal/publishing"
 )
 
@@ -14,6 +15,7 @@ type AnalyzeService interface {
 	EnrichWithFirstWeekMetrics(ctx context.Context, analytics []publishing.VideoAnalytics) ([]publishing.VideoAnalytics, error)
 	EnrichWithAnalytics(videos []ai.VideoABData, analytics []publishing.VideoAnalytics) []ai.VideoABData
 	AnalyzeTitles(ctx context.Context, videos []ai.VideoABData, baseDir string) (ai.TitleAnalysisResult, string, error)
+	GenerateTimingRecommendations(ctx context.Context, analytics []publishing.VideoAnalytics) ([]configuration.TimingRecommendation, string, error)
 }
 
 // DefaultAnalyzeService delegates to the ai and publishing package functions.
@@ -37,6 +39,10 @@ func (d *DefaultAnalyzeService) EnrichWithAnalytics(videos []ai.VideoABData, ana
 
 func (d *DefaultAnalyzeService) AnalyzeTitles(ctx context.Context, videos []ai.VideoABData, baseDir string) (ai.TitleAnalysisResult, string, error) {
 	return ai.AnalyzeTitles(ctx, videos, baseDir)
+}
+
+func (d *DefaultAnalyzeService) GenerateTimingRecommendations(ctx context.Context, analytics []publishing.VideoAnalytics) ([]configuration.TimingRecommendation, string, error) {
+	return ai.GenerateTimingRecommendations(ctx, analytics)
 }
 
 // GitSyncService abstracts git commit+push for testability.

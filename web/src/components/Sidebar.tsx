@@ -79,6 +79,15 @@ export function Sidebar() {
             <span className="w-2 h-2 rounded-full bg-purple-500" />
             <span className="flex-1">Titles</span>
           </NavLink>
+          <NavLink
+            to="/analyze/timing"
+            className={({ isActive }) =>
+              `flex items-center gap-2 px-3 py-1.5 rounded text-sm ${isActive ? 'bg-gray-700 text-gray-100' : 'text-gray-400 hover:bg-gray-700'}`
+            }
+          >
+            <span className="w-2 h-2 rounded-full bg-teal-500" />
+            <span className="flex-1">Timing</span>
+          </NavLink>
         </div>
         <div className="mt-4">
           <div className="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">

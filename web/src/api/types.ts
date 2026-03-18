@@ -375,3 +375,26 @@ export interface ApplyRandomTimingResponse {
   reasoning: string;
   syncWarning?: string;
 }
+
+// --- Timing Recommendation Types ---
+
+export interface TimingRecommendation {
+  day: string;
+  time: string;
+  reasoning: string;
+}
+
+export interface GetTimingResponse {
+  recommendations: TimingRecommendation[];
+}
+
+export interface PutTimingResponse {
+  saved: boolean;
+  syncWarning?: string;
+}
+
+export interface GenerateTimingResponse {
+  recommendations: TimingRecommendation[];
+  videoCount: number;
+  syncWarning?: string;
+}

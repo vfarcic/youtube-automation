@@ -295,6 +295,27 @@ export const handlers = [
   http.post('/api/analyze/titles/apply', () =>
     HttpResponse.json({ applied: true }),
   ),
+  // Timing recommendation endpoints
+  http.get('/api/analyze/timing', () =>
+    HttpResponse.json({
+      recommendations: [
+        { day: 'Wednesday', time: '14:00', reasoning: 'Mid-week peak' },
+        { day: 'Monday', time: '09:00', reasoning: 'Week start momentum' },
+      ],
+    }),
+  ),
+  http.put('/api/analyze/timing', () =>
+    HttpResponse.json({ saved: true }),
+  ),
+  http.post('/api/analyze/timing/generate', () =>
+    HttpResponse.json({
+      recommendations: [
+        { day: 'Wednesday', time: '14:00', reasoning: 'Mid-week peak' },
+        { day: 'Monday', time: '09:00', reasoning: 'Week start momentum' },
+      ],
+      videoCount: 42,
+    }),
+  ),
   // AMA endpoints
   http.post('/api/ama/generate', () => HttpResponse.json({
     title: 'Generated AMA Title',
