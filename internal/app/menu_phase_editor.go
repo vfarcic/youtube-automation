@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -422,8 +423,18 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 					if configuration.GlobalSettings.Email.Password == "" {
 						log.Println(m.errorStyle.Render("Email password not configured. Cannot send edit request email."))
 					} else {
+						emailVideo := updatedVideo
+						if emailVideo.Sponsorship.AdFile != "" {
+							adPath := filepath.Join("manuscript", "ads", filepath.Base(emailVideo.Sponsorship.AdFile))
+							adBytes, readErr := os.ReadFile(adPath)
+							if readErr != nil {
+								log.Printf("Warning: Ad file '%s' could not be read: %v", emailVideo.Sponsorship.AdFile, readErr)
+							} else {
+								emailVideo.AdContent = string(adBytes)
+							}
+						}
 						emailService := notification.NewEmail(configuration.GlobalSettings.Email.Password)
-						if emailErr := emailService.SendEdit(configuration.GlobalSettings.Email.From, configuration.GlobalSettings.Email.EditTo, updatedVideo); emailErr != nil {
+						if emailErr := emailService.SendEdit(configuration.GlobalSettings.Email.From, configuration.GlobalSettings.Email.EditTo, emailVideo); emailErr != nil {
 							log.Print(m.errorStyle.Render(fmt.Sprintf("Failed to send edit request email: %v", emailErr)))
 						} else {
 							fmt.Println(m.confirmationStyle.Render("Edit request email sent."))
