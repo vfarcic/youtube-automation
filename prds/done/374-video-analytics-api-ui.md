@@ -1,9 +1,10 @@
 # PRD: Video Analytics API & UI
 
 **Issue**: #374
-**Status**: Draft
+**Status**: No Longer Needed
 **Priority**: Medium
 **Created**: 2026-03-07
+**Closed**: 2026-03-19
 
 ---
 
