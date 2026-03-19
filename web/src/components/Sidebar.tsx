@@ -19,7 +19,9 @@ export function Sidebar() {
   return (
     <aside className="w-60 shrink-0 border-r border-gray-700 bg-gray-800 h-screen overflow-y-auto">
       <div className="p-4">
-        <h1 className="text-lg font-bold text-gray-100">YT Automation</h1>
+        <NavLink to="/" className="text-lg font-bold text-gray-100 no-underline">
+          YT Automation
+        </NavLink>
       </div>
       <div className="px-3 mb-2">
         <form onSubmit={handleSearch}>
