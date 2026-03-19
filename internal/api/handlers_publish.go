@@ -4,12 +4,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
+	"devopstoolkit/youtube-automation/internal/notification"
 	"devopstoolkit/youtube-automation/internal/publishing"
 	"devopstoolkit/youtube-automation/internal/storage"
 	"devopstoolkit/youtube-automation/internal/thumbnail"
@@ -146,6 +148,15 @@ func (s *Server) handlePublishYouTube(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusInternalServerError, "Failed to save video", err.Error())
 		return
 	}
+
+	s.sendUploadNotificationAsync(notification.UploadNotificationParams{
+		Title:         video.GetUploadTitle(),
+		Category:      video.Category,
+		Name:          video.Name,
+		YouTubeID:     videoID,
+		ScheduledDate: video.Date,
+		Type:          notification.UploadTypeVideo,
+	})
 
 	resp := PublishYouTubeResponse{VideoID: videoID}
 	addSyncWarningStr(&resp.SyncWarning, s.videoService)
@@ -290,6 +301,15 @@ func (s *Server) handlePublishShort(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusInternalServerError, "Failed to save video", err.Error())
 		return
 	}
+
+	s.sendUploadNotificationAsync(notification.UploadNotificationParams{
+		Title:         short.Title,
+		Category:      video.Category,
+		Name:          video.Name,
+		YouTubeID:     ytID,
+		ScheduledDate: short.ScheduledDate,
+		Type:          notification.UploadTypeShort,
+	})
 
 	resp := PublishShortResponse{YouTubeID: ytID}
 	addSyncWarningStr(&resp.SyncWarning, s.videoService)
@@ -676,6 +696,20 @@ func (s *Server) handleAMAApply(w http.ResponseWriter, r *http.Request) {
 	}
 
 	respondJSON(w, http.StatusOK, AMAApplyResponse{Success: true})
+}
+
+// sendUploadNotificationAsync fires a goroutine to send an upload notification email.
+// It silently skips if email is not configured and logs on failure.
+func (s *Server) sendUploadNotificationAsync(params notification.UploadNotificationParams) {
+	if s.emailService == nil || s.emailSettings == nil || s.emailSettings.From == "" {
+		return
+	}
+	from := s.emailSettings.From
+	go func() {
+		if err := s.emailService.SendUploadNotification(from, params); err != nil {
+			log.Printf("upload notification email failed: %v", err)
+		}
+	}()
 }
 
 // --- Helpers ---

@@ -742,6 +742,85 @@ func TestGenerateEditEmailContent(t *testing.T) {
 	}
 }
 
+func TestGenerateUploadNotificationContent(t *testing.T) {
+	tests := []struct {
+		name              string
+		params            UploadNotificationParams
+		expectSubject     string
+		expectBodyContains []string
+	}{
+		{
+			name: "video upload",
+			params: UploadNotificationParams{
+				Title:         "Kubernetes Deep Dive",
+				Category:      "devops",
+				Name:          "kubernetes-deep-dive",
+				YouTubeID:     "abc123",
+				ScheduledDate: "2026-03-20T15:00",
+				Type:          UploadTypeVideo,
+			},
+			expectSubject: "YouTube Upload: Kubernetes Deep Dive (Video)",
+			expectBodyContains: []string{
+				"Video Upload Notification",
+				"Kubernetes Deep Dive",
+				"Video",
+				"devops",
+				"2026-03-20T15:00",
+				"https://youtu.be/abc123",
+				"https://youtube.devopstoolkit.ai/videos/devops/kubernetes-deep-dive",
+			},
+		},
+		{
+			name: "short upload",
+			params: UploadNotificationParams{
+				Title:         "Quick K8s Tip",
+				Category:      "devops",
+				Name:          "quick-k8s-tip",
+				YouTubeID:     "xyz789",
+				ScheduledDate: "2026-03-22T10:00",
+				Type:          UploadTypeShort,
+			},
+			expectSubject: "YouTube Upload: Quick K8s Tip (Short)",
+			expectBodyContains: []string{
+				"Short Upload Notification",
+				"Quick K8s Tip",
+				"Short",
+				"devops",
+				"2026-03-22T10:00",
+				"https://youtu.be/xyz789",
+				"https://youtube.devopstoolkit.ai/videos/devops/quick-k8s-tip",
+			},
+		},
+		{
+			name: "empty scheduled date",
+			params: UploadNotificationParams{
+				Title:         "No Date Video",
+				Category:      "tutorials",
+				Name:          "no-date-video",
+				YouTubeID:     "def456",
+				ScheduledDate: "",
+				Type:          UploadTypeVideo,
+			},
+			expectSubject: "YouTube Upload: No Date Video (Video)",
+			expectBodyContains: []string{
+				"Not scheduled",
+				"https://youtu.be/def456",
+				"https://youtube.devopstoolkit.ai/videos/tutorials/no-date-video",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			subject, body := generateUploadNotificationContent(tt.params)
+			assert.Equal(t, tt.expectSubject, subject)
+			for _, expected := range tt.expectBodyContains {
+				assert.Contains(t, body, expected)
+			}
+		})
+	}
+}
+
 func TestGenerateSponsorsEmailContent(t *testing.T) {
 	tests := []struct {
 		name             string

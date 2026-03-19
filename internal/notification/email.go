@@ -165,3 +165,52 @@ func (e *Email) SendSponsors(from, to string, videoID, sponsorshipPrice, videoTi
 	}
 	return nil
 }
+
+// UploadType distinguishes between a long-form video and a short.
+type UploadType string
+
+const (
+	UploadTypeVideo UploadType = "Video"
+	UploadTypeShort UploadType = "Short"
+)
+
+// UploadNotificationParams holds the data needed to build an upload notification email.
+type UploadNotificationParams struct {
+	Title         string
+	Category      string
+	Name          string
+	YouTubeID     string
+	ScheduledDate string
+	Type          UploadType
+}
+
+func generateUploadNotificationContent(params UploadNotificationParams) (subject, body string) {
+	subject = fmt.Sprintf("YouTube Upload: %s (%s)", params.Title, params.Type)
+
+	youtubeURL := fmt.Sprintf("https://youtu.be/%s", params.YouTubeID)
+	videoPageURL := fmt.Sprintf("https://youtube.devopstoolkit.ai/videos/%s/%s", params.Category, params.Name)
+
+	scheduledLine := "Not scheduled"
+	if params.ScheduledDate != "" {
+		scheduledLine = params.ScheduledDate
+	}
+
+	body = fmt.Sprintf(`<strong>%s Upload Notification</strong>
+<br/><br/>
+<ul>
+<li><strong>Title:</strong> %s</li>
+<li><strong>Type:</strong> %s</li>
+<li><strong>Category:</strong> %s</li>
+<li><strong>Scheduled Date:</strong> %s</li>
+<li><strong>YouTube:</strong> <a href="%s">%s</a></li>
+<li><strong>Video Page:</strong> <a href="%s">%s</a></li>
+</ul>
+`, string(params.Type), params.Title, string(params.Type), params.Category, scheduledLine, youtubeURL, youtubeURL, videoPageURL, videoPageURL)
+
+	return subject, body
+}
+
+func (e *Email) SendUploadNotification(from string, params UploadNotificationParams) error {
+	subject, body := generateUploadNotificationContent(params)
+	return e.Send(from, []string{}, subject, body, "")
+}

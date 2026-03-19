@@ -11,22 +11,26 @@ import (
 	"testing"
 
 	"devopstoolkit/youtube-automation/internal/configuration"
+	"devopstoolkit/youtube-automation/internal/notification"
 	"devopstoolkit/youtube-automation/internal/storage"
 )
 
 // mockEmailService implements EmailService for testing.
 type mockEmailService struct {
-	sendThumbnailCalled   bool
-	sendEditCalled        bool
-	sendEditVideo         storage.Video
-	sendSponsorsCalled    bool
-	sendSponsorsFrom      string
-	sendSponsorsTo        string
-	sendSponsorsVideoID   string
-	sendSponsorsPrice     string
-	sendSponsorsTitle     string
-	returnErr             error
-	sendSponsorsErr       error
+	sendThumbnailCalled            bool
+	sendEditCalled                 bool
+	sendEditVideo                  storage.Video
+	sendSponsorsCalled             bool
+	sendSponsorsFrom               string
+	sendSponsorsTo                 string
+	sendSponsorsVideoID            string
+	sendSponsorsPrice              string
+	sendSponsorsTitle              string
+	sendUploadNotificationCalled   bool
+	sendUploadNotificationParams   notification.UploadNotificationParams
+	sendUploadNotificationErr      error
+	returnErr                      error
+	sendSponsorsErr                error
 }
 
 func (m *mockEmailService) SendThumbnail(from, to string, video storage.Video) error {
@@ -49,6 +53,15 @@ func (m *mockEmailService) SendSponsors(from, to string, videoID, sponsorshipPri
 	m.sendSponsorsTitle = videoTitle
 	if m.sendSponsorsErr != nil {
 		return m.sendSponsorsErr
+	}
+	return m.returnErr
+}
+
+func (m *mockEmailService) SendUploadNotification(from string, params notification.UploadNotificationParams) error {
+	m.sendUploadNotificationCalled = true
+	m.sendUploadNotificationParams = params
+	if m.sendUploadNotificationErr != nil {
+		return m.sendUploadNotificationErr
 	}
 	return m.returnErr
 }

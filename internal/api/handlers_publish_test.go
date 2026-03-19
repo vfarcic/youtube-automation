@@ -12,8 +12,11 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"devopstoolkit/youtube-automation/internal/ai"
+	"devopstoolkit/youtube-automation/internal/configuration"
+	"devopstoolkit/youtube-automation/internal/notification"
 	"devopstoolkit/youtube-automation/internal/publishing"
 	"devopstoolkit/youtube-automation/internal/storage"
 )
@@ -966,6 +969,128 @@ func TestHandleAMAGenerateNotConfigured(t *testing.T) {
 	env.server.Router().ServeHTTP(rec, req)
 	if rec.Code != http.StatusNotImplemented {
 		t.Errorf("status = %d, want %d", rec.Code, http.StatusNotImplemented)
+	}
+}
+
+// --- Upload Notification Tests ---
+
+func TestHandlePublishYouTube_SendsUploadNotification(t *testing.T) {
+	env := setupTestEnv(t)
+	pubMock := &mockPublishingService{uploadVideoID: "yt-new-id"}
+	env.server.publishingService = pubMock
+
+	emailMock := &mockEmailService{}
+	env.server.SetEmailService(emailMock, &configuration.SettingsEmail{
+		From: "from@test.com",
+	})
+
+	seedPublishVideo(t, env)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/publish/youtube/test-video?category=devops", nil)
+	rr := httptest.NewRecorder()
+	env.server.Router().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rr.Code, rr.Body.String())
+	}
+
+	// The notification is async; give goroutine a moment to run
+	time.Sleep(100 * time.Millisecond)
+
+	if !emailMock.sendUploadNotificationCalled {
+		t.Error("expected SendUploadNotification to be called after successful video upload")
+	}
+	if emailMock.sendUploadNotificationParams.Type != notification.UploadTypeVideo {
+		t.Errorf("expected type Video, got %s", emailMock.sendUploadNotificationParams.Type)
+	}
+	if emailMock.sendUploadNotificationParams.YouTubeID != "yt-new-id" {
+		t.Errorf("expected YouTubeID yt-new-id, got %s", emailMock.sendUploadNotificationParams.YouTubeID)
+	}
+}
+
+func TestHandlePublishShort_SendsUploadNotification(t *testing.T) {
+	env := setupTestEnv(t)
+	pubMock := &mockPublishingService{uploadShortID: "yt-short-id"}
+	env.server.publishingService = pubMock
+
+	emailMock := &mockEmailService{}
+	env.server.SetEmailService(emailMock, &configuration.SettingsEmail{
+		From: "from@test.com",
+	})
+
+	seedPublishVideo(t, env)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/publish/youtube/test-video/shorts/short1?category=devops", nil)
+	rr := httptest.NewRecorder()
+	env.server.Router().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rr.Code, rr.Body.String())
+	}
+
+	// The notification is async; give goroutine a moment to run
+	time.Sleep(100 * time.Millisecond)
+
+	if !emailMock.sendUploadNotificationCalled {
+		t.Error("expected SendUploadNotification to be called after successful short upload")
+	}
+	if emailMock.sendUploadNotificationParams.Type != notification.UploadTypeShort {
+		t.Errorf("expected type Short, got %s", emailMock.sendUploadNotificationParams.Type)
+	}
+	if emailMock.sendUploadNotificationParams.YouTubeID != "yt-short-id" {
+		t.Errorf("expected YouTubeID yt-short-id, got %s", emailMock.sendUploadNotificationParams.YouTubeID)
+	}
+}
+
+func TestHandlePublishYouTube_EmailFailureDoesNotBlockResponse(t *testing.T) {
+	env := setupTestEnv(t)
+	pubMock := &mockPublishingService{uploadVideoID: "yt-new-id"}
+	env.server.publishingService = pubMock
+
+	emailMock := &mockEmailService{sendUploadNotificationErr: fmt.Errorf("smtp connection failed")}
+	env.server.SetEmailService(emailMock, &configuration.SettingsEmail{
+		From: "from@test.com",
+	})
+
+	seedPublishVideo(t, env)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/publish/youtube/test-video?category=devops", nil)
+	rr := httptest.NewRecorder()
+	env.server.Router().ServeHTTP(rr, req)
+
+	// Response should still be 200 even if email fails
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200 even with email failure, got %d: %s", rr.Code, rr.Body.String())
+	}
+
+	var resp PublishYouTubeResponse
+	json.NewDecoder(rr.Body).Decode(&resp)
+	if resp.VideoID != "yt-new-id" {
+		t.Errorf("expected videoId yt-new-id, got %s", resp.VideoID)
+	}
+}
+
+func TestHandlePublishYouTube_NoEmailConfigured_SkipsNotification(t *testing.T) {
+	env := setupTestEnv(t)
+	pubMock := &mockPublishingService{uploadVideoID: "yt-new-id"}
+	env.server.publishingService = pubMock
+	// No email service configured
+
+	seedPublishVideo(t, env)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/publish/youtube/test-video?category=devops", nil)
+	rr := httptest.NewRecorder()
+	env.server.Router().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rr.Code, rr.Body.String())
+	}
+
+	// No crash, response is fine, notification silently skipped
+	var resp PublishYouTubeResponse
+	json.NewDecoder(rr.Body).Decode(&resp)
+	if resp.VideoID != "yt-new-id" {
+		t.Errorf("expected videoId yt-new-id, got %s", resp.VideoID)
 	}
 }
 

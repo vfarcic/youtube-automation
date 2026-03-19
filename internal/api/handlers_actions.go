@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"devopstoolkit/youtube-automation/internal/configuration"
+	"devopstoolkit/youtube-automation/internal/notification"
 	"devopstoolkit/youtube-automation/internal/storage"
 
 	"github.com/go-chi/chi/v5"
@@ -32,6 +33,7 @@ type EmailService interface {
 	SendThumbnail(from, to string, video storage.Video) error
 	SendEdit(from, to string, video storage.Video) error
 	SendSponsors(from, to string, videoID, sponsorshipPrice, videoTitle string) error
+	SendUploadNotification(from string, params notification.UploadNotificationParams) error
 }
 
 // ActionResponse is the JSON response for action endpoints.

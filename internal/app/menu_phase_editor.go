@@ -541,6 +541,24 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 					} else {
 						updatedVideo.VideoId = newVideoID // Store the new video ID
 						fmt.Println(m.confirmationStyle.Render(fmt.Sprintf("Video uploaded successfully. New Video ID: %s", updatedVideo.VideoId)))
+						// Send upload notification email asynchronously
+						if configuration.GlobalSettings.Email.Password != "" && configuration.GlobalSettings.Email.From != "" {
+							emailSvc := notification.NewEmail(configuration.GlobalSettings.Email.Password)
+							emailFrom := configuration.GlobalSettings.Email.From
+							params := notification.UploadNotificationParams{
+								Title:         updatedVideo.GetUploadTitle(),
+								Category:      updatedVideo.Category,
+								Name:          updatedVideo.Name,
+								YouTubeID:     newVideoID,
+								ScheduledDate: updatedVideo.Date,
+								Type:          notification.UploadTypeVideo,
+							}
+							go func() {
+								if err := emailSvc.SendUploadNotification(emailFrom, params); err != nil {
+									log.Printf("upload notification email failed: %v", err)
+								}
+							}()
+						}
 						// Thumbnail upload should happen AFTER successful video upload and ID retrieval
 						if ref, refErr := thumbnail.ResolveThumbnail(&updatedVideo); refErr == nil {
 							tnErr := thumbnail.WithThumbnailFile(context.Background(), ref, nil, func(path string) error {
@@ -632,6 +650,29 @@ func (m *MenuHandler) handleEditVideoPhases(videoToEdit storage.Video) error {
 								short.YouTubeID = youtubeID
 								uploadedCount++
 								fmt.Println(m.confirmationStyle.Render(fmt.Sprintf("Short %d uploaded. YouTube ID: %s", i+1, youtubeID)))
+								// Send upload notification email asynchronously
+								if configuration.GlobalSettings.Email.Password != "" && configuration.GlobalSettings.Email.From != "" {
+									emailSvc := notification.NewEmail(configuration.GlobalSettings.Email.Password)
+									emailFrom := configuration.GlobalSettings.Email.From
+									shortTitle := short.Title
+									shortCategory := updatedVideo.Category
+									shortName := updatedVideo.Name
+									shortYTID := youtubeID
+									shortDate := short.ScheduledDate
+									go func() {
+										params := notification.UploadNotificationParams{
+											Title:         shortTitle,
+											Category:      shortCategory,
+											Name:          shortName,
+											YouTubeID:     shortYTID,
+											ScheduledDate: shortDate,
+											Type:          notification.UploadTypeShort,
+										}
+										if err := emailSvc.SendUploadNotification(emailFrom, params); err != nil {
+											log.Printf("upload notification email failed: %v", err)
+										}
+									}()
+								}
 							}
 
 							if uploadedCount > 0 {
