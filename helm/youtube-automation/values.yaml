@@ -68,6 +68,7 @@ existingSecretKey: "api-token"
 # │                                                                             │
 # │ YOUTUBE (required):                                                         │
 # │   YOUTUBE_API_KEY    - YouTube Data API v3 key                              │
+# │   YOUTUBE_CHANNEL_ID - YouTube channel ID (for analytics features)          │
 # │                                                                             │
 # │ SLACK (required for Slack posting):                                         │
 # │   SLACK_API_TOKEN             - Slack Bot OAuth token (xoxb-...)            │

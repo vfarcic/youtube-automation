@@ -308,6 +308,9 @@ func init() {
 	} else if GlobalSettings.YouTube.APIKey == "" {
 		markRequired("youtube-api-key")
 	}
+	if envChannelID := os.Getenv("YOUTUBE_CHANNEL_ID"); envChannelID != "" {
+		GlobalSettings.YouTube.ChannelId = envChannelID
+	}
 
 	// Hugo settings: env vars override settings.yaml
 	if envHugoRepo := os.Getenv("HUGO_REPO_URL"); envHugoRepo != "" {

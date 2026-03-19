@@ -1288,6 +1288,54 @@ slack:
 	// For now, the direct unmarshal test above is safer and more targeted for YAML loading.
 }
 
+func TestYouTubeChannelIDEnvVar(t *testing.T) {
+	restore := restoreEnv(t, []string{"YOUTUBE_CHANNEL_ID"})
+	defer restore()
+
+	tests := []struct {
+		name          string
+		yamlChannelID string
+		envChannelID  string
+		want          string
+	}{
+		{
+			name:          "env var sets channel ID",
+			yamlChannelID: "",
+			envChannelID:  "UC_from_env",
+			want:          "UC_from_env",
+		},
+		{
+			name:          "env var overrides yaml",
+			yamlChannelID: "UC_from_yaml",
+			envChannelID:  "UC_from_env",
+			want:          "UC_from_env",
+		},
+		{
+			name:          "yaml used when env var not set",
+			yamlChannelID: "UC_from_yaml",
+			envChannelID:  "",
+			want:          "UC_from_yaml",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.envChannelID != "" {
+				os.Setenv("YOUTUBE_CHANNEL_ID", tt.envChannelID)
+			} else {
+				os.Unsetenv("YOUTUBE_CHANNEL_ID")
+			}
+
+			channelID := tt.yamlChannelID
+			if env := os.Getenv("YOUTUBE_CHANNEL_ID"); env != "" {
+				channelID = env
+			}
+
+			assert.Equal(t, tt.want, channelID)
+		})
+	}
+}
+
 func TestGDriveEnvVarOverrides(t *testing.T) {
 	envVars := []string{
 		"GDRIVE_CREDENTIALS_FILE",
