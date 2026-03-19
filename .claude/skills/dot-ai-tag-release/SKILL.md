@@ -21,7 +21,7 @@ Run this skill when:
 
 Run the analysis script bundled with this skill:
 ```bash
-bash analyze.sh
+bash .claude/skills/dot-ai-tag-release/analyze.sh
 ```
 
 If the output contains `NO_FRAGMENTS=true`, inform the user there's nothing to release and stop.

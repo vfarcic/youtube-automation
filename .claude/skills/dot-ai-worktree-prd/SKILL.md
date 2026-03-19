@@ -20,12 +20,12 @@ If not found, ask the user: "Which PRD should I create a worktree for? (e.g., 35
 
 If the PRD title is already known from conversation context, pass both number and title:
 ```bash
-bash create.sh [number] "[title]"
+bash .claude/skills/dot-ai-worktree-prd/create.sh [number] "[title]"
 ```
 
 Otherwise let the script look it up from `prds/`:
 ```bash
-bash create.sh [number]
+bash .claude/skills/dot-ai-worktree-prd/create.sh [number]
 ```
 
 ### Step 3: Handle Result
