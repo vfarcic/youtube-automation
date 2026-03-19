@@ -1,9 +1,11 @@
 # PRD: Channel Stats API & UI
 
 **Issue**: #377
-**Status**: Draft
+**Status**: No Longer Needed
 **Priority**: Medium
 **Created**: 2026-03-07
+**Last Updated**: 2026-03-19
+**Closed**: 2026-03-19
 
 ---
 
