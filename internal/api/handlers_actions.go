@@ -34,6 +34,7 @@ type EmailService interface {
 	SendEdit(from, to string, video storage.Video) error
 	SendSponsors(from, to string, videoID, sponsorshipPrice, videoTitle string) error
 	SendUploadNotification(from string, params notification.UploadNotificationParams) error
+	SendDriveUploadNotification(from string, params notification.DriveUploadNotificationParams) error
 }
 
 // ActionResponse is the JSON response for action endpoints.

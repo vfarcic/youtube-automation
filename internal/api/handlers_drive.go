@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"devopstoolkit/youtube-automation/internal/notification"
 	"devopstoolkit/youtube-automation/internal/publishing"
 	"devopstoolkit/youtube-automation/internal/storage"
 
@@ -191,6 +192,14 @@ func (s *Server) handleDriveUploadVideo(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	s.sendDriveUploadNotificationAsync(notification.DriveUploadNotificationParams{
+		Title:       video.GetUploadTitle(),
+		Category:    video.Category,
+		Name:        video.Name,
+		DriveFileID: fileID,
+		Type:        notification.UploadTypeVideo,
+	})
+
 	resp := map[string]interface{}{
 		"driveFileId": fileID,
 		"videoFile":   video.VideoFile,
@@ -332,6 +341,14 @@ func (s *Server) handleDriveUploadShort(w http.ResponseWriter, r *http.Request) 
 		respondError(w, http.StatusInternalServerError, "Failed to save video", err.Error())
 		return
 	}
+
+	s.sendDriveUploadNotificationAsync(notification.DriveUploadNotificationParams{
+		Title:       video.Shorts[shortIdx].Title,
+		Category:    video.Category,
+		Name:        video.Name,
+		DriveFileID: fileID,
+		Type:        notification.UploadTypeShort,
+	})
 
 	resp := map[string]interface{}{
 		"driveFileId": fileID,

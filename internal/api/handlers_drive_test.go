@@ -11,8 +11,11 @@ import (
 	"net/http/httptest"
 	"net/textproto"
 	"testing"
+	"time"
 
+	"devopstoolkit/youtube-automation/internal/configuration"
 	"devopstoolkit/youtube-automation/internal/gdrive"
+	"devopstoolkit/youtube-automation/internal/notification"
 	"devopstoolkit/youtube-automation/internal/storage"
 )
 
@@ -853,6 +856,100 @@ func TestHandleDriveDownloadShort_DriveError(t *testing.T) {
 
 	if w.Code != http.StatusInternalServerError {
 		t.Errorf("expected 500, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+// --- Drive Upload Notification Tests ---
+
+func TestHandleDriveUploadVideo_SendsDriveUploadNotification(t *testing.T) {
+	env := setupTestEnv(t)
+	driveMock := &mockDriveService{returnFileID: "video-drive-notify-123"}
+	env.server.SetDriveService(driveMock, "folder-abc")
+
+	emailMock := &mockEmailService{}
+	env.server.SetEmailService(emailMock, &configuration.SettingsEmail{
+		From: "from@test.com",
+	})
+
+	seedVideo(t, env, storage.Video{
+		Name:     "test-video",
+		Category: "devops",
+		Titles: []storage.TitleVariant{
+			{Index: 1, Text: "My Notified Video"},
+		},
+	})
+
+	body, contentType := createMultipartBodyWithMIME(t, "video", "recording.mp4", "fake-video-data", "video/mp4")
+	req := httptest.NewRequest(http.MethodPost, "/api/drive/upload/video/test-video?category=devops", body)
+	req.Header.Set("Content-Type", contentType)
+	w := httptest.NewRecorder()
+
+	env.server.Router().ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	// The notification is async; give goroutine a moment to run
+	time.Sleep(100 * time.Millisecond)
+
+	if !emailMock.sendDriveUploadNotificationCalled {
+		t.Error("expected SendDriveUploadNotification to be called after successful video upload")
+	}
+	if emailMock.sendDriveUploadNotificationParams.Type != notification.UploadTypeVideo {
+		t.Errorf("expected type Video, got %s", emailMock.sendDriveUploadNotificationParams.Type)
+	}
+	if emailMock.sendDriveUploadNotificationParams.DriveFileID != "video-drive-notify-123" {
+		t.Errorf("expected DriveFileID video-drive-notify-123, got %s", emailMock.sendDriveUploadNotificationParams.DriveFileID)
+	}
+	if emailMock.sendDriveUploadNotificationParams.Title != "My Notified Video" {
+		t.Errorf("expected Title 'My Notified Video', got %s", emailMock.sendDriveUploadNotificationParams.Title)
+	}
+}
+
+func TestHandleDriveUploadShort_SendsDriveUploadNotification(t *testing.T) {
+	env := setupTestEnv(t)
+	driveMock := &mockDriveService{returnFileID: "short-drive-notify-456"}
+	env.server.SetDriveService(driveMock, "folder-abc")
+
+	emailMock := &mockEmailService{}
+	env.server.SetEmailService(emailMock, &configuration.SettingsEmail{
+		From: "from@test.com",
+	})
+
+	seedVideo(t, env, storage.Video{
+		Name:     "test-video",
+		Category: "devops",
+		Shorts: []storage.Short{
+			{ID: "short1", Title: "My Notified Short"},
+		},
+	})
+
+	body, contentType := createMultipartBodyWithMIME(t, "short", "short1.mp4", "fake-short-data", "video/mp4")
+	req := httptest.NewRequest(http.MethodPost, "/api/drive/upload/short/test-video/short1?category=devops", body)
+	req.Header.Set("Content-Type", contentType)
+	w := httptest.NewRecorder()
+
+	env.server.Router().ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	// The notification is async; give goroutine a moment to run
+	time.Sleep(100 * time.Millisecond)
+
+	if !emailMock.sendDriveUploadNotificationCalled {
+		t.Error("expected SendDriveUploadNotification to be called after successful short upload")
+	}
+	if emailMock.sendDriveUploadNotificationParams.Type != notification.UploadTypeShort {
+		t.Errorf("expected type Short, got %s", emailMock.sendDriveUploadNotificationParams.Type)
+	}
+	if emailMock.sendDriveUploadNotificationParams.DriveFileID != "short-drive-notify-456" {
+		t.Errorf("expected DriveFileID short-drive-notify-456, got %s", emailMock.sendDriveUploadNotificationParams.DriveFileID)
+	}
+	if emailMock.sendDriveUploadNotificationParams.Title != "My Notified Short" {
+		t.Errorf("expected Title 'My Notified Short', got %s", emailMock.sendDriveUploadNotificationParams.Title)
 	}
 }
 

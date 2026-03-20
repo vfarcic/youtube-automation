@@ -821,6 +821,79 @@ func TestGenerateUploadNotificationContent(t *testing.T) {
 	}
 }
 
+func TestGenerateDriveUploadNotificationContent(t *testing.T) {
+	tests := []struct {
+		name               string
+		params             DriveUploadNotificationParams
+		expectSubject      string
+		expectBodyContains []string
+	}{
+		{
+			name: "video upload",
+			params: DriveUploadNotificationParams{
+				Title:       "Kubernetes Deep Dive",
+				Category:    "devops",
+				Name:        "kubernetes-deep-dive",
+				DriveFileID: "drive-abc123",
+				Type:        UploadTypeVideo,
+			},
+			expectSubject: "Drive Upload: Kubernetes Deep Dive (Video)",
+			expectBodyContains: []string{
+				"Video Drive Upload Notification",
+				"Kubernetes Deep Dive",
+				"Video",
+				"devops",
+				"drive-abc123",
+				"https://youtube.devopstoolkit.ai/videos/devops/kubernetes-deep-dive",
+			},
+		},
+		{
+			name: "short upload",
+			params: DriveUploadNotificationParams{
+				Title:       "Quick K8s Tip",
+				Category:    "devops",
+				Name:        "quick-k8s-tip",
+				DriveFileID: "drive-xyz789",
+				Type:        UploadTypeShort,
+			},
+			expectSubject: "Drive Upload: Quick K8s Tip (Short)",
+			expectBodyContains: []string{
+				"Short Drive Upload Notification",
+				"Quick K8s Tip",
+				"Short",
+				"devops",
+				"drive-xyz789",
+				"https://youtube.devopstoolkit.ai/videos/devops/quick-k8s-tip",
+			},
+		},
+		{
+			name: "empty fields",
+			params: DriveUploadNotificationParams{
+				Title:       "",
+				Category:    "",
+				Name:        "",
+				DriveFileID: "",
+				Type:        UploadTypeVideo,
+			},
+			expectSubject: "Drive Upload:  (Video)",
+			expectBodyContains: []string{
+				"Video Drive Upload Notification",
+				"Video Page:",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			subject, body := generateDriveUploadNotificationContent(tt.params)
+			assert.Equal(t, tt.expectSubject, subject)
+			for _, expected := range tt.expectBodyContains {
+				assert.Contains(t, body, expected)
+			}
+		})
+	}
+}
+
 func TestGenerateSponsorsEmailContent(t *testing.T) {
 	tests := []struct {
 		name             string

@@ -712,6 +712,20 @@ func (s *Server) sendUploadNotificationAsync(params notification.UploadNotificat
 	}()
 }
 
+// sendDriveUploadNotificationAsync fires a goroutine to send a Drive upload notification email.
+// It silently skips if email is not configured and logs on failure.
+func (s *Server) sendDriveUploadNotificationAsync(params notification.DriveUploadNotificationParams) {
+	if s.emailService == nil || s.emailSettings == nil || s.emailSettings.From == "" {
+		return
+	}
+	from := s.emailSettings.From
+	go func() {
+		if err := s.emailService.SendDriveUploadNotification(from, params); err != nil {
+			log.Printf("drive upload notification email failed: %v", err)
+		}
+	}()
+}
+
 // --- Helpers ---
 
 // syncTimeout is the maximum time to wait for async git sync to complete.

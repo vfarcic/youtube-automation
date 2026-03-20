@@ -17,20 +17,23 @@ import (
 
 // mockEmailService implements EmailService for testing.
 type mockEmailService struct {
-	sendThumbnailCalled            bool
-	sendEditCalled                 bool
-	sendEditVideo                  storage.Video
-	sendSponsorsCalled             bool
-	sendSponsorsFrom               string
-	sendSponsorsTo                 string
-	sendSponsorsVideoID            string
-	sendSponsorsPrice              string
-	sendSponsorsTitle              string
-	sendUploadNotificationCalled   bool
-	sendUploadNotificationParams   notification.UploadNotificationParams
-	sendUploadNotificationErr      error
-	returnErr                      error
-	sendSponsorsErr                error
+	sendThumbnailCalled                 bool
+	sendEditCalled                      bool
+	sendEditVideo                       storage.Video
+	sendSponsorsCalled                  bool
+	sendSponsorsFrom                    string
+	sendSponsorsTo                      string
+	sendSponsorsVideoID                 string
+	sendSponsorsPrice                   string
+	sendSponsorsTitle                   string
+	sendUploadNotificationCalled        bool
+	sendUploadNotificationParams        notification.UploadNotificationParams
+	sendUploadNotificationErr           error
+	sendDriveUploadNotificationCalled   bool
+	sendDriveUploadNotificationParams   notification.DriveUploadNotificationParams
+	sendDriveUploadNotificationErr      error
+	returnErr                           error
+	sendSponsorsErr                     error
 }
 
 func (m *mockEmailService) SendThumbnail(from, to string, video storage.Video) error {
@@ -62,6 +65,15 @@ func (m *mockEmailService) SendUploadNotification(from string, params notificati
 	m.sendUploadNotificationParams = params
 	if m.sendUploadNotificationErr != nil {
 		return m.sendUploadNotificationErr
+	}
+	return m.returnErr
+}
+
+func (m *mockEmailService) SendDriveUploadNotification(from string, params notification.DriveUploadNotificationParams) error {
+	m.sendDriveUploadNotificationCalled = true
+	m.sendDriveUploadNotificationParams = params
+	if m.sendDriveUploadNotificationErr != nil {
+		return m.sendDriveUploadNotificationErr
 	}
 	return m.returnErr
 }

@@ -214,3 +214,36 @@ func (e *Email) SendUploadNotification(from string, params UploadNotificationPar
 	subject, body := generateUploadNotificationContent(params)
 	return e.Send(from, []string{}, subject, body, "")
 }
+
+// DriveUploadNotificationParams holds the data needed to build a Drive upload notification email.
+type DriveUploadNotificationParams struct {
+	Title       string
+	Category    string
+	Name        string
+	DriveFileID string
+	Type        UploadType
+}
+
+func generateDriveUploadNotificationContent(params DriveUploadNotificationParams) (subject, body string) {
+	subject = fmt.Sprintf("Drive Upload: %s (%s)", params.Title, params.Type)
+
+	videoPageURL := fmt.Sprintf("https://youtube.devopstoolkit.ai/videos/%s/%s", params.Category, params.Name)
+
+	body = fmt.Sprintf(`<strong>%s Drive Upload Notification</strong>
+<br/><br/>
+<ul>
+<li><strong>Title:</strong> %s</li>
+<li><strong>Type:</strong> %s</li>
+<li><strong>Category:</strong> %s</li>
+<li><strong>Drive File ID:</strong> %s</li>
+<li><strong>Video Page:</strong> <a href="%s">%s</a></li>
+</ul>
+`, string(params.Type), params.Title, string(params.Type), params.Category, params.DriveFileID, videoPageURL, videoPageURL)
+
+	return subject, body
+}
+
+func (e *Email) SendDriveUploadNotification(from string, params DriveUploadNotificationParams) error {
+	subject, body := generateDriveUploadNotificationContent(params)
+	return e.Send(from, []string{}, subject, body, "")
+}
