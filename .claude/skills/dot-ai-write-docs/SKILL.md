@@ -49,9 +49,9 @@ Ask the user what documentation to write. Options:
 
 3. **Install prerequisites (ingress controller)**
    ```bash
-   kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml
+   KUBECONFIG=./kubeconfig.yaml kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml
    # Wait for ingress to be ready
-   kubectl wait --namespace ingress-nginx --for=condition=ready pod --selector=app.kubernetes.io/component=controller --timeout=300s
+   KUBECONFIG=./kubeconfig.yaml kubectl wait --namespace ingress-nginx --for=condition=ready pod --selector=app.kubernetes.io/component=controller --timeout=300s
    ```
 
 4. **Follow docs/setup/mcp-setup.md** (skip controller if not needed for the feature)
@@ -76,7 +76,7 @@ Ask the user what documentation to write. Options:
    ```
 
    Add these flags to helm install:
-   ```
+   ```bash
    --set image.repository=dot-ai \
    --set image.tag=test \
    --set image.pullPolicy=Never \
@@ -94,7 +94,7 @@ Ask the user what documentation to write. Options:
 ### Step 3: Outline the Documentation
 
 Present an outline of sections to write. Example:
-```
+```text
 1. Overview (what it does, when to use it)
 2. Prerequisites
 3. Basic Usage (with real examples)
@@ -143,7 +143,7 @@ Tell the user: "Documentation complete. Please review the full file and let me k
 ## Example Execution Request Formats
 
 **For MCP tool operations:**
-```
+```text
 Please send this intent to your MCP client:
 "Ingest this document into the knowledge base: [content] with URI: [url]"
 
@@ -151,18 +151,15 @@ Share the response you receive.
 ```
 
 **For status checks:**
-```
+```text
 Please ask: "Show dot-ai status"
 
 Share what you see for the Vector DB collections.
 ```
 
-**For bash commands:**
-```
-Please run:
-kubectl get pods -n dot-ai
-
-Share the output.
+**For bash commands (run directly, not delegated to user):**
+```bash
+KUBECONFIG=./kubeconfig.yaml kubectl get pods --namespace dot-ai
 ```
 
 ## Important Rules
