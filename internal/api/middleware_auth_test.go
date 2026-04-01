@@ -15,6 +15,7 @@ func TestBearerTokenAuth(t *testing.T) {
 		name       string
 		token      string
 		authHeader string
+		queryToken string
 		wantStatus int
 	}{
 		{
@@ -59,6 +60,32 @@ func TestBearerTokenAuth(t *testing.T) {
 			authHeader: "Bearer anything",
 			wantStatus: http.StatusOK,
 		},
+		{
+			name:       "valid query token without header",
+			token:      "secret",
+			queryToken: "secret",
+			wantStatus: http.StatusOK,
+		},
+		{
+			name:       "invalid query token without header",
+			token:      "secret",
+			queryToken: "wrong",
+			wantStatus: http.StatusUnauthorized,
+		},
+		{
+			name:       "header takes precedence over query token",
+			token:      "secret",
+			authHeader: "Bearer secret",
+			queryToken: "wrong",
+			wantStatus: http.StatusOK,
+		},
+		{
+			name:       "malformed header falls back to valid query token",
+			token:      "secret",
+			authHeader: "Basic secret",
+			queryToken: "secret",
+			wantStatus: http.StatusOK,
+		},
 	}
 
 	for _, tt := range tests {
@@ -66,7 +93,11 @@ func TestBearerTokenAuth(t *testing.T) {
 			mw := bearerTokenAuth(tt.token)
 			handler := mw(okHandler)
 
-			req := httptest.NewRequest(http.MethodGet, "/api/videos", nil)
+			url := "/api/videos"
+			if tt.queryToken != "" {
+				url += "?token=" + tt.queryToken
+			}
+			req := httptest.NewRequest(http.MethodGet, url, nil)
 			if tt.authHeader != "" {
 				req.Header.Set("Authorization", tt.authHeader)
 			}

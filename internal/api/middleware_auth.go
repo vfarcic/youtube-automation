@@ -16,18 +16,16 @@ func bearerTokenAuth(token string) func(http.Handler) http.Handler {
 				return
 			}
 
+			var provided string
 			authHeader := r.Header.Get("Authorization")
-			if authHeader == "" {
+			if authHeader != "" && strings.HasPrefix(authHeader, "Bearer ") {
+				provided = strings.TrimPrefix(authHeader, "Bearer ")
+			} else if qToken := r.URL.Query().Get("token"); qToken != "" {
+				provided = qToken
+			} else {
 				respondError(w, http.StatusUnauthorized, "Unauthorized", "missing Authorization header")
 				return
 			}
-
-			if !strings.HasPrefix(authHeader, "Bearer ") {
-				respondError(w, http.StatusUnauthorized, "Unauthorized", "invalid Authorization header format")
-				return
-			}
-
-			provided := strings.TrimPrefix(authHeader, "Bearer ")
 			if subtle.ConstantTimeCompare([]byte(provided), []byte(token)) != 1 {
 				respondError(w, http.StatusUnauthorized, "Unauthorized", "invalid token")
 				return
