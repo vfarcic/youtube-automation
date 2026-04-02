@@ -132,9 +132,26 @@ func TestCopyImagesFromDrive(t *testing.T) {
 }
 
 func TestCopyThumbnailFromDrive(t *testing.T) {
-	t.Run("nil drive skips gracefully", func(t *testing.T) {
-		err := CopyThumbnailFromDrive(context.Background(), nil, []storage.ThumbnailVariant{{DriveFileID: "x"}}, t.TempDir())
-		assert.NoError(t, err)
+	t.Run("nil drive with DriveFileID only returns error", func(t *testing.T) {
+		variants := []storage.ThumbnailVariant{{DriveFileID: "x"}}
+		err := CopyThumbnailFromDrive(context.Background(), nil, variants, t.TempDir())
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "no DriveFileID or Path")
+	})
+
+	t.Run("nil drive falls back to local path", func(t *testing.T) {
+		srcDir := t.TempDir()
+		srcPath := filepath.Join(srcDir, "thumb.png")
+		require.NoError(t, os.WriteFile(srcPath, []byte("local-data"), 0644))
+
+		destDir := t.TempDir()
+		variants := []storage.ThumbnailVariant{{DriveFileID: "x", Path: srcPath}}
+		err := CopyThumbnailFromDrive(context.Background(), nil, variants, destDir)
+		require.NoError(t, err)
+
+		data, err := os.ReadFile(filepath.Join(destDir, "thumbnail.jpg"))
+		require.NoError(t, err)
+		assert.Equal(t, "local-data", string(data))
 	})
 
 	t.Run("empty variants skips", func(t *testing.T) {

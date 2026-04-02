@@ -48,7 +48,7 @@ func TestAddHomepageEntry(t *testing.T) {
 	t.Run("inserts entry after header", func(t *testing.T) {
 		basePath := setupHomepage(t, sampleHomepage)
 
-		err := AddHomepageEntry(basePath, "devops", "new-post", "New Post Title", "New intro text.")
+		err := AddHomepageEntry(basePath, "devops", "new-post", "New Post Title", "New intro text.", true)
 		require.NoError(t, err)
 
 		result := readHomepage(t, basePath)
@@ -65,13 +65,13 @@ func TestAddHomepageEntry(t *testing.T) {
 
 	t.Run("error when header not found", func(t *testing.T) {
 		basePath := setupHomepage(t, "no header here")
-		err := AddHomepageEntry(basePath, "cat", "slug", "Title", "Intro")
+		err := AddHomepageEntry(basePath, "cat", "slug", "Title", "Intro", true)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "could not find")
 	})
 
 	t.Run("error when file missing", func(t *testing.T) {
-		err := AddHomepageEntry("/nonexistent", "cat", "slug", "Title", "Intro")
+		err := AddHomepageEntry("/nonexistent", "cat", "slug", "Title", "Intro", true)
 		assert.Error(t, err)
 	})
 }
@@ -117,12 +117,23 @@ func TestTrimHomepageEntries(t *testing.T) {
 }
 
 func TestBuildHomepageEntry(t *testing.T) {
-	entry := buildHomepageEntry("/devops/my-post", "My Post", "Intro text.")
+	t.Run("with thumbnail", func(t *testing.T) {
+		entry := buildHomepageEntry("/devops/my-post", "My Post", "Intro text.", true)
 
-	assert.Contains(t, entry, `<a href="/devops/my-post">`)
-	assert.Contains(t, entry, `<img src="/devops/my-post/thumbnail.jpg"`)
-	assert.Contains(t, entry, "## [My Post](/devops/my-post)")
-	assert.Contains(t, entry, "Intro text.")
-	assert.Contains(t, entry, `**[Full article >>](/devops/my-post)**`)
-	assert.Contains(t, entry, "---")
+		assert.Contains(t, entry, `<a href="/devops/my-post">`)
+		assert.Contains(t, entry, `<img src="/devops/my-post/thumbnail.jpg"`)
+		assert.Contains(t, entry, "## [My Post](/devops/my-post)")
+		assert.Contains(t, entry, "Intro text.")
+		assert.Contains(t, entry, `**[Full article >>](/devops/my-post)**`)
+		assert.Contains(t, entry, "---")
+	})
+
+	t.Run("without thumbnail", func(t *testing.T) {
+		entry := buildHomepageEntry("/devops/my-post", "My Post", "Intro text.", false)
+
+		assert.NotContains(t, entry, "thumbnail.jpg")
+		assert.Contains(t, entry, "## [My Post](/devops/my-post)")
+		assert.Contains(t, entry, "Intro text.")
+		assert.Contains(t, entry, `**[Full article >>](/devops/my-post)**`)
+	})
 }

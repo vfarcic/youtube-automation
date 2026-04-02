@@ -13,7 +13,7 @@ const entrySeparator = "---"
 // AddHomepageEntry adds a new entry to the Hugo home page (content/_index.md)
 // after the "# Latest Posts" header. The entry uses the established format with
 // thumbnail, title link, intro text, and "Full article >>" link.
-func AddHomepageEntry(basePath, category, slug, title, intro string) error {
+func AddHomepageEntry(basePath, category, slug, title, intro string, hasThumbnail bool) error {
 	indexPath := filepath.Join(basePath, "content", "_index.md")
 
 	content, err := os.ReadFile(indexPath)
@@ -22,7 +22,7 @@ func AddHomepageEntry(basePath, category, slug, title, intro string) error {
 	}
 
 	postPath := "/" + category + "/" + slug
-	entry := buildHomepageEntry(postPath, title, intro)
+	entry := buildHomepageEntry(postPath, title, intro, hasThumbnail)
 
 	lines := strings.Split(string(content), "\n")
 	var result []string
@@ -125,10 +125,12 @@ func TrimHomepageEntries(basePath string, maxEntries int) error {
 	return os.WriteFile(indexPath, []byte(strings.Join(result, "\n")), 0644)
 }
 
-func buildHomepageEntry(postPath, title, intro string) string {
+func buildHomepageEntry(postPath, title, intro string, hasThumbnail bool) string {
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf(`<a href="%s"><img src="%s/thumbnail.jpg" style="width:50%%; float:right; padding: 10px"></a>`, postPath, postPath))
-	sb.WriteString("\n\n")
+	if hasThumbnail {
+		sb.WriteString(fmt.Sprintf(`<a href="%s"><img src="%s/thumbnail.jpg" style="width:50%%; float:right; padding: 10px"></a>`, postPath, postPath))
+		sb.WriteString("\n\n")
+	}
 	sb.WriteString(fmt.Sprintf("## [%s](%s)", title, postPath))
 	sb.WriteString("\n\n")
 	if intro != "" {

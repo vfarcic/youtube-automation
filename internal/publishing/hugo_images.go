@@ -67,9 +67,9 @@ func CopyImagesFromDrive(ctx context.Context, drive gdrive.DriveService, videoNa
 
 // CopyThumbnailFromDrive downloads the thumbnail (variant index 0) from Google Drive
 // and saves it as thumbnail.jpg in the post directory.
-// If drive is nil, it gracefully skips (returns nil).
+// Falls back to copying from the local path if Drive is not available.
 func CopyThumbnailFromDrive(ctx context.Context, drive gdrive.DriveService, thumbnailVariants []storage.ThumbnailVariant, destDir string) error {
-	if drive == nil || len(thumbnailVariants) == 0 {
+	if len(thumbnailVariants) == 0 {
 		return nil
 	}
 
@@ -78,8 +78,8 @@ func CopyThumbnailFromDrive(ctx context.Context, drive gdrive.DriveService, thum
 
 	destPath := filepath.Join(destDir, "thumbnail.jpg")
 
-	// Try DriveFileID first
-	if variant.DriveFileID != "" {
+	// Try DriveFileID first (requires drive service)
+	if variant.DriveFileID != "" && drive != nil {
 		content, _, _, err := drive.GetFile(ctx, variant.DriveFileID)
 		if err != nil {
 			return fmt.Errorf("downloading thumbnail from Drive: %w", err)
@@ -98,8 +98,7 @@ func CopyThumbnailFromDrive(ctx context.Context, drive gdrive.DriveService, thum
 		return writeFromReader(destPath, srcContent)
 	}
 
-	fmt.Println("Warning: thumbnail variant has no DriveFileID or Path")
-	return nil
+	return fmt.Errorf("thumbnail variant has no DriveFileID or Path")
 }
 
 func writeFromReader(destPath string, r io.Reader) error {

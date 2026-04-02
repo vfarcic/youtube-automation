@@ -209,8 +209,10 @@ func (r *Hugo) enrichPostDir(ctx context.Context, video *storage.Video, title, p
 	}
 
 	// Copy thumbnail from Drive
+	hasThumbnail := true
 	if err := CopyThumbnailFromDrive(ctx, driveService, video.ThumbnailVariants, postDir); err != nil {
 		fmt.Printf("Warning: failed to copy thumbnail: %v\n", err)
+		hasThumbnail = false
 	}
 
 	// Update home page
@@ -219,7 +221,7 @@ func (r *Hugo) enrichPostDir(ctx context.Context, video *storage.Video, title, p
 	intro, _ := ExtractIntro(string(contentBytes))
 	intro = RemoveTODOAndFIXMELines(intro)
 
-	if err := AddHomepageEntry(basePath, category, slug, title, intro); err != nil {
+	if err := AddHomepageEntry(basePath, category, slug, title, intro, hasThumbnail); err != nil {
 		fmt.Printf("Warning: failed to add homepage entry: %v\n", err)
 	}
 
