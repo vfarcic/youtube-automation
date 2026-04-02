@@ -29,7 +29,8 @@ An **in-app scheduler** running inside the existing server process that:
 3. Identifies the most recent video
 4. Checks if it has already been processed (has a `manuscript/ama/` entry)
 5. If unprocessed: fetches transcript, generates AI content, applies to YouTube, saves locally
-6. Sends a Slack notification with the video link (success or failure)
+6. If transcript is unavailable: schedules a retry for the next day (up to 3 attempts), then sends a failure notification if all retries are exhausted
+7. Sends a Slack notification with the video link (success or failure)
 
 ### Why In-App Scheduler (Not K8s CronJob)
 
@@ -60,16 +61,21 @@ ama:
   enabled: true
   playlistId: "PLxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
   schedule: "0 10 * * 5"  # Cron expression: Fridays at 10:00 UTC
+  retryDelayHours: 24     # Hours to wait before retrying on transcript failure
+  maxRetries: 3           # Max retry attempts before giving up
   slackNotify: true
+  emailNotify: true
+  emailTo: ""              # Email address for success/failure notifications
 ```
 
 ### Component Overview
 
 1. **Playlist Service** (`internal/publishing/`): New function to list videos from a YouTube playlist, returning video IDs ordered by publish date
-2. **AMA Scheduler** (`internal/scheduler/`): Goroutine-based scheduler using a cron library (e.g., `robfig/cron`) that triggers the auto-process workflow on schedule
-3. **Auto-Process Logic** (`internal/api/` or `internal/service/`): Orchestrates the full workflow — find latest unprocessed video, generate content, apply, notify. Reuses existing `PublishingService.GetTranscript()`, `AIService.GenerateAMAContent()`, `PublishingService.UpdateAMAVideo()`, and Slack notification
+2. **AMA Scheduler** (`internal/scheduler/`): Goroutine-based scheduler using a cron library (e.g., `robfig/cron`) that triggers the auto-process workflow on schedule. Supports scheduling one-off retry jobs when transcript fetching fails.
+3. **Auto-Process Logic** (`internal/api/` or `internal/service/`): Orchestrates the full workflow — find latest unprocessed video, generate content, apply, notify. On transcript failure, schedules a next-day retry (up to `maxRetries` attempts). Reuses existing `PublishingService.GetTranscript()`, `AIService.GenerateAMAContent()`, `PublishingService.UpdateAMAVideo()`, and Slack notification
 4. **Manual Trigger Endpoint** (`POST /api/ama/auto-process`): Allows triggering the same workflow from the Web UI or manually via API
 5. **Slack Notification**: On success, sends message with video link. On failure, sends error details
+6. **Email Notification**: On success and failure, sends email to configured address with video link or error details. Uses existing email infrastructure
 
 ### Detection of Unprocessed Videos
 
@@ -87,6 +93,7 @@ Check whether a `manuscript/ama/` YAML file exists whose `videoId` field matches
 | `internal/api/handlers_publish.go` | MODIFY | Add `POST /api/ama/auto-process` handler |
 | `web/src/pages/AskMeAnything.tsx` | MODIFY | Add "Run Now" button for manual trigger |
 | `web/src/api/hooks.ts` | MODIFY | Add `useAMAAutoProcess` hook |
+| `helm/youtube-automation/values.yaml` | MODIFY | Add AMA scheduler config values (enabled, playlistId, schedule, retry, notifications) |
 
 ### Reused Existing Code
 
@@ -94,7 +101,8 @@ Check whether a `manuscript/ama/` YAML file exists whose `videoId` field matches
 - `AIService.GenerateAMAContent()` — generate title/description/tags/timecodes
 - `PublishingService.UpdateAMAVideo()` — apply to YouTube
 - `menu_ama.go:saveAMAFiles()` — save to `manuscript/ama/` (extract to shared function)
-- Slack client — send notification message
+- Slack client — send Slack notification message
+- Email client — send email notification
 
 ## Success Criteria
 
@@ -105,7 +113,10 @@ Check whether a `manuscript/ama/` YAML file exists whose `videoId` field matches
 - [ ] Generates and applies AI content for unprocessed videos
 - [ ] Sends Slack notification with video link on success
 - [ ] Sends Slack notification with error details on failure
-- [ ] Configurable via `settings.yaml` (enabled, playlistId, schedule)
+- [ ] Sends email notification with video link on success
+- [ ] Sends email notification with error details on failure
+- [ ] On transcript failure, retries next day up to `maxRetries` (default 3) before giving up
+- [ ] Configurable via `settings.yaml` (enabled, playlistId, schedule, retryDelayHours, maxRetries)
 - [ ] Manual trigger via `POST /api/ama/auto-process` endpoint
 
 ### Nice to Have
@@ -119,11 +130,11 @@ Check whether a `manuscript/ama/` YAML file exists whose `videoId` field matches
 
 - [ ] **Milestone 2: Auto-Process Orchestration** — Extract `saveAMAFiles` to a shared function. Create the orchestration logic: find latest unprocessed video → fetch transcript → generate AI content → apply to YouTube → save locally. Expose as `POST /api/ama/auto-process` endpoint. Tests for the full workflow.
 
-- [ ] **Milestone 3: Slack Notification** — Send a Slack message after processing with the video link (success) or error details (failure). Uses existing Slack client infrastructure.
+- [ ] **Milestone 3: Notifications (Slack & Email)** — Send Slack message and email after processing with the video link (success) or error details (failure). Uses existing Slack and email infrastructure. Both channels configurable independently via `slackNotify` and `emailNotify`.
 
 - [ ] **Milestone 4: In-App Scheduler** — Add cron-based scheduler that starts with the server. Reads schedule from `settings.yaml`. Triggers the auto-process workflow on schedule. Graceful shutdown.
 
-- [ ] **Milestone 5: Configuration & Settings** — Add `SettingsAMA` to configuration with `enabled`, `playlistId`, `schedule`, `slackNotify` fields. Environment variable overrides. Validate on startup.
+- [ ] **Milestone 5: Configuration & Settings** — Add `SettingsAMA` to configuration with `enabled`, `playlistId`, `schedule`, `retryDelayHours`, `maxRetries`, `slackNotify`, `emailNotify`, `emailTo` fields. Environment variable overrides. Validate on startup. Update Helm values.yaml with corresponding config values.
 
 - [ ] **Milestone 6: Web UI Integration** — Add "Run Now" button to the AMA page that calls the auto-process endpoint. Show last run status/result.
 
@@ -134,6 +145,6 @@ Check whether a `manuscript/ama/` YAML file exists whose `videoId` field matches
 | Risk | Mitigation |
 |------|-----------|
 | YouTube API quota limits | Playlist listing is cheap (1 API call). Full workflow only runs for unprocessed videos. |
-| Transcript not available yet | Auto-generated captions may take hours. If transcript fetch fails, skip and retry next scheduled run. |
+| Transcript not available yet | Auto-generated captions may take hours. On failure, schedule a retry after `retryDelayHours` (default 24h), up to `maxRetries` (default 3) attempts. If all retries exhausted, send Slack failure notification for manual intervention. |
 | AI generation produces poor content | Same AI pipeline as CLI/Web UI which is already trusted. |
 | Server restart loses scheduler state | Scheduler is stateless — on startup it checks if the latest video needs processing regardless of history. |
