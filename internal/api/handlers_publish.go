@@ -22,8 +22,9 @@ import (
 // --- Response types ---
 
 type PublishYouTubeResponse struct {
-	VideoID     string `json:"videoId"`
-	SyncWarning string `json:"syncWarning,omitempty"`
+	VideoID          string `json:"videoId"`
+	SyncWarning      string `json:"syncWarning,omitempty"`
+	ThumbnailWarning string `json:"thumbnailWarning,omitempty"`
 }
 
 type PublishThumbnailResponse struct {
@@ -135,12 +136,13 @@ func (s *Server) handlePublishYouTube(w http.ResponseWriter, r *http.Request) {
 	video.VideoId = videoID
 
 	// Upload thumbnail if available
+	var thumbnailWarning string
 	if refErr == nil {
 		tnErr := thumbnail.WithThumbnailFile(r.Context(), ref, s.driveService, func(path string) error {
 			return s.publishingService.UploadThumbnail(r.Context(), videoID, path)
 		})
 		if tnErr != nil {
-			fmt.Printf("Warning: thumbnail upload failed: %v\n", tnErr)
+			thumbnailWarning = fmt.Sprintf("Thumbnail upload failed: %v", tnErr)
 		}
 	}
 
@@ -159,6 +161,7 @@ func (s *Server) handlePublishYouTube(w http.ResponseWriter, r *http.Request) {
 	})
 
 	resp := PublishYouTubeResponse{VideoID: videoID}
+	resp.ThumbnailWarning = thumbnailWarning
 	addSyncWarningStr(&resp.SyncWarning, s.videoService)
 	respondJSON(w, http.StatusOK, resp)
 }

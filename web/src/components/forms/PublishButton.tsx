@@ -28,6 +28,7 @@ export function PublishButton({ fieldName, value, category, videoName, video }: 
   const publishHugo = usePublishHugo();
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
 
   const mutation = fieldName === 'videoId' ? publishYouTube : publishHugo;
   const isLoading = mutation.isPending;
@@ -35,13 +36,18 @@ export function PublishButton({ fieldName, value, category, videoName, video }: 
   const handleClick = () => {
     setError(null);
     setResult(null);
+    setWarning(null);
     mutation.mutate(
       { name: videoName, category },
       {
         onError: (err) => setError(err.message),
         onSuccess: (data) => {
-          if ('videoId' in data) setResult(data.videoId);
-          else if ('hugoPath' in data) setResult(data.hugoPath);
+          if ('videoId' in data) {
+            setResult(data.videoId);
+            if ('thumbnailWarning' in data && data.thumbnailWarning) {
+              setWarning(data.thumbnailWarning);
+            }
+          } else if ('hugoPath' in data) setResult(data.hugoPath);
         },
       },
     );
@@ -77,6 +83,7 @@ export function PublishButton({ fieldName, value, category, videoName, video }: 
           </p>
         )}
       </div>
+      {warning && <p className="mt-1 text-xs text-yellow-400">{warning}</p>}
       {error && <p className="mt-1 text-xs text-red-400">{error}</p>}
     </div>
   );

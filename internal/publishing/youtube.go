@@ -232,19 +232,23 @@ func UploadThumbnail(videoId string, thumbnailPath string) error {
 	ctx := context.Background()
 	service, err := youtube.NewService(ctx, option.WithHTTPClient(client))
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create YouTube service: %w", err)
 	}
 	file, err := os.Open(thumbnailPath)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to open thumbnail file %s: %w", thumbnailPath, err)
 	}
 	defer file.Close()
 	call := service.Thumbnails.Set(videoId)
 	response, err := call.Media(file).Do()
 	if err != nil {
-		return err
+		return fmt.Errorf("YouTube thumbnail API call failed: %w", err)
 	}
-	fmt.Printf("Thumbnail uploaded, URL: %s\n", response.Items[0].Default.Url)
+	if response != nil && len(response.Items) > 0 && response.Items[0].Default != nil {
+		fmt.Printf("Thumbnail uploaded, URL: %s\n", response.Items[0].Default.Url)
+	} else {
+		fmt.Println("Thumbnail uploaded (no URL in response)")
+	}
 	return nil
 }
 

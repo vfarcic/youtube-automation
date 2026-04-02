@@ -194,6 +194,36 @@ func TestHandlePublishYouTube(t *testing.T) {
 	}
 }
 
+func TestHandlePublishYouTube_ThumbnailFailureReturnsWarning(t *testing.T) {
+	env := setupPublishTestEnv(t, &mockPublishingService{
+		uploadVideoID:      "yt-new-id",
+		uploadThumbnailErr: fmt.Errorf("thumbnail API quota exceeded"),
+	})
+	seedPublishVideo(t, env)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/publish/youtube/test-video?category=devops", nil)
+	rr := httptest.NewRecorder()
+	env.server.Router().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d; body: %s", rr.Code, http.StatusOK, rr.Body.String())
+	}
+
+	var resp PublishYouTubeResponse
+	if err := json.NewDecoder(rr.Body).Decode(&resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if resp.VideoID != "yt-new-id" {
+		t.Errorf("videoId = %q, want %q", resp.VideoID, "yt-new-id")
+	}
+	if resp.ThumbnailWarning == "" {
+		t.Error("expected thumbnailWarning to be set when thumbnail upload fails")
+	}
+	if !strings.Contains(resp.ThumbnailWarning, "thumbnail API quota exceeded") {
+		t.Errorf("thumbnailWarning = %q, want it to contain the underlying error", resp.ThumbnailWarning)
+	}
+}
+
 // --- Thumbnail Publish Tests ---
 
 func TestHandlePublishThumbnail(t *testing.T) {

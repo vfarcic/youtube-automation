@@ -281,6 +281,7 @@ export interface ActionResponse {
 export interface PublishYouTubeResponse {
   videoId: string;
   syncWarning?: string;
+  thumbnailWarning?: string;
 }
 
 export interface PublishThumbnailResponse {
