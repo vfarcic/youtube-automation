@@ -117,15 +117,8 @@ func (s *Server) handlePublishYouTube(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Resolve thumbnail for the upload check
+	// Resolve thumbnail before upload
 	ref, refErr := thumbnail.ResolveThumbnail(&video)
-	if refErr != nil {
-		video.Thumbnail = "pending"
-	} else if ref.Path != "" {
-		video.Thumbnail = ref.Path
-	} else if ref.DriveFileID != "" {
-		video.Thumbnail = "drive://" + ref.DriveFileID
-	}
 
 	videoID, err := s.publishingService.UploadVideo(r.Context(), &video)
 	if err != nil {
@@ -135,9 +128,11 @@ func (s *Server) handlePublishYouTube(w http.ResponseWriter, r *http.Request) {
 
 	video.VideoId = videoID
 
-	// Upload thumbnail if available
+	// Upload thumbnail if available, otherwise warn
 	var thumbnailWarning string
-	if refErr == nil {
+	if refErr != nil {
+		thumbnailWarning = fmt.Sprintf("No thumbnail found: %v", refErr)
+	} else {
 		tnErr := thumbnail.WithThumbnailFile(r.Context(), ref, s.driveService, func(path string) error {
 			return s.publishingService.UploadThumbnail(r.Context(), videoID, path)
 		})

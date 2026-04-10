@@ -224,6 +224,43 @@ func TestHandlePublishYouTube_ThumbnailFailureReturnsWarning(t *testing.T) {
 	}
 }
 
+func TestHandlePublishYouTube_NoThumbnailReturnsWarning(t *testing.T) {
+	env := setupPublishTestEnv(t, &mockPublishingService{
+		uploadVideoID: "yt-new-id",
+	})
+	// Seed a video with no thumbnail data at all
+	v := storage.Video{
+		Name:        "no-thumb-video",
+		Category:    "devops",
+		Titles:      []storage.TitleVariant{{Index: 1, Text: "No Thumb Video"}},
+		Description: "A test video without thumbnail",
+		UploadVideo: "/tmp/video.mp4",
+	}
+	seedVideo(t, env, v)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/publish/youtube/no-thumb-video?category=devops", nil)
+	rr := httptest.NewRecorder()
+	env.server.Router().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d; body: %s", rr.Code, http.StatusOK, rr.Body.String())
+	}
+
+	var resp PublishYouTubeResponse
+	if err := json.NewDecoder(rr.Body).Decode(&resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if resp.VideoID != "yt-new-id" {
+		t.Errorf("videoId = %q, want %q", resp.VideoID, "yt-new-id")
+	}
+	if resp.ThumbnailWarning == "" {
+		t.Error("expected thumbnailWarning to be set when no thumbnail is available")
+	}
+	if !strings.Contains(resp.ThumbnailWarning, "No thumbnail found") {
+		t.Errorf("thumbnailWarning = %q, want it to contain 'No thumbnail found'", resp.ThumbnailWarning)
+	}
+}
+
 // --- Thumbnail Publish Tests ---
 
 func TestHandlePublishThumbnail(t *testing.T) {

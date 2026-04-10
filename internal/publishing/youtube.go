@@ -71,9 +71,6 @@ func UploadVideo(video *storage.Video) (string, error) {
 	if video.UploadVideo == "" {
 		return "", fmt.Errorf("you must provide a filename of a video file to upload")
 	}
-	if video.Thumbnail == "" {
-		return "", fmt.Errorf("you must provide a thumbnail of the video file to upload")
-	}
 	client, err := getClient(context.Background())
 	if err != nil {
 		return "", fmt.Errorf("OAuth failed: %w", err)
