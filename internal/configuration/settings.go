@@ -3,6 +3,7 @@ package configuration
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -308,14 +309,23 @@ func InitGlobalSettings() error {
 		GlobalSettings.Hugo.Token = envGitHubToken
 	}
 
-	// Bluesky validation
-	if GlobalSettings.Bluesky.Identifier != "" {
-		envBlueskyPassword := os.Getenv("BLUESKY_PASSWORD")
-		if envBlueskyPassword != "" {
-			GlobalSettings.Bluesky.Password = envBlueskyPassword
-		}
-	} else if envBlueskyPassword := os.Getenv("BLUESKY_PASSWORD"); envBlueskyPassword != "" {
+	// Bluesky: env vars override settings.yaml
+	if envBlueskyIdentifier := os.Getenv("BLUESKY_IDENTIFIER"); envBlueskyIdentifier != "" {
+		GlobalSettings.Bluesky.Identifier = envBlueskyIdentifier
+	}
+	if envBlueskyPassword := os.Getenv("BLUESKY_PASSWORD"); envBlueskyPassword != "" {
 		GlobalSettings.Bluesky.Password = envBlueskyPassword
+	}
+
+	// Slack channel IDs: env var overrides settings.yaml (comma-separated list)
+	if envSlackChannels := os.Getenv("SLACK_CHANNEL_IDS"); envSlackChannels != "" {
+		channels := strings.Split(envSlackChannels, ",")
+		GlobalSettings.Slack.TargetChannelIDs = make([]string, 0, len(channels))
+		for _, ch := range channels {
+			if trimmed := strings.TrimSpace(ch); trimmed != "" {
+				GlobalSettings.Slack.TargetChannelIDs = append(GlobalSettings.Slack.TargetChannelIDs, trimmed)
+			}
+		}
 	}
 
 	return nil

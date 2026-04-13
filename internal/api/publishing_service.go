@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"fmt"
 
 	"devopstoolkit/youtube-automation/internal/platform/bluesky"
 	"devopstoolkit/youtube-automation/internal/publishing"
@@ -52,7 +53,7 @@ func (d *DefaultPublishingService) UploadShort(_ context.Context, filePath strin
 
 func (d *DefaultPublishingService) CreateHugoPost(_ context.Context, video *storage.Video, opts *publishing.HugoPostOptions) (string, error) {
 	if d.hugo == nil {
-		return "", nil
+		return "", fmt.Errorf("Hugo is not configured (check hugo settings in settings.yaml)")
 	}
 	return d.hugo.Post(video, opts)
 }
@@ -71,7 +72,7 @@ func (d *DefaultPublishingService) PostBlueSky(_ context.Context, text, videoID,
 
 func (d *DefaultPublishingService) PostSlack(_ context.Context, video *storage.Video, videoPath string) error {
 	if d.slackService == nil {
-		return nil
+		return fmt.Errorf("Slack is not configured (SLACK_API_TOKEN environment variable required)")
 	}
 	return d.slackService.PostVideo(video, videoPath)
 }

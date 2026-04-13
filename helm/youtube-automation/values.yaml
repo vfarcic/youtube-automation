@@ -72,10 +72,13 @@ existingSecretKey: "api-token"
 # │                                                                             │
 # │ SLACK (required for Slack posting):                                         │
 # │   SLACK_API_TOKEN             - Slack Bot OAuth token (xoxb-...)            │
+# │   SLACK_CHANNEL_IDS           - Comma-separated Slack channel IDs           │
+# │                                 (e.g., "C123456789,C987654321")             │
 # │   SLACK_RETRY_ATTEMPTS        - Retry count (default: 3)                   │
 # │   SLACK_RETRY_BACKOFF_SECONDS - Retry backoff in seconds (default: 1)      │
 # │                                                                             │
 # │ BLUESKY (required for Bluesky posting):                                     │
+# │   BLUESKY_IDENTIFIER - Bluesky username (e.g., user.bsky.social)           │
 # │   BLUESKY_PASSWORD   - Bluesky account password                            │
 # │                                                                             │
 # │ HUGO (required for blog post integration):                                  │
