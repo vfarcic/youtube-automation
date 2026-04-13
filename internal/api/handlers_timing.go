@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"path/filepath"
 
-	"devopstoolkit/youtube-automation/internal/app"
 	"devopstoolkit/youtube-automation/internal/configuration"
+	"devopstoolkit/youtube-automation/internal/service"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -57,7 +57,7 @@ func (s *Server) handleApplyRandomTiming(w http.ResponseWriter, r *http.Request)
 	}
 
 	originalDate := video.Date
-	newDate, selectedRec, err := app.ApplyRandomTiming(video.Date, recommendations)
+	newDate, selectedRec, err := service.ApplyRandomTiming(video.Date, recommendations)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "Failed to apply timing", err.Error())
 		return

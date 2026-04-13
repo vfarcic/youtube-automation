@@ -9,14 +9,6 @@ import (
 	"os"
 	"strings"
 	"time"
-
-	"github.com/charmbracelet/lipgloss"
-)
-
-var (
-	linkStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("4")).
-		Underline(true)
 )
 
 // Config holds the configuration for Bluesky

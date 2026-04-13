@@ -292,16 +292,6 @@ type videoServiceUpdater interface {
 	Update(part []string, video *youtube.Video) videoUpdateDoer
 }
 
-// youtubeServiceAdapter adapts *youtube.Service to the videoServiceUpdater interface.
-type youtubeServiceAdapter struct {
-	service *youtube.Service
-}
-
-// Update calls the underlying YouTube service's Videos.Update method.
-func (a *youtubeServiceAdapter) Update(part []string, video *youtube.Video) videoUpdateDoer {
-	return a.service.Videos.Update(part, video)
-}
-
 func updateVideoLanguage(updater videoServiceUpdater, videoID string, languageCode string, audioLanguageCode string) error {
 	// Determine final language codes with fallbacks
 	finalLangCode := languageCode

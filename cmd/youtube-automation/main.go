@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 
 	"devopstoolkit/youtube-automation/internal/api"
-	"devopstoolkit/youtube-automation/internal/app"
 	"devopstoolkit/youtube-automation/internal/aspect"
 	"devopstoolkit/youtube-automation/internal/auth"
 	"devopstoolkit/youtube-automation/internal/configuration"
@@ -34,11 +33,14 @@ func main() {
 		os.Exit(0)
 	}
 
-	// Parse CLI arguments and load configuration
-	configuration.GetArgs()
+	// Initialize configuration
+	if err := configuration.InitGlobalSettings(); err != nil {
+		fmt.Fprintf(os.Stderr, "Configuration error: %v\n", err)
+		os.Exit(1)
+	}
 
-	// Serve mode: start the HTTP API server
-	if configuration.IsServeMode() {
+	// Start the HTTP API server
+	{
 		dataDir := configuration.GetDataDir()
 		gitCfg := configuration.GlobalSettings.Git
 
@@ -144,27 +146,5 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Server error: %v\n", err)
 			os.Exit(1)
 		}
-		return
-	}
-
-	// Validate Bluesky configuration if identifier is set
-	if configuration.GlobalSettings.Bluesky.Identifier != "" {
-		config := bluesky.Config{
-			Identifier: configuration.GlobalSettings.Bluesky.Identifier,
-			Password:   configuration.GlobalSettings.Bluesky.Password,
-			URL:        configuration.GlobalSettings.Bluesky.URL,
-		}
-
-		if err := bluesky.ValidateConfig(config); err != nil {
-			fmt.Fprintf(os.Stderr, "Bluesky configuration error: %s\n", err)
-			os.Exit(1)
-		}
-	}
-
-	// Start the CLI application
-	application := app.New()
-	if err := application.Run(); err != nil {
-		fmt.Fprintf(os.Stderr, "Application error: %v\n", err)
-		os.Exit(1)
 	}
 }

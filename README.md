@@ -1,6 +1,6 @@
 # YouTube Automation
 
-This project automates various aspects of managing a YouTube channel. It provides both a **CLI interface** for interactive terminal use and an **HTTP API with a React web UI** for browser-based management.
+This project automates various aspects of managing a YouTube channel. It provides an **HTTP API with a React web UI** for browser-based management of your YouTube workflow.
 
 ## Demo Manifests and Code Used in DevOps Toolkit Videos
 
@@ -10,7 +10,6 @@ This project automates various aspects of managing a YouTube channel. It provide
 ## Features
 
 * **Video Lifecycle Management**: Complete workflow from ideas to publishing and post-publish activities across 8 phases
-* **CLI Interface**: Interactive command-line interface for video management
 * **HTTP API**: RESTful API exposing all backend functionality (see [API documentation](#http-api))
 * **React Web UI**: Browser-based interface with dynamic form rendering from backend aspect metadata
 * **AI Content Generation**: AI-powered generation of titles, descriptions, tags, tweets, shorts, thumbnails, and translations
@@ -53,30 +52,24 @@ Global settings are managed via `settings.yaml` and command-line flags. See [doc
 
 ## Usage
 
-### CLI Mode
-
-```bash
-./youtube-release --help
-```
-
-Interactive video management through a terminal interface with phase-specific forms.
-
-### HTTP API
+### Starting the Server
 
 Start the API server:
 
 ```bash
-./youtube-release serve [flags]
+./youtube-release
 ```
 
-#### Server Flags
+#### Server Configuration
 
-| Flag | Default | Description |
+The server is configured via environment variables:
+
+| Variable | Default | Description |
 |---|---|---|
-| `--host` | `localhost` | Host to listen on |
-| `--port` | `8080` | Port to listen on |
-| `--api-token` | `$API_TOKEN` | Bearer token for API authentication |
-| `--data-dir` | `$DATA_DIR` or `./tmp` | Data directory for video YAML files |
+| `SERVER_HOST` | `localhost` | Host to listen on |
+| `SERVER_PORT` | `8080` | Port to listen on |
+| `API_TOKEN` | - | Bearer token for API authentication |
+| `DATA_DIR` | `./tmp` | Data directory for video YAML files |
 
 #### Authentication
 
@@ -128,7 +121,8 @@ docker build -t youtube-automation .
 docker run -p 8080:8080 \
   -e API_TOKEN=your-token \
   -e AI_KEY=your-ai-key \
-  youtube-automation serve --host 0.0.0.0
+  -e SERVER_HOST=0.0.0.0 \
+  youtube-automation
 ```
 
 ## Development

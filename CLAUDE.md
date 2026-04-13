@@ -16,7 +16,7 @@ go build -o youtube-release ./cmd/youtube-automation
 # Build for all platforms
 make build
 
-# Run CLI mode
+# Run server (Web UI only)
 ./youtube-release
 
 # Clean build artifacts
@@ -59,7 +59,7 @@ make bump-major    # Bump major version
 ## Architecture Overview
 
 ### Core System Design
-The YouTube Automation Tool is built around a **phase-based video lifecycle management system** with a CLI interface. Videos progress through 6 distinct phases from idea to post-publish activities.
+The YouTube Automation Tool is built around a **phase-based video lifecycle management system** with a **Web UI interface**. Videos progress through 6 distinct phases from idea to post-publish activities.
 
 ### Key Architectural Components
 
@@ -68,8 +68,9 @@ The YouTube Automation Tool is built around a **phase-based video lifecycle mana
 - **Phase 7**: Sponsored/Blocked videos (special handling)
 - Each phase has specific completion criteria and field requirements
 
-#### 2. CLI Architecture
-- **CLI Mode**: Interactive terminal interface with huh forms (`internal/app/`)
+#### 2. Web UI Architecture
+- **Web UI**: React-based single-page application served from `internal/frontend/`
+- **API Layer**: REST API with chi router (`internal/api/`)
 - **Core Logic**: Business logic in `internal/service/` and `internal/storage/`
 
 #### 3. Field Completion System
@@ -105,7 +106,7 @@ Completion criteria: `filled_only`, `true_only`, `false_only`, `conditional_spon
 - Individual YAML files per video with complete metadata
 
 #### 2. Service Layer (`internal/service/`)
-- `VideoService`: Unified data operations for CLI
+- `VideoService`: Unified data operations for Web UI
 - Handles CRUD operations, phase transitions, manuscript processing
 - Abstracts storage details from the interface
 
@@ -115,13 +116,19 @@ Completion criteria: `filled_only`, `true_only`, `false_only`, `conditional_spon
 - **Workflow** (`internal/workflow/`): Constants and phase definitions
 
 #### 4. Interface Layer
-- **CLI**: Menu-driven interface with phase-specific forms
+- **Web UI**: React SPA with API-driven forms
+- **API**: REST endpoints with bearer token authentication
 - **Validation**: Business rules enforced through service layer
 
 ### Configuration System
 - `settings.yaml` for global configuration
 - Environment variables for sensitive data (API keys, passwords)
-- CLI flags with YAML path mapping (`internal/configuration/`)
+- Server configuration via environment variables:
+  - `SERVER_HOST`: Server host (default: localhost)
+  - `SERVER_PORT`: Server port (default: 8080)
+  - `API_TOKEN`: Bearer token for API authentication
+  - `DATA_DIR`: Data directory for YAML files (default: ./tmp)
+  - See `internal/configuration/server.go` for all options
 
 ### Hugo Integration Details
 The system generates Hugo blog posts with deterministic URL construction:
@@ -145,10 +152,10 @@ When adding new functionality, consider which phase(s) it affects and update:
 - Phase transition logic in video manager
 
 #### 2. Service Layer Usage
-CLI functionality uses the service layer for business logic:
+Web UI functionality uses the service layer for business logic:
 - Business logic centralized in service layer
 - Consistent validation rules and error handling
-- Clean separation between UI and data operations
+- Clean separation between API/UI and data operations
 
 #### 3. AI Integration Pattern
 When adding new AI features:
@@ -163,10 +170,10 @@ When adding new analytics features (titles, timing, thumbnails, etc.):
 - **Save** complete audit trail: analytics JSON, prompt, AI response, formatted result (see `SaveCompleteAnalysis()`)
 - Pattern: `fetch once → enrich differently → different AI prompts`
 
-Example: Timing analytics feature (`Analyze → Timing` menu):
+Example: Timing analytics feature (via API `/api/analyze/timing`):
 - Fetches YouTube analytics with first-week metrics (eliminates age bias)
 - AI generates 6-8 timing recommendations stored in `settings.yaml`
-- "Apply Random Timing" button in video forms picks random recommendation within same week
+- "Apply Random Timing" button in Web UI picks random recommendation within same week
 - All times in UTC, iterative improvement (keep good, replace poor performers)
 
 #### 5. Hugo URL Construction
