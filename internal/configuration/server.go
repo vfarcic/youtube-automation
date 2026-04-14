@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	DefaultHost    = "localhost"
+	DefaultHost    = "0.0.0.0"
 	DefaultPort    = 8080
 	DefaultDataDir = "./tmp"
 )
