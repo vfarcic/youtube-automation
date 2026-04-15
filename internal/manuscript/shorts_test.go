@@ -189,6 +189,52 @@ Third segment exists here too.
 	}
 }
 
+func TestInsertShortMarkers_MidParagraph(t *testing.T) {
+	// When the short's text starts/ends mid-paragraph, the markers must
+	// still land on their own lines (separated by a blank line from the
+	// surrounding prose).
+	tmpDir := t.TempDir()
+	manuscriptPath := filepath.Join(tmpDir, "manuscript.md")
+
+	content := `Intro sentence. This is the short segment that lives mid-paragraph. Trailing sentence.
+`
+	if err := os.WriteFile(manuscriptPath, []byte(content), 0644); err != nil {
+		t.Fatalf("failed to create test manuscript: %v", err)
+	}
+
+	shorts := []storage.Short{
+		{ID: "short1", Title: "Mid", Text: "This is the short segment that lives mid-paragraph."},
+	}
+
+	if err := InsertShortMarkers(manuscriptPath, shorts); err != nil {
+		t.Fatalf("InsertShortMarkers failed: %v", err)
+	}
+
+	result, _ := os.ReadFile(manuscriptPath)
+	resultStr := string(result)
+
+	// The markers must each appear on a line by themselves: a blank line
+	// before the marker line and a blank line after it.
+	for _, marker := range []string{
+		"TODO: Short (id: short1) (start)",
+		"TODO: Short (id: short1) (end)",
+	} {
+		idx := strings.Index(resultStr, marker)
+		if idx == -1 {
+			t.Fatalf("marker %q not found in output:\n%s", marker, resultStr)
+		}
+		// Must be preceded by "\n\n" (or be at start of file)
+		if idx >= 2 && resultStr[idx-2:idx] != "\n\n" {
+			t.Errorf("marker %q is not preceded by a blank line; context: %q", marker, resultStr[max(0, idx-20):idx+len(marker)])
+		}
+		// Must be followed by "\n\n" (or be at end of file)
+		after := idx + len(marker)
+		if after+2 <= len(resultStr) && resultStr[after:after+2] != "\n\n" {
+			t.Errorf("marker %q is not followed by a blank line; context: %q", marker, resultStr[idx:min(len(resultStr), after+20)])
+		}
+	}
+}
+
 func TestInsertShortMarkers_FileNotFound(t *testing.T) {
 	err := InsertShortMarkers("/nonexistent/path/manuscript.md", []storage.Short{
 		{ID: "short1", Text: "some text"},

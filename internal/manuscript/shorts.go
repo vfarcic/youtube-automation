@@ -60,19 +60,23 @@ func InsertShortMarkers(manuscriptPath string, shorts []storage.Short) error {
 			continue
 		}
 
-		// Create start marker (inserted before the text)
+		// Create start marker (inserted before the text). Pad the outside
+		// edge with newlines if the preceding content is not already a
+		// blank-line boundary, so the marker always sits on its own line.
 		startMarker := fmt.Sprintf(StartMarkerFormat, short.ID)
 		insertions = append(insertions, insertion{
 			position: start,
-			text:     startMarker + "\n\n",
+			text:     leadingPadding(manuscriptText, start) + startMarker + "\n\n",
 			isStart:  true,
 		})
 
-		// Create end marker (inserted after the text)
+		// Create end marker (inserted after the text). Pad the outside edge
+		// with newlines if the following content is not already a
+		// blank-line boundary.
 		endMarker := fmt.Sprintf(EndMarkerFormat, short.ID)
 		insertions = append(insertions, insertion{
 			position: end,
-			text:     "\n\n" + endMarker,
+			text:     "\n\n" + endMarker + trailingPadding(manuscriptText, end),
 			isStart:  false,
 		})
 	}
@@ -107,6 +111,48 @@ func InsertShortMarkers(manuscriptPath string, shorts []storage.Short) error {
 	}
 
 	return nil
+}
+
+// leadingPadding returns the newlines needed before an inserted marker so
+// that it is preceded by a blank line (or the start of the file). It looks
+// at the run of '\n' characters immediately before position and adds
+// whatever is missing to reach two.
+func leadingPadding(content string, position int) string {
+	if position == 0 {
+		return ""
+	}
+	newlines := 0
+	for i := position - 1; i >= 0 && content[i] == '\n' && newlines < 2; i-- {
+		newlines++
+	}
+	switch newlines {
+	case 0:
+		return "\n\n"
+	case 1:
+		return "\n"
+	default:
+		return ""
+	}
+}
+
+// trailingPadding returns the newlines needed after an inserted marker so
+// that it is followed by a blank line (or the end of the file).
+func trailingPadding(content string, position int) string {
+	if position >= len(content) {
+		return ""
+	}
+	newlines := 0
+	for i := position; i < len(content) && content[i] == '\n' && newlines < 2; i++ {
+		newlines++
+	}
+	switch newlines {
+	case 0:
+		return "\n\n"
+	case 1:
+		return "\n"
+	default:
+		return ""
+	}
 }
 
 // findTextPosition finds the position of text within content.
