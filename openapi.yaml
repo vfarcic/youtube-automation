@@ -1361,6 +1361,13 @@ components:
         syncWarning:
           type: string
           description: Warning message if git sync failed or is not configured
+        pullWarning:
+          type: string
+          description: |
+            Warning message if the throttled `git pull --rebase` triggered when
+            opening the video detail page failed. The local copy is still
+            returned; the field is omitted on success or when git sync is not
+            configured.
       additionalProperties: true
 
     VideoListItem:

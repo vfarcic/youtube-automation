@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -237,4 +238,144 @@ func TestNewSyncManager(t *testing.T) {
 	assert.Equal(t, "./tmp", sm.dataDir)
 	assert.Equal(t, "tok", sm.token)
 	assert.IsType(t, &DefaultExecutor{}, sm.executor)
+}
+
+// newPullTestSyncManager builds a SyncManager with a controllable clock for
+// PullIfStale tests.
+func newPullTestSyncManager(t *testing.T, mock *mockExecutor, clock *time.Time) *SyncManager {
+	t.Helper()
+	sm := NewSyncManagerWithExecutor(
+		"https://github.com/user/repo.git", "main", t.TempDir(), "tok123", mock,
+	)
+	sm.now = func() time.Time { return *clock }
+	return sm
+}
+
+func TestPullIfStale_PullsWhenCleanAndNotAhead(t *testing.T) {
+	mock := newMockExecutor()
+	mock.setResult("git status", []byte(""), nil)
+	mock.setResult("git rev-list", []byte("0\n"), nil)
+
+	now := time.Date(2026, 4, 15, 12, 0, 0, 0, time.UTC)
+	sm := newPullTestSyncManager(t, mock, &now)
+
+	err := sm.PullIfStale(10 * time.Second)
+	require.NoError(t, err)
+
+	// Verify command sequence: status, rev-list, pull
+	require.Len(t, mock.calls, 3)
+	assert.Equal(t, "status", mock.calls[0].Args[0])
+	assert.Equal(t, "rev-list", mock.calls[1].Args[0])
+	assert.Equal(t, "pull", mock.calls[2].Args[0])
+	assert.Contains(t, mock.calls[2].Args, "--rebase")
+	assert.Contains(t, mock.calls[2].Args, "main")
+}
+
+func TestPullIfStale_SkipsWhenWithinThrottleWindow(t *testing.T) {
+	mock := newMockExecutor()
+	mock.setResult("git status", []byte(""), nil)
+	mock.setResult("git rev-list", []byte("0\n"), nil)
+
+	now := time.Date(2026, 4, 15, 12, 0, 0, 0, time.UTC)
+	sm := newPullTestSyncManager(t, mock, &now)
+
+	// First call: pulls and updates lastAttempt
+	require.NoError(t, sm.PullIfStale(10*time.Second))
+	require.Len(t, mock.calls, 3)
+
+	// Advance clock by less than the throttle window
+	now = now.Add(5 * time.Second)
+	require.NoError(t, sm.PullIfStale(10*time.Second))
+
+	// No new git commands should have run
+	assert.Len(t, mock.calls, 3, "second call within throttle window should be a no-op")
+}
+
+func TestPullIfStale_PullsAgainAfterThrottleWindow(t *testing.T) {
+	mock := newMockExecutor()
+	mock.setResult("git status", []byte(""), nil)
+	mock.setResult("git rev-list", []byte("0\n"), nil)
+
+	now := time.Date(2026, 4, 15, 12, 0, 0, 0, time.UTC)
+	sm := newPullTestSyncManager(t, mock, &now)
+
+	require.NoError(t, sm.PullIfStale(10*time.Second))
+	require.Len(t, mock.calls, 3)
+
+	// Advance past the throttle window
+	now = now.Add(11 * time.Second)
+	require.NoError(t, sm.PullIfStale(10*time.Second))
+
+	// Should have run status, rev-list, pull a second time
+	assert.Len(t, mock.calls, 6)
+}
+
+func TestPullIfStale_SkipsWhenWorkingTreeDirty(t *testing.T) {
+	mock := newMockExecutor()
+	mock.setResult("git status", []byte("M index.yaml\n"), nil)
+
+	now := time.Date(2026, 4, 15, 12, 0, 0, 0, time.UTC)
+	sm := newPullTestSyncManager(t, mock, &now)
+
+	err := sm.PullIfStale(10 * time.Second)
+	require.NoError(t, err, "dirty tree should be a silent skip, not an error")
+
+	// Should only call status — no rev-list, no pull
+	require.Len(t, mock.calls, 1)
+	assert.Equal(t, "status", mock.calls[0].Args[0])
+
+	// Throttle should still be armed so we don't hammer git status on every read
+	now = now.Add(5 * time.Second)
+	require.NoError(t, sm.PullIfStale(10*time.Second))
+	assert.Len(t, mock.calls, 1, "skip should still update lastAttempt to throttle subsequent reads")
+}
+
+func TestPullIfStale_SkipsWhenAheadOfOrigin(t *testing.T) {
+	mock := newMockExecutor()
+	mock.setResult("git status", []byte(""), nil)
+	mock.setResult("git rev-list", []byte("2\n"), nil)
+
+	now := time.Date(2026, 4, 15, 12, 0, 0, 0, time.UTC)
+	sm := newPullTestSyncManager(t, mock, &now)
+
+	err := sm.PullIfStale(10 * time.Second)
+	require.NoError(t, err, "unpushed commits should be a silent skip")
+
+	// status and rev-list ran; pull did not
+	require.Len(t, mock.calls, 2)
+	assert.Equal(t, "status", mock.calls[0].Args[0])
+	assert.Equal(t, "rev-list", mock.calls[1].Args[0])
+}
+
+func TestPullIfStale_ReturnsErrorOnPullFailure(t *testing.T) {
+	mock := newMockExecutor()
+	mock.setResult("git status", []byte(""), nil)
+	mock.setResult("git rev-list", []byte("0\n"), nil)
+	mock.setResult("git pull", []byte("fatal: unable to access"), fmt.Errorf("exit status 128"))
+
+	now := time.Date(2026, 4, 15, 12, 0, 0, 0, time.UTC)
+	sm := newPullTestSyncManager(t, mock, &now)
+
+	err := sm.PullIfStale(10 * time.Second)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "git pull failed")
+	// Token must not leak into surfaced error
+	assert.NotContains(t, err.Error(), "tok123")
+
+	// Even on failure, throttle must engage to avoid hammering on every read
+	now = now.Add(5 * time.Second)
+	require.NoError(t, sm.PullIfStale(10*time.Second))
+	assert.Len(t, mock.calls, 3, "failed pull must still arm the throttle")
+}
+
+func TestPullIfStale_ReturnsErrorOnStatusFailure(t *testing.T) {
+	mock := newMockExecutor()
+	mock.setResult("git status", []byte("fatal: not a git repository"), fmt.Errorf("exit status 128"))
+
+	now := time.Date(2026, 4, 15, 12, 0, 0, 0, time.UTC)
+	sm := newPullTestSyncManager(t, mock, &now)
+
+	err := sm.PullIfStale(10 * time.Second)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "git status failed")
 }

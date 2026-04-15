@@ -82,6 +82,15 @@ export function VideoDetail() {
         {video.name}
       </h2>
 
+      {video.pullWarning && (
+        <p
+          role="alert"
+          className="mb-4 px-3 py-2 text-sm text-yellow-300 bg-yellow-900/30 border border-yellow-800 rounded"
+        >
+          Could not refresh from remote — showing local copy. {video.pullWarning}
+        </p>
+      )}
+
       {progress && (
         <div className="mb-6">
           <h3 className="text-sm font-semibold text-gray-400 mb-2">

@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"time"
 
 	"devopstoolkit/youtube-automation/internal/ai"
 	"devopstoolkit/youtube-automation/internal/configuration"
@@ -48,4 +49,5 @@ func (d *DefaultAnalyzeService) GenerateTimingRecommendations(ctx context.Contex
 // GitSyncService abstracts git commit+push for testability.
 type GitSyncService interface {
 	CommitAndPush(message string) error
+	PullIfStale(maxAge time.Duration) error
 }

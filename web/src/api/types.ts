@@ -119,6 +119,7 @@ export interface VideoResponse {
   repo: string;
   shorts: Short[];
   syncWarning?: string;
+  pullWarning?: string;
 }
 
 export interface AspectProgressInfo {

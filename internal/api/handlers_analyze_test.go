@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"devopstoolkit/youtube-automation/internal/ai"
 	"devopstoolkit/youtube-automation/internal/configuration"
@@ -64,15 +65,24 @@ func (m *mockAnalyzeService) GenerateTimingRecommendations(ctx context.Context, 
 
 // mockGitSync is a configurable mock for GitSyncService.
 type mockGitSync struct {
-	called  bool
-	message string
-	err     error
+	called      bool
+	message     string
+	err         error
+	pullCalled  bool
+	pullMaxAge  time.Duration
+	pullErr     error
 }
 
 func (m *mockGitSync) CommitAndPush(message string) error {
 	m.called = true
 	m.message = message
 	return m.err
+}
+
+func (m *mockGitSync) PullIfStale(maxAge time.Duration) error {
+	m.pullCalled = true
+	m.pullMaxAge = maxAge
+	return m.pullErr
 }
 
 func setupAnalyzeTestEnv(t *testing.T, analyzeSvc AnalyzeService) *testEnv {

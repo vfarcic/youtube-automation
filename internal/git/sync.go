@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"strings"
 	"sync"
+	"time"
 )
 
 // CommandExecutor abstracts command execution for testability
@@ -26,12 +27,14 @@ func (e *DefaultExecutor) Run(dir string, name string, args ...string) ([]byte, 
 
 // SyncManager handles git clone, pull, commit, and push operations
 type SyncManager struct {
-	repoURL  string
-	branch   string
-	dataDir  string
-	token    string
-	mu       sync.Mutex
-	executor CommandExecutor
+	repoURL      string
+	branch       string
+	dataDir      string
+	token        string
+	mu           sync.Mutex
+	executor     CommandExecutor
+	now          func() time.Time
+	lastAttempt  time.Time
 }
 
 // NewSyncManager creates a new SyncManager with the default command executor
@@ -42,6 +45,7 @@ func NewSyncManager(repoURL, branch, dataDir, token string) *SyncManager {
 		dataDir:  dataDir,
 		token:    token,
 		executor: &DefaultExecutor{},
+		now:      time.Now,
 	}
 }
 
@@ -53,6 +57,7 @@ func NewSyncManagerWithExecutor(repoURL, branch, dataDir, token string, executor
 		dataDir:  dataDir,
 		token:    token,
 		executor: executor,
+		now:      time.Now,
 	}
 }
 
@@ -118,6 +123,58 @@ func (s *SyncManager) CommitAndPush(message string) error {
 		return fmt.Errorf("git push failed: %s: %w", SanitizeOutput(output, s.token), err)
 	}
 
+	return nil
+}
+
+// PullIfStale runs `git pull --rebase` if at least maxAge has elapsed since the
+// last attempt. It is safe for concurrent reads and never races with
+// CommitAndPush (they share the same mutex).
+//
+// The pull is skipped (without error) when:
+//   - The previous attempt was less than maxAge ago.
+//   - The working tree has uncommitted changes.
+//   - There are local commits that have not been pushed to origin yet.
+//
+// Skips return nil because they are expected steady-state conditions, not
+// failures. Actual git failures (network, conflict, etc.) are returned so
+// callers can surface them to the user.
+func (s *SyncManager) PullIfStale(maxAge time.Duration) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if !s.lastAttempt.IsZero() && s.now().Sub(s.lastAttempt) < maxAge {
+		return nil
+	}
+
+	// Skip if working tree is dirty — pull --rebase could fail or surprise the user.
+	statusOutput, err := s.executor.Run(s.dataDir, "git", "status", "--porcelain")
+	if err != nil {
+		s.lastAttempt = s.now()
+		return fmt.Errorf("git status failed: %s: %w", SanitizeOutput(statusOutput, s.token), err)
+	}
+	if strings.TrimSpace(string(statusOutput)) != "" {
+		s.lastAttempt = s.now()
+		return nil
+	}
+
+	// Skip if local has unpushed commits — let CommitAndPush handle it.
+	aheadOutput, err := s.executor.Run(s.dataDir, "git", "rev-list", "--count", "@{u}..HEAD")
+	if err != nil {
+		s.lastAttempt = s.now()
+		return fmt.Errorf("git rev-list failed: %s: %w", SanitizeOutput(aheadOutput, s.token), err)
+	}
+	if strings.TrimSpace(string(aheadOutput)) != "0" {
+		s.lastAttempt = s.now()
+		return nil
+	}
+
+	// Always update lastAttempt so a transient failure does not get retried on
+	// every request within the throttle window.
+	s.lastAttempt = s.now()
+	output, err := s.executor.Run(s.dataDir, "git", "pull", "--rebase", "origin", s.branch)
+	if err != nil {
+		return fmt.Errorf("git pull failed: %s: %w", SanitizeOutput(output, s.token), err)
+	}
 	return nil
 }
 

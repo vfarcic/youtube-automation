@@ -3,7 +3,10 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, it, expect } from 'vitest';
+import { http, HttpResponse } from 'msw';
 import { VideoDetail } from '../pages/VideoDetail';
+import { server } from './server';
+import { mockVideo } from './handlers';
 
 function renderWithRoute() {
   const qc = new QueryClient({
@@ -100,5 +103,27 @@ describe('VideoDetail', () => {
     await waitFor(() => {
       expect(screen.getByText('Phase Page')).toBeInTheDocument();
     });
+  });
+
+  it('shows pull warning banner when API returns pullWarning', async () => {
+    server.use(
+      http.get('/api/videos/:videoName', () =>
+        HttpResponse.json({
+          ...mockVideo,
+          pullWarning: 'git pull failed: network unreachable',
+        }),
+      ),
+    );
+    renderWithRoute();
+    await screen.findByText('test-video');
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(/Could not refresh from remote/i);
+    expect(alert).toHaveTextContent(/network unreachable/i);
+  });
+
+  it('does not show pull warning banner when API omits pullWarning', async () => {
+    renderWithRoute();
+    await screen.findByText('test-video');
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 });

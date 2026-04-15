@@ -32,6 +32,7 @@ type VideoResponse struct {
 	Publish     ProgressInfo `json:"publish"`
 	PostPublish ProgressInfo `json:"postPublish"`
 	SyncWarning string       `json:"syncWarning,omitempty"`
+	PullWarning string       `json:"pullWarning,omitempty"`
 }
 
 // VideoListItem is a lightweight representation of a video.
@@ -198,7 +199,17 @@ func (s *Server) handleSearchVideos(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, items)
 }
 
+// pullOnReadThrottle is the minimum interval between pull-on-read attempts
+// when loading a video detail page. Multiple detail loads within this window
+// reuse the local working copy without hitting the remote.
+const pullOnReadThrottle = 10 * time.Second
+
 // handleGetVideo returns a single video by name and category.
+//
+// Before reading from disk, the handler attempts a throttled `git pull --rebase`
+// so the user sees changes pushed externally to the data repo. Pull failures
+// are surfaced via the response's pullWarning field — the local copy is still
+// returned so the page remains usable.
 func (s *Server) handleGetVideo(w http.ResponseWriter, r *http.Request) {
 	videoName := chi.URLParam(r, "videoName")
 	category := r.URL.Query().Get("category")
@@ -207,13 +218,22 @@ func (s *Server) handleGetVideo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var pullWarning string
+	if s.gitSync != nil {
+		if err := s.gitSync.PullIfStale(pullOnReadThrottle); err != nil {
+			pullWarning = "git pull failed: " + err.Error()
+		}
+	}
+
 	v, err := s.videoService.GetVideo(videoName, category)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "video not found", err.Error())
 		return
 	}
 
-	respondJSON(w, http.StatusOK, s.enrichVideo(v))
+	resp := s.enrichVideo(v)
+	resp.PullWarning = pullWarning
+	respondJSON(w, http.StatusOK, resp)
 }
 
 // handleCreateVideo creates a new video.

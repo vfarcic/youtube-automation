@@ -3,8 +3,10 @@ package api
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"devopstoolkit/youtube-automation/internal/storage"
@@ -130,6 +132,80 @@ func TestHandleGetVideo(t *testing.T) {
 
 		if w.Code != http.StatusNotFound {
 			t.Errorf("status = %d, want %d", w.Code, http.StatusNotFound)
+		}
+	})
+
+	t.Run("triggers throttled pull when git sync configured", func(t *testing.T) {
+		env := setupTestEnv(t)
+		seedVideo(t, env, storage.Video{Name: "test-video", Category: "devops"})
+
+		gs := &mockGitSync{}
+		env.server.gitSync = gs
+
+		req := httptest.NewRequest(http.MethodGet, "/api/videos/test-video?category=devops", nil)
+		w := httptest.NewRecorder()
+		env.server.Router().ServeHTTP(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("status = %d, want %d; body: %s", w.Code, http.StatusOK, w.Body.String())
+		}
+		if !gs.pullCalled {
+			t.Error("expected PullIfStale to be called when git sync is configured")
+		}
+		if gs.pullMaxAge != pullOnReadThrottle {
+			t.Errorf("PullIfStale maxAge = %v, want %v", gs.pullMaxAge, pullOnReadThrottle)
+		}
+
+		var resp VideoResponse
+		json.NewDecoder(w.Body).Decode(&resp)
+		if resp.PullWarning != "" {
+			t.Errorf("pullWarning = %q, want empty on success", resp.PullWarning)
+		}
+	})
+
+	t.Run("surfaces pullWarning when pull fails but still returns local video", func(t *testing.T) {
+		env := setupTestEnv(t)
+		seedVideo(t, env, storage.Video{Name: "test-video", Category: "devops"})
+
+		env.server.gitSync = &mockGitSync{pullErr: fmt.Errorf("network unreachable")}
+
+		req := httptest.NewRequest(http.MethodGet, "/api/videos/test-video?category=devops", nil)
+		w := httptest.NewRecorder()
+		env.server.Router().ServeHTTP(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("status = %d, want %d (pull failure must not block read); body: %s", w.Code, http.StatusOK, w.Body.String())
+		}
+
+		var resp VideoResponse
+		json.NewDecoder(w.Body).Decode(&resp)
+		if resp.Name != "test-video" {
+			t.Errorf("name = %q, want %q", resp.Name, "test-video")
+		}
+		if resp.PullWarning == "" {
+			t.Error("expected pullWarning to be set when pull fails")
+		}
+		if !strings.Contains(resp.PullWarning, "network unreachable") {
+			t.Errorf("pullWarning = %q, expected to contain underlying error", resp.PullWarning)
+		}
+	})
+
+	t.Run("no pull attempted when git sync not configured", func(t *testing.T) {
+		env := setupTestEnv(t)
+		seedVideo(t, env, storage.Video{Name: "test-video", Category: "devops"})
+
+		// gitSync remains nil
+		req := httptest.NewRequest(http.MethodGet, "/api/videos/test-video?category=devops", nil)
+		w := httptest.NewRecorder()
+		env.server.Router().ServeHTTP(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("status = %d, want %d", w.Code, http.StatusOK)
+		}
+		var resp VideoResponse
+		json.NewDecoder(w.Body).Decode(&resp)
+		if resp.PullWarning != "" {
+			t.Errorf("pullWarning = %q, want empty when git sync not configured", resp.PullWarning)
 		}
 	})
 }
