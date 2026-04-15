@@ -416,6 +416,7 @@ func TestPostViaPR_Success(t *testing.T) {
 	assert.Equal(t, "commit", mock.calls[5].Args[0])
 	assert.Contains(t, mock.calls[5].Args, "Add post: My Test Title")
 	assert.Equal(t, "push", mock.calls[6].Args[0])
+	assert.Contains(t, mock.calls[6].Args, "--force-with-lease")
 }
 
 func TestPostViaPR_CloneFailure(t *testing.T) {
