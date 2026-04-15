@@ -107,6 +107,7 @@ func SanitizeTitle(title string) string {
 	postDir = strings.ReplaceAll(postDir, "'", "")
 	postDir = strings.ReplaceAll(postDir, "!", "")
 	postDir = strings.ReplaceAll(postDir, "?", "")
+	postDir = strings.ReplaceAll(postDir, ".", "")
 	// Convert hyphens and slashes to spaces so Fields() collapses them with surrounding whitespace
 	postDir = strings.ReplaceAll(postDir, "-", " ")
 	postDir = strings.ReplaceAll(postDir, "/", " ")
@@ -281,9 +282,10 @@ func (r *Hugo) postViaPR(video *storage.Video, title, post string, opts *HugoPos
 		return "", fmt.Errorf("git commit failed: %s: %w", string(output), err)
 	}
 
-	// Push (force-with-lease so retries can update an existing remote branch
-	// from a previous attempt, while still refusing to overwrite unexpected work)
-	if output, err := r.executor.Run(tmpDir, "git", "push", "--force-with-lease", authURL, branchName); err != nil {
+	// Push (force so retries can update an existing remote branch from a
+	// previous attempt; --force-with-lease can't be used because we shallow
+	// clone only the base branch and have no local ref for branchName)
+	if output, err := r.executor.Run(tmpDir, "git", "push", "--force", authURL, branchName); err != nil {
 		return "", fmt.Errorf("git push failed: %s: %w", gitpkg.SanitizeOutput(output, r.token), err)
 	}
 

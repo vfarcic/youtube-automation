@@ -347,6 +347,7 @@ func TestSanitizeTitle(t *testing.T) {
 		{"title with multiple dashes", "Part 1 -- The Beginning", "part-1-the-beginning"},
 		{"title with special characters", "What is Go? A Test & Post!", "what-is-go-a-test-post"},
 		{"title with parentheses and colons", "Kubernetes (K8s): The Basics", "kubernetes-k8s-the-basics"},
+		{"title with sentence-ending period", "AI won't kill your job. Your customers using AI will", "ai-wont-kill-your-job-your-customers-using-ai-will"},
 	}
 
 	for _, tt := range tests {
@@ -416,7 +417,7 @@ func TestPostViaPR_Success(t *testing.T) {
 	assert.Equal(t, "commit", mock.calls[5].Args[0])
 	assert.Contains(t, mock.calls[5].Args, "Add post: My Test Title")
 	assert.Equal(t, "push", mock.calls[6].Args[0])
-	assert.Contains(t, mock.calls[6].Args, "--force-with-lease")
+	assert.Contains(t, mock.calls[6].Args, "--force")
 }
 
 func TestPostViaPR_CloneFailure(t *testing.T) {
