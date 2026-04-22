@@ -2,6 +2,7 @@ package publishing
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -279,6 +280,7 @@ func sanitizeYouTubeTags(raw string) []string {
 }
 
 // DeleteVideo deletes a video from YouTube by its video ID.
+// If the video is already gone (404), it is treated as success.
 func DeleteVideo(videoID string) error {
 	if videoID == "" {
 		return fmt.Errorf("video ID cannot be empty")
@@ -293,6 +295,11 @@ func DeleteVideo(videoID string) error {
 		return fmt.Errorf("error creating YouTube client: %w", err)
 	}
 	if err := service.Videos.Delete(videoID).Do(); err != nil {
+		var apiErr *googleapi.Error
+		if ok := errors.As(err, &apiErr); ok && apiErr.Code == 404 {
+			fmt.Printf("YouTube video %s already deleted (404), proceeding\n", videoID)
+			return nil
+		}
 		return fmt.Errorf("error deleting YouTube video %s: %w", videoID, err)
 	}
 	fmt.Printf("YouTube video %s deleted successfully\n", videoID)
