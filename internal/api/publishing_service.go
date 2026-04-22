@@ -21,6 +21,7 @@ type PublishingService interface {
 	PostBlueSky(ctx context.Context, text, videoID, thumbnailPath string) error
 	PostSlack(ctx context.Context, video *storage.Video, videoPath string) error
 	UpdateAMAVideo(ctx context.Context, videoID, title, description, tags, timecodes string) error
+	DeleteVideo(ctx context.Context, videoID string) error
 }
 
 // DefaultPublishingService delegates to existing publishing functions.
@@ -79,4 +80,8 @@ func (d *DefaultPublishingService) PostSlack(_ context.Context, video *storage.V
 
 func (d *DefaultPublishingService) UpdateAMAVideo(_ context.Context, videoID, title, description, tags, timecodes string) error {
 	return publishing.UpdateAMAVideo(videoID, title, description, tags, timecodes)
+}
+
+func (d *DefaultPublishingService) DeleteVideo(_ context.Context, videoID string) error {
+	return publishing.DeleteVideo(videoID)
 }

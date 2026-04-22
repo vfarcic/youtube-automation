@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { usePublishYouTube, usePublishHugo } from '../../api/hooks';
+import { usePublishYouTube, usePublishHugo, useReuploadYouTube } from '../../api/hooks';
 import type { VideoResponse } from '../../api/types';
 import { FieldLabel } from './FieldLabel';
 
@@ -26,12 +26,15 @@ export function PublishButton({ fieldName, value, category, videoName, video }: 
   const config = PUBLISH_FIELDS[fieldName];
   const publishYouTube = usePublishYouTube();
   const publishHugo = usePublishHugo();
+  const reuploadYouTube = useReuploadYouTube();
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
+  const [confirmReupload, setConfirmReupload] = useState(false);
 
   const mutation = fieldName === 'videoId' ? publishYouTube : publishHugo;
   const isLoading = mutation.isPending;
+  const isReuploading = reuploadYouTube.isPending;
 
   const handleClick = () => {
     setError(null);
@@ -53,6 +56,25 @@ export function PublishButton({ fieldName, value, category, videoName, video }: 
     );
   };
 
+  const handleReupload = () => {
+    setError(null);
+    setResult(null);
+    setWarning(null);
+    setConfirmReupload(false);
+    reuploadYouTube.mutate(
+      { name: videoName, category },
+      {
+        onError: (err) => setError(err.message),
+        onSuccess: (data) => {
+          setResult(data.videoId);
+          if (data.thumbnailWarning) {
+            setWarning(data.thumbnailWarning);
+          }
+        },
+      },
+    );
+  };
+
   const hasPrerequisites = fieldName === 'videoId'
     ? Boolean(video.uploadVideo || video.videoDriveFileId || video.videoFile)
     : Boolean(video.videoId);
@@ -64,9 +86,42 @@ export function PublishButton({ fieldName, value, category, videoName, video }: 
       <FieldLabel name={config.label} helpText="" complete={Boolean(displayValue)} />
       <div className="flex items-center gap-2 py-1">
         {displayValue ? (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-green-400 bg-green-900/30 border border-green-700 rounded">
-            {config.doneLabel}: <code className="text-xs">{displayValue}</code>
-          </span>
+          <>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-green-400 bg-green-900/30 border border-green-700 rounded">
+              {config.doneLabel}: <code className="text-xs">{displayValue}</code>
+            </span>
+            {fieldName === 'videoId' && hasPrerequisites && !confirmReupload && (
+              <button
+                type="button"
+                onClick={() => setConfirmReupload(true)}
+                disabled={isReuploading}
+                className="px-3 py-1.5 text-sm font-medium text-orange-400 border border-orange-700 rounded hover:bg-orange-900/30 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isReuploading ? 'Re-uploading...' : 'Re-upload'}
+              </button>
+            )}
+            {confirmReupload && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-orange-400">This will delete the YouTube video and upload again. Continue?</span>
+                <button
+                  type="button"
+                  onClick={handleReupload}
+                  disabled={isReuploading}
+                  className="px-3 py-1.5 text-sm font-medium bg-orange-600 text-white rounded hover:bg-orange-700 disabled:opacity-50"
+                >
+                  {isReuploading ? 'Re-uploading...' : 'Confirm'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmReupload(false)}
+                  disabled={isReuploading}
+                  className="px-3 py-1.5 text-sm font-medium text-gray-400 border border-gray-600 rounded hover:bg-gray-800"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+          </>
         ) : (
           <button
             type="button"

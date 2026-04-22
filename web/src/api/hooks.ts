@@ -355,6 +355,18 @@ export function usePublishYouTube() {
   });
 }
 
+export function useReuploadYouTube() {
+  const qc = useQueryClient();
+  return useMutation<PublishYouTubeResponse, Error, { name: string; category: string }>({
+    mutationFn: ({ name, category }) =>
+      post<PublishYouTubeResponse>(
+        `/api/publish/youtube/${encodeURIComponent(name)}/reupload?category=${encodeURIComponent(category)}`,
+        {},
+      ),
+    onSuccess: (_data, { name, category }) => invalidateVideoQueries(qc, name, category),
+  });
+}
+
 export function usePublishThumbnail() {
   const qc = useQueryClient();
   return useMutation<PublishThumbnailResponse, Error, { name: string; category: string }>({

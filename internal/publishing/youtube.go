@@ -278,6 +278,27 @@ func sanitizeYouTubeTags(raw string) []string {
 	return tags
 }
 
+// DeleteVideo deletes a video from YouTube by its video ID.
+func DeleteVideo(videoID string) error {
+	if videoID == "" {
+		return fmt.Errorf("video ID cannot be empty")
+	}
+	client, err := getClient(context.Background())
+	if err != nil {
+		return fmt.Errorf("OAuth failed: %w", err)
+	}
+	ctx := context.Background()
+	service, err := youtube.NewService(ctx, option.WithHTTPClient(client))
+	if err != nil {
+		return fmt.Errorf("error creating YouTube client: %w", err)
+	}
+	if err := service.Videos.Delete(videoID).Do(); err != nil {
+		return fmt.Errorf("error deleting YouTube video %s: %w", videoID, err)
+	}
+	fmt.Printf("YouTube video %s deleted successfully\n", videoID)
+	return nil
+}
+
 func GetYouTubeURL(videoId string) string {
 	return fmt.Sprintf("https://youtu.be/%s", videoId)
 }

@@ -909,6 +909,16 @@ func TestSanitizeYouTubeTags(t *testing.T) {
 	})
 }
 
+func TestDeleteVideo_EmptyID(t *testing.T) {
+	err := DeleteVideo("")
+	if err == nil {
+		t.Fatal("expected error for empty video ID, got nil")
+	}
+	if !strings.Contains(err.Error(), "video ID cannot be empty") {
+		t.Errorf("error = %q, want it to contain %q", err.Error(), "video ID cannot be empty")
+	}
+}
+
 func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }

@@ -141,6 +141,7 @@ func (s *Server) setupRoutes() {
 		// Publishing (YouTube upload, Hugo, transcript, metadata)
 		r.Route("/publish", func(r chi.Router) {
 			r.Post("/youtube/{videoName}", s.handlePublishYouTube)
+			r.Post("/youtube/{videoName}/reupload", s.handleReuploadYouTube)
 			r.Post("/youtube/{videoName}/thumbnail", s.handlePublishThumbnail)
 			r.Post("/youtube/{videoName}/shorts/{shortId}", s.handlePublishShort)
 			r.Post("/hugo/{videoName}", s.handlePublishHugo)

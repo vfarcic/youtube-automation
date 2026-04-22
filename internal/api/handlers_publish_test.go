@@ -44,6 +44,8 @@ type mockPublishingService struct {
 	lastAMADescription string
 	lastAMATags        string
 	lastAMATimecodes   string
+	deleteVideoErr     error
+	lastDeleteVideoID  string
 }
 
 func (m *mockPublishingService) UploadVideo(_ context.Context, _ *storage.Video) (string, error) {
@@ -79,6 +81,10 @@ func (m *mockPublishingService) UpdateAMAVideo(_ context.Context, videoID, title
 	m.lastAMATags = tags
 	m.lastAMATimecodes = timecodes
 	return m.updateAMAErr
+}
+func (m *mockPublishingService) DeleteVideo(_ context.Context, videoID string) error {
+	m.lastDeleteVideoID = videoID
+	return m.deleteVideoErr
 }
 
 func setupPublishTestEnv(t *testing.T, mock *mockPublishingService) *testEnv {
@@ -258,6 +264,213 @@ func TestHandlePublishYouTube_NoThumbnailReturnsWarning(t *testing.T) {
 	}
 	if !strings.Contains(resp.ThumbnailWarning, "No thumbnail found") {
 		t.Errorf("thumbnailWarning = %q, want it to contain 'No thumbnail found'", resp.ThumbnailWarning)
+	}
+}
+
+// --- YouTube Re-upload Tests ---
+
+func TestHandleReuploadYouTube(t *testing.T) {
+	tests := []struct {
+		name       string
+		videoName  string
+		category   string
+		mock       *mockPublishingService
+		seedVideo  bool
+		seedVideoId string
+		wantStatus int
+	}{
+		{
+			name:       "not configured",
+			videoName:  "test-video",
+			category:   "devops",
+			mock:       nil,
+			seedVideo:  false,
+			wantStatus: http.StatusNotImplemented,
+		},
+		{
+			name:       "missing category",
+			videoName:  "test-video",
+			category:   "",
+			mock:       &mockPublishingService{uploadVideoID: "yt-new"},
+			seedVideo:  false,
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name:       "video not found",
+			videoName:  "nonexistent",
+			category:   "devops",
+			mock:       &mockPublishingService{uploadVideoID: "yt-new"},
+			seedVideo:  false,
+			wantStatus: http.StatusNotFound,
+		},
+		{
+			name:        "video has no YouTube ID",
+			videoName:   "test-video",
+			category:    "devops",
+			mock:        &mockPublishingService{uploadVideoID: "yt-new"},
+			seedVideo:   true,
+			seedVideoId: "",
+			wantStatus:  http.StatusBadRequest,
+		},
+		{
+			name:        "success",
+			videoName:   "test-video",
+			category:    "devops",
+			mock:        &mockPublishingService{uploadVideoID: "yt-new-id"},
+			seedVideo:   true,
+			seedVideoId: "yt-old-id",
+			wantStatus:  http.StatusOK,
+		},
+		{
+			name:        "delete error",
+			videoName:   "test-video",
+			category:    "devops",
+			mock:        &mockPublishingService{deleteVideoErr: fmt.Errorf("YouTube API error")},
+			seedVideo:   true,
+			seedVideoId: "yt-old-id",
+			wantStatus:  http.StatusInternalServerError,
+		},
+		{
+			name:        "upload error after successful delete",
+			videoName:   "test-video",
+			category:    "devops",
+			mock:        &mockPublishingService{uploadVideoErr: fmt.Errorf("upload failed")},
+			seedVideo:   true,
+			seedVideoId: "yt-old-id",
+			wantStatus:  http.StatusInternalServerError,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var env *testEnv
+			if tt.mock != nil {
+				env = setupPublishTestEnv(t, tt.mock)
+			} else {
+				env = setupTestEnv(t)
+			}
+			if tt.seedVideo {
+				v := storage.Video{
+					Name:        "test-video",
+					Category:    "devops",
+					Titles:      []storage.TitleVariant{{Index: 1, Text: "Test Video Title"}},
+					VideoId:     tt.seedVideoId,
+					Gist:        "manuscript/devops/test-video.md",
+					Description: "A test video",
+					UploadVideo: "/tmp/video.mp4",
+					Thumbnail:   "/tmp/thumb.png",
+				}
+				seedVideo(t, env, v)
+			}
+
+			url := fmt.Sprintf("/api/publish/youtube/%s/reupload", tt.videoName)
+			if tt.category != "" {
+				url += "?category=" + tt.category
+			}
+			req := httptest.NewRequest(http.MethodPost, url, nil)
+			rr := httptest.NewRecorder()
+			env.server.Router().ServeHTTP(rr, req)
+
+			if rr.Code != tt.wantStatus {
+				t.Errorf("status = %d, want %d; body: %s", rr.Code, tt.wantStatus, rr.Body.String())
+			}
+			if tt.wantStatus == http.StatusOK {
+				var resp PublishYouTubeResponse
+				json.NewDecoder(rr.Body).Decode(&resp)
+				if resp.VideoID != "yt-new-id" {
+					t.Errorf("videoId = %q, want %q", resp.VideoID, "yt-new-id")
+				}
+			}
+		})
+	}
+}
+
+func TestHandleReuploadYouTube_DeleteCalledWithCorrectID(t *testing.T) {
+	mock := &mockPublishingService{uploadVideoID: "yt-new-id"}
+	env := setupPublishTestEnv(t, mock)
+	seedVideo(t, env, storage.Video{
+		Name:        "test-video",
+		Category:    "devops",
+		Titles:      []storage.TitleVariant{{Index: 1, Text: "Test Video Title"}},
+		VideoId:     "yt-old-id",
+		Description: "A test video",
+		UploadVideo: "/tmp/video.mp4",
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/api/publish/youtube/test-video/reupload?category=devops", nil)
+	rr := httptest.NewRecorder()
+	env.server.Router().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d; body: %s", rr.Code, http.StatusOK, rr.Body.String())
+	}
+	if mock.lastDeleteVideoID != "yt-old-id" {
+		t.Errorf("DeleteVideo called with %q, want %q", mock.lastDeleteVideoID, "yt-old-id")
+	}
+}
+
+func TestHandleReuploadYouTube_UploadFailClearsVideoId(t *testing.T) {
+	mock := &mockPublishingService{uploadVideoErr: fmt.Errorf("upload failed")}
+	env := setupPublishTestEnv(t, mock)
+	seedVideo(t, env, storage.Video{
+		Name:        "test-video",
+		Category:    "devops",
+		Titles:      []storage.TitleVariant{{Index: 1, Text: "Test Video Title"}},
+		VideoId:     "yt-old-id",
+		Description: "A test video",
+		UploadVideo: "/tmp/video.mp4",
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/api/publish/youtube/test-video/reupload?category=devops", nil)
+	rr := httptest.NewRecorder()
+	env.server.Router().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusInternalServerError {
+		t.Fatalf("status = %d, want %d", rr.Code, http.StatusInternalServerError)
+	}
+
+	// Verify the video was saved with empty VideoId after successful delete
+	video, err := env.server.videoService.GetVideo("test-video", "devops")
+	if err != nil {
+		t.Fatalf("failed to get video: %v", err)
+	}
+	if video.VideoId != "" {
+		t.Errorf("VideoId = %q, want empty after delete succeeded but upload failed", video.VideoId)
+	}
+}
+
+func TestHandleReuploadYouTube_ThumbnailFailureReturnsWarning(t *testing.T) {
+	env := setupPublishTestEnv(t, &mockPublishingService{
+		uploadVideoID:      "yt-new-id",
+		uploadThumbnailErr: fmt.Errorf("thumbnail API quota exceeded"),
+	})
+	seedVideo(t, env, storage.Video{
+		Name:        "test-video",
+		Category:    "devops",
+		Titles:      []storage.TitleVariant{{Index: 1, Text: "Test Video Title"}},
+		VideoId:     "yt-old-id",
+		Description: "A test video",
+		UploadVideo: "/tmp/video.mp4",
+		Thumbnail:   "/tmp/thumb.png",
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/api/publish/youtube/test-video/reupload?category=devops", nil)
+	rr := httptest.NewRecorder()
+	env.server.Router().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d; body: %s", rr.Code, http.StatusOK, rr.Body.String())
+	}
+
+	var resp PublishYouTubeResponse
+	if err := json.NewDecoder(rr.Body).Decode(&resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if resp.VideoID != "yt-new-id" {
+		t.Errorf("videoId = %q, want %q", resp.VideoID, "yt-new-id")
+	}
+	if resp.ThumbnailWarning == "" {
+		t.Error("expected thumbnailWarning to be set when thumbnail upload fails")
 	}
 }
 

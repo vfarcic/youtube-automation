@@ -83,6 +83,55 @@ func (s *Server) handlePublishYouTube(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	s.doPublishYouTube(w, r, video)
+}
+
+// handleReuploadYouTube deletes the existing YouTube video and re-uploads.
+// POST /api/publish/youtube/{videoName}/reupload?category=X
+func (s *Server) handleReuploadYouTube(w http.ResponseWriter, r *http.Request) {
+	if s.publishingService == nil {
+		respondError(w, http.StatusNotImplemented, "Publishing not configured", "")
+		return
+	}
+
+	videoName := chi.URLParam(r, "videoName")
+	category := r.URL.Query().Get("category")
+	if category == "" {
+		respondError(w, http.StatusBadRequest, "Missing category", "Query parameter 'category' is required")
+		return
+	}
+
+	video, err := s.videoService.GetVideo(videoName, category)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "Video not found", err.Error())
+		return
+	}
+
+	if video.VideoId == "" {
+		respondError(w, http.StatusBadRequest, "Video has no YouTube ID", "Publish to YouTube first before re-uploading")
+		return
+	}
+
+	// Delete the existing YouTube video
+	if err := s.publishingService.DeleteVideo(r.Context(), video.VideoId); err != nil {
+		respondError(w, http.StatusInternalServerError, "YouTube delete failed", err.Error())
+		return
+	}
+
+	// Clear the video ID and save immediately so state is consistent
+	// if the subsequent upload fails
+	video.VideoId = ""
+	if err := s.videoService.UpdateVideo(video); err != nil {
+		respondError(w, http.StatusInternalServerError, "Failed to save video after delete", err.Error())
+		return
+	}
+
+	s.doPublishYouTube(w, r, video)
+}
+
+// doPublishYouTube contains the shared upload logic used by both
+// handlePublishYouTube and handleReuploadYouTube.
+func (s *Server) doPublishYouTube(w http.ResponseWriter, r *http.Request, video storage.Video) {
 	// Resolve video file: if Drive-hosted, download to temp file
 	uploadPath := video.UploadVideo
 	driveFileID := video.VideoDriveFileID
