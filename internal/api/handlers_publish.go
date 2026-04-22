@@ -112,10 +112,9 @@ func (s *Server) handleReuploadYouTube(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Delete the existing YouTube video
+	// Attempt to delete the existing YouTube video; log but don't block upload
 	if err := s.publishingService.DeleteVideo(r.Context(), video.VideoId); err != nil {
-		respondError(w, http.StatusInternalServerError, "YouTube delete failed", err.Error())
-		return
+		log.Printf("YouTube delete failed for %s (proceeding with upload): %v", video.VideoId, err)
 	}
 
 	// Clear the video ID and save immediately so state is consistent

@@ -322,13 +322,13 @@ func TestHandleReuploadYouTube(t *testing.T) {
 			wantStatus:  http.StatusOK,
 		},
 		{
-			name:        "delete error",
+			name:        "delete error still uploads",
 			videoName:   "test-video",
 			category:    "devops",
-			mock:        &mockPublishingService{deleteVideoErr: fmt.Errorf("YouTube API error")},
+			mock:        &mockPublishingService{deleteVideoErr: fmt.Errorf("YouTube API error"), uploadVideoID: "yt-new-id"},
 			seedVideo:   true,
 			seedVideoId: "yt-old-id",
-			wantStatus:  http.StatusInternalServerError,
+			wantStatus:  http.StatusOK,
 		},
 		{
 			name:        "upload error after successful delete",
