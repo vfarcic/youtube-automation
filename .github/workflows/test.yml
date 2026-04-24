@@ -8,7 +8,7 @@ on:
 jobs:
   test:
     name: Run Tests
-    runs-on: ubuntu-latest
+    runs-on: tenki-standard-autoscale
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
