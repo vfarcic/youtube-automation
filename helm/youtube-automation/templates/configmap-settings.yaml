@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "youtube-automation.fullname" . }}-settings
+  labels:
+    {{- include "youtube-automation.labels" . | nindent 4 }}
+data:
+  settings.yaml: |
+    {{- .Values.settings | toYaml | nindent 4 }}

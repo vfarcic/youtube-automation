@@ -490,6 +490,37 @@ func TestSaveTimingRecommendationsAbsolutePath(t *testing.T) {
 	assert.Equal(t, recs, loaded)
 }
 
+// TestInitGlobalSettingsUsesSettingsFileEnvVar verifies that SETTINGS_FILE env var
+// overrides the default relative path, fixing the ConfigMap mount vs CWD mismatch.
+func TestInitGlobalSettingsUsesSettingsFileEnvVar(t *testing.T) {
+	tempDir := t.TempDir()
+	settingsPath := filepath.Join(tempDir, "settings.yaml")
+
+	yamlContent := `ai:
+  provider: anthropic
+  anthropic:
+    key: test-key
+    model: claude-sonnet-4-20250514
+email:
+  from: envvar-test@example.com
+`
+	err := os.WriteFile(settingsPath, []byte(yamlContent), 0644)
+	require.NoError(t, err)
+
+	// Save and restore original state
+	originalSettings := GlobalSettings
+	defer func() { GlobalSettings = originalSettings }()
+
+	// Set SETTINGS_FILE to an absolute path (simulates container ConfigMap mount)
+	t.Setenv("SETTINGS_FILE", settingsPath)
+
+	// Do NOT chdir to tempDir — the point is that CWD doesn't matter
+	err = InitGlobalSettings()
+	require.NoError(t, err)
+
+	assert.Equal(t, "envvar-test@example.com", GlobalSettings.Email.From)
+}
+
 // TestLoadTimingRecommendationsWithSpecialCharacters tests handling of special characters
 func TestLoadTimingRecommendationsWithSpecialCharacters(t *testing.T) {
 	// Create temporary directory

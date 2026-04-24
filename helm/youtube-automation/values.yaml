@@ -144,3 +144,14 @@ volumes: []
 nodeSelector: {}
 tolerations: []
 affinity: {}
+
+# Structured settings rendered into a ConfigMap and mounted as /app/settings.yaml.
+# API keys (GEMINI_API_KEY, OPENAI_API_KEY) stay as env vars from K8s Secrets.
+settings:
+  thumbnailGeneration:
+    photoDir: /data/photos
+    providers:
+      - name: gemini
+        model: gemini-2.0-flash-preview-image-generation
+      - name: gpt-image
+        model: gpt-image-1

@@ -1,7 +1,7 @@
 # PRD: AI-Powered Thumbnail Generation with Multi-Provider Support
 
 **Issue**: #396
-**Status**: Draft
+**Status**: In Progress
 **Priority**: High
 **Created**: 2026-04-24
 
@@ -159,8 +159,8 @@ POST /api/thumbnails/generated/{id}/select        → Upload selected thumbnail 
 
 ## Milestones
 
-- [ ] **Helm chart ConfigMap**: New `settings` section in values.yaml, ConfigMap template, deployment volume mount. Existing env var config untouched. Chart lints and templates correctly.
-- [ ] **Go configuration**: `ThumbnailGeneration` structs, env var overrides for API keys, loaded from settings.yaml. Tests passing.
+- [x] **Helm chart ConfigMap**: New `settings` section in values.yaml, ConfigMap template, deployment volume mount. Existing env var config untouched. Chart lints and templates correctly.
+- [x] **Go configuration**: `ThumbnailGeneration` structs, env var overrides for API keys, loaded from settings.yaml. Tests passing.
 - [ ] **Image generation interface and Gemini provider**: `ImageGenerator` interface, `GeminiClient` implementation with HTTP calls, prompt builder with randomized color/placement, embedded prompt template. Tests passing with httptest mock.
 - [ ] **GPT Image 2 provider**: `GPTImageClient` implementation. Tests passing with httptest mock.
 - [ ] **Illustration suggestions**: `SuggestIllustrations()` in AI package using existing text AI provider, added to `AIService` interface, API endpoint wired. Tests passing.
@@ -171,6 +171,12 @@ POST /api/thumbnails/generated/{id}/select        → Upload selected thumbnail 
 - [ ] **End-to-end validation**: Full flow works: suggest illustrations → generate thumbnails → pick one → uploaded to Drive → appears as thumbnail variant.
 
 ## Progress Log
+
+### 2026-04-25
+- Milestone 1 complete: Helm chart ConfigMap — settings.thumbnailGeneration in values.yaml, configmap-settings.yaml template, deployment volume+volumeMount, SETTINGS_FILE env var
+- Milestone 2 complete: Go configuration — SettingsThumbnailGeneration/SettingsThumbnailProvider structs, SETTINGS_FILE env var support in InitGlobalSettings(), 8 table-driven tests passing
+- Reviewed: integration issue found (settings path mismatch) and fixed via SETTINGS_FILE env var
+- Audited: no critical security issues
 
 ### 2026-04-24
 - PRD created

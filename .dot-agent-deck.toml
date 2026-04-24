@@ -18,7 +18,13 @@ so agents can read it themselves.
 
 After the coder finishes, delegate to both the reviewer and auditor in parallel.
 
-After reviewer and auditor both complete with no critical issues, delegate to release to finalize.
+After reviewer and auditor both complete with no critical issues for a task, run \
+/prd-update-progress yourself to record progress, then run /prd-next to identify and \
+start the next task. Repeat this cycle until all PRD milestones are complete.
+
+Only delegate to release when ALL PRD milestones are complete (not after individual tasks). \
+The release agent handles /prd-done to create the PR, merge, and close the issue for the \
+entire PRD.
 """
 
 [[orchestrations.roles]]

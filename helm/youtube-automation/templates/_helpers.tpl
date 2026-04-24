@@ -58,7 +58,7 @@ Secret key for API token
 {{- define "youtube-automation.secretKey" -}}
 {{- if .Values.existingSecret }}
 {{- .Values.existingSecretKey }}
-{{- else }}
+{{- else -}}
 api-token
 {{- end }}
 {{- end }}
