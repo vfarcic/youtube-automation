@@ -14,7 +14,13 @@
     "scripts": {
       "build": ["just build"],
       "run":   ["just run"],
-      "agent": ["claude"]
+      "agent":       ["claude --continue"],
+      "agent-new":   ["claude"],
+      "agent-plan":  ["claude --model opus --permission-mode plan"],
+      "agent-small": ["claude --model haiku"],
+      "agent-big":   ["claude --model opus"],
+      "oc":          ["opencode --continue"],
+      "oc-big":      ["opencode --model openai/gpt-5.2-codex"]
     }
   }
 }

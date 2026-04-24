@@ -4,7 +4,7 @@
       {
         "hooks": [
           {
-            "command": "dot-ai skills generate --agent claude-code",
+            "command": "dot-ai skills generate --agent claude-code --custom-only",
             "type": "command"
           }
         ],
