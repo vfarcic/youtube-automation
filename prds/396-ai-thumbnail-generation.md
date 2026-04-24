@@ -162,7 +162,7 @@ POST /api/thumbnails/generated/{id}/select        → Upload selected thumbnail 
 - [x] **Helm chart ConfigMap**: New `settings` section in values.yaml, ConfigMap template, deployment volume mount. Existing env var config untouched. Chart lints and templates correctly.
 - [x] **Go configuration**: `ThumbnailGeneration` structs, env var overrides for API keys, loaded from settings.yaml. Tests passing.
 - [x] **Image generation interface and Gemini provider**: `ImageGenerator` interface, `GeminiClient` implementation with HTTP calls, prompt builder with randomized color/placement, embedded prompt template. Tests passing with httptest mock.
-- [ ] **GPT Image 2 provider**: `GPTImageClient` implementation. Tests passing with httptest mock.
+- [x] **GPT Image 2 provider**: `GPTImageClient` implementation. Tests passing with httptest mock.
 - [ ] **Illustration suggestions**: `SuggestIllustrations()` in AI package using existing text AI provider, added to `AIService` interface, API endpoint wired. Tests passing.
 - [ ] **Thumbnail generation orchestrator and store**: `GenerateThumbnails()` with concurrent multi-provider execution, in-memory `GeneratedImageStore` with cleanup. Tests passing.
 - [ ] **API endpoints**: All 4 endpoints (illustrations, generate, download, select) wired in server, including Drive upload on selection. Tests passing.
@@ -173,6 +173,7 @@ POST /api/thumbnails/generated/{id}/select        → Upload selected thumbnail 
 ## Progress Log
 
 ### 2026-04-25
+- Milestone 4 complete: GPTImageClient with multipart/form-data, Bearer auth, content policy detection on both 200 and non-200 responses, sanitized error messages
 - Milestone 3 complete: ImageGenerator interface, GeminiClient with HTTP API calls, prompt builder with randomized color/placement and channel stencil-art style
 - Security hardening: 120s HTTP timeout, 50MB response limit, content-type validation, prompt input sanitization, safety-filtered response handling
 - 42+ test cases, 93.4% coverage on internal/thumbnail
