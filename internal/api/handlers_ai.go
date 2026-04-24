@@ -3,7 +3,9 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
+	"strings"
 
 	"devopstoolkit/youtube-automation/internal/ai"
 	manuscriptpkg "devopstoolkit/youtube-automation/internal/manuscript"
@@ -12,6 +14,20 @@ import (
 
 	"github.com/go-chi/chi/v5"
 )
+
+// validatePathParam checks that a URL path parameter is safe (no path traversal).
+// Returns the param value and true if valid, or writes a 400 error and returns false.
+func validatePathParam(w http.ResponseWriter, param, paramName string) (string, bool) {
+	if param == "" {
+		respondError(w, http.StatusBadRequest, fmt.Sprintf("%s is required", paramName), "")
+		return "", false
+	}
+	if strings.Contains(param, "..") || strings.Contains(param, "/") || strings.Contains(param, "\\") {
+		respondError(w, http.StatusBadRequest, fmt.Sprintf("invalid %s", paramName), "")
+		return "", false
+	}
+	return param, true
+}
 
 // --- Response types ---
 
@@ -70,6 +86,10 @@ type AIAMADescriptionResponse struct {
 
 type AIAMATimecodesResponse struct {
 	Timecodes string `json:"timecodes"`
+}
+
+type AIIllustrationsResponse struct {
+	Illustrations []string `json:"illustrations"`
 }
 
 // --- Request types (body-based endpoints) ---
@@ -180,7 +200,7 @@ func (s *Server) handleAIShorts(w http.ResponseWriter, r *http.Request) {
 	// Best-effort marker insertion: never fails the response.
 	var markersWarning string
 	if len(candidates) > 0 {
-		category := chi.URLParam(r, "category")
+		category := chi.URLParam(r, "category") // already validated by getManuscriptFromPath
 		name := chi.URLParam(r, "name")
 
 		shorts := make([]storage.Short, len(candidates))
@@ -240,16 +260,22 @@ func (s *Server) handleAIThumbnails(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleAITranslate(w http.ResponseWriter, r *http.Request) {
 	var req AITranslateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request body", err.Error())
+		respondError(w, http.StatusBadRequest, "invalid request body", "")
 		return
 	}
 	if req.Category == "" || req.Name == "" || req.TargetLanguage == "" {
 		respondError(w, http.StatusBadRequest, "category, name, and targetLanguage are required", "")
 		return
 	}
+	if strings.Contains(req.Category, "..") || strings.Contains(req.Category, "/") || strings.Contains(req.Category, "\\") ||
+		strings.Contains(req.Name, "..") || strings.Contains(req.Name, "/") || strings.Contains(req.Name, "\\") {
+		respondError(w, http.StatusBadRequest, "invalid category or name", "")
+		return
+	}
 	v, err := s.videoService.GetVideo(req.Name, req.Category)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "video not found", err.Error())
+		log.Printf("video not found for %s/%s: %v", req.Category, req.Name, err)
+		respondError(w, http.StatusNotFound, "video not found", "")
 		return
 	}
 	// Use the first title variant as the primary title
@@ -346,20 +372,59 @@ func (s *Server) handleAIAMATimecodes(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, AIAMATimecodesResponse{Timecodes: timecodes})
 }
 
+// --- Illustration suggestions ---
+
+// handleAIIllustrations suggests illustration ideas from the video manuscript and tagline.
+func (s *Server) handleAIIllustrations(w http.ResponseWriter, r *http.Request) {
+	category, ok := validatePathParam(w, chi.URLParam(r, "category"), "category")
+	if !ok {
+		return
+	}
+	name, ok := validatePathParam(w, chi.URLParam(r, "name"), "name")
+	if !ok {
+		return
+	}
+
+	manuscript, err := s.videoService.GetVideoManuscript(name, category)
+	if err != nil {
+		log.Printf("manuscript not found for %s/%s: %v", category, name, err)
+		respondError(w, http.StatusNotFound, "manuscript not found", "")
+		return
+	}
+
+	video, err := s.videoService.GetVideo(name, category)
+	if err != nil {
+		log.Printf("video not found for %s/%s: %v", category, name, err)
+		respondError(w, http.StatusNotFound, "video not found", "")
+		return
+	}
+
+	illustrations, err := s.aiService.SuggestIllustrations(r.Context(), manuscript, video.Tagline)
+	if err != nil {
+		log.Printf("AI illustration generation failed: %v", err)
+		respondError(w, http.StatusInternalServerError, "AI generation failed", "")
+		return
+	}
+	respondJSON(w, http.StatusOK, AIIllustrationsResponse{Illustrations: illustrations})
+}
+
 // --- Helpers ---
 
 // getManuscriptFromPath extracts category and name from URL path params,
 // fetches the manuscript, and returns it. Returns false if an error response was sent.
 func (s *Server) getManuscriptFromPath(w http.ResponseWriter, r *http.Request) (string, bool) {
-	category := chi.URLParam(r, "category")
-	name := chi.URLParam(r, "name")
-	if category == "" || name == "" {
-		respondError(w, http.StatusBadRequest, "category and name are required", "")
+	category, ok := validatePathParam(w, chi.URLParam(r, "category"), "category")
+	if !ok {
+		return "", false
+	}
+	name, ok := validatePathParam(w, chi.URLParam(r, "name"), "name")
+	if !ok {
 		return "", false
 	}
 	manuscript, err := s.videoService.GetVideoManuscript(name, category)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "manuscript not found", err.Error())
+		log.Printf("manuscript not found for %s/%s: %v", category, name, err)
+		respondError(w, http.StatusNotFound, "manuscript not found", "")
 		return "", false
 	}
 	return manuscript, true
@@ -369,16 +434,22 @@ func (s *Server) getManuscriptFromPath(w http.ResponseWriter, r *http.Request) (
 func (s *Server) getAMAManuscript(w http.ResponseWriter, r *http.Request) (string, bool) {
 	var req AIAMARequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request body", err.Error())
+		respondError(w, http.StatusBadRequest, "invalid request body", "")
 		return "", false
 	}
 	if req.Category == "" || req.Name == "" {
 		respondError(w, http.StatusBadRequest, "category and name are required", "")
 		return "", false
 	}
+	if strings.Contains(req.Category, "..") || strings.Contains(req.Category, "/") || strings.Contains(req.Category, "\\") ||
+		strings.Contains(req.Name, "..") || strings.Contains(req.Name, "/") || strings.Contains(req.Name, "\\") {
+		respondError(w, http.StatusBadRequest, "invalid category or name", "")
+		return "", false
+	}
 	manuscript, err := s.videoService.GetVideoManuscript(req.Name, req.Category)
 	if err != nil {
-		respondError(w, http.StatusNotFound, "manuscript not found", err.Error())
+		log.Printf("manuscript not found for %s/%s: %v", req.Category, req.Name, err)
+		respondError(w, http.StatusNotFound, "manuscript not found", "")
 		return "", false
 	}
 	return manuscript, true

@@ -74,3 +74,5 @@ web/dist/
 web/.vite/
 internal/frontend/dist/*
 !internal/frontend/dist/index.html
+
+.dot-agent-deck

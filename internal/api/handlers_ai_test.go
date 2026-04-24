@@ -29,6 +29,7 @@ type mockAIService struct {
 	amaTitle        string
 	amaDescription  string
 	amaTimecodes    string
+	illustrations   []string
 	err             error
 }
 
@@ -67,6 +68,9 @@ func (m *mockAIService) GenerateAMADescription(ctx context.Context, transcript s
 }
 func (m *mockAIService) GenerateAMATimecodes(ctx context.Context, transcript string) (string, error) {
 	return m.amaTimecodes, m.err
+}
+func (m *mockAIService) SuggestIllustrations(ctx context.Context, manuscript, tagline string) ([]string, error) {
+	return m.illustrations, m.err
 }
 
 // setupAITestEnv creates a test environment with a mock AI service.
@@ -920,5 +924,225 @@ func TestManuscriptPathParamsMissing(t *testing.T) {
 	// chi treats empty path params as 404 (no route match)
 	if rr.Code == http.StatusOK {
 		t.Errorf("expected non-200 for empty params, got %d", rr.Code)
+	}
+}
+
+// seedVideoWithManuscriptAndTagline seeds a video with both manuscript content and a tagline.
+func seedVideoWithManuscriptAndTagline(t *testing.T, env *testEnv, name, category, manuscriptContent, tagline string) {
+	t.Helper()
+	v := storage.Video{
+		Name:     name,
+		Category: category,
+		Gist:     filepath.Join("manuscript", category, name+".md"),
+		Tagline:  tagline,
+	}
+	seedVideo(t, env, v)
+	mdPath := filepath.Join(env.tmpDir, "manuscript", category, name+".md")
+	if err := os.WriteFile(mdPath, []byte(manuscriptContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestHandleAIIllustrations(t *testing.T) {
+	tests := []struct {
+		name       string
+		category   string
+		videoName  string
+		mock       *mockAIService
+		hasManus   bool
+		tagline    string
+		wantStatus int
+		wantCount  int
+	}{
+		{
+			name:       "success",
+			category:   "devops",
+			videoName:  "test-video",
+			mock:       &mockAIService{illustrations: []string{"Fortress protecting servers", "Shield around clusters", "Cracked lock being fixed"}},
+			hasManus:   true,
+			tagline:    "Secure Everything",
+			wantStatus: http.StatusOK,
+			wantCount:  3,
+		},
+		{
+			name:       "success without tagline",
+			category:   "devops",
+			videoName:  "test-video",
+			mock:       &mockAIService{illustrations: []string{"Conveyor belt with code", "Robot building pipelines"}},
+			hasManus:   true,
+			tagline:    "",
+			wantStatus: http.StatusOK,
+			wantCount:  2,
+		},
+		{
+			name:       "manuscript not found",
+			category:   "devops",
+			videoName:  "nonexistent",
+			mock:       &mockAIService{},
+			hasManus:   false,
+			wantStatus: http.StatusNotFound,
+		},
+		{
+			name:       "AI error",
+			category:   "devops",
+			videoName:  "test-video",
+			mock:       &mockAIService{err: fmt.Errorf("AI provider failed")},
+			hasManus:   true,
+			tagline:    "Some Tagline",
+			wantStatus: http.StatusInternalServerError,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			env := setupAITestEnv(t, tt.mock)
+			if tt.hasManus {
+				seedVideoWithManuscriptAndTagline(t, env, tt.videoName, tt.category, "# Test Manuscript\nSome content here.", tt.tagline)
+			}
+
+			req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/api/ai/illustrations/%s/%s", tt.category, tt.videoName), nil)
+			rr := httptest.NewRecorder()
+			env.server.Router().ServeHTTP(rr, req)
+
+			if rr.Code != tt.wantStatus {
+				t.Errorf("status = %d, want %d; body: %s", rr.Code, tt.wantStatus, rr.Body.String())
+			}
+			if tt.wantStatus == http.StatusOK {
+				var resp AIIllustrationsResponse
+				if err := json.NewDecoder(rr.Body).Decode(&resp); err != nil {
+					t.Fatalf("failed to decode response: %v", err)
+				}
+				if len(resp.Illustrations) != tt.wantCount {
+					t.Errorf("illustrations count = %d, want %d", len(resp.Illustrations), tt.wantCount)
+				}
+			}
+		})
+	}
+}
+
+func TestHandleAIIllustrations_PathTraversal(t *testing.T) {
+	// Path traversal tests use URL-encoded slashes (%2F) because chi's router
+	// treats literal slashes as path separators (no route match → 404).
+	// URL-encoded slashes are decoded within the matched segment, reaching the handler.
+	tests := []struct {
+		name       string
+		url        string
+		wantStatus int
+	}{
+		{
+			name:       "path traversal in category with encoded slashes",
+			url:        "/api/ai/illustrations/..%2F..%2Fetc/passwd",
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name:       "path traversal in name with encoded slashes",
+			url:        "/api/ai/illustrations/devops/..%2F..%2Fetc%2Fpasswd",
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name:       "backslash in category",
+			url:        "/api/ai/illustrations/dev%5Cops/test-video",
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name:       "backslash in name",
+			url:        "/api/ai/illustrations/devops/test%5Cvideo",
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name:       "dot-dot without slash in category",
+			url:        "/api/ai/illustrations/..devops/test-video",
+			wantStatus: http.StatusBadRequest,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			env := setupAITestEnv(t, &mockAIService{})
+
+			req := httptest.NewRequest(http.MethodPost, tt.url, nil)
+			rr := httptest.NewRecorder()
+			env.server.Router().ServeHTTP(rr, req)
+
+			if rr.Code != tt.wantStatus {
+				t.Errorf("status = %d, want %d; body: %s", rr.Code, tt.wantStatus, rr.Body.String())
+			}
+		})
+	}
+}
+
+func TestHandleAIIllustrations_NoPathLeakage(t *testing.T) {
+	env := setupAITestEnv(t, &mockAIService{})
+
+	// Request a nonexistent video — the error should NOT contain file system paths
+	req := httptest.NewRequest(http.MethodPost, "/api/ai/illustrations/devops/nonexistent", nil)
+	rr := httptest.NewRecorder()
+	env.server.Router().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want %d", rr.Code, http.StatusNotFound)
+	}
+
+	body := rr.Body.String()
+	// Error body must not contain internal file paths
+	if strings.Contains(body, env.tmpDir) {
+		t.Errorf("error response leaks internal path: %s", body)
+	}
+	if strings.Contains(body, "/manuscript/") {
+		t.Errorf("error response leaks manuscript path: %s", body)
+	}
+	if strings.Contains(body, ".yaml") {
+		t.Errorf("error response leaks yaml path: %s", body)
+	}
+
+	// Verify the response has a generic error message
+	var resp ErrorResponse
+	if err := json.NewDecoder(strings.NewReader(body)).Decode(&resp); err != nil {
+		t.Fatalf("failed to decode error response: %v", err)
+	}
+	if resp.Error != "manuscript not found" {
+		t.Errorf("error = %q, want %q", resp.Error, "manuscript not found")
+	}
+	if resp.Detail != "" {
+		t.Errorf("detail should be empty, got %q", resp.Detail)
+	}
+}
+
+func TestGetManuscriptFromPath_PathTraversal(t *testing.T) {
+	tests := []struct {
+		name       string
+		url        string
+		wantStatus int
+	}{
+		{
+			name:       "dot-dot in category (URL-encoded slash)",
+			url:        "/api/ai/titles/..%2F..%2Fetc/passwd",
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name:       "dot-dot in name (URL-encoded slash)",
+			url:        "/api/ai/titles/devops/..%2F..%2Fetc%2Fpasswd",
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name:       "backslash in name",
+			url:        "/api/ai/titles/devops/test%5Cvideo",
+			wantStatus: http.StatusBadRequest,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			env := setupAITestEnv(t, &mockAIService{})
+
+			// Test via titles endpoint which uses getManuscriptFromPath
+			req := httptest.NewRequest(http.MethodPost, tt.url, nil)
+			rr := httptest.NewRecorder()
+			env.server.Router().ServeHTTP(rr, req)
+
+			if rr.Code != tt.wantStatus {
+				t.Errorf("status = %d, want %d; body: %s", rr.Code, tt.wantStatus, rr.Body.String())
+			}
+		})
 	}
 }

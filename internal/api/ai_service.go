@@ -20,6 +20,7 @@ type AIService interface {
 	GenerateAMATitle(ctx context.Context, transcript string) (string, error)
 	GenerateAMADescription(ctx context.Context, transcript string) (string, error)
 	GenerateAMATimecodes(ctx context.Context, transcript string) (string, error)
+	SuggestIllustrations(ctx context.Context, manuscript, tagline string) ([]string, error)
 }
 
 // DefaultAIService delegates to the ai package functions.
@@ -71,4 +72,8 @@ func (d *DefaultAIService) GenerateAMADescription(ctx context.Context, transcrip
 
 func (d *DefaultAIService) GenerateAMATimecodes(ctx context.Context, transcript string) (string, error) {
 	return ai.GenerateAMATimecodes(ctx, transcript)
+}
+
+func (d *DefaultAIService) SuggestIllustrations(ctx context.Context, manuscript, tagline string) ([]string, error) {
+	return ai.SuggestIllustrations(ctx, manuscript, tagline)
 }

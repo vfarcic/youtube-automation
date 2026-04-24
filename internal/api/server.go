@@ -114,6 +114,7 @@ func (s *Server) setupRoutes() {
 			r.Post("/tweets/{category}/{name}", s.handleAITweets)
 			r.Post("/description-tags/{category}/{name}", s.handleAIDescriptionTags)
 			r.Post("/shorts/{category}/{name}", s.handleAIShorts)
+			r.Post("/illustrations/{category}/{name}", s.handleAIIllustrations)
 			r.Post("/thumbnails", s.handleAIThumbnails)
 			r.Post("/translate", s.handleAITranslate)
 			r.Post("/ama/content", s.handleAIAMAContent)
