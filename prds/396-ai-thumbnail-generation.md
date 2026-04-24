@@ -161,7 +161,7 @@ POST /api/thumbnails/generated/{id}/select        → Upload selected thumbnail 
 
 - [x] **Helm chart ConfigMap**: New `settings` section in values.yaml, ConfigMap template, deployment volume mount. Existing env var config untouched. Chart lints and templates correctly.
 - [x] **Go configuration**: `ThumbnailGeneration` structs, env var overrides for API keys, loaded from settings.yaml. Tests passing.
-- [ ] **Image generation interface and Gemini provider**: `ImageGenerator` interface, `GeminiClient` implementation with HTTP calls, prompt builder with randomized color/placement, embedded prompt template. Tests passing with httptest mock.
+- [x] **Image generation interface and Gemini provider**: `ImageGenerator` interface, `GeminiClient` implementation with HTTP calls, prompt builder with randomized color/placement, embedded prompt template. Tests passing with httptest mock.
 - [ ] **GPT Image 2 provider**: `GPTImageClient` implementation. Tests passing with httptest mock.
 - [ ] **Illustration suggestions**: `SuggestIllustrations()` in AI package using existing text AI provider, added to `AIService` interface, API endpoint wired. Tests passing.
 - [ ] **Thumbnail generation orchestrator and store**: `GenerateThumbnails()` with concurrent multi-provider execution, in-memory `GeneratedImageStore` with cleanup. Tests passing.
@@ -173,6 +173,9 @@ POST /api/thumbnails/generated/{id}/select        → Upload selected thumbnail 
 ## Progress Log
 
 ### 2026-04-25
+- Milestone 3 complete: ImageGenerator interface, GeminiClient with HTTP API calls, prompt builder with randomized color/placement and channel stencil-art style
+- Security hardening: 120s HTTP timeout, 50MB response limit, content-type validation, prompt input sanitization, safety-filtered response handling
+- 42+ test cases, 93.4% coverage on internal/thumbnail
 - Milestone 1 complete: Helm chart ConfigMap — settings.thumbnailGeneration in values.yaml, configmap-settings.yaml template, deployment volume+volumeMount, SETTINGS_FILE env var
 - Milestone 2 complete: Go configuration — SettingsThumbnailGeneration/SettingsThumbnailProvider structs, SETTINGS_FILE env var support in InitGlobalSettings(), 8 table-driven tests passing
 - Reviewed: integration issue found (settings path mismatch) and fixed via SETTINGS_FILE env var
