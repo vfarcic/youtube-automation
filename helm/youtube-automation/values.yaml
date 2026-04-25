@@ -4,7 +4,7 @@ image:
   repository: ghcr.io/vfarcic/youtube-automation
   pullPolicy: IfNotPresent
   # Overrides the image tag; defaults to the chart appVersion.
-  tag: "v0.255.0"
+  tag: "v0.257.0"
 
 imagePullSecrets: []
 nameOverride: ""
