@@ -15,6 +15,7 @@ import type {
   AIDescriptionTagsResponse,
   AIShortsResponse,
   AIThumbnailsResponse,
+  AIIllustrationsResponse,
   AITranslateResponse,
   AIAMAContentResponse,
   ActionResponse,
@@ -35,6 +36,8 @@ import type {
   GenerateTimingResponse,
   PutTimingResponse,
   TimingRecommendation,
+  ThumbnailGenerateResponse,
+  ThumbnailSelectResponse,
 } from './types';
 
 export function usePhases() {
@@ -512,5 +515,34 @@ export function useAMAGenerate() {
 export function useAMAApply() {
   return useMutation<AMAApplyResponse, Error, { videoId: string; title: string; description: string; tags: string; timecodes: string }>({
     mutationFn: (body) => post<AMAApplyResponse>('/api/ama/apply', body),
+  });
+}
+
+// --- Thumbnail Generation Hooks ---
+
+export function useSuggestIllustrations() {
+  return useMutation<AIIllustrationsResponse, Error, { category: string; name: string }>({
+    mutationFn: ({ category, name }) =>
+      post<AIIllustrationsResponse>(`/api/ai/illustrations/${encodeURIComponent(category)}/${encodeURIComponent(name)}`, {}),
+  });
+}
+
+export function useGenerateThumbnails() {
+  return useMutation<ThumbnailGenerateResponse, Error, { category: string; name: string; tagline: string; illustration: string }>({
+    mutationFn: (body) => post<ThumbnailGenerateResponse>('/api/thumbnails/generate', body),
+  });
+}
+
+export function useSelectGeneratedThumbnail() {
+  const qc = useQueryClient();
+  return useMutation<ThumbnailSelectResponse, Error, { id: string; category: string; name: string; variantIndex: number }>({
+    mutationFn: ({ id, ...body }) =>
+      post<ThumbnailSelectResponse>(`/api/thumbnails/generated/${encodeURIComponent(id)}/select`, body),
+    onSuccess: (_data, { name, category }) => {
+      qc.invalidateQueries({ queryKey: ['video', name, category] });
+      qc.invalidateQueries({ queryKey: ['videoProgress', name, category] });
+      qc.invalidateQueries({ queryKey: ['videosList'] });
+      qc.invalidateQueries({ queryKey: ['phases'] });
+    },
   });
 }

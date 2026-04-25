@@ -252,6 +252,27 @@ export interface AIThumbnailsResponse {
   bold: string;
 }
 
+export interface AIIllustrationsResponse {
+  illustrations: string[];
+}
+
+export interface ThumbnailGenerateMeta {
+  id: string;
+  provider: string;
+  style: string;
+}
+
+export interface ThumbnailGenerateResponse {
+  thumbnails: ThumbnailGenerateMeta[];
+  errors?: string[];
+}
+
+export interface ThumbnailSelectResponse {
+  driveFileId: string;
+  variantIndex: number;
+  syncWarning?: string;
+}
+
 export interface AITranslateResponse {
   title: string;
   description: string;

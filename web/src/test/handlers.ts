@@ -349,4 +349,29 @@ export const handlers = [
       reasoning: 'Mid-week afternoon uploads show 20% higher initial engagement',
     }),
   ),
+  // Thumbnail generation endpoints
+  http.post('/api/ai/illustrations/:category/:name', () =>
+    HttpResponse.json({
+      illustrations: ['A robot assembling containers', 'A developer at a whiteboard', 'Kubernetes pods floating in clouds'],
+    }),
+  ),
+  http.post('/api/thumbnails/generate', () =>
+    HttpResponse.json({
+      thumbnails: [
+        { id: 'thumb-1', provider: 'gemini', style: 'with illustration' },
+        { id: 'thumb-2', provider: 'gemini', style: 'without illustration' },
+        { id: 'thumb-3', provider: 'gpt-image', style: 'with illustration' },
+        { id: 'thumb-4', provider: 'gpt-image', style: 'without illustration' },
+      ],
+      errors: [],
+    }),
+  ),
+  http.get('/api/thumbnails/generated/:id', () =>
+    new HttpResponse(new Uint8Array([137, 80, 78, 71]), {
+      headers: { 'Content-Type': 'image/png' },
+    }),
+  ),
+  http.post('/api/thumbnails/generated/:id/select', () =>
+    HttpResponse.json({ driveFileId: 'drive-gen-thumb-001', variantIndex: 0 }),
+  ),
 ];
