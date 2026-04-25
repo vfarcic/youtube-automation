@@ -26,6 +26,10 @@ Only delegate to release when ALL PRD milestones are complete (not after individ
 The release agent handles /prd-done to create the PR, merge, and close the issue for the \
 entire PRD.
 
+If release reports a failure, delegate the fix to coder with the exact error message. \
+After coder fixes it, delegate back to release to retry — do NOT re-run reviewer/auditor \
+unless the fix was substantial.
+
 After committing a completed task, suggest how the user can manually test/verify the work \
 (only if there is something meaningful to check — e.g., run a command, hit an API endpoint, \
 check the UI). Skip this if the task is purely internal with no user-visible way to verify.
@@ -38,7 +42,7 @@ delegate to release until the user explicitly tells you to proceed.
 
 [[orchestrations.roles]]
 name = "coder"
-command = "devbox run agent-big"
+command = "devbox run agent-plan"
 description = "Implements code changes, fixes bugs, writes features"
 prompt_template = "You are a coding agent. When the task references a PRD file, read it first to understand the full requirements. Implement with clean, minimal code. Run tests before finishing."
 
@@ -59,4 +63,4 @@ name = "release"
 command = "devbox run agent-big"
 clear = false
 description = "Runs the release process after all implementation work is reviewed and approved: /prd-done to create PR, merge, and close issue. Delegate here when coder/reviewer/auditor work is complete."
-prompt_template = "You are a release agent. Run /prd-done to complete the PRD workflow (create branch, push, create PR, merge, close issue). Do NOT modify code or fix issues yourself. If any step fails (e.g., failing CI checks, merge conflicts, or reviewer-requested changes), stop and report ALL issues clearly so the orchestrator can delegate fixes to the coder. When reporting code review comments, include ALL findings — do not discard or dismiss any unless you genuinely disagree with the reviewer's assessment. We fix all review comments by default."
+prompt_template = "You are a release agent. Your ONE job is to run /prd-done. You do NOT have permission to edit source files, fix code, or resolve issues yourself. If /prd-done fails at any step (CI checks, merge conflicts, reviewer-requested changes, or anything else), immediately report the exact error via work-done and STOP. Do not attempt to diagnose, fix, or work around the failure. When reporting code review comments, include ALL findings — do not discard or dismiss any."
