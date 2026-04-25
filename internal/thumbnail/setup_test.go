@@ -1,6 +1,7 @@
 package thumbnail
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -194,6 +195,19 @@ func TestStartCleanupLoop_StopsOnClose(t *testing.T) {
 	time.Sleep(30 * time.Millisecond)
 
 	// No assertion needed — this test verifies no goroutine leak/panic
+}
+
+func TestCreateProvider_UnknownReturnsError(t *testing.T) {
+	gen, err := createProvider("unknown-provider", "some-model", "some-key")
+	if err == nil {
+		t.Fatal("expected error for unknown provider, got nil")
+	}
+	if gen != nil {
+		t.Errorf("expected nil generator for unknown provider, got %v", gen)
+	}
+	if !strings.Contains(err.Error(), "unknown provider: unknown-provider") {
+		t.Errorf("error = %q, want it to contain 'unknown provider: unknown-provider'", err.Error())
+	}
 }
 
 func TestProviderEnvKeys(t *testing.T) {

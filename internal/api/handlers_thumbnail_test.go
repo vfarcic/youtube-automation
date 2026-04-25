@@ -566,9 +566,11 @@ func TestHandleSelectGeneratedThumbnail_DriveUploadFails(t *testing.T) {
 		t.Errorf("expected 500, got %d", w.Code)
 	}
 
-	// Image should NOT be removed from store if Drive upload failed
-	if _, found := store.Get(id); !found {
-		t.Error("expected image to remain in store after failed upload")
+	// Image is consumed by Claim to prevent TOCTOU double-upload races.
+	// After a failed upload the image is no longer in the store;
+	// the user can regenerate thumbnails if needed.
+	if _, found := store.Get(id); found {
+		t.Error("expected image to be removed from store after Claim (TOCTOU prevention)")
 	}
 }
 

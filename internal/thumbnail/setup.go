@@ -1,6 +1,7 @@
 package thumbnail
 
 import (
+	"fmt"
 	"log/slog"
 	"os"
 	"time"
@@ -68,7 +69,7 @@ func createProvider(name, model, apiKey string) (ImageGenerator, error) {
 	case "gpt-image":
 		return NewGPTImageClient(apiKey, model, nil)
 	default:
-		return nil, nil
+		return nil, fmt.Errorf("unknown provider: %s", name)
 	}
 }
 

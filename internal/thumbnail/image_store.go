@@ -99,6 +99,33 @@ func (s *GeneratedImageStore) Get(id string) (StoredImage, bool) {
 	return img, true
 }
 
+// Claim atomically retrieves and removes an image from the store.
+// It returns the image and true if found and not expired, or a zero value and false otherwise.
+// This prevents TOCTOU race conditions where two concurrent requests could both
+// claim the same image via separate Get+Remove calls.
+func (s *GeneratedImageStore) Claim(id string) (StoredImage, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	img, ok := s.images[id]
+	if !ok {
+		return StoredImage{}, false
+	}
+
+	if s.nowFunc().Sub(img.CreatedAt) > s.ttl {
+		return StoredImage{}, false
+	}
+
+	delete(s.images, id)
+
+	// Return a copy of Data to prevent callers from mutating stored bytes.
+	dataCopy := make([]byte, len(img.Data))
+	copy(dataCopy, img.Data)
+	img.Data = dataCopy
+
+	return img, true
+}
+
 // Remove deletes an image from the store. Returns true if it existed.
 func (s *GeneratedImageStore) Remove(id string) bool {
 	s.mu.Lock()

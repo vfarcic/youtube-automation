@@ -2,6 +2,7 @@ package slack
 
 import (
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -199,12 +200,15 @@ func TestSlackAuth_ValidateToken(t *testing.T) {
 				authTestURL = server.URL // Point our client to the mock server
 			} else {
 				if tt.name == "network error (server not running)" {
-					// For a true network error, point to an invalid address or a closed port
-					// Using the httptest.Server mechanism with a nil mockResp is tricky for this specific case.
-					// Instead, we'll rely on the default authTestURL which might not be running,
-					// or ideally, use a specific non-routable address if possible.
-					// For this test, we ensure no server is started.
-					authTestURL = "http://localhost:12345" // A port that is likely not in use
+					// Listen on a random port, then immediately close it to guarantee
+					// nothing is listening when we try to connect.
+					ln, listenErr := net.Listen("tcp", "127.0.0.1:0")
+					if listenErr != nil {
+						t.Fatalf("failed to open ephemeral port: %v", listenErr)
+					}
+					addr := ln.Addr().String()
+					ln.Close()
+					authTestURL = "http://" + addr
 				}
 			}
 

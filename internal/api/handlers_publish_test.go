@@ -1259,7 +1259,9 @@ func TestHandlePublishYouTube_SendsUploadNotification(t *testing.T) {
 	pubMock := &mockPublishingService{uploadVideoID: "yt-new-id"}
 	env.server.publishingService = pubMock
 
-	emailMock := &mockEmailService{}
+	emailMock := &mockEmailService{
+		sendUploadNotificationDone: make(chan struct{}),
+	}
 	env.server.SetEmailService(emailMock, &configuration.SettingsEmail{
 		From: "from@test.com",
 	})
@@ -1274,8 +1276,12 @@ func TestHandlePublishYouTube_SendsUploadNotification(t *testing.T) {
 		t.Fatalf("expected 200, got %d: %s", rr.Code, rr.Body.String())
 	}
 
-	// The notification is async; give goroutine a moment to run
-	time.Sleep(100 * time.Millisecond)
+	// Wait for the async notification goroutine to complete
+	select {
+	case <-emailMock.sendUploadNotificationDone:
+	case <-time.After(5 * time.Second):
+		t.Fatal("timed out waiting for SendUploadNotification to be called")
+	}
 
 	if !emailMock.sendUploadNotificationCalled {
 		t.Error("expected SendUploadNotification to be called after successful video upload")
@@ -1293,7 +1299,9 @@ func TestHandlePublishShort_SendsUploadNotification(t *testing.T) {
 	pubMock := &mockPublishingService{uploadShortID: "yt-short-id"}
 	env.server.publishingService = pubMock
 
-	emailMock := &mockEmailService{}
+	emailMock := &mockEmailService{
+		sendUploadNotificationDone: make(chan struct{}),
+	}
 	env.server.SetEmailService(emailMock, &configuration.SettingsEmail{
 		From: "from@test.com",
 	})
@@ -1308,8 +1316,12 @@ func TestHandlePublishShort_SendsUploadNotification(t *testing.T) {
 		t.Fatalf("expected 200, got %d: %s", rr.Code, rr.Body.String())
 	}
 
-	// The notification is async; give goroutine a moment to run
-	time.Sleep(100 * time.Millisecond)
+	// Wait for the async notification goroutine to complete
+	select {
+	case <-emailMock.sendUploadNotificationDone:
+	case <-time.After(5 * time.Second):
+		t.Fatal("timed out waiting for SendUploadNotification to be called")
+	}
 
 	if !emailMock.sendUploadNotificationCalled {
 		t.Error("expected SendUploadNotification to be called after successful short upload")

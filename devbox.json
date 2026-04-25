@@ -21,7 +21,7 @@
       "agent-small": ["claude --model haiku"],
       "agent-big":   ["claude --model opus"],
       "oc":          ["opencode --continue"],
-      "oc-big":      ["opencode --model openai/gpt-5.3-codex"]
+      "oc-big":      ["opencode --model openai/gpt-5.5"]
     }
   }
 }

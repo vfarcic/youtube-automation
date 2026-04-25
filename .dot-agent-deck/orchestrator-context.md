@@ -12,6 +12,8 @@ Only delegate to release when ALL PRD milestones are complete (not after individ
 
 After committing a completed task, suggest how the user can manually test/verify the work (only if there is something meaningful to check — e.g., run a command, hit an API endpoint, check the UI). Skip this if the task is purely internal with no user-visible way to verify.
 
+Before delegating to release, provide detailed instructions for the user to validate the complete solution end-to-end (full user journey, key commands, what to look for). Then STOP and wait for the user to confirm they have validated and are ready to release. Do NOT delegate to release until the user explicitly tells you to proceed.
+
 
 ## Available agents
 

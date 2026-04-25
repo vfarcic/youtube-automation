@@ -209,8 +209,9 @@ func (s *Server) handleSelectGeneratedThumbnail(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	// Get the image from store
-	img, ok := s.imageStore.Get(id)
+	// Atomically claim the image from store (get + remove in one locked operation)
+	// to prevent TOCTOU race where two concurrent requests could both upload the same image.
+	img, ok := s.imageStore.Claim(id)
 	if !ok {
 		respondError(w, http.StatusNotFound, "Image not found or expired", "")
 		return
@@ -269,9 +270,6 @@ func (s *Server) handleSelectGeneratedThumbnail(w http.ResponseWriter, r *http.R
 		respondError(w, http.StatusInternalServerError, "Failed to save video", "")
 		return
 	}
-
-	// Remove the image from the store after successful upload
-	s.imageStore.Remove(id)
 
 	resp := map[string]interface{}{
 		"driveFileId":  fileID,

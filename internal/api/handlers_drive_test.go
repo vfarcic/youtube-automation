@@ -866,7 +866,9 @@ func TestHandleDriveUploadVideo_SendsDriveUploadNotification(t *testing.T) {
 	driveMock := &mockDriveService{returnFileID: "video-drive-notify-123"}
 	env.server.SetDriveService(driveMock, "folder-abc")
 
-	emailMock := &mockEmailService{}
+	emailMock := &mockEmailService{
+		sendDriveUploadNotificationDone: make(chan struct{}),
+	}
 	env.server.SetEmailService(emailMock, &configuration.SettingsEmail{
 		From: "from@test.com",
 	})
@@ -890,8 +892,12 @@ func TestHandleDriveUploadVideo_SendsDriveUploadNotification(t *testing.T) {
 		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
 	}
 
-	// The notification is async; give goroutine a moment to run
-	time.Sleep(100 * time.Millisecond)
+	// Wait for the async notification goroutine to complete
+	select {
+	case <-emailMock.sendDriveUploadNotificationDone:
+	case <-time.After(5 * time.Second):
+		t.Fatal("timed out waiting for SendDriveUploadNotification to be called")
+	}
 
 	if !emailMock.sendDriveUploadNotificationCalled {
 		t.Error("expected SendDriveUploadNotification to be called after successful video upload")
@@ -912,7 +918,9 @@ func TestHandleDriveUploadShort_SendsDriveUploadNotification(t *testing.T) {
 	driveMock := &mockDriveService{returnFileID: "short-drive-notify-456"}
 	env.server.SetDriveService(driveMock, "folder-abc")
 
-	emailMock := &mockEmailService{}
+	emailMock := &mockEmailService{
+		sendDriveUploadNotificationDone: make(chan struct{}),
+	}
 	env.server.SetEmailService(emailMock, &configuration.SettingsEmail{
 		From: "from@test.com",
 	})
@@ -936,8 +944,12 @@ func TestHandleDriveUploadShort_SendsDriveUploadNotification(t *testing.T) {
 		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
 	}
 
-	// The notification is async; give goroutine a moment to run
-	time.Sleep(100 * time.Millisecond)
+	// Wait for the async notification goroutine to complete
+	select {
+	case <-emailMock.sendDriveUploadNotificationDone:
+	case <-time.After(5 * time.Second):
+		t.Fatal("timed out waiting for SendDriveUploadNotification to be called")
+	}
 
 	if !emailMock.sendDriveUploadNotificationCalled {
 		t.Error("expected SendDriveUploadNotification to be called after successful short upload")

@@ -336,6 +336,91 @@ func TestGeneratedImageStore_MaxItemsCap(t *testing.T) {
 	}
 }
 
+func TestGeneratedImageStore_Claim(t *testing.T) {
+	store := NewGeneratedImageStore(5 * time.Minute)
+
+	img := GeneratedImage{Provider: "gemini", Style: "test", Data: []byte("claim-data")}
+	id, err := store.Add(img)
+	if err != nil {
+		t.Fatalf("Add() error: %v", err)
+	}
+
+	// First claim should succeed
+	got, ok := store.Claim(id)
+	if !ok {
+		t.Fatal("first Claim() returned false for existing image")
+	}
+	if got.Provider != "gemini" {
+		t.Errorf("Provider = %q, want %q", got.Provider, "gemini")
+	}
+	if string(got.Data) != "claim-data" {
+		t.Errorf("Data = %q, want %q", string(got.Data), "claim-data")
+	}
+
+	// Second claim should fail (image already removed)
+	_, ok = store.Claim(id)
+	if ok {
+		t.Error("second Claim() should return false after image was already claimed")
+	}
+
+	// Store should be empty
+	if store.Len() != 0 {
+		t.Errorf("Len() = %d, want 0 after claim", store.Len())
+	}
+}
+
+func TestGeneratedImageStore_ClaimExpired(t *testing.T) {
+	now := time.Now()
+	store := NewGeneratedImageStore(5 * time.Minute)
+	store.nowFunc = func() time.Time { return now }
+
+	img := GeneratedImage{Provider: "test", Style: "test", Data: []byte("data")}
+	id, _ := store.Add(img)
+
+	// Advance time past TTL
+	store.nowFunc = func() time.Time { return now.Add(6 * time.Minute) }
+
+	// Claim should fail for expired image
+	_, ok := store.Claim(id)
+	if ok {
+		t.Error("Claim() should return false for expired image")
+	}
+}
+
+func TestGeneratedImageStore_ClaimConcurrent(t *testing.T) {
+	store := NewGeneratedImageStore(5 * time.Minute)
+
+	img := GeneratedImage{Provider: "test", Style: "test", Data: []byte("concurrent-data")}
+	id, err := store.Add(img)
+	if err != nil {
+		t.Fatalf("Add() error: %v", err)
+	}
+
+	const goroutines = 50
+	results := make(chan bool, goroutines)
+
+	var wg sync.WaitGroup
+	for range goroutines {
+		wg.Go(func() {
+			_, ok := store.Claim(id)
+			results <- ok
+		})
+	}
+	wg.Wait()
+	close(results)
+
+	successCount := 0
+	for ok := range results {
+		if ok {
+			successCount++
+		}
+	}
+
+	if successCount != 1 {
+		t.Errorf("expected exactly 1 successful claim, got %d", successCount)
+	}
+}
+
 func TestGeneratedImageStore_CapAfterRemove(t *testing.T) {
 	store := NewGeneratedImageStore(5 * time.Minute)
 	store.maxItems = 2
