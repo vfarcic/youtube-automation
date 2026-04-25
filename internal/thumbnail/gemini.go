@@ -30,8 +30,8 @@ const (
 	geminiBaseURL = "https://generativelanguage.googleapis.com/v1beta/models"
 
 	// geminiHTTPTimeout is the timeout for Gemini API requests.
-	// Image generation can take 30-90s, so we use 120s to allow headroom.
-	geminiHTTPTimeout = 120 * time.Second
+	// Image generation can take 60-180s with multiple photos, so we use 5m to allow headroom.
+	geminiHTTPTimeout = 5 * time.Minute
 
 	// geminiMaxResponseBytes is the maximum response body size (50MB).
 	// This prevents OOM from malicious or buggy responses returning unbounded data.

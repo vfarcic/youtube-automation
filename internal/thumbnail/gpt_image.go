@@ -29,8 +29,8 @@ const (
 	gptImageBaseURL = "https://api.openai.com/v1/images/edits"
 
 	// gptImageHTTPTimeout is the timeout for OpenAI API requests.
-	// Image generation can take 30-90s, so we use 120s to allow headroom.
-	gptImageHTTPTimeout = 120 * time.Second
+	// Image generation can take 60-180s with multiple photos, so we use 5m to allow headroom.
+	gptImageHTTPTimeout = 5 * time.Minute
 
 	// gptImageMaxResponseBytes is the maximum response body size (50MB).
 	// This prevents OOM from malicious or buggy responses returning unbounded data.
