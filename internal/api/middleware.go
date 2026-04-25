@@ -35,6 +35,11 @@ func structuredLogger(next http.Handler) http.Handler {
 
 		next.ServeHTTP(rw, r)
 
+		// Skip logging health check endpoints to reduce log noise
+		if r.URL.Path == "/health" {
+			return
+		}
+
 		slog.Info("http request",
 			"method", r.Method,
 			"path", r.URL.Path,
