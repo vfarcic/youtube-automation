@@ -242,7 +242,7 @@ export function ThumbnailGenerateButton({ category, videoName, video }: Thumbnai
             {generateMutation.isPending ? 'Generating...' : 'Generate Thumbnails'}
           </button>
           {generateMutation.isPending && (
-            <p className="text-xs text-yellow-400 mt-1">Generating thumbnails... this may take up to 2 minutes.</p>
+            <p className="text-xs text-yellow-400 mt-1">Generating thumbnails... this may take up to 5 minutes.</p>
           )}
           {generateMutation.isError && (
             <p className="text-xs text-red-400 mt-1">{generateMutation.error.message}</p>
