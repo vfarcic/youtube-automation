@@ -152,6 +152,6 @@ settings:
     photoDir: /data/photos
     providers:
       - name: gemini
-        model: gemini-2.0-flash-preview-image-generation
+        model: gemini-3.0-pro-image-generation
       - name: gpt-image
-        model: gpt-image-1
+        model: gpt-image-2

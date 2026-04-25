@@ -168,11 +168,13 @@ POST /api/thumbnails/generated/{id}/select        → Upload selected thumbnail 
 - [x] **API endpoints**: All 4 endpoints (illustrations, generate, download, select) wired in server, including Drive upload on selection. Tests passing.
 - [x] **Server wiring**: Generators initialized from config in `main.go`, image store created and set on server.
 - [x] **Frontend component**: `ThumbnailGenerateButton` with two-step flow (illustrations then generation), image grid, "Use This" selection, loading/error states. Integrated into `DynamicForm` alongside existing upload button.
-- [ ] **End-to-end validation**: Full flow works: suggest illustrations → generate thumbnails → pick one → uploaded to Drive → appears as thumbnail variant.
+- [x] **End-to-end validation**: Full flow works: suggest illustrations → generate thumbnails → pick one → uploaded to Drive → appears as thumbnail variant.
 
 ## Progress Log
 
 ### 2026-04-25
+- Milestone 10 complete: 5 integration tests covering full flow, partial failure, concurrent providers, manual upload compatibility. All tests pass, build succeeds.
+- Updated image generation models: Gemini → gemini-3.0-pro-image-generation (Nano Banana Pro), OpenAI → gpt-image-2
 - Milestone 9 complete: ThumbnailGenerateButton with 3-step flow, AuthImage component with blob URLs for auth-protected previews, 14 frontend tests, integrated into DynamicForm
 - Milestone 8 complete: Server wiring — CreateProviders() from config, StartCleanupLoop(), wired in main.go with SetThumbnailGeneration()
 - Milestone 7 complete: 3 API endpoints (generate, download, select) with 1MB request body limits, sanitized error responses, 27+ tests at 84.6% coverage
