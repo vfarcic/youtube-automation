@@ -53,10 +53,6 @@ func generateThumbnailEmailContent(video storage.Video) (subject, body string) {
 		logos = fmt.Sprintf("<li>Logo: %s</li>", logos)
 	}
 	subject = fmt.Sprintf("Thumbnail: %s", video.GetUploadTitle())
-	taglineIdeas := ""
-	if len(video.TaglineIdeas) > 0 && video.TaglineIdeas != "N/A" && video.TaglineIdeas != "-" {
-		taglineIdeas = fmt.Sprintf("Ideas:<br/>%s", video.TaglineIdeas)
-	}
 	body = fmt.Sprintf(`<strong>Material:</strong>
 <br/><br/>
 All the material is available at %s.
@@ -69,8 +65,7 @@ Elements:
 <li>Text: %s</li>
 <li>Screenshots: screenshot-*.png</li>
 </ul>
-%s
-`, video.Location, logos, video.Tagline, taglineIdeas)
+`, video.Location, logos, video.Tagline)
 	return subject, body
 }
 

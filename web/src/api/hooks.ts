@@ -15,7 +15,7 @@ import type {
   AIDescriptionTagsResponse,
   AIShortsResponse,
   AIThumbnailsResponse,
-  AIIllustrationsResponse,
+  AITaglineAndIllustrationsResponse,
   AITranslateResponse,
   AIAMAContentResponse,
   ActionResponse,
@@ -520,15 +520,29 @@ export function useAMAApply() {
 
 // --- Thumbnail Generation Hooks ---
 
-export function useSuggestIllustrations() {
-  return useMutation<AIIllustrationsResponse, Error, { category: string; name: string }>({
+export function useSuggestTaglineAndIllustrations() {
+  return useMutation<AITaglineAndIllustrationsResponse, Error, { category: string; name: string }>({
     mutationFn: ({ category, name }) =>
-      post<AIIllustrationsResponse>(`/api/ai/illustrations/${encodeURIComponent(category)}/${encodeURIComponent(name)}`, {}),
+      post<AITaglineAndIllustrationsResponse>(
+        `/api/ai/tagline-and-illustrations/${encodeURIComponent(category)}/${encodeURIComponent(name)}`,
+        {},
+      ),
+  });
+}
+
+export function useSaveThumbnailConfig() {
+  const qc = useQueryClient();
+  return useMutation<{ tagline: string; illustration: string }, Error, { videoName: string; category: string; tagline: string; illustration: string }>({
+    mutationFn: ({ videoName, ...body }) =>
+      post(`/api/videos/${encodeURIComponent(videoName)}/thumbnail-config`, body),
+    onSuccess: (_data, { videoName, category }) => {
+      qc.invalidateQueries({ queryKey: ['video', videoName, category] });
+    },
   });
 }
 
 export function useGenerateThumbnails() {
-  return useMutation<ThumbnailGenerateResponse, Error, { category: string; name: string; tagline: string; illustration: string }>({
+  return useMutation<ThumbnailGenerateResponse, Error, { category: string; name: string }>({
     mutationFn: (body) => post<ThumbnailGenerateResponse>('/api/thumbnails/generate', body),
   });
 }

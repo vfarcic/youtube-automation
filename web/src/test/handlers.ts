@@ -73,7 +73,7 @@ export const mockVideo: VideoResponse = {
   descriptionTags: '',
   location: '',
   tagline: '',
-  taglineIdeas: '',
+  illustration: '',
   otherLogos: '',
   language: '',
   timecodes: '',
@@ -350,10 +350,14 @@ export const handlers = [
     }),
   ),
   // Thumbnail generation endpoints
-  http.post('/api/ai/illustrations/:category/:name', () =>
+  http.post('/api/ai/tagline-and-illustrations/:category/:name', () =>
     HttpResponse.json({
+      taglines: ['Contain Everything', 'Ship Faster', 'Deploy Smart'],
       illustrations: ['A robot assembling containers', 'A developer at a whiteboard', 'Kubernetes pods floating in clouds'],
     }),
+  ),
+  http.post('/api/videos/:videoName/thumbnail-config', () =>
+    HttpResponse.json({ tagline: 'Contain Everything', illustration: 'A robot assembling containers' }),
   ),
   http.post('/api/thumbnails/generate', () =>
     HttpResponse.json({

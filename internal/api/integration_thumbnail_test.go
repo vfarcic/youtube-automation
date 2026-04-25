@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"devopstoolkit/youtube-automation/internal/ai"
 	"devopstoolkit/youtube-automation/internal/storage"
 	"devopstoolkit/youtube-automation/internal/thumbnail"
 )
@@ -44,7 +45,8 @@ func (t *trackingDriveService) UploadFile(_ context.Context, filename string, co
 // TestIntegration_ThumbnailGeneration_FullFlow exercises the complete end-to-end
 // thumbnail generation flow through the API layer with mocked providers:
 //
-//  1. POST /api/ai/illustrations/{category}/{name} → get illustration suggestions
+//  1. POST /api/ai/tagline-and-illustrations/{category}/{name} → get tagline & illustration suggestions
+//  1b. POST /api/videos/{videoName}/thumbnail-config → save selection
 //  2. POST /api/thumbnails/generate → generate thumbnails with mock providers
 //  3. GET /api/thumbnails/generated/{id} → download generated image, verify bytes
 //  4. POST /api/thumbnails/generated/{id}/select → select thumbnail, verify Drive
@@ -53,12 +55,11 @@ func TestIntegration_ThumbnailGeneration_FullFlow(t *testing.T) {
 	// --- Setup ---
 	env := setupTestEnv(t)
 
-	// Mock AI service for illustration suggestions
+	// Mock AI service for tagline & illustration suggestions
 	aiMock := &mockAIService{
-		illustrations: []string{
-			"Fortress protecting servers",
-			"Shield around clusters",
-			"Cracked lock being fixed",
+		taglineAndIllustrations: &ai.TaglineAndIllustrationsResult{
+			Taglines:      []string{"Secure Everything", "Lock It Down", "Zero Trust"},
+			Illustrations: []string{"Fortress protecting servers", "Shield around clusters", "Cracked lock being fixed"},
 		},
 	}
 	env.server.aiService = aiMock
@@ -94,57 +95,61 @@ func TestIntegration_ThumbnailGeneration_FullFlow(t *testing.T) {
 	}
 	env.server.SetDriveService(driveMock, "root-folder-id")
 
-	// Seed a video with manuscript and tagline
+	// Seed a video with manuscript
 	seedVideoWithManuscript(t, env, "my-video", "devops",
 		"# My Video\n\nThis is a manuscript about Kubernetes security best practices.")
-	// Update the video to add a tagline
-	v, err := env.server.videoService.GetVideo("my-video", "devops")
-	if err != nil {
-		t.Fatal(err)
-	}
-	v.Tagline = "Secure Everything"
-	if err := env.server.videoService.UpdateVideo(v); err != nil {
-		t.Fatal(err)
-	}
 
 	router := env.server.Router()
 
 	// ====================================================
-	// Step 1: Suggest illustrations from manuscript + tagline
+	// Step 1: Suggest tagline & illustrations from manuscript
 	// ====================================================
-	t.Run("Step1_SuggestIllustrations", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodPost, "/api/ai/illustrations/devops/my-video", nil)
+	t.Run("Step1_SuggestTaglineAndIllustrations", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPost, "/api/ai/tagline-and-illustrations/devops/my-video", nil)
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
 
 		if w.Code != http.StatusOK {
-			t.Fatalf("POST /api/ai/illustrations: expected 200, got %d: %s", w.Code, w.Body.String())
+			t.Fatalf("POST /api/ai/tagline-and-illustrations: expected 200, got %d: %s", w.Code, w.Body.String())
 		}
 
-		var resp AIIllustrationsResponse
+		var resp AITaglineAndIllustrationsResponse
 		if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
-			t.Fatalf("failed to decode illustrations response: %v", err)
+			t.Fatalf("failed to decode response: %v", err)
 		}
 
+		if len(resp.Taglines) != 3 {
+			t.Errorf("expected 3 tagline suggestions, got %d", len(resp.Taglines))
+		}
 		if len(resp.Illustrations) != 3 {
 			t.Errorf("expected 3 illustration suggestions, got %d", len(resp.Illustrations))
-		}
-		if resp.Illustrations[0] != "Fortress protecting servers" {
-			t.Errorf("unexpected first illustration: %q", resp.Illustrations[0])
 		}
 	})
 
 	// ====================================================
-	// Step 2: Generate thumbnails with illustration choice
+	// Step 1b: Save tagline & illustration selection
+	// ====================================================
+	t.Run("Step1b_SaveThumbnailConfig", func(t *testing.T) {
+		body := `{"category": "devops", "tagline": "Secure Everything", "illustration": "Fortress protecting servers"}`
+		req := httptest.NewRequest(http.MethodPost, "/api/videos/my-video/thumbnail-config", strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("POST /api/videos/my-video/thumbnail-config: expected 200, got %d: %s", w.Code, w.Body.String())
+		}
+	})
+
+	// ====================================================
+	// Step 2: Generate thumbnails (reads stored tagline + illustration)
 	// ====================================================
 	var generatedIDs []ThumbnailGenerateMeta
 
 	t.Run("Step2_GenerateThumbnails", func(t *testing.T) {
 		body := `{
 			"category": "devops",
-			"name": "my-video",
-			"tagline": "Secure Everything",
-			"illustration": "Fortress protecting servers"
+			"name": "my-video"
 		}`
 		req := httptest.NewRequest(http.MethodPost, "/api/thumbnails/generate", strings.NewReader(body))
 		req.Header.Set("Content-Type", "application/json")
@@ -337,7 +342,9 @@ func TestIntegration_ThumbnailGeneration_PartialProviderFailure(t *testing.T) {
 	store := thumbnail.NewGeneratedImageStore(10 * time.Minute)
 	env.server.SetThumbnailGeneration([]thumbnail.ImageGenerator{goodGen, badGen}, store, "")
 
-	body := `{"category":"devops","name":"test","tagline":"Hello World"}`
+	seedVideo(t, env, storage.Video{Name: "test", Category: "devops", Tagline: "Hello World"})
+
+	body := `{"category":"devops","name":"test"}`
 	req := httptest.NewRequest(http.MethodPost, "/api/thumbnails/generate", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -398,10 +405,11 @@ func TestIntegration_ThumbnailGeneration_MultipleSelections(t *testing.T) {
 	seedVideo(t, env, storage.Video{
 		Name:     "multi-video",
 		Category: "devops",
+		Tagline:  "Test",
 	})
 
 	// Generate thumbnails
-	body := `{"category":"devops","name":"multi-video","tagline":"Test"}`
+	body := `{"category":"devops","name":"multi-video"}`
 	req := httptest.NewRequest(http.MethodPost, "/api/thumbnails/generate", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -487,7 +495,9 @@ func TestIntegration_ThumbnailGeneration_ConcurrentProviders(t *testing.T) {
 	store := thumbnail.NewGeneratedImageStore(10 * time.Minute)
 	env.server.SetThumbnailGeneration(providers, store, "")
 
-	body := `{"category":"devops","name":"test","tagline":"Concurrent Test"}`
+	seedVideo(t, env, storage.Video{Name: "test", Category: "devops", Tagline: "Concurrent Test"})
+
+	body := `{"category":"devops","name":"test"}`
 	req := httptest.NewRequest(http.MethodPost, "/api/thumbnails/generate", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()

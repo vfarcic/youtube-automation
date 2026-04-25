@@ -152,8 +152,6 @@ func TestFieldTitleConsistency(t *testing.T) {
 		"Diagrams":       true,
 		"Screenshots":    true,
 		"Location":       true,
-		"Tagline":        true,
-		"Tagline Ideas":  true,
 		"Other Logos":    true,
 	}
 
@@ -342,7 +340,7 @@ func TestGetAspectsOverview(t *testing.T) {
 		// Test expected field counts based on actual mapping
 		expectedFieldCounts := map[string]int{
 			AspectKeyInitialDetails: 11, // actual count from mapping (includes sponsor name, URL, and adFile)
-			AspectKeyWorkProgress:   11, // actual count from mapping
+			AspectKeyWorkProgress:   9,  // actual count from mapping
 			AspectKeyDefinition:     10, // actual count from mapping (includes Titles array, Shorts, Members, RequestEdit)
 			AspectKeyPostProduction: 4,  // actual count from mapping (ThumbnailVariants, Timecodes, VideoFile, Slides)
 			AspectKeyPublishing:     2,  // actual count from mapping (VideoId, HugoPath; UploadVideo hidden)
@@ -494,7 +492,7 @@ func TestGetAspectFields(t *testing.T) {
 			t.Fatalf("GetAspectFields failed: %v", err)
 		}
 
-		expectedFieldCount := 11 // updated to match actual mapping
+		expectedFieldCount := 9 // updated to match actual mapping
 		if len(result.Fields) != expectedFieldCount {
 			t.Errorf("Expected %d fields for work-progress, got %d", expectedFieldCount, len(result.Fields))
 		}
@@ -509,8 +507,6 @@ func TestGetAspectFields(t *testing.T) {
 			"Diagrams",
 			"Screenshots",
 			"Location",
-			"Tagline",
-			"Tagline Ideas",
 			"Other Logos",
 		}
 

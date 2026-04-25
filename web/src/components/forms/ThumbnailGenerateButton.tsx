@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useSuggestIllustrations, useGenerateThumbnails, useSelectGeneratedThumbnail } from '../../api/hooks';
+import { useSuggestTaglineAndIllustrations, useSaveThumbnailConfig, useGenerateThumbnails, useSelectGeneratedThumbnail } from '../../api/hooks';
 import { getBlob } from '../../api/client';
 import type { ThumbnailGenerateMeta, VideoResponse } from '../../api/types';
 
@@ -33,28 +33,52 @@ interface ThumbnailGenerateButtonProps {
 }
 
 export function ThumbnailGenerateButton({ category, videoName, video }: ThumbnailGenerateButtonProps) {
+  const [taglines, setTaglines] = useState<string[]>([]);
   const [illustrations, setIllustrations] = useState<string[]>([]);
+  const [selectedTagline, setSelectedTagline] = useState<string | null>(null);
   const [selectedIllustration, setSelectedIllustration] = useState<string | null>(null);
   const [generatedThumbnails, setGeneratedThumbnails] = useState<ThumbnailGenerateMeta[]>([]);
   const [generationErrors, setGenerationErrors] = useState<string[]>([]);
   const [selectingId, setSelectingId] = useState<string | null>(null);
   const [selectSuccess, setSelectSuccess] = useState<string | null>(null);
 
-  const illustrationsMutation = useSuggestIllustrations();
+  const suggestMutation = useSuggestTaglineAndIllustrations();
+  const saveMutation = useSaveThumbnailConfig();
   const generateMutation = useGenerateThumbnails();
   const selectMutation = useSelectGeneratedThumbnail();
 
-  const handleSuggestIllustrations = () => {
+  const handleSuggest = () => {
+    setTaglines([]);
     setIllustrations([]);
+    setSelectedTagline(null);
     setSelectedIllustration(null);
     setGeneratedThumbnails([]);
     setGenerationErrors([]);
     setSelectSuccess(null);
-    illustrationsMutation.mutate(
+    suggestMutation.mutate(
       { category, name: videoName },
       {
         onSuccess: (data) => {
+          setTaglines(data.taglines ?? []);
           setIllustrations(data.illustrations ?? []);
+        },
+      },
+    );
+  };
+
+  const handleSaveSelection = () => {
+    if (!selectedTagline) return;
+    saveMutation.mutate(
+      {
+        videoName,
+        category,
+        tagline: selectedTagline,
+        illustration: selectedIllustration === '__none__' ? '' : (selectedIllustration ?? ''),
+      },
+      {
+        onSuccess: () => {
+          setGeneratedThumbnails([]);
+          setGenerationErrors([]);
         },
       },
     );
@@ -65,12 +89,7 @@ export function ThumbnailGenerateButton({ category, videoName, video }: Thumbnai
     setGenerationErrors([]);
     setSelectSuccess(null);
     generateMutation.mutate(
-      {
-        category,
-        name: videoName,
-        tagline: video.tagline || '',
-        illustration: selectedIllustration === '__none__' ? '' : (selectedIllustration ?? ''),
-      },
+      { category, name: videoName },
       {
         onSuccess: (data) => {
           setGeneratedThumbnails(data.thumbnails ?? []);
@@ -95,7 +114,6 @@ export function ThumbnailGenerateButton({ category, videoName, video }: Thumbnai
         onSuccess: () => {
           setSelectSuccess(thumb.id);
           setSelectingId(null);
-          // Remove the selected thumbnail from the grid
           setGeneratedThumbnails((prev) => prev.filter((t) => t.id !== thumb.id));
         },
         onError: () => {
@@ -105,8 +123,10 @@ export function ThumbnailGenerateButton({ category, videoName, video }: Thumbnai
     );
   };
 
-  const showIllustrationSelection = illustrations.length > 0 || illustrationsMutation.isSuccess;
-  const canGenerate = selectedIllustration !== null;
+  const showSelection = taglines.length > 0 || illustrations.length > 0 || suggestMutation.isSuccess;
+  const canSave = selectedTagline !== null && selectedIllustration !== null;
+  const hasStoredTagline = !!(video.tagline);
+  const canGenerate = hasStoredTagline || saveMutation.isSuccess;
 
   // Group thumbnails by provider
   const grouped: Record<string, ThumbnailGenerateMeta[]> = {};
@@ -119,56 +139,104 @@ export function ThumbnailGenerateButton({ category, videoName, video }: Thumbnai
     <div className="mt-3 p-3 bg-gray-800 rounded border border-gray-700">
       <p className="text-xs text-gray-400 mb-2">AI Thumbnail Generation</p>
 
-      {/* Step 1: Suggest Illustrations */}
-      <button
-        type="button"
-        onClick={handleSuggestIllustrations}
-        disabled={illustrationsMutation.isPending}
-        className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        {illustrationsMutation.isPending ? 'Suggesting...' : 'Suggest Illustrations'}
-      </button>
-
-      {illustrationsMutation.isError && (
-        <p className="text-xs text-red-400 mt-1">{illustrationsMutation.error.message}</p>
+      {/* Show stored selections */}
+      {video.tagline && (
+        <p className="text-xs text-gray-400 mb-1">Tagline: <span className="text-gray-200 font-medium">{video.tagline}</span></p>
+      )}
+      {video.illustration && (
+        <p className="text-xs text-gray-400 mb-1">Illustration: <span className="text-gray-200 font-medium">{video.illustration}</span></p>
       )}
 
-      {/* Illustration selection */}
-      {showIllustrationSelection && (
-        <div className="mt-2 space-y-1">
-          <p className="text-xs text-gray-400">Select an illustration idea:</p>
-          {illustrations.map((ill, i) => (
-            <label key={i} className="flex items-start gap-2 text-sm text-gray-200 cursor-pointer">
-              <input
-                type="radio"
-                name="illustration"
-                checked={selectedIllustration === ill}
-                onChange={() => setSelectedIllustration(ill)}
-                className="mt-0.5 shrink-0"
-              />
-              <span>{ill}</span>
-            </label>
-          ))}
-          <label className="flex items-start gap-2 text-sm text-gray-400 cursor-pointer">
-            <input
-              type="radio"
-              name="illustration"
-              checked={selectedIllustration === '__none__'}
-              onChange={() => setSelectedIllustration('__none__')}
-              className="mt-0.5 shrink-0"
-            />
-            <span>None (text only)</span>
-          </label>
+      {/* Step 1: Suggest Tagline & Illustrations */}
+      <button
+        type="button"
+        onClick={handleSuggest}
+        disabled={suggestMutation.isPending}
+        className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        {suggestMutation.isPending ? 'Suggesting...' : 'Suggest Tagline & Illustrations'}
+      </button>
+
+      {suggestMutation.isError && (
+        <p className="text-xs text-red-400 mt-1">{suggestMutation.error.message}</p>
+      )}
+
+      {/* Tagline & Illustration selection */}
+      {showSelection && (
+        <div className="mt-2 space-y-3">
+          {/* Tagline selection */}
+          {taglines.length > 0 && (
+            <div className="space-y-1">
+              <p className="text-xs text-gray-400">Select a tagline:</p>
+              {taglines.map((tl, i) => (
+                <label key={i} className="flex items-start gap-2 text-sm text-gray-200 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="tagline"
+                    checked={selectedTagline === tl}
+                    onChange={() => setSelectedTagline(tl)}
+                    className="mt-0.5 shrink-0"
+                  />
+                  <span>{tl}</span>
+                </label>
+              ))}
+            </div>
+          )}
+
+          {/* Illustration selection */}
+          {illustrations.length > 0 && (
+            <div className="space-y-1">
+              <p className="text-xs text-gray-400">Select an illustration idea:</p>
+              {illustrations.map((ill, i) => (
+                <label key={i} className="flex items-start gap-2 text-sm text-gray-200 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="illustration"
+                    checked={selectedIllustration === ill}
+                    onChange={() => setSelectedIllustration(ill)}
+                    className="mt-0.5 shrink-0"
+                  />
+                  <span>{ill}</span>
+                </label>
+              ))}
+              <label className="flex items-start gap-2 text-sm text-gray-400 cursor-pointer">
+                <input
+                  type="radio"
+                  name="illustration"
+                  checked={selectedIllustration === '__none__'}
+                  onChange={() => setSelectedIllustration('__none__')}
+                  className="mt-0.5 shrink-0"
+                />
+                <span>None (text only)</span>
+              </label>
+            </div>
+          )}
+
+          {/* Save Selection button */}
+          <button
+            type="button"
+            onClick={handleSaveSelection}
+            disabled={!canSave || saveMutation.isPending}
+            className="px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {saveMutation.isPending ? 'Saving...' : 'Save Selection'}
+          </button>
+          {saveMutation.isSuccess && (
+            <p className="text-xs text-green-400">Selection saved.</p>
+          )}
+          {saveMutation.isError && (
+            <p className="text-xs text-red-400">{saveMutation.error.message}</p>
+          )}
         </div>
       )}
 
       {/* Step 2: Generate Thumbnails */}
-      {showIllustrationSelection && (
+      {canGenerate && (
         <div className="mt-2">
           <button
             type="button"
             onClick={handleGenerateThumbnails}
-            disabled={!canGenerate || generateMutation.isPending}
+            disabled={generateMutation.isPending}
             className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {generateMutation.isPending ? 'Generating...' : 'Generate Thumbnails'}

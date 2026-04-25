@@ -85,7 +85,7 @@ export interface VideoResponse {
   descriptionTags: string;
   location: string;
   tagline: string;
-  taglineIdeas: string;
+  illustration: string;
   otherLogos: string;
   language: string;
   timecodes: string;
@@ -252,7 +252,8 @@ export interface AIThumbnailsResponse {
   bold: string;
 }
 
-export interface AIIllustrationsResponse {
+export interface AITaglineAndIllustrationsResponse {
+  taglines: string[];
   illustrations: string[];
 }
 

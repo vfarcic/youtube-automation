@@ -256,7 +256,6 @@ func TestEmailFunctionality(t *testing.T) {
 		OtherLogos:   "Other Logo",
 		Location:     "https://test-location.com",
 		Tagline:      "Test Tagline",
-		TaglineIdeas: "Tagline Idea 1\nTagline Idea 2",
 		Animations:   "Animation 1\nAnimation 2",
 		Members:      "Member 1, Member 2",
 		Titles:       []storage.TitleVariant{{Index: 1, Text: "Test Title", Share: 0}},
@@ -499,18 +498,6 @@ func TestGenerateThumbnailEmailContent(t *testing.T) {
 			expectBody:    "<li>Logo: http://example.com/logo.png, logo2.png, logo3.svg</li>\n<li>Text: Both Logos Tagline</li>",
 		},
 		{
-			name: "Video with TaglineIdeas",
-			video: storage.Video{
-				ProjectName:  "Project Tagline Ideas",
-				Titles:       []storage.TitleVariant{{Index: 1, Text: "Project Tagline Ideas Title", Share: 0}},
-				Location:     "/vids/tagline-ideas",
-				Tagline:      "Main Tagline",
-				TaglineIdeas: "Idea 1\nIdea 2",
-			},
-			expectSubject: "Thumbnail: Project Tagline Ideas Title",
-			expectBody:    "<li>Text: Main Tagline</li>\n</ul>\nIdeas:<br/>Idea 1\nIdea 2",
-		},
-		{
 			name: "Video with N/A ProjectURL and OtherLogos",
 			video: storage.Video{
 				ProjectName: "Project N/A Logos",
@@ -553,10 +540,6 @@ func TestGenerateThumbnailEmailContent(t *testing.T) {
 				if !strings.Contains(normalizedActual, normalizedExpected) {
 					t.Errorf("Expected body to contain (normalized):\n%s\nActual body (normalized):\n%s", normalizedExpected, normalizedActual)
 				}
-			} else if tt.name == "Video with TaglineIdeas" {
-				assert.Contains(t, body, tt.video.Location)
-				assert.Contains(t, body, "<li>Text: "+tt.video.Tagline+"</li>")
-				assert.Contains(t, body, "Ideas:<br/>"+tt.video.TaglineIdeas)
 			} else {
 				assert.Contains(t, body, tt.video.Location)
 				assert.Contains(t, body, tt.expectBody) // Checks for the logo line and tagline line
@@ -567,11 +550,7 @@ func TestGenerateThumbnailEmailContent(t *testing.T) {
 			assert.Contains(t, body, fmt.Sprintf("<li>Text: %s</li>", tt.video.Tagline))
 			assert.Contains(t, body, "<li>Screenshots: screenshot-*.png</li>")
 
-			if len(tt.video.TaglineIdeas) > 0 && tt.video.TaglineIdeas != "N/A" && tt.video.TaglineIdeas != "-" {
-				assert.Contains(t, body, fmt.Sprintf("Ideas:<br/>%s", tt.video.TaglineIdeas))
-			} else {
-				assert.NotContains(t, body, "Ideas:<br/>")
-			}
+			assert.NotContains(t, body, "Ideas:<br/>")
 
 			expectedLogoString := ""
 			if tt.video.ProjectURL != "" && tt.video.ProjectURL != "-" && tt.video.ProjectURL != "N/A" {

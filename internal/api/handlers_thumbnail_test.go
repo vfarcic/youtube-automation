@@ -40,12 +40,13 @@ func TestHandleGenerateThumbnails_Success(t *testing.T) {
 	env.server.SetThumbnailGeneration([]thumbnail.ImageGenerator{gen}, store, "")
 
 	seedVideo(t, env, storage.Video{
-		Name:     "test-video",
-		Category: "devops",
-		Tagline:  "Test Tagline",
+		Name:         "test-video",
+		Category:     "devops",
+		Tagline:      "Hello World",
+		Illustration: "a robot",
 	})
 
-	body := `{"category":"devops","name":"test-video","tagline":"Hello World","illustration":"a robot"}`
+	body := `{"category":"devops","name":"test-video"}`
 	req := httptest.NewRequest(http.MethodPost, "/api/thumbnails/generate", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -97,12 +98,17 @@ func TestHandleGenerateThumbnails_WithPhotos(t *testing.T) {
 	gen := &mockImageGenerator{name: "gemini", data: []byte("image-bytes")}
 	env.server.SetThumbnailGeneration([]thumbnail.ImageGenerator{gen}, store, photoDir)
 
-	body := `{"category":"devops","name":"nonexistent","tagline":"Test"}`
+	seedVideo(t, env, storage.Video{
+		Name:     "test-video",
+		Category: "devops",
+		Tagline:  "Test",
+	})
+
+	body := `{"category":"devops","name":"test-video"}`
 	req := httptest.NewRequest(http.MethodPost, "/api/thumbnails/generate", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 
-	// This will still succeed even with nonexistent video - the endpoint doesn't load the video, just generates
 	env.server.Router().ServeHTTP(w, req)
 
 	if w.Code != http.StatusOK {
@@ -114,7 +120,7 @@ func TestHandleGenerateThumbnails_NoProviders(t *testing.T) {
 	env := setupTestEnv(t)
 	// No generators configured
 
-	body := `{"category":"devops","name":"test-video","tagline":"Hello"}`
+	body := `{"category":"devops","name":"test-video"}`
 	req := httptest.NewRequest(http.MethodPost, "/api/thumbnails/generate", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -132,7 +138,7 @@ func TestHandleGenerateThumbnails_NoStore(t *testing.T) {
 	env.server.imageGenerators = []thumbnail.ImageGenerator{gen}
 	// imageStore is nil
 
-	body := `{"category":"devops","name":"test-video","tagline":"Hello"}`
+	body := `{"category":"devops","name":"test-video"}`
 	req := httptest.NewRequest(http.MethodPost, "/api/thumbnails/generate", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -166,9 +172,8 @@ func TestHandleGenerateThumbnails_MissingFields(t *testing.T) {
 		name string
 		body string
 	}{
-		{"missing category", `{"name":"test","tagline":"Hi"}`},
-		{"missing name", `{"category":"devops","tagline":"Hi"}`},
-		{"missing tagline", `{"category":"devops","name":"test"}`},
+		{"missing category", `{"name":"test"}`},
+		{"missing name", `{"category":"devops"}`},
 	}
 
 	for _, tt := range tests {
@@ -197,7 +202,7 @@ func TestHandleGenerateThumbnails_PathTraversal(t *testing.T) {
 	gen := &mockImageGenerator{name: "test", data: []byte("data")}
 	env.server.SetThumbnailGeneration([]thumbnail.ImageGenerator{gen}, store, "")
 
-	body := `{"category":"../etc","name":"test","tagline":"Hi"}`
+	body := `{"category":"../etc","name":"test"}`
 	req := httptest.NewRequest(http.MethodPost, "/api/thumbnails/generate", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -215,7 +220,9 @@ func TestHandleGenerateThumbnails_AllProvidersFail(t *testing.T) {
 	gen := &mockImageGenerator{name: "failing", err: fmt.Errorf("API error")}
 	env.server.SetThumbnailGeneration([]thumbnail.ImageGenerator{gen}, store, "")
 
-	body := `{"category":"devops","name":"test","tagline":"Hello"}`
+	seedVideo(t, env, storage.Video{Name: "test", Category: "devops", Tagline: "Hello"})
+
+	body := `{"category":"devops","name":"test"}`
 	req := httptest.NewRequest(http.MethodPost, "/api/thumbnails/generate", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -234,7 +241,9 @@ func TestHandleGenerateThumbnails_PartialFailure(t *testing.T) {
 	bad := &mockImageGenerator{name: "bad", err: fmt.Errorf("timeout")}
 	env.server.SetThumbnailGeneration([]thumbnail.ImageGenerator{good, bad}, store, "")
 
-	body := `{"category":"devops","name":"test","tagline":"Hello"}`
+	seedVideo(t, env, storage.Video{Name: "test", Category: "devops", Tagline: "Hello"})
+
+	body := `{"category":"devops","name":"test"}`
 	req := httptest.NewRequest(http.MethodPost, "/api/thumbnails/generate", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -832,7 +841,9 @@ func TestHandleGenerateThumbnails_ErrorsDoNotLeakInternalDetails(t *testing.T) {
 	gen := &mockImageGenerator{name: "failing", err: fmt.Errorf("%s", internalMsg)}
 	env.server.SetThumbnailGeneration([]thumbnail.ImageGenerator{gen}, store, "")
 
-	body := `{"category":"devops","name":"test","tagline":"Hello"}`
+	seedVideo(t, env, storage.Video{Name: "test", Category: "devops", Tagline: "Hello"})
+
+	body := `{"category":"devops","name":"test"}`
 	req := httptest.NewRequest(http.MethodPost, "/api/thumbnails/generate", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -855,7 +866,9 @@ func TestHandleGenerateThumbnails_PartialFailureErrorsSanitized(t *testing.T) {
 	bad := &mockImageGenerator{name: "bad", err: fmt.Errorf("connection refused to internal-host:8443")}
 	env.server.SetThumbnailGeneration([]thumbnail.ImageGenerator{good, bad}, store, "")
 
-	body := `{"category":"devops","name":"test","tagline":"Hello"}`
+	seedVideo(t, env, storage.Video{Name: "test", Category: "devops", Tagline: "Hello"})
+
+	body := `{"category":"devops","name":"test"}`
 	req := httptest.NewRequest(http.MethodPost, "/api/thumbnails/generate", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()

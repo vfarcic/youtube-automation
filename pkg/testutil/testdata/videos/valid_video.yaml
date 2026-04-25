@@ -36,7 +36,6 @@ Tags: "kubernetes,operators,golang,cloud-native"
 DescriptionTags: "#kubernetes #operators #golang #cloudnative"
 Location: "Remote"
 Tagline: "Automate complex Kubernetes applications with custom controllers"
-TaglineIdeas: "Building resilient infrastructure with custom operators"
 OtherLogos: "CNCF,Kubernetes"
 Screenshots: true
 RequestThumbnail: true

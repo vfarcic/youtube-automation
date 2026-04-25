@@ -12,7 +12,7 @@ function renderButton(videoOverrides: Partial<VideoResponse> = {}) {
   const qc = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
-  const video = { ...mockVideo, tagline: 'Test tagline for thumbnails', ...videoOverrides };
+  const video = { ...mockVideo, ...videoOverrides };
   return render(
     <QueryClientProvider client={qc}>
       <ThumbnailGenerateButton
@@ -25,149 +25,143 @@ function renderButton(videoOverrides: Partial<VideoResponse> = {}) {
 }
 
 describe('ThumbnailGenerateButton', () => {
-  it('renders "Suggest Illustrations" button', () => {
+  it('renders "Suggest Tagline & Illustrations" button', () => {
     renderButton();
-    expect(screen.getByRole('button', { name: 'Suggest Illustrations' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Suggest Tagline & Illustrations' })).toBeInTheDocument();
   });
 
-  it('does not show "Generate Thumbnails" button initially', () => {
+  it('does not show "Generate Thumbnails" button when no tagline stored', () => {
     renderButton();
     expect(screen.queryByRole('button', { name: 'Generate Thumbnails' })).not.toBeInTheDocument();
   });
 
-  it('shows loading state when suggesting illustrations', async () => {
+  it('shows "Generate Thumbnails" button when video has stored tagline', () => {
+    renderButton({ tagline: 'Existing Tagline' });
+    expect(screen.getByRole('button', { name: 'Generate Thumbnails' })).toBeInTheDocument();
+  });
+
+  it('displays stored tagline and illustration', () => {
+    renderButton({ tagline: 'My Tagline', illustration: 'A robot building things' });
+    expect(screen.getByText(/My Tagline/)).toBeInTheDocument();
+    expect(screen.getByText(/A robot building things/)).toBeInTheDocument();
+  });
+
+  it('shows loading state when suggesting', async () => {
     server.use(
-      http.post('/api/ai/illustrations/:category/:name', async () => {
+      http.post('/api/ai/tagline-and-illustrations/:category/:name', async () => {
         await new Promise((r) => setTimeout(r, 200));
-        return HttpResponse.json({ illustrations: ['idea 1'] });
+        return HttpResponse.json({ taglines: ['Tag'], illustrations: ['idea 1'] });
       }),
     );
     renderButton();
-    await userEvent.click(screen.getByRole('button', { name: 'Suggest Illustrations' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Suggest Tagline & Illustrations' }));
     expect(screen.getByRole('button', { name: 'Suggesting...' })).toBeDisabled();
   });
 
-  it('displays illustration options after suggestion', async () => {
+  it('displays tagline and illustration options after suggestion', async () => {
     renderButton();
-    await userEvent.click(screen.getByRole('button', { name: 'Suggest Illustrations' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Suggest Tagline & Illustrations' }));
     await waitFor(() => {
+      // Taglines
+      expect(screen.getByText('Contain Everything')).toBeInTheDocument();
+      expect(screen.getByText('Ship Faster')).toBeInTheDocument();
+      expect(screen.getByText('Deploy Smart')).toBeInTheDocument();
+      // Illustrations
       expect(screen.getByText('A robot assembling containers')).toBeInTheDocument();
       expect(screen.getByText('A developer at a whiteboard')).toBeInTheDocument();
-      expect(screen.getByText('Kubernetes pods floating in clouds')).toBeInTheDocument();
       expect(screen.getByText('None (text only)')).toBeInTheDocument();
     });
   });
 
-  it('shows "Generate Thumbnails" button after illustration selection', async () => {
+  it('shows "Save Selection" button after selecting tagline and illustration', async () => {
     renderButton();
-    await userEvent.click(screen.getByRole('button', { name: 'Suggest Illustrations' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Suggest Tagline & Illustrations' }));
     await waitFor(() => {
-      expect(screen.getByText('A robot assembling containers')).toBeInTheDocument();
+      expect(screen.getByText('Contain Everything')).toBeInTheDocument();
     });
-    // Generate button should exist but be disabled until selection
-    expect(screen.getByRole('button', { name: 'Generate Thumbnails' })).toBeDisabled();
 
-    // Select an illustration
+    // Save button should be disabled initially
+    expect(screen.getByRole('button', { name: 'Save Selection' })).toBeDisabled();
+
+    // Select a tagline and illustration
     const radios = screen.getAllByRole('radio');
-    await userEvent.click(radios[0]);
+    await userEvent.click(radios[0]); // first tagline
+    // Still disabled — need illustration too
+    expect(screen.getByRole('button', { name: 'Save Selection' })).toBeDisabled();
 
-    expect(screen.getByRole('button', { name: 'Generate Thumbnails' })).toBeEnabled();
+    await userEvent.click(radios[3]); // first illustration (after 3 taglines)
+    expect(screen.getByRole('button', { name: 'Save Selection' })).toBeEnabled();
+  });
+
+  it('saves selection and shows success', async () => {
+    renderButton();
+    await userEvent.click(screen.getByRole('button', { name: 'Suggest Tagline & Illustrations' }));
+    await waitFor(() => {
+      expect(screen.getByText('Contain Everything')).toBeInTheDocument();
+    });
+
+    const radios = screen.getAllByRole('radio');
+    await userEvent.click(radios[0]); // tagline
+    await userEvent.click(radios[3]); // illustration
+    await userEvent.click(screen.getByRole('button', { name: 'Save Selection' }));
+    await waitFor(() => {
+      expect(screen.getByText('Selection saved.')).toBeInTheDocument();
+    });
   });
 
   it('allows selecting "None" illustration', async () => {
     renderButton();
-    await userEvent.click(screen.getByRole('button', { name: 'Suggest Illustrations' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Suggest Tagline & Illustrations' }));
     await waitFor(() => {
       expect(screen.getByText('None (text only)')).toBeInTheDocument();
     });
+    // Select a tagline
+    const radios = screen.getAllByRole('radio');
+    await userEvent.click(radios[0]);
     // Click the "None" radio
     const noneLabel = screen.getByText('None (text only)');
     const noneRadio = noneLabel.closest('label')!.querySelector('input[type="radio"]')!;
     await userEvent.click(noneRadio);
 
-    expect(screen.getByRole('button', { name: 'Generate Thumbnails' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Save Selection' })).toBeEnabled();
   });
 
-  it('shows error on illustration suggestion failure', async () => {
+  it('shows error on suggestion failure', async () => {
     server.use(
-      http.post('/api/ai/illustrations/:category/:name', () =>
+      http.post('/api/ai/tagline-and-illustrations/:category/:name', () =>
         new HttpResponse('AI generation failed', { status: 500 }),
       ),
     );
     renderButton();
-    await userEvent.click(screen.getByRole('button', { name: 'Suggest Illustrations' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Suggest Tagline & Illustrations' }));
     await waitFor(() => {
       expect(screen.getByText('AI generation failed')).toBeInTheDocument();
     });
   });
 
-  it('shows loading state during thumbnail generation', async () => {
-    server.use(
-      http.post('/api/thumbnails/generate', async () => {
-        await new Promise((r) => setTimeout(r, 200));
-        return HttpResponse.json({ thumbnails: [], errors: [] });
-      }),
-    );
-    renderButton();
-    // First suggest illustrations
-    await userEvent.click(screen.getByRole('button', { name: 'Suggest Illustrations' }));
-    await waitFor(() => {
-      expect(screen.getByText('A robot assembling containers')).toBeInTheDocument();
-    });
-    // Select an illustration
-    const radios = screen.getAllByRole('radio');
-    await userEvent.click(radios[0]);
-    // Generate thumbnails
-    await userEvent.click(screen.getByRole('button', { name: 'Generate Thumbnails' }));
-    expect(screen.getByRole('button', { name: 'Generating...' })).toBeDisabled();
-    expect(screen.getByText(/may take up to 2 minutes/)).toBeInTheDocument();
-  });
-
-  it('displays generated thumbnails in a grid grouped by provider', async () => {
-    renderButton();
-    // Suggest illustrations
-    await userEvent.click(screen.getByRole('button', { name: 'Suggest Illustrations' }));
-    await waitFor(() => {
-      expect(screen.getByText('A robot assembling containers')).toBeInTheDocument();
-    });
-    // Select an illustration
-    const radios = screen.getAllByRole('radio');
-    await userEvent.click(radios[0]);
-    // Generate thumbnails
+  it('generates thumbnails with stored tagline', async () => {
+    renderButton({ tagline: 'Existing Tagline' });
     await userEvent.click(screen.getByRole('button', { name: 'Generate Thumbnails' }));
     await waitFor(() => {
       expect(screen.getByText('gemini')).toBeInTheDocument();
       expect(screen.getByText('gpt-image')).toBeInTheDocument();
     });
-    // Check style labels
     expect(screen.getAllByText('with illustration')).toHaveLength(2);
     expect(screen.getAllByText('without illustration')).toHaveLength(2);
-    // Check "Use This" buttons
     expect(screen.getAllByRole('button', { name: 'Use This' })).toHaveLength(4);
   });
 
   it('handles "Use This" selection and shows success message', async () => {
-    renderButton();
-    // Suggest illustrations
-    await userEvent.click(screen.getByRole('button', { name: 'Suggest Illustrations' }));
-    await waitFor(() => {
-      expect(screen.getByText('A robot assembling containers')).toBeInTheDocument();
-    });
-    // Select an illustration
-    const radios = screen.getAllByRole('radio');
-    await userEvent.click(radios[0]);
-    // Generate thumbnails
+    renderButton({ tagline: 'Test Tagline' });
     await userEvent.click(screen.getByRole('button', { name: 'Generate Thumbnails' }));
     await waitFor(() => {
       expect(screen.getAllByRole('button', { name: 'Use This' })).toHaveLength(4);
     });
-    // Click "Use This" on the first thumbnail
     const useButtons = screen.getAllByRole('button', { name: 'Use This' });
     await userEvent.click(useButtons[0]);
     await waitFor(() => {
       expect(screen.getByText(/uploaded to Drive/)).toBeInTheDocument();
     });
-    // The selected thumbnail should be removed from the grid
     expect(screen.getAllByRole('button', { name: 'Use This' })).toHaveLength(3);
   });
 
@@ -177,17 +171,7 @@ describe('ThumbnailGenerateButton', () => {
         new HttpResponse('All providers failed', { status: 500 }),
       ),
     );
-    renderButton();
-    // Suggest illustrations
-    await userEvent.click(screen.getByRole('button', { name: 'Suggest Illustrations' }));
-    await waitFor(() => {
-      expect(screen.getByText('A robot assembling containers')).toBeInTheDocument();
-    });
-    // Select "None"
-    const noneLabel = screen.getByText('None (text only)');
-    const noneRadio = noneLabel.closest('label')!.querySelector('input[type="radio"]')!;
-    await userEvent.click(noneRadio);
-    // Generate
+    renderButton({ tagline: 'Test Tagline' });
     await userEvent.click(screen.getByRole('button', { name: 'Generate Thumbnails' }));
     await waitFor(() => {
       expect(screen.getByText('All providers failed')).toBeInTheDocument();
@@ -203,13 +187,7 @@ describe('ThumbnailGenerateButton', () => {
         }),
       ),
     );
-    renderButton();
-    await userEvent.click(screen.getByRole('button', { name: 'Suggest Illustrations' }));
-    await waitFor(() => {
-      expect(screen.getByText('A robot assembling containers')).toBeInTheDocument();
-    });
-    const radios = screen.getAllByRole('radio');
-    await userEvent.click(radios[0]);
+    renderButton({ tagline: 'Test Tagline' });
     await userEvent.click(screen.getByRole('button', { name: 'Generate Thumbnails' }));
     await waitFor(() => {
       expect(screen.getByText('a provider failed to generate an image')).toBeInTheDocument();
@@ -223,13 +201,7 @@ describe('ThumbnailGenerateButton', () => {
         new HttpResponse('Drive upload failed', { status: 500 }),
       ),
     );
-    renderButton();
-    await userEvent.click(screen.getByRole('button', { name: 'Suggest Illustrations' }));
-    await waitFor(() => {
-      expect(screen.getByText('A robot assembling containers')).toBeInTheDocument();
-    });
-    const radios = screen.getAllByRole('radio');
-    await userEvent.click(radios[0]);
+    renderButton({ tagline: 'Test Tagline' });
     await userEvent.click(screen.getByRole('button', { name: 'Generate Thumbnails' }));
     await waitFor(() => {
       expect(screen.getAllByRole('button', { name: 'Use This' })).toHaveLength(4);
@@ -238,25 +210,6 @@ describe('ThumbnailGenerateButton', () => {
     await userEvent.click(useButtons[0]);
     await waitFor(() => {
       expect(screen.getByText('Drive upload failed')).toBeInTheDocument();
-    });
-  });
-
-  it('uses existing thumbnail variants length for variantIndex', async () => {
-    renderButton({
-      thumbnailVariants: [
-        { index: 1, path: '', driveFileId: 'existing-id', clickShare: 0 },
-      ],
-    });
-    // The component should use variantIndex = 1 (length of existing variants)
-    await userEvent.click(screen.getByRole('button', { name: 'Suggest Illustrations' }));
-    await waitFor(() => {
-      expect(screen.getByText('A robot assembling containers')).toBeInTheDocument();
-    });
-    const radios = screen.getAllByRole('radio');
-    await userEvent.click(radios[0]);
-    await userEvent.click(screen.getByRole('button', { name: 'Generate Thumbnails' }));
-    await waitFor(() => {
-      expect(screen.getAllByRole('button', { name: 'Use This' })).toHaveLength(4);
     });
   });
 });

@@ -331,7 +331,6 @@ func videoMatchesQuery(v storage.Video, q string) bool {
 		v.Description,
 		v.Tags,
 		v.Tagline,
-		v.TaglineIdeas,
 		v.Location,
 	}
 	// Check title variants

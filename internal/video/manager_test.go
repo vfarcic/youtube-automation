@@ -503,8 +503,6 @@ func TestCalculateOverallProgress(t *testing.T) {
 				Diagrams:      true,
 				Screenshots:   true,
 				Location:      "Conference Room",
-				Tagline:       "Great tagline",
-				TaglineIdeas:  "Some ideas",
 				OtherLogos:    "some_logo.png",
 
 				// Definition
@@ -682,7 +680,7 @@ func TestCalculateWorkProgressProgress(t *testing.T) {
 			name:              "Empty_video",
 			video:             storage.Video{},
 			expectedCompleted: 0,
-			expectedTotal:     11, // Code, Head, Screen, RelatedVideos, Thumbnails, Diagrams, Screenshots, Location, Tagline, TaglineIdeas, OtherLogos
+			expectedTotal:     9, // Code, Head, Screen, RelatedVideos, Thumbnails, Diagrams, Screenshots, Location, OtherLogos
 			description:       "Empty video should have no work progress",
 		},
 		{
@@ -696,7 +694,7 @@ func TestCalculateWorkProgressProgress(t *testing.T) {
 				OtherLogos:  "logo.png",
 			},
 			expectedCompleted: 6,
-			expectedTotal:     11,
+			expectedTotal:     9,
 			description:       "Boolean fields should be counted when true",
 		},
 		{
@@ -704,12 +702,10 @@ func TestCalculateWorkProgressProgress(t *testing.T) {
 			video: storage.Video{
 				RelatedVideos: "video1,video2",
 				Location:      "Conference Room",
-				Tagline:       "Great tagline",
-				TaglineIdeas:  "Some ideas",
 				Head:          true,
 			},
-			expectedCompleted: 5,
-			expectedTotal:     11,
+			expectedCompleted: 3,
+			expectedTotal:     9,
 			description:       "String and boolean fields should be counted when non-empty/true",
 		},
 		{
@@ -723,12 +719,10 @@ func TestCalculateWorkProgressProgress(t *testing.T) {
 				Diagrams:      false, // Should not count
 				Screenshots:   true,
 				Location:      "", // Should not count
-				Tagline:       "Great tagline",
-				TaglineIdeas:  "-", // Should not count (dash)
 				OtherLogos:    "company_logo.png",
 			},
-			expectedCompleted: 7, // Code, Screen, RelatedVideos, Thumbnails, Screenshots, Tagline, OtherLogos
-			expectedTotal:     11,
+			expectedCompleted: 6, // Code, Screen, RelatedVideos, Thumbnails, Screenshots, OtherLogos
+			expectedTotal:     9,
 			description:       "Mixed fields should count only completed ones",
 		},
 		{
@@ -742,12 +736,10 @@ func TestCalculateWorkProgressProgress(t *testing.T) {
 				Diagrams:      true,
 				Screenshots:   true,
 				Location:      "Conference Room",
-				Tagline:       "Great tagline",
-				TaglineIdeas:  "Some ideas",
 				OtherLogos:    "logo_files.png",
 			},
-			expectedCompleted: 11,
-			expectedTotal:     11,
+			expectedCompleted: 9,
+			expectedTotal:     9,
 			description:       "All work progress fields complete",
 		},
 	}

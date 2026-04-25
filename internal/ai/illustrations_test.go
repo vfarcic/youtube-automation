@@ -7,56 +7,47 @@ import (
 	"testing"
 )
 
-func TestSuggestIllustrations(t *testing.T) {
+func TestSuggestTaglineAndIllustrations(t *testing.T) {
 	ctx := context.Background()
 
 	tests := []struct {
 		name              string
 		manuscript        string
-		tagline           string
 		mockResponse      string
 		mockError         error
 		providerError     error
-		wantCount         int
+		wantTaglines      int
+		wantIllustrations int
 		wantErr           bool
 		expectedErrSubstr string
 	}{
 		{
-			name:         "success with tagline",
-			manuscript:   "This video covers Kubernetes security best practices for production clusters.",
-			tagline:      "Secure Your Clusters",
-			mockResponse: `["A fortress protecting server racks", "Shield icons surrounding a Kubernetes wheel", "A cracked padlock being repaired"]`,
-			wantCount:    3,
-			wantErr:      false,
+			name:              "success",
+			manuscript:        "This video covers Kubernetes security best practices for production clusters.",
+			mockResponse:      `{"taglines": ["Secure Your Clusters", "Lock It Down", "Zero Trust Now"], "illustrations": ["A fortress protecting server racks", "Shield icons surrounding a Kubernetes wheel", "A cracked padlock being repaired"]}`,
+			wantTaglines:      3,
+			wantIllustrations: 3,
+			wantErr:           false,
 		},
 		{
-			name:         "success without tagline",
-			manuscript:   "This video covers CI/CD pipeline automation with GitHub Actions.",
-			tagline:      "",
-			mockResponse: `["Conveyor belt assembling code blocks", "Robot arms welding pipeline segments", "Gears turning inside a GitHub logo"]`,
-			wantCount:    3,
-			wantErr:      false,
+			name:              "success with markdown code fence",
+			manuscript:        "This video is about monitoring with Prometheus and Grafana.",
+			mockResponse:      "```json\n{\"taglines\": [\"Monitor Everything\", \"See It All\"], \"illustrations\": [\"Dashboard with rising graphs\", \"Eye watching server metrics\"]}\n```",
+			wantTaglines:      2,
+			wantIllustrations: 2,
+			wantErr:           false,
 		},
 		{
-			name:         "success with markdown code fence",
-			manuscript:   "This video is about monitoring with Prometheus and Grafana.",
-			tagline:      "Monitor Everything",
-			mockResponse: "```json\n[\"Dashboard with rising graphs\", \"Eye watching server metrics\"]\n```",
-			wantCount:    2,
-			wantErr:      false,
-		},
-		{
-			name:         "four suggestions",
-			manuscript:   "A comprehensive guide to GitOps workflows.",
-			tagline:      "GitOps Done Right",
-			mockResponse: `["Git branch tree growing leaves", "Arrows flowing from repo to cluster", "Robot merging pull requests", "Cloud with git icons raining down"]`,
-			wantCount:    4,
-			wantErr:      false,
+			name:              "four illustrations",
+			manuscript:        "A comprehensive guide to GitOps workflows.",
+			mockResponse:      `{"taglines": ["GitOps Done Right", "Automate All"], "illustrations": ["Git branch tree growing leaves", "Arrows flowing from repo to cluster", "Robot merging pull requests", "Cloud with git icons raining down"]}`,
+			wantTaglines:      2,
+			wantIllustrations: 4,
+			wantErr:           false,
 		},
 		{
 			name:              "empty manuscript",
 			manuscript:        "",
-			tagline:           "Some Tagline",
 			mockResponse:      "",
 			wantErr:           true,
 			expectedErrSubstr: "manuscript content is empty",
@@ -64,7 +55,6 @@ func TestSuggestIllustrations(t *testing.T) {
 		{
 			name:              "whitespace-only manuscript",
 			manuscript:        "   \n\t  ",
-			tagline:           "Some Tagline",
 			mockResponse:      "",
 			wantErr:           true,
 			expectedErrSubstr: "manuscript content is empty",
@@ -72,31 +62,34 @@ func TestSuggestIllustrations(t *testing.T) {
 		{
 			name:              "AI provider error",
 			manuscript:        "Valid manuscript content here.",
-			tagline:           "Tagline",
 			mockError:         fmt.Errorf("rate limit exceeded"),
 			wantErr:           true,
-			expectedErrSubstr: "AI illustration suggestion failed",
+			expectedErrSubstr: "AI tagline and illustration suggestion failed",
 		},
 		{
 			name:              "AI returns invalid JSON",
 			manuscript:        "Valid manuscript content.",
-			tagline:           "Tagline",
 			mockResponse:      "Here are some ideas: fire, water, earth",
 			wantErr:           true,
 			expectedErrSubstr: "failed to parse JSON response",
 		},
 		{
-			name:              "AI returns empty array",
+			name:              "AI returns empty taglines",
 			manuscript:        "Valid manuscript content.",
-			tagline:           "Tagline",
-			mockResponse:      `[]`,
+			mockResponse:      `{"taglines": [], "illustrations": ["idea one"]}`,
+			wantErr:           true,
+			expectedErrSubstr: "AI returned an empty list of taglines",
+		},
+		{
+			name:              "AI returns empty illustrations",
+			manuscript:        "Valid manuscript content.",
+			mockResponse:      `{"taglines": ["Tag One"], "illustrations": []}`,
 			wantErr:           true,
 			expectedErrSubstr: "AI returned an empty list of illustrations",
 		},
 		{
 			name:              "provider creation error",
 			manuscript:        "Valid manuscript content.",
-			tagline:           "Tagline",
 			providerError:     fmt.Errorf("no API key configured"),
 			wantErr:           true,
 			expectedErrSubstr: "failed to create AI provider",
@@ -122,46 +115,48 @@ func TestSuggestIllustrations(t *testing.T) {
 				}
 			}
 
-			got, err := SuggestIllustrations(ctx, tt.manuscript, tt.tagline)
+			got, err := SuggestTaglineAndIllustrations(ctx, tt.manuscript)
 
 			if tt.wantErr {
 				if err == nil {
-					t.Errorf("SuggestIllustrations() error = nil, wantErr true")
+					t.Errorf("SuggestTaglineAndIllustrations() error = nil, wantErr true")
 					return
 				}
 				if tt.expectedErrSubstr != "" && !strings.Contains(err.Error(), tt.expectedErrSubstr) {
-					t.Errorf("SuggestIllustrations() error = %q, want substring %q", err.Error(), tt.expectedErrSubstr)
+					t.Errorf("SuggestTaglineAndIllustrations() error = %q, want substring %q", err.Error(), tt.expectedErrSubstr)
 				}
 				return
 			}
 
 			if err != nil {
-				t.Errorf("SuggestIllustrations() unexpected error = %v", err)
+				t.Errorf("SuggestTaglineAndIllustrations() unexpected error = %v", err)
 				return
 			}
 
-			if len(got) != tt.wantCount {
-				t.Errorf("SuggestIllustrations() returned %d illustrations, want %d", len(got), tt.wantCount)
+			if len(got.Taglines) != tt.wantTaglines {
+				t.Errorf("SuggestTaglineAndIllustrations() returned %d taglines, want %d", len(got.Taglines), tt.wantTaglines)
+			}
+			if len(got.Illustrations) != tt.wantIllustrations {
+				t.Errorf("SuggestTaglineAndIllustrations() returned %d illustrations, want %d", len(got.Illustrations), tt.wantIllustrations)
 			}
 		})
 	}
 }
 
-func TestSuggestIllustrations_PromptContainsInputs(t *testing.T) {
+func TestSuggestTaglineAndIllustrations_PromptContainsManuscript(t *testing.T) {
 	originalGetAIProvider := GetAIProvider
 	defer func() { GetAIProvider = originalGetAIProvider }()
 
 	mock := &MockProvider{
-		response: `["Illustration idea one", "Illustration idea two", "Illustration idea three"]`,
+		response: `{"taglines": ["Edge Computing"], "illustrations": ["Illustration idea one", "Illustration idea two", "Illustration idea three"]}`,
 	}
 	GetAIProvider = func() (AIProvider, error) {
 		return mock, nil
 	}
 
 	manuscript := "A unique manuscript about serverless computing on edge devices."
-	tagline := "Edge Computing Unleashed"
 
-	_, err := SuggestIllustrations(context.Background(), manuscript, tagline)
+	_, err := SuggestTaglineAndIllustrations(context.Background(), manuscript)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -169,59 +164,50 @@ func TestSuggestIllustrations_PromptContainsInputs(t *testing.T) {
 	if !strings.Contains(mock.lastPrompt, manuscript) {
 		t.Error("prompt does not contain manuscript content")
 	}
-	if !strings.Contains(mock.lastPrompt, tagline) {
-		t.Error("prompt does not contain tagline")
-	}
 }
 
-func TestParseIllustrationsResponse(t *testing.T) {
+func TestParseTaglineAndIllustrationsResponse(t *testing.T) {
 	tests := []struct {
-		name      string
-		input     string
-		wantCount int
-		wantErr   bool
+		name              string
+		input             string
+		wantTaglines      int
+		wantIllustrations int
+		wantErr           bool
 	}{
 		{
-			name:      "plain JSON array",
-			input:     `["idea one", "idea two", "idea three"]`,
-			wantCount: 3,
-			wantErr:   false,
+			name:              "plain JSON object",
+			input:             `{"taglines": ["Tag One", "Tag Two"], "illustrations": ["idea one", "idea two", "idea three"]}`,
+			wantTaglines:      2,
+			wantIllustrations: 3,
+			wantErr:           false,
 		},
 		{
-			name:      "JSON with code fence",
-			input:     "```json\n[\"a\", \"b\"]\n```",
-			wantCount: 2,
-			wantErr:   false,
+			name:              "JSON with code fence",
+			input:             "```json\n{\"taglines\": [\"A\", \"B\"], \"illustrations\": [\"a\", \"b\"]}\n```",
+			wantTaglines:      2,
+			wantIllustrations: 2,
+			wantErr:           false,
 		},
 		{
-			name:      "JSON with plain code fence",
-			input:     "```\n[\"a\", \"b\", \"c\"]\n```",
-			wantCount: 3,
-			wantErr:   false,
+			name:              "JSON with plain code fence",
+			input:             "```\n{\"taglines\": [\"A\"], \"illustrations\": [\"a\", \"b\", \"c\"]}\n```",
+			wantTaglines:      1,
+			wantIllustrations: 3,
+			wantErr:           false,
 		},
 		{
-			name:      "JSON with explanatory text before",
-			input:     "Here are some illustration ideas for your thumbnail:\n\n[\"Robot painting\", \"Cloud cityscape\"]",
-			wantCount: 2,
-			wantErr:   false,
+			name:              "JSON with explanatory text before",
+			input:             "Here are some suggestions:\n\n{\"taglines\": [\"Robot\", \"Cloud\"], \"illustrations\": [\"Robot painting\", \"Cloud cityscape\"]}",
+			wantTaglines:      2,
+			wantIllustrations: 2,
+			wantErr:           false,
 		},
 		{
-			name:      "JSON with explanatory text before and after",
-			input:     "Based on your manuscript, I suggest:\n\n[\"Fortress protecting servers\", \"Shield icons\"]\n\nThese ideas convey security visually.",
-			wantCount: 2,
-			wantErr:   false,
-		},
-		{
-			name:      "markdown-wrapped JSON with explanatory text",
-			input:     "Here are my suggestions:\n\n```json\n[\"idea one\", \"idea two\"]\n```\n\nLet me know if you need more.",
-			wantCount: 2,
-			wantErr:   false,
-		},
-		{
-			name:      "plain code fence with surrounding text",
-			input:     "Suggestions:\n```\n[\"a\", \"b\", \"c\"]\n```\nHope these help!",
-			wantCount: 3,
-			wantErr:   false,
+			name:              "markdown-wrapped JSON with explanatory text",
+			input:             "Here are my suggestions:\n\n```json\n{\"taglines\": [\"One\"], \"illustrations\": [\"idea one\", \"idea two\"]}\n```\n\nLet me know if you need more.",
+			wantTaglines:      1,
+			wantIllustrations: 2,
+			wantErr:           false,
 		},
 		{
 			name:    "not JSON",
@@ -229,8 +215,13 @@ func TestParseIllustrationsResponse(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:    "empty array",
-			input:   `[]`,
+			name:    "empty taglines",
+			input:   `{"taglines": [], "illustrations": ["a"]}`,
+			wantErr: true,
+		},
+		{
+			name:    "empty illustrations",
+			input:   `{"taglines": ["a"], "illustrations": []}`,
 			wantErr: true,
 		},
 		{
@@ -238,33 +229,26 @@ func TestParseIllustrationsResponse(t *testing.T) {
 			input:   "",
 			wantErr: true,
 		},
-		{
-			name:    "empty array in code fence",
-			input:   "```json\n[]\n```",
-			wantErr: true,
-		},
-		{
-			name:    "no JSON array in mixed text",
-			input:   "Here are some ideas: fire, water, earth. They represent elements.",
-			wantErr: true,
-		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := parseIllustrationsResponse(tt.input)
+			got, err := parseTaglineAndIllustrationsResponse(tt.input)
 			if tt.wantErr {
 				if err == nil {
-					t.Error("parseIllustrationsResponse() error = nil, wantErr true")
+					t.Error("parseTaglineAndIllustrationsResponse() error = nil, wantErr true")
 				}
 				return
 			}
 			if err != nil {
-				t.Errorf("parseIllustrationsResponse() unexpected error = %v", err)
+				t.Errorf("parseTaglineAndIllustrationsResponse() unexpected error = %v", err)
 				return
 			}
-			if len(got) != tt.wantCount {
-				t.Errorf("parseIllustrationsResponse() returned %d items, want %d", len(got), tt.wantCount)
+			if len(got.Taglines) != tt.wantTaglines {
+				t.Errorf("parseTaglineAndIllustrationsResponse() returned %d taglines, want %d", len(got.Taglines), tt.wantTaglines)
+			}
+			if len(got.Illustrations) != tt.wantIllustrations {
+				t.Errorf("parseTaglineAndIllustrationsResponse() returned %d illustrations, want %d", len(got.Illustrations), tt.wantIllustrations)
 			}
 		})
 	}

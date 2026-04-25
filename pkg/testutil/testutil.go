@@ -324,7 +324,7 @@ type Video struct {
 	DescriptionTags     string
 	Location            string
 	Tagline             string
-	TaglineIdeas        string
+	Illustration        string
 	OtherLogos          string
 	Screenshots         bool
 	RequestThumbnail    bool

@@ -125,7 +125,7 @@ func (s *Server) setupRoutes() {
 			r.Post("/tweets/{category}/{name}", s.handleAITweets)
 			r.Post("/description-tags/{category}/{name}", s.handleAIDescriptionTags)
 			r.Post("/shorts/{category}/{name}", s.handleAIShorts)
-			r.Post("/illustrations/{category}/{name}", s.handleAIIllustrations)
+			r.Post("/tagline-and-illustrations/{category}/{name}", s.handleAITaglineAndIllustrations)
 			r.Post("/thumbnails", s.handleAIThumbnails)
 			r.Post("/translate", s.handleAITranslate)
 			r.Post("/ama/content", s.handleAIAMAContent)
@@ -202,6 +202,7 @@ func (s *Server) setupRoutes() {
 			r.Get("/{videoName}/manuscript", s.handleGetVideoManuscript)
 			r.Get("/{videoName}/animations", s.handleGetVideoAnimations)
 			r.Post("/{videoName}/apply-random-timing", s.handleApplyRandomTiming)
+			r.Post("/{videoName}/thumbnail-config", s.handleSaveThumbnailConfig)
 		})
 	})
 

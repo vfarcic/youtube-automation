@@ -20,10 +20,15 @@ import (
 
 // ThumbnailGenerateRequest is the JSON body for POST /api/thumbnails/generate.
 type ThumbnailGenerateRequest struct {
+	Category string `json:"category"`
+	Name     string `json:"name"`
+}
+
+// ThumbnailConfigRequest is the JSON body for POST /api/videos/{videoName}/thumbnail-config.
+type ThumbnailConfigRequest struct {
 	Category     string `json:"category"`
-	Name         string `json:"name"`
-	Illustration string `json:"illustration,omitempty"`
 	Tagline      string `json:"tagline"`
+	Illustration string `json:"illustration"`
 }
 
 // ThumbnailGenerateMeta describes one generated thumbnail in the response.
@@ -74,15 +79,23 @@ func (s *Server) handleGenerateThumbnails(w http.ResponseWriter, r *http.Request
 		respondError(w, http.StatusBadRequest, "category and name are required", "")
 		return
 	}
-	if req.Tagline == "" {
-		respondError(w, http.StatusBadRequest, "tagline is required", "")
-		return
-	}
 
 	// Validate path params to prevent traversal
 	if strings.Contains(req.Category, "..") || strings.Contains(req.Category, "/") || strings.Contains(req.Category, "\\") ||
 		strings.Contains(req.Name, "..") || strings.Contains(req.Name, "/") || strings.Contains(req.Name, "\\") {
 		respondError(w, http.StatusBadRequest, "invalid category or name", "")
+		return
+	}
+
+	// Load stored tagline and illustration from video
+	video, err := s.videoService.GetVideo(req.Name, req.Category)
+	if err != nil {
+		log.Printf("video not found for %s/%s: %v", req.Category, req.Name, err)
+		respondError(w, http.StatusNotFound, "video not found", "")
+		return
+	}
+	if video.Tagline == "" {
+		respondError(w, http.StatusBadRequest, "tagline must be set before generating thumbnails", "")
 		return
 	}
 
@@ -95,8 +108,8 @@ func (s *Server) handleGenerateThumbnails(w http.ResponseWriter, r *http.Request
 	}
 
 	// Build prompts
-	cfgWith := thumbnail.BuildPromptConfig(req.Tagline, req.Illustration, nil)
-	cfgWithout := thumbnail.BuildPromptConfig(req.Tagline, "", nil)
+	cfgWith := thumbnail.BuildPromptConfig(video.Tagline, video.Illustration, nil)
+	cfgWithout := thumbnail.BuildPromptConfig(video.Tagline, "", nil)
 
 	promptWith := thumbnail.BuildPrompt(cfgWith)
 	promptWithout := thumbnail.BuildPrompt(cfgWithout)
@@ -274,6 +287,56 @@ func (s *Server) handleSelectGeneratedThumbnail(w http.ResponseWriter, r *http.R
 	resp := map[string]interface{}{
 		"driveFileId":  fileID,
 		"variantIndex": req.VariantIndex,
+	}
+	addSyncWarningMap(resp, s.videoService)
+	respondJSON(w, http.StatusOK, resp)
+}
+
+// handleSaveThumbnailConfig saves the selected tagline and illustration to the video.
+//
+// POST /api/videos/{videoName}/thumbnail-config
+func (s *Server) handleSaveThumbnailConfig(w http.ResponseWriter, r *http.Request) {
+	videoName := chi.URLParam(r, "videoName")
+	if _, ok := validatePathParam(w, videoName, "videoName"); !ok {
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+
+	var req ThumbnailConfigRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "Invalid request body", "")
+		return
+	}
+
+	if req.Category == "" {
+		respondError(w, http.StatusBadRequest, "category is required", "")
+		return
+	}
+	if req.Tagline == "" {
+		respondError(w, http.StatusBadRequest, "tagline is required", "")
+		return
+	}
+
+	video, err := s.videoService.GetVideo(videoName, req.Category)
+	if err != nil {
+		log.Printf("video not found for %s/%s: %v", req.Category, videoName, err)
+		respondError(w, http.StatusNotFound, "video not found", "")
+		return
+	}
+
+	video.Tagline = req.Tagline
+	video.Illustration = req.Illustration
+
+	if err := s.videoService.UpdateVideo(video); err != nil {
+		log.Printf("failed to save video %s/%s: %v", req.Category, videoName, err)
+		respondError(w, http.StatusInternalServerError, "Failed to save video", "")
+		return
+	}
+
+	resp := map[string]interface{}{
+		"tagline":      video.Tagline,
+		"illustration": video.Illustration,
 	}
 	addSyncWarningMap(resp, s.videoService)
 	respondJSON(w, http.StatusOK, resp)

@@ -43,7 +43,7 @@ func GetVideoAspectMappings() []AspectMapping {
 		},
 		AspectKeyWorkProgress: {
 			"Code", "Head", "Screen", "RelatedVideos", "Thumbnails", "Diagrams",
-			"Screenshots", "Location", "Tagline", "TaglineIdeas", "OtherLogos",
+			"Screenshots", "Location", "OtherLogos",
 		},
 		AspectKeyDefinition: {
 			"Titles", "Description", "Tags", "DescriptionTags", "Tweet", "Animations", "Shorts", "Members", "RequestThumbnail", "RequestEdit",
@@ -307,7 +307,6 @@ func isMultiLineTextField(fieldName string) bool {
 		"Timecodes":       true,
 		"RelatedVideos":   true,
 		"Tweet":           true,
-		"TaglineIdeas":    true,
 		"Members":         true,
 		"Animations":      true,
 	}

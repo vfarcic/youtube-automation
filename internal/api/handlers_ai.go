@@ -88,7 +88,8 @@ type AIAMATimecodesResponse struct {
 	Timecodes string `json:"timecodes"`
 }
 
-type AIIllustrationsResponse struct {
+type AITaglineAndIllustrationsResponse struct {
+	Taglines      []string `json:"taglines"`
 	Illustrations []string `json:"illustrations"`
 }
 
@@ -372,10 +373,10 @@ func (s *Server) handleAIAMATimecodes(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, AIAMATimecodesResponse{Timecodes: timecodes})
 }
 
-// --- Illustration suggestions ---
+// --- Tagline & Illustration suggestions ---
 
-// handleAIIllustrations suggests illustration ideas from the video manuscript and tagline.
-func (s *Server) handleAIIllustrations(w http.ResponseWriter, r *http.Request) {
+// handleAITaglineAndIllustrations suggests tagline options and illustration ideas from the video manuscript.
+func (s *Server) handleAITaglineAndIllustrations(w http.ResponseWriter, r *http.Request) {
 	category, ok := validatePathParam(w, chi.URLParam(r, "category"), "category")
 	if !ok {
 		return
@@ -392,20 +393,16 @@ func (s *Server) handleAIIllustrations(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	video, err := s.videoService.GetVideo(name, category)
+	result, err := s.aiService.SuggestTaglineAndIllustrations(r.Context(), manuscript)
 	if err != nil {
-		log.Printf("video not found for %s/%s: %v", category, name, err)
-		respondError(w, http.StatusNotFound, "video not found", "")
-		return
-	}
-
-	illustrations, err := s.aiService.SuggestIllustrations(r.Context(), manuscript, video.Tagline)
-	if err != nil {
-		log.Printf("AI illustration generation failed: %v", err)
+		log.Printf("AI tagline and illustration generation failed: %v", err)
 		respondError(w, http.StatusInternalServerError, "AI generation failed", "")
 		return
 	}
-	respondJSON(w, http.StatusOK, AIIllustrationsResponse{Illustrations: illustrations})
+	respondJSON(w, http.StatusOK, AITaglineAndIllustrationsResponse{
+		Taglines:      result.Taglines,
+		Illustrations: result.Illustrations,
+	})
 }
 
 // --- Helpers ---

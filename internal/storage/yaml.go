@@ -76,8 +76,8 @@ type Video struct {
 	Tags                 string             `json:"tags" completion:"filled_only"`
 	DescriptionTags      string             `json:"descriptionTags" completion:"filled_only"`
 	Location             string             `json:"location" completion:"filled_only"`
-	Tagline              string             `json:"tagline" completion:"filled_only"`
-	TaglineIdeas         string             `json:"taglineIdeas" completion:"filled_only"`
+	Tagline              string             `json:"tagline" ui:"auto"`
+	Illustration         string             `json:"illustration" ui:"auto"`
 	OtherLogos           string             `json:"otherLogos" completion:"filled_only"`
 	Screenshots          bool               `json:"screenshots" completion:"true_only"`
 	RequestThumbnail     bool               `json:"requestThumbnail" completion:"true_only"`

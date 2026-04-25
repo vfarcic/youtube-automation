@@ -237,8 +237,6 @@ func getFieldDescription(fieldKey string) string {
 		"diagrams":      "Diagrams and visual aids created",
 		"screenshots":   "Screenshots captured",
 		"location":      "File storage location or Google Drive link",
-		"tagline":       "Video tagline or subtitle",
-		"taglineIdeas":  "Alternative tagline options",
 		"otherLogos":    "Additional logos or assets needed",
 
 		// Definition

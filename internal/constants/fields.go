@@ -34,8 +34,6 @@ const (
 	FieldTitleDiagramsDone        = "Diagrams Done"
 	FieldTitleScreenshotsDone     = "Screenshots Done"
 	FieldTitleFilesLocation       = "Files Location (e.g., Google Drive link)"
-	FieldTitleTagline             = "Tagline"
-	FieldTitleTaglineIdeas        = "Tagline Ideas"
 	FieldTitleOtherLogos          = "Other Logos/Assets"
 
 	// Definition fields
