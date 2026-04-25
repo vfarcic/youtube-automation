@@ -10,6 +10,8 @@ After reviewer and auditor both complete with no critical issues for a task, run
 
 Only delegate to release when ALL PRD milestones are complete (not after individual tasks). The release agent handles /prd-done to create the PR, merge, and close the issue for the entire PRD.
 
+After committing a completed task, suggest how the user can manually test/verify the work (only if there is something meaningful to check — e.g., run a command, hit an API endpoint, check the UI). Skip this if the task is purely internal with no user-visible way to verify.
+
 
 ## Available agents
 
