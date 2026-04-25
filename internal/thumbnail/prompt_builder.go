@@ -188,7 +188,7 @@ func BuildPrompt(cfg PromptConfig) string {
 	sb.WriteString("\n\n")
 
 	sb.WriteString(fmt.Sprintf(
-		`**My photo:** Take the photo of me that I attached and convert it to high-contrast black and white — like a photocopy or stencil art. Keep my pose exactly as it is in the photo. Show me waist-up, positioned on the %s, overlapping the text. My body must extend to the bottom edge of the image — anchor me to the bottom so I look grounded, not floating. I must be facing/looking toward the %s side of the frame (toward the text, away from my placement). If the source photo has me facing the other way, horizontally mirror (flip left-to-right) the photo so I face the correct direction. If I am holding a microphone in the photo, remove it completely — my hand should appear natural without it. The text is the main element, I am secondary.`,
+		`**My photo:** Take the photo of me that I attached and convert it to high-contrast black and white — like a photocopy or stencil art. Keep my pose exactly as it is in the photo. Show me waist-up, positioned on the %s, overlapping the text. My body must extend to the bottom edge of the image — anchor me to the bottom so I look grounded, not floating. I must be facing/looking toward the %s side of the frame (toward the text, away from my placement). If the source photo has me facing the other way, horizontally mirror (flip left-to-right) the photo so I face the correct direction. If there is a microphone visible in the photo (handheld, on a stand, boom mic, or lapel), remove it completely from the image. The text is the main element, I am secondary.`,
 		cfg.Placement.Description, cfg.Placement.FaceDirection))
 	sb.WriteString("\n\n")
 
