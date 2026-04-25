@@ -14,6 +14,7 @@ import (
 	"devopstoolkit/youtube-automation/internal/filesystem"
 	"devopstoolkit/youtube-automation/internal/gdrive"
 	"devopstoolkit/youtube-automation/internal/service"
+	"devopstoolkit/youtube-automation/internal/thumbnail"
 	"devopstoolkit/youtube-automation/internal/video"
 
 	"github.com/go-chi/chi/v5"
@@ -35,6 +36,9 @@ type Server struct {
 	publishingService PublishingService
 	analyzeService    AnalyzeService
 	gitSync           GitSyncService
+	imageGenerators   []thumbnail.ImageGenerator
+	imageStore        *thumbnail.GeneratedImageStore
+	photoDir          string
 	dataDir           string
 	apiToken          string
 	frontendFS        fs.FS
@@ -66,6 +70,13 @@ func (s *Server) SetAnalyzeService(as AnalyzeService) {
 // SetGitSync configures git sync for commit+push after file writes.
 func (s *Server) SetGitSync(gs GitSyncService) {
 	s.gitSync = gs
+}
+
+// SetThumbnailGeneration configures thumbnail generation support.
+func (s *Server) SetThumbnailGeneration(generators []thumbnail.ImageGenerator, store *thumbnail.GeneratedImageStore, photoDir string) {
+	s.imageGenerators = generators
+	s.imageStore = store
+	s.photoDir = photoDir
 }
 
 // NewServer creates a new API server wired to the given service and manager.
@@ -114,12 +125,20 @@ func (s *Server) setupRoutes() {
 			r.Post("/tweets/{category}/{name}", s.handleAITweets)
 			r.Post("/description-tags/{category}/{name}", s.handleAIDescriptionTags)
 			r.Post("/shorts/{category}/{name}", s.handleAIShorts)
+			r.Post("/illustrations/{category}/{name}", s.handleAIIllustrations)
 			r.Post("/thumbnails", s.handleAIThumbnails)
 			r.Post("/translate", s.handleAITranslate)
 			r.Post("/ama/content", s.handleAIAMAContent)
 			r.Post("/ama/title", s.handleAIAMATitle)
 			r.Post("/ama/description", s.handleAIAMADescription)
 			r.Post("/ama/timecodes", s.handleAIAMATimecodes)
+		})
+
+		// Thumbnail generation
+		r.Route("/thumbnails", func(r chi.Router) {
+			r.Post("/generate", s.handleGenerateThumbnails)
+			r.Get("/generated/{id}", s.handleGetGeneratedThumbnail)
+			r.Post("/generated/{id}/select", s.handleSelectGeneratedThumbnail)
 		})
 
 		// Drive upload/download

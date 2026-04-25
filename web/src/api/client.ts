@@ -33,6 +33,20 @@ export function get<T>(path: string): Promise<T> {
   return request<T>(path);
 }
 
+export async function getBlob(path: string): Promise<Blob> {
+  const token = localStorage.getItem('api_token');
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  const res = await fetch(path, { headers });
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new ApiError(res.status, body || res.statusText);
+  }
+  return res.blob();
+}
+
 export function post<T>(path: string, body: unknown): Promise<T> {
   return request<T>(path, { method: 'POST', body: JSON.stringify(body) });
 }

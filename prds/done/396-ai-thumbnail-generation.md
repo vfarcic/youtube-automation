@@ -1,9 +1,10 @@
 # PRD: AI-Powered Thumbnail Generation with Multi-Provider Support
 
 **Issue**: #396
-**Status**: Draft
+**Status**: Complete
 **Priority**: High
 **Created**: 2026-04-24
+**Completed**: 2026-04-25
 
 ---
 
@@ -159,18 +160,36 @@ POST /api/thumbnails/generated/{id}/select        → Upload selected thumbnail 
 
 ## Milestones
 
-- [ ] **Helm chart ConfigMap**: New `settings` section in values.yaml, ConfigMap template, deployment volume mount. Existing env var config untouched. Chart lints and templates correctly.
-- [ ] **Go configuration**: `ThumbnailGeneration` structs, env var overrides for API keys, loaded from settings.yaml. Tests passing.
-- [ ] **Image generation interface and Gemini provider**: `ImageGenerator` interface, `GeminiClient` implementation with HTTP calls, prompt builder with randomized color/placement, embedded prompt template. Tests passing with httptest mock.
-- [ ] **GPT Image 2 provider**: `GPTImageClient` implementation. Tests passing with httptest mock.
-- [ ] **Illustration suggestions**: `SuggestIllustrations()` in AI package using existing text AI provider, added to `AIService` interface, API endpoint wired. Tests passing.
-- [ ] **Thumbnail generation orchestrator and store**: `GenerateThumbnails()` with concurrent multi-provider execution, in-memory `GeneratedImageStore` with cleanup. Tests passing.
-- [ ] **API endpoints**: All 4 endpoints (illustrations, generate, download, select) wired in server, including Drive upload on selection. Tests passing.
-- [ ] **Server wiring**: Generators initialized from config in `main.go`, image store created and set on server.
-- [ ] **Frontend component**: `ThumbnailGenerateButton` with two-step flow (illustrations then generation), image grid, "Use This" selection, loading/error states. Integrated into `DynamicForm` alongside existing upload button.
-- [ ] **End-to-end validation**: Full flow works: suggest illustrations → generate thumbnails → pick one → uploaded to Drive → appears as thumbnail variant.
+- [x] **Helm chart ConfigMap**: New `settings` section in values.yaml, ConfigMap template, deployment volume mount. Existing env var config untouched. Chart lints and templates correctly.
+- [x] **Go configuration**: `ThumbnailGeneration` structs, env var overrides for API keys, loaded from settings.yaml. Tests passing.
+- [x] **Image generation interface and Gemini provider**: `ImageGenerator` interface, `GeminiClient` implementation with HTTP calls, prompt builder with randomized color/placement, embedded prompt template. Tests passing with httptest mock.
+- [x] **GPT Image 2 provider**: `GPTImageClient` implementation. Tests passing with httptest mock.
+- [x] **Illustration suggestions**: `SuggestIllustrations()` in AI package using existing text AI provider, added to `AIService` interface, API endpoint wired. Tests passing.
+- [x] **Thumbnail generation orchestrator and store**: `GenerateThumbnails()` with concurrent multi-provider execution, in-memory `GeneratedImageStore` with cleanup. Tests passing.
+- [x] **API endpoints**: All 4 endpoints (illustrations, generate, download, select) wired in server, including Drive upload on selection. Tests passing.
+- [x] **Server wiring**: Generators initialized from config in `main.go`, image store created and set on server.
+- [x] **Frontend component**: `ThumbnailGenerateButton` with two-step flow (illustrations then generation), image grid, "Use This" selection, loading/error states. Integrated into `DynamicForm` alongside existing upload button.
+- [x] **End-to-end validation**: Full flow works: suggest illustrations → generate thumbnails → pick one → uploaded to Drive → appears as thumbnail variant.
 
 ## Progress Log
+
+### 2026-04-25
+- Milestone 10 complete: 5 integration tests covering full flow, partial failure, concurrent providers, manual upload compatibility. All tests pass, build succeeds.
+- Updated image generation models: Gemini → gemini-3.0-pro-image-generation (Nano Banana Pro), OpenAI → gpt-image-2
+- Milestone 9 complete: ThumbnailGenerateButton with 3-step flow, AuthImage component with blob URLs for auth-protected previews, 14 frontend tests, integrated into DynamicForm
+- Milestone 8 complete: Server wiring — CreateProviders() from config, StartCleanupLoop(), wired in main.go with SetThumbnailGeneration()
+- Milestone 7 complete: 3 API endpoints (generate, download, select) with 1MB request body limits, sanitized error responses, 27+ tests at 84.6% coverage
+- Milestone 6 complete: GenerateThumbnails orchestrator with concurrent multi-provider execution (semaphore-bounded), GeneratedImageStore with TTL cleanup, max items cap, byte-slice isolation
+- Milestone 5 complete: SuggestIllustrations with prompt template, parseIllustrationsResponse with robust JSON extraction, API endpoint POST /api/ai/illustrations/{category}/{name}
+- Security fix: path traversal prevention via validatePathParam(), generic error messages (no internal path leakage)
+- Milestone 4 complete: GPTImageClient with multipart/form-data, Bearer auth, content policy detection on both 200 and non-200 responses, sanitized error messages
+- Milestone 3 complete: ImageGenerator interface, GeminiClient with HTTP API calls, prompt builder with randomized color/placement and channel stencil-art style
+- Security hardening: 120s HTTP timeout, 50MB response limit, content-type validation, prompt input sanitization, safety-filtered response handling
+- 42+ test cases, 93.4% coverage on internal/thumbnail
+- Milestone 1 complete: Helm chart ConfigMap — settings.thumbnailGeneration in values.yaml, configmap-settings.yaml template, deployment volume+volumeMount, SETTINGS_FILE env var
+- Milestone 2 complete: Go configuration — SettingsThumbnailGeneration/SettingsThumbnailProvider structs, SETTINGS_FILE env var support in InitGlobalSettings(), 8 table-driven tests passing
+- Reviewed: integration issue found (settings path mismatch) and fixed via SETTINGS_FILE env var
+- Audited: no critical security issues
 
 ### 2026-04-24
 - PRD created

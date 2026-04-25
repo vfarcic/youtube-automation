@@ -14,6 +14,7 @@ import { SocialPostButton, isSocialField } from './SocialPostButton';
 import { AIGenerateButton } from './AIGenerateButton';
 import { RandomTimingButton } from './RandomTimingButton';
 import { GenerateAnimationsButton } from './GenerateAnimationsButton';
+import { ThumbnailGenerateButton } from './ThumbnailGenerateButton';
 import { VideoUploadInput } from './VideoUploadInput';
 import { FieldLabel } from './FieldLabel';
 import { AI_FIELD_CONFIG } from '../../lib/aiFields';
@@ -156,6 +157,13 @@ export function DynamicForm({ fields, video, onSave, onSaveCrossAspect, saving, 
                 category={category}
                 videoName={videoName}
                 onApply={(newDate) => handleChange(field.fieldName, newDate)}
+              />
+            )}
+            {category && videoName && field.fieldName === 'thumbnailVariants' && (
+              <ThumbnailGenerateButton
+                category={category}
+                videoName={videoName}
+                video={video}
               />
             )}
           </div>

@@ -18,7 +18,22 @@ so agents can read it themselves.
 
 After the coder finishes, delegate to both the reviewer and auditor in parallel.
 
-After reviewer and auditor both complete with no critical issues, delegate to release to finalize.
+After reviewer and auditor both complete with no critical issues for a task, run \
+/prd-update-progress yourself to record progress, then run /prd-next to identify and \
+start the next task. Repeat this cycle until all PRD milestones are complete.
+
+Only delegate to release when ALL PRD milestones are complete (not after individual tasks). \
+The release agent handles /prd-done to create the PR, merge, and close the issue for the \
+entire PRD.
+
+After committing a completed task, suggest how the user can manually test/verify the work \
+(only if there is something meaningful to check — e.g., run a command, hit an API endpoint, \
+check the UI). Skip this if the task is purely internal with no user-visible way to verify.
+
+Before delegating to release, provide detailed instructions for the user to validate the \
+complete solution end-to-end (full user journey, key commands, what to look for). Then STOP \
+and wait for the user to confirm they have validated and are ready to release. Do NOT \
+delegate to release until the user explicitly tells you to proceed.
 """
 
 [[orchestrations.roles]]
@@ -41,7 +56,7 @@ prompt_template = "Audit for security vulnerabilities, unsafe code, and OWASP to
 
 [[orchestrations.roles]]
 name = "release"
-command = "devbox run agent-small"
+command = "devbox run agent-big"
 clear = false
 description = "Runs the release process after all implementation work is reviewed and approved: /prd-done to create PR, merge, and close issue. Delegate here when coder/reviewer/auditor work is complete."
-prompt_template = "You are a release agent. Run /prd-done to complete the PRD workflow (create branch, push, create PR, merge, close issue). Do NOT modify code or fix issues yourself. If any step fails (e.g., failing CI checks, merge conflicts, or reviewer-requested changes), stop and report the issue clearly so the orchestrator can delegate fixes to the coder."
+prompt_template = "You are a release agent. Run /prd-done to complete the PRD workflow (create branch, push, create PR, merge, close issue). Do NOT modify code or fix issues yourself. If any step fails (e.g., failing CI checks, merge conflicts, or reviewer-requested changes), stop and report ALL issues clearly so the orchestrator can delegate fixes to the coder. When reporting code review comments, include ALL findings — do not discard or dismiss any unless you genuinely disagree with the reviewer's assessment. We fix all review comments by default."

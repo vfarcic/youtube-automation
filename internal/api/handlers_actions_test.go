@@ -29,9 +29,11 @@ type mockEmailService struct {
 	sendUploadNotificationCalled        bool
 	sendUploadNotificationParams        notification.UploadNotificationParams
 	sendUploadNotificationErr           error
+	sendUploadNotificationDone          chan struct{} // closed when SendUploadNotification is called
 	sendDriveUploadNotificationCalled   bool
 	sendDriveUploadNotificationParams   notification.DriveUploadNotificationParams
 	sendDriveUploadNotificationErr      error
+	sendDriveUploadNotificationDone     chan struct{} // closed when SendDriveUploadNotification is called
 	returnErr                           error
 	sendSponsorsErr                     error
 }
@@ -63,6 +65,9 @@ func (m *mockEmailService) SendSponsors(from, to string, videoID, sponsorshipPri
 func (m *mockEmailService) SendUploadNotification(from string, params notification.UploadNotificationParams) error {
 	m.sendUploadNotificationCalled = true
 	m.sendUploadNotificationParams = params
+	if m.sendUploadNotificationDone != nil {
+		close(m.sendUploadNotificationDone)
+	}
 	if m.sendUploadNotificationErr != nil {
 		return m.sendUploadNotificationErr
 	}
@@ -72,6 +77,9 @@ func (m *mockEmailService) SendUploadNotification(from string, params notificati
 func (m *mockEmailService) SendDriveUploadNotification(from string, params notification.DriveUploadNotificationParams) error {
 	m.sendDriveUploadNotificationCalled = true
 	m.sendDriveUploadNotificationParams = params
+	if m.sendDriveUploadNotificationDone != nil {
+		close(m.sendDriveUploadNotificationDone)
+	}
 	if m.sendDriveUploadNotificationErr != nil {
 		return m.sendDriveUploadNotificationErr
 	}

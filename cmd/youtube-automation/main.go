@@ -5,8 +5,12 @@ import (
 	"fmt"
 	"io/fs"
 	"log/slog"
+	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"syscall"
+	"time"
 
 	"devopstoolkit/youtube-automation/internal/api"
 	"devopstoolkit/youtube-automation/internal/aspect"
@@ -21,6 +25,7 @@ import (
 	"devopstoolkit/youtube-automation/internal/publishing"
 	"devopstoolkit/youtube-automation/internal/service"
 	slackpkg "devopstoolkit/youtube-automation/internal/slack"
+	"devopstoolkit/youtube-automation/internal/thumbnail"
 	"devopstoolkit/youtube-automation/internal/video"
 )
 
@@ -142,8 +147,44 @@ func main() {
 			}
 		}
 
-		if err := srv.Start(configuration.GetServeHost(), configuration.GetServePort()); err != nil {
-			fmt.Fprintf(os.Stderr, "Server error: %v\n", err)
+		// Thumbnail generation: configure AI image providers and in-memory store
+		var thumbnailStop chan struct{}
+		{
+			thumbCfg := configuration.GlobalSettings.ThumbnailGeneration
+			generators := thumbnail.CreateProviders(thumbCfg, nil)
+			if len(generators) > 0 {
+				store := thumbnail.NewGeneratedImageStore(thumbnail.DefaultStoreTTL)
+				thumbnailStop = make(chan struct{})
+				thumbnail.StartCleanupLoop(store, thumbnail.DefaultCleanupInterval, thumbnailStop)
+				srv.SetThumbnailGeneration(generators, store, thumbCfg.PhotoDir)
+				slog.Info("thumbnail generation enabled", "providers", len(generators), "photoDir", thumbCfg.PhotoDir)
+			} else {
+				slog.Info("thumbnail generation disabled: no providers configured or API keys missing")
+			}
+		}
+
+		// Graceful shutdown: listen for termination signals
+		quit := make(chan os.Signal, 1)
+		signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+
+		go func() {
+			if err := srv.Start(configuration.GetServeHost(), configuration.GetServePort()); err != nil && err != http.ErrServerClosed {
+				fmt.Fprintf(os.Stderr, "Server error: %v\n", err)
+				os.Exit(1)
+			}
+		}()
+
+		<-quit
+		slog.Info("shutting down server")
+
+		if thumbnailStop != nil {
+			close(thumbnailStop)
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := srv.Shutdown(ctx); err != nil {
+			fmt.Fprintf(os.Stderr, "Server shutdown error: %v\n", err)
 			os.Exit(1)
 		}
 	}

@@ -64,19 +64,32 @@ func SaveTimingRecommendations(settingsPath string, recommendations []TimingReco
 }
 
 type Settings struct {
-	Email         SettingsEmail         `yaml:"email"`
-	AI            SettingsAI            `yaml:"ai"`
-	YouTube       SettingsYouTube       `yaml:"youtube"`
-	Hugo          SettingsHugo          `yaml:"hugo"`
-	Bluesky       SettingsBluesky       `yaml:"bluesky"`
-	VideoDefaults SettingsVideoDefaults `yaml:"videoDefaults"`
-	Slack         SettingsSlack         `yaml:"slack"`
-	Timing        TimingConfig          `yaml:"timing"`
-	Calendar      SettingsCalendar      `yaml:"calendar"`
-	Shorts        ShortsConfig          `yaml:"shorts"`
-	API           SettingsAPI           `yaml:"api"`
-	Git           SettingsGit           `yaml:"git"`
-	GDrive        SettingsGDrive        `yaml:"gdrive"`
+	Email               SettingsEmail               `yaml:"email"`
+	AI                  SettingsAI                  `yaml:"ai"`
+	YouTube             SettingsYouTube             `yaml:"youtube"`
+	Hugo                SettingsHugo                `yaml:"hugo"`
+	Bluesky             SettingsBluesky             `yaml:"bluesky"`
+	VideoDefaults       SettingsVideoDefaults       `yaml:"videoDefaults"`
+	Slack               SettingsSlack               `yaml:"slack"`
+	Timing              TimingConfig                `yaml:"timing"`
+	Calendar            SettingsCalendar            `yaml:"calendar"`
+	Shorts              ShortsConfig                `yaml:"shorts"`
+	API                 SettingsAPI                 `yaml:"api"`
+	Git                 SettingsGit                 `yaml:"git"`
+	GDrive              SettingsGDrive              `yaml:"gdrive"`
+	ThumbnailGeneration SettingsThumbnailGeneration `yaml:"thumbnailGeneration"`
+}
+
+// SettingsThumbnailGeneration holds configuration for AI-powered thumbnail generation
+type SettingsThumbnailGeneration struct {
+	PhotoDir  string                     `yaml:"photoDir"`
+	Providers []SettingsThumbnailProvider `yaml:"providers"`
+}
+
+// SettingsThumbnailProvider defines an image generation provider and its model
+type SettingsThumbnailProvider struct {
+	Name  string `yaml:"name"`
+	Model string `yaml:"model"`
 }
 
 type SettingsAPI struct {
@@ -181,7 +194,11 @@ var GlobalSettings Settings
 // It should be called once at application startup.
 func InitGlobalSettings() error {
 	// Load settings from YAML file
-	yamlFile, err := os.ReadFile("settings.yaml")
+	settingsFile := "settings.yaml"
+	if envPath := os.Getenv("SETTINGS_FILE"); envPath != "" {
+		settingsFile = envPath
+	}
+	yamlFile, err := os.ReadFile(settingsFile)
 	if err == nil {
 		if err := yaml.Unmarshal(yamlFile, &GlobalSettings); err != nil {
 			return fmt.Errorf("error parsing settings.yaml: %w", err)
