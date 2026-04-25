@@ -166,13 +166,14 @@ POST /api/thumbnails/generated/{id}/select        → Upload selected thumbnail 
 - [x] **Illustration suggestions**: `SuggestIllustrations()` in AI package using existing text AI provider, added to `AIService` interface, API endpoint wired. Tests passing.
 - [x] **Thumbnail generation orchestrator and store**: `GenerateThumbnails()` with concurrent multi-provider execution, in-memory `GeneratedImageStore` with cleanup. Tests passing.
 - [x] **API endpoints**: All 4 endpoints (illustrations, generate, download, select) wired in server, including Drive upload on selection. Tests passing.
-- [ ] **Server wiring**: Generators initialized from config in `main.go`, image store created and set on server.
+- [x] **Server wiring**: Generators initialized from config in `main.go`, image store created and set on server.
 - [ ] **Frontend component**: `ThumbnailGenerateButton` with two-step flow (illustrations then generation), image grid, "Use This" selection, loading/error states. Integrated into `DynamicForm` alongside existing upload button.
 - [ ] **End-to-end validation**: Full flow works: suggest illustrations → generate thumbnails → pick one → uploaded to Drive → appears as thumbnail variant.
 
 ## Progress Log
 
 ### 2026-04-25
+- Milestone 8 complete: Server wiring — CreateProviders() from config, StartCleanupLoop(), wired in main.go with SetThumbnailGeneration()
 - Milestone 7 complete: 3 API endpoints (generate, download, select) with 1MB request body limits, sanitized error responses, 27+ tests at 84.6% coverage
 - Milestone 6 complete: GenerateThumbnails orchestrator with concurrent multi-provider execution (semaphore-bounded), GeneratedImageStore with TTL cleanup, max items cap, byte-slice isolation
 - Milestone 5 complete: SuggestIllustrations with prompt template, parseIllustrationsResponse with robust JSON extraction, API endpoint POST /api/ai/illustrations/{category}/{name}

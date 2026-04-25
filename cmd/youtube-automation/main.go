@@ -21,6 +21,7 @@ import (
 	"devopstoolkit/youtube-automation/internal/publishing"
 	"devopstoolkit/youtube-automation/internal/service"
 	slackpkg "devopstoolkit/youtube-automation/internal/slack"
+	"devopstoolkit/youtube-automation/internal/thumbnail"
 	"devopstoolkit/youtube-automation/internal/video"
 )
 
@@ -139,6 +140,21 @@ func main() {
 					srv.SetDriveService(ds, gdriveCfg.FolderID)
 					slog.Info("Google Drive thumbnail uploads enabled")
 				}
+			}
+		}
+
+		// Thumbnail generation: configure AI image providers and in-memory store
+		{
+			thumbCfg := configuration.GlobalSettings.ThumbnailGeneration
+			generators := thumbnail.CreateProviders(thumbCfg, nil)
+			if len(generators) > 0 {
+				store := thumbnail.NewGeneratedImageStore(thumbnail.DefaultStoreTTL)
+				thumbnailStop := make(chan struct{})
+				thumbnail.StartCleanupLoop(store, thumbnail.DefaultCleanupInterval, thumbnailStop)
+				srv.SetThumbnailGeneration(generators, store, thumbCfg.PhotoDir)
+				slog.Info("thumbnail generation enabled", "providers", len(generators), "photoDir", thumbCfg.PhotoDir)
+			} else {
+				slog.Info("thumbnail generation disabled: no providers configured or API keys missing")
 			}
 		}
 
