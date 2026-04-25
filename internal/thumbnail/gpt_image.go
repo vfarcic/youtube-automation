@@ -10,6 +10,7 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
+	"net/textproto"
 	"strings"
 	"time"
 )
@@ -160,7 +161,12 @@ func (g *GPTImageClient) buildMultipartRequest(prompt string, photos [][]byte) (
 		ext := extensionFromMimeType(mimeType)
 		filename := fmt.Sprintf("photo_%d.%s", i, ext)
 
-		part, err := writer.CreateFormFile("image[]", filename)
+		// Use CreatePart with explicit MIME type instead of CreateFormFile
+		// which hardcodes application/octet-stream (rejected by OpenAI).
+		header := make(textproto.MIMEHeader)
+		header.Set("Content-Disposition", fmt.Sprintf(`form-data; name="image[]"; filename="%s"`, filename))
+		header.Set("Content-Type", mimeType)
+		part, err := writer.CreatePart(header)
 		if err != nil {
 			return nil, "", fmt.Errorf("creating form file: %w", err)
 		}
