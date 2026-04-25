@@ -149,6 +149,9 @@ affinity: {}
 # API keys (GEMINI_API_KEY, OPENAI_API_KEY) stay as env vars from K8s Secrets.
 settings:
   thumbnailGeneration:
+    # photoDir: directory containing creator photo files used for thumbnail compositing.
+    # Operators must mount a volume at this path (e.g., via volumeMounts/volumes above)
+    # so that the container can read the photo assets at runtime.
     photoDir: /data/photos
     providers:
       - name: gemini

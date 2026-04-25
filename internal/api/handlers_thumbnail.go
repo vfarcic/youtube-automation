@@ -226,8 +226,7 @@ func (s *Server) handleSelectGeneratedThumbnail(w http.ResponseWriter, r *http.R
 
 	// Validate variant index; auto-create if it's the next slot
 	if req.VariantIndex < 0 || req.VariantIndex > len(video.ThumbnailVariants) {
-		respondError(w, http.StatusBadRequest, "Invalid variantIndex",
-			fmt.Sprintf("variantIndex %d out of range (video has %d variants)", req.VariantIndex, len(video.ThumbnailVariants)))
+		respondError(w, http.StatusBadRequest, "Invalid variantIndex", "")
 		return
 	}
 	if req.VariantIndex == len(video.ThumbnailVariants) {
