@@ -2,8 +2,11 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -99,11 +102,24 @@ func (s *Server) handleGenerateThumbnails(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// Load creator photos
-	photos, err := loadPhotos(s.photoDir)
+	// Load creator photos: prefer Drive screenshots, fall back to local photoDir
+	photos, err := s.loadScreenshotsFromDrive(r.Context(), req.Name)
 	if err != nil {
-		log.Printf("failed to load photos from %s: %v", s.photoDir, err)
-		respondError(w, http.StatusInternalServerError, "Failed to load creator photos", "")
+		log.Printf("failed to load screenshots from Drive for %s: %v", req.Name, err)
+		respondError(w, http.StatusInternalServerError, "Failed to load creator photos from Drive", "")
+		return
+	}
+	if len(photos) == 0 {
+		// Fall back to local photo directory
+		photos, err = loadPhotos(s.photoDir)
+		if err != nil {
+			log.Printf("failed to load photos from %s: %v", s.photoDir, err)
+			respondError(w, http.StatusInternalServerError, "Failed to load creator photos", "")
+			return
+		}
+	}
+	if len(photos) == 0 {
+		respondError(w, http.StatusBadRequest, "No creator photos found — upload screenshots to the video's Drive folder", "")
 		return
 	}
 
@@ -139,15 +155,15 @@ func (s *Server) handleGenerateThumbnails(w http.ResponseWriter, r *http.Request
 		})
 	}
 
-	// Log internal error details server-side only; return generic messages to clients
+	// Log internal error details server-side only; return user-friendly messages to clients
 	var sanitizedErrors []string
 	for _, e := range genErrs {
 		log.Printf("thumbnail generation error: %v", e)
-		sanitizedErrors = append(sanitizedErrors, "a provider failed to generate an image")
+		sanitizedErrors = append(sanitizedErrors, classifyGenerationError(e))
 	}
 
 	if len(metas) == 0 && len(sanitizedErrors) > 0 {
-		respondError(w, http.StatusInternalServerError, "All providers failed", "")
+		respondError(w, http.StatusInternalServerError, classifyGenerationError(genErrs[0]), "")
 		return
 	}
 
@@ -343,6 +359,63 @@ func (s *Server) handleSaveThumbnailConfig(w http.ResponseWriter, r *http.Reques
 }
 
 // --- Helpers ---
+
+// loadScreenshotsFromDrive downloads screenshot-* files from the video's Drive folder.
+// Returns nil, nil if Drive is not configured (allowing fallback to local photos).
+// Downloaded bytes are held in memory only for the duration of the caller's request.
+func (s *Server) loadScreenshotsFromDrive(ctx context.Context, videoName string) ([][]byte, error) {
+	if s.driveService == nil || s.driveFolderID == "" {
+		return nil, nil
+	}
+
+	folderID, err := s.driveService.FindOrCreateFolder(ctx, videoName, s.driveFolderID)
+	if err != nil {
+		return nil, fmt.Errorf("finding Drive folder for %s: %w", videoName, err)
+	}
+
+	files, err := s.driveService.ListFilesInFolder(ctx, folderID)
+	if err != nil {
+		return nil, fmt.Errorf("listing files in Drive folder: %w", err)
+	}
+
+	var photos [][]byte
+	for _, f := range files {
+		if !strings.HasPrefix(strings.ToLower(f.Name), "screenshot") {
+			continue
+		}
+		reader, _, _, err := s.driveService.GetFile(ctx, f.ID)
+		if err != nil {
+			log.Printf("failed to download %s from Drive: %v", f.Name, err)
+			continue
+		}
+		data, err := io.ReadAll(reader)
+		reader.Close()
+		if err != nil {
+			log.Printf("failed to read %s from Drive: %v", f.Name, err)
+			continue
+		}
+		photos = append(photos, data)
+	}
+	return photos, nil
+}
+
+// classifyGenerationError returns a user-friendly message for a provider error
+// without leaking internal details like API keys or paths.
+func classifyGenerationError(err error) string {
+	if errors.Is(err, thumbnail.ErrGeminiNoPhotos) || errors.Is(err, thumbnail.ErrGPTImageNoPhotos) {
+		return "No creator photos found — upload screenshots to the video's Drive folder"
+	}
+	if errors.Is(err, thumbnail.ErrGeminiImageFiltered) || errors.Is(err, thumbnail.ErrGPTImageContentFiltered) {
+		return "Image was blocked by content safety filters — try a different tagline or illustration"
+	}
+	if errors.Is(err, thumbnail.ErrGeminiAPIError) || errors.Is(err, thumbnail.ErrGPTImageAPIError) {
+		return "Image generation service error — please try again later"
+	}
+	if errors.Is(err, thumbnail.ErrGeminiEmptyPrompt) || errors.Is(err, thumbnail.ErrGPTImageEmptyPrompt) {
+		return "Thumbnail prompt is empty — set a tagline before generating"
+	}
+	return "Image generation failed — please try again later"
+}
 
 // loadPhotos reads all image files from the given directory.
 // Returns an empty slice if dir is empty or doesn't exist.

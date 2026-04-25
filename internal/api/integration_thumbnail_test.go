@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"devopstoolkit/youtube-automation/internal/ai"
+	"devopstoolkit/youtube-automation/internal/gdrive"
 	"devopstoolkit/youtube-automation/internal/storage"
 	"devopstoolkit/youtube-automation/internal/thumbnail"
 )
@@ -89,9 +90,17 @@ func TestIntegration_ThumbnailGeneration_FullFlow(t *testing.T) {
 		photoDir,
 	)
 
-	// Mock Drive service
+	// Mock Drive service with screenshots for photo loading
 	driveMock := &trackingDriveService{
-		mockDriveService: mockDriveService{returnFileID: "drive-file-abc123"},
+		mockDriveService: mockDriveService{
+			returnFileID: "drive-file-abc123",
+			listFiles: []gdrive.DriveFileInfo{
+				{ID: "screenshot-01", Name: "screenshot-01.png", MimeType: "image/png"},
+			},
+			fileContents: map[string][]byte{
+				"screenshot-01": []byte("fake-creator-photo"),
+			},
+		},
 	}
 	env.server.SetDriveService(driveMock, "root-folder-id")
 
@@ -343,6 +352,7 @@ func TestIntegration_ThumbnailGeneration_PartialProviderFailure(t *testing.T) {
 	env.server.SetThumbnailGeneration([]thumbnail.ImageGenerator{goodGen, badGen}, store, "")
 
 	seedVideo(t, env, storage.Video{Name: "test", Category: "devops", Tagline: "Hello World"})
+	env.server.SetDriveService(mockDriveWithScreenshots(), "root-folder")
 
 	body := `{"category":"devops","name":"test"}`
 	req := httptest.NewRequest(http.MethodPost, "/api/thumbnails/generate", strings.NewReader(body))
@@ -398,9 +408,17 @@ func TestIntegration_ThumbnailGeneration_MultipleSelections(t *testing.T) {
 	env.server.SetThumbnailGeneration([]thumbnail.ImageGenerator{gen}, store, "")
 
 	driveMock := &trackingDriveService{
-		mockDriveService: mockDriveService{returnFileID: "drive-multi"},
+		mockDriveService: mockDriveService{
+			returnFileID: "drive-multi",
+			listFiles: []gdrive.DriveFileInfo{
+				{ID: "screenshot-01", Name: "screenshot-01.png", MimeType: "image/png"},
+			},
+			fileContents: map[string][]byte{
+				"screenshot-01": []byte("fake-photo"),
+			},
+		},
 	}
-	env.server.SetDriveService(driveMock, "")
+	env.server.SetDriveService(driveMock, "root-folder")
 
 	seedVideo(t, env, storage.Video{
 		Name:     "multi-video",
@@ -496,6 +514,7 @@ func TestIntegration_ThumbnailGeneration_ConcurrentProviders(t *testing.T) {
 	env.server.SetThumbnailGeneration(providers, store, "")
 
 	seedVideo(t, env, storage.Video{Name: "test", Category: "devops", Tagline: "Concurrent Test"})
+	env.server.SetDriveService(mockDriveWithScreenshots(), "root-folder")
 
 	body := `{"category":"devops","name":"test"}`
 	req := httptest.NewRequest(http.MethodPost, "/api/thumbnails/generate", strings.NewReader(body))

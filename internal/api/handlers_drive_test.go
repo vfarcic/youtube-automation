@@ -30,6 +30,8 @@ type mockDriveService struct {
 	getFileMIME     string
 	getFileName     string
 	getFileErr      error
+	listFiles       []gdrive.DriveFileInfo
+	fileContents    map[string][]byte // fileID -> content bytes
 }
 
 func (m *mockDriveService) UploadFile(_ context.Context, filename string, _ io.Reader, mimeType string, folderID string) (string, error) {
@@ -48,12 +50,21 @@ func (m *mockDriveService) FindOrCreateFolder(_ context.Context, _ string, paren
 }
 
 func (m *mockDriveService) ListFilesInFolder(_ context.Context, _ string) ([]gdrive.DriveFileInfo, error) {
-	return nil, m.returnErr
+	if m.returnErr != nil {
+		return nil, m.returnErr
+	}
+	return m.listFiles, nil
 }
 
-func (m *mockDriveService) GetFile(_ context.Context, _ string) (io.ReadCloser, string, string, error) {
+func (m *mockDriveService) GetFile(_ context.Context, fileID string) (io.ReadCloser, string, string, error) {
 	if m.getFileErr != nil {
 		return nil, "", "", m.getFileErr
+	}
+	// Check fileContents map first (used for screenshot mocking)
+	if m.fileContents != nil {
+		if data, ok := m.fileContents[fileID]; ok {
+			return io.NopCloser(bytes.NewReader(data)), "image/png", fileID + ".png", nil
+		}
 	}
 	content := m.getFileContent
 	if content == "" {

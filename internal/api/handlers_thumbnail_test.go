@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"devopstoolkit/youtube-automation/internal/gdrive"
 	"devopstoolkit/youtube-automation/internal/storage"
 	"devopstoolkit/youtube-automation/internal/thumbnail"
 )
@@ -30,6 +31,20 @@ func (m *mockImageGenerator) GenerateImage(_ context.Context, _ string, _ [][]by
 	return m.data, m.err
 }
 
+// mockDriveWithScreenshots creates a mock Drive service with screenshot files
+// in the video's subfolder. Used by thumbnail generation tests.
+func mockDriveWithScreenshots() *mockDriveService {
+	return &mockDriveService{
+		returnFileID: "drive-id",
+		listFiles: []gdrive.DriveFileInfo{
+			{ID: "screenshot-01", Name: "screenshot-01.png", MimeType: "image/png"},
+		},
+		fileContents: map[string][]byte{
+			"screenshot-01": []byte("fake-photo-data"),
+		},
+	}
+}
+
 // --- POST /api/thumbnails/generate ---
 
 func TestHandleGenerateThumbnails_Success(t *testing.T) {
@@ -38,6 +53,7 @@ func TestHandleGenerateThumbnails_Success(t *testing.T) {
 	store := thumbnail.NewGeneratedImageStore(10 * time.Minute)
 	gen := &mockImageGenerator{name: "test-provider", data: []byte("fake-png-image")}
 	env.server.SetThumbnailGeneration([]thumbnail.ImageGenerator{gen}, store, "")
+	env.server.SetDriveService(mockDriveWithScreenshots(), "root-folder")
 
 	seedVideo(t, env, storage.Video{
 		Name:         "test-video",
@@ -82,10 +98,49 @@ func TestHandleGenerateThumbnails_Success(t *testing.T) {
 	}
 }
 
-func TestHandleGenerateThumbnails_WithPhotos(t *testing.T) {
+func TestHandleGenerateThumbnails_WithDriveScreenshots(t *testing.T) {
 	env := setupTestEnv(t)
 
-	// Create a photo directory with a test photo
+	store := thumbnail.NewGeneratedImageStore(10 * time.Minute)
+	gen := &mockImageGenerator{name: "gemini", data: []byte("image-bytes")}
+	env.server.SetThumbnailGeneration([]thumbnail.ImageGenerator{gen}, store, "")
+	// Mock Drive with multiple screenshots
+	driveMock := &mockDriveService{
+		returnFileID: "drive-id",
+		listFiles: []gdrive.DriveFileInfo{
+			{ID: "s1", Name: "screenshot-01.png", MimeType: "image/png"},
+			{ID: "s2", Name: "screenshot-02.png", MimeType: "image/png"},
+			{ID: "other", Name: "thumbnail.png", MimeType: "image/png"}, // should be filtered out
+		},
+		fileContents: map[string][]byte{
+			"s1": []byte("photo-data-1"),
+			"s2": []byte("photo-data-2"),
+		},
+	}
+	env.server.SetDriveService(driveMock, "root-folder")
+
+	seedVideo(t, env, storage.Video{
+		Name:     "test-video",
+		Category: "devops",
+		Tagline:  "Test",
+	})
+
+	body := `{"category":"devops","name":"test-video"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/thumbnails/generate", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	env.server.Router().ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestHandleGenerateThumbnails_LocalPhotoFallback(t *testing.T) {
+	env := setupTestEnv(t)
+
+	// No Drive configured — should fall back to local photoDir
 	photoDir := filepath.Join(env.tmpDir, "photos")
 	if err := os.MkdirAll(photoDir, 0755); err != nil {
 		t.Fatal(err)
@@ -113,6 +168,36 @@ func TestHandleGenerateThumbnails_WithPhotos(t *testing.T) {
 
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestHandleGenerateThumbnails_NoPhotosAnywhere(t *testing.T) {
+	env := setupTestEnv(t)
+
+	store := thumbnail.NewGeneratedImageStore(10 * time.Minute)
+	gen := &mockImageGenerator{name: "test", data: []byte("data")}
+	env.server.SetThumbnailGeneration([]thumbnail.ImageGenerator{gen}, store, "")
+	// Drive configured but no screenshots
+	env.server.SetDriveService(&mockDriveService{returnFileID: "id"}, "root-folder")
+
+	seedVideo(t, env, storage.Video{
+		Name:     "test-video",
+		Category: "devops",
+		Tagline:  "Test",
+	})
+
+	body := `{"category":"devops","name":"test-video"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/thumbnails/generate", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	env.server.Router().ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected 400, got %d: %s", w.Code, w.Body.String())
+	}
+	if !strings.Contains(w.Body.String(), "No creator photos found") {
+		t.Errorf("expected 'No creator photos found' message, got: %s", w.Body.String())
 	}
 }
 
@@ -219,6 +304,7 @@ func TestHandleGenerateThumbnails_AllProvidersFail(t *testing.T) {
 	store := thumbnail.NewGeneratedImageStore(10 * time.Minute)
 	gen := &mockImageGenerator{name: "failing", err: fmt.Errorf("API error")}
 	env.server.SetThumbnailGeneration([]thumbnail.ImageGenerator{gen}, store, "")
+	env.server.SetDriveService(mockDriveWithScreenshots(), "root-folder")
 
 	seedVideo(t, env, storage.Video{Name: "test", Category: "devops", Tagline: "Hello"})
 
@@ -240,6 +326,7 @@ func TestHandleGenerateThumbnails_PartialFailure(t *testing.T) {
 	good := &mockImageGenerator{name: "good", data: []byte("image-data")}
 	bad := &mockImageGenerator{name: "bad", err: fmt.Errorf("timeout")}
 	env.server.SetThumbnailGeneration([]thumbnail.ImageGenerator{good, bad}, store, "")
+	env.server.SetDriveService(mockDriveWithScreenshots(), "root-folder")
 
 	seedVideo(t, env, storage.Video{Name: "test", Category: "devops", Tagline: "Hello"})
 
@@ -840,6 +927,7 @@ func TestHandleGenerateThumbnails_ErrorsDoNotLeakInternalDetails(t *testing.T) {
 	internalMsg := "secret API key xyz123 at /internal/path/config.json"
 	gen := &mockImageGenerator{name: "failing", err: fmt.Errorf("%s", internalMsg)}
 	env.server.SetThumbnailGeneration([]thumbnail.ImageGenerator{gen}, store, "")
+	env.server.SetDriveService(mockDriveWithScreenshots(), "root-folder")
 
 	seedVideo(t, env, storage.Video{Name: "test", Category: "devops", Tagline: "Hello"})
 
@@ -865,6 +953,7 @@ func TestHandleGenerateThumbnails_PartialFailureErrorsSanitized(t *testing.T) {
 	good := &mockImageGenerator{name: "good", data: []byte("image-data")}
 	bad := &mockImageGenerator{name: "bad", err: fmt.Errorf("connection refused to internal-host:8443")}
 	env.server.SetThumbnailGeneration([]thumbnail.ImageGenerator{good, bad}, store, "")
+	env.server.SetDriveService(mockDriveWithScreenshots(), "root-folder")
 
 	seedVideo(t, env, storage.Video{Name: "test", Category: "devops", Tagline: "Hello"})
 
