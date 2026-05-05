@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"devopstoolkit/youtube-automation/internal/filesystem"
+	"devopstoolkit/youtube-automation/internal/manuscript"
 	"devopstoolkit/youtube-automation/internal/storage"
 	"devopstoolkit/youtube-automation/internal/video"
 	"devopstoolkit/youtube-automation/internal/workflow"
@@ -418,8 +419,34 @@ func (s *VideoService) UpdateVideo(v storage.Video) error {
 		return err
 	}
 
+	s.reconcileShortMarkers(v)
+
 	s.notifyMutation(fmt.Sprintf("update video: %s", v.Path))
 	return nil
+}
+
+// reconcileShortMarkers makes the manuscript's TODO Short markers reflect
+// v.Shorts: stale markers (for shorts removed from the YAML) are stripped,
+// and markers for the current selection are inserted. Best-effort — failures
+// are logged but do not abort the update.
+func (s *VideoService) reconcileShortMarkers(v storage.Video) {
+	if v.Gist == "" || s.filesystem == nil {
+		return
+	}
+	manuscriptPath := s.filesystem.ResolvePath(v.Gist)
+	if _, err := os.Stat(manuscriptPath); err != nil {
+		return
+	}
+	if err := manuscript.RemoveShortMarkers(manuscriptPath); err != nil {
+		slog.Warn("failed to clear short markers", "path", manuscriptPath, "error", err)
+		return
+	}
+	if len(v.Shorts) == 0 {
+		return
+	}
+	if err := manuscript.InsertShortMarkers(manuscriptPath, v.Shorts); err != nil {
+		slog.Warn("short markers reconciled with warnings", "path", manuscriptPath, "error", err)
+	}
 }
 
 // DeleteVideo deletes a video and its associated files

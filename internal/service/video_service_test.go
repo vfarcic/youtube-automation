@@ -1142,3 +1142,159 @@ func TestVideoService_ArchiveVideo_LegacyUnsanitizedNames(t *testing.T) {
 	assert.Len(t, archivedIndex, 1)
 	assert.Equal(t, sanitizedName, archivedIndex[0].Name)
 }
+
+// writeManuscript writes a manuscript file at manuscript/<category>/<name>.md
+// for tests that need a Gist file alongside the YAML.
+func writeManuscript(t *testing.T, category, name, content string) string {
+	t.Helper()
+	dir := filepath.Join("manuscript", category)
+	require.NoError(t, os.MkdirAll(dir, 0755))
+	path := filepath.Join(dir, name+".md")
+	require.NoError(t, os.WriteFile(path, []byte(content), 0644))
+	return path
+}
+
+func TestVideoService_UpdateVideo_ReconcilesShortMarkers_RemovesUnselected(t *testing.T) {
+	// Regression: when the user saves a subset of AI-suggested shorts, the
+	// manuscript markers must reflect what was kept — not the original
+	// candidate set.
+	service, _, cleanup := setupTestVideoService(t)
+	defer cleanup()
+
+	_, err := service.CreateVideo("reconcile-keep", "test-category", "")
+	require.NoError(t, err)
+
+	manuscriptContent := `# Intro
+
+TODO: Short (id: short1) (start)
+
+Selected segment text.
+
+TODO: Short (id: short1) (end)
+
+Middle content.
+
+TODO: Short (id: short2) (start)
+
+Unselected segment text.
+
+TODO: Short (id: short2) (end)
+
+Outro.
+`
+	mdPath := writeManuscript(t, "test-category", "reconcile-keep", manuscriptContent)
+
+	v, err := service.GetVideo("reconcile-keep", "test-category")
+	require.NoError(t, err)
+	v.Gist = mdPath
+	v.Shorts = []storage.Short{
+		{ID: "short1", Title: "Selected", Text: "Selected segment text."},
+	}
+
+	require.NoError(t, service.UpdateVideo(v))
+
+	updated, err := os.ReadFile(mdPath)
+	require.NoError(t, err)
+	got := string(updated)
+	assert.Contains(t, got, "TODO: Short (id: short1) (start)")
+	assert.Contains(t, got, "TODO: Short (id: short1) (end)")
+	assert.NotContains(t, got, "id: short2", "unselected short marker should be removed")
+	assert.Contains(t, got, "Unselected segment text.", "manuscript prose must be preserved")
+}
+
+func TestVideoService_UpdateVideo_ReconcilesShortMarkers_InsertsMissing(t *testing.T) {
+	// If a selected short has no marker yet (e.g. added manually after AI ran),
+	// reconciliation should insert it.
+	service, _, cleanup := setupTestVideoService(t)
+	defer cleanup()
+
+	_, err := service.CreateVideo("reconcile-insert", "test-category", "")
+	require.NoError(t, err)
+
+	manuscriptContent := `# Intro
+
+Newly selected segment text.
+
+Outro.
+`
+	mdPath := writeManuscript(t, "test-category", "reconcile-insert", manuscriptContent)
+
+	v, err := service.GetVideo("reconcile-insert", "test-category")
+	require.NoError(t, err)
+	v.Gist = mdPath
+	v.Shorts = []storage.Short{
+		{ID: "shortNew", Title: "New", Text: "Newly selected segment text."},
+	}
+
+	require.NoError(t, service.UpdateVideo(v))
+
+	updated, err := os.ReadFile(mdPath)
+	require.NoError(t, err)
+	got := string(updated)
+	assert.Contains(t, got, "TODO: Short (id: shortNew) (start)")
+	assert.Contains(t, got, "TODO: Short (id: shortNew) (end)")
+}
+
+func TestVideoService_UpdateVideo_ReconcilesShortMarkers_EmptyShortsClears(t *testing.T) {
+	// Clearing v.Shorts should strip every marker from the manuscript.
+	service, _, cleanup := setupTestVideoService(t)
+	defer cleanup()
+
+	_, err := service.CreateVideo("reconcile-clear", "test-category", "")
+	require.NoError(t, err)
+
+	manuscriptContent := `# Intro
+
+TODO: Short (id: short1) (start)
+
+Some segment.
+
+TODO: Short (id: short1) (end)
+
+Outro.
+`
+	mdPath := writeManuscript(t, "test-category", "reconcile-clear", manuscriptContent)
+
+	v, err := service.GetVideo("reconcile-clear", "test-category")
+	require.NoError(t, err)
+	v.Gist = mdPath
+	v.Shorts = nil
+
+	require.NoError(t, service.UpdateVideo(v))
+
+	updated, err := os.ReadFile(mdPath)
+	require.NoError(t, err)
+	assert.NotContains(t, string(updated), "TODO: Short")
+}
+
+func TestVideoService_UpdateVideo_ReconcileNoOpWhenNoGist(t *testing.T) {
+	// A video without a Gist path must not error out during update.
+	service, _, cleanup := setupTestVideoService(t)
+	defer cleanup()
+
+	_, err := service.CreateVideo("no-gist", "test-category", "")
+	require.NoError(t, err)
+
+	v, err := service.GetVideo("no-gist", "test-category")
+	require.NoError(t, err)
+	v.Gist = ""
+	v.Shorts = []storage.Short{{ID: "short1", Title: "T", Text: "X"}}
+
+	assert.NoError(t, service.UpdateVideo(v))
+}
+
+func TestVideoService_UpdateVideo_ReconcileNoOpWhenManuscriptMissing(t *testing.T) {
+	// A Gist path pointing at a missing file must not break the update.
+	service, _, cleanup := setupTestVideoService(t)
+	defer cleanup()
+
+	_, err := service.CreateVideo("missing-md", "test-category", "")
+	require.NoError(t, err)
+
+	v, err := service.GetVideo("missing-md", "test-category")
+	require.NoError(t, err)
+	v.Gist = "manuscript/test-category/does-not-exist.md"
+	v.Shorts = []storage.Short{{ID: "short1", Title: "T", Text: "X"}}
+
+	assert.NoError(t, service.UpdateVideo(v))
+}

@@ -511,6 +511,46 @@ func TestHandleAIShorts(t *testing.T) {
 	}
 }
 
+func TestHandleAIShorts_RerunReplacesPriorMarkers(t *testing.T) {
+	// Re-running AI should not stack markers on top of a previous run's
+	// candidates: the prior set is stripped before the new one is inserted.
+	env := setupAITestEnv(t, &mockAIService{shorts: []ai.ShortCandidate{
+		{ID: "shortNew", Title: "New", Text: "New target text", Rationale: "r"},
+	}})
+	manuscript := `# Manuscript
+
+TODO: Short (id: shortOld) (start)
+
+Old target text.
+
+TODO: Short (id: shortOld) (end)
+
+New target text
+
+Outro.`
+	seedVideoWithManuscript(t, env, "rerun-video", "devops", manuscript)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/ai/shorts/devops/rerun-video", nil)
+	rr := httptest.NewRecorder()
+	env.server.Router().ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d, body: %s", rr.Code, rr.Body.String())
+	}
+
+	mdPath := filepath.Join(env.tmpDir, "manuscript", "devops", "rerun-video.md")
+	fileBytes, err := os.ReadFile(mdPath)
+	if err != nil {
+		t.Fatalf("failed to read manuscript file: %v", err)
+	}
+	got := string(fileBytes)
+	if strings.Contains(got, "id: shortOld") {
+		t.Errorf("expected prior marker shortOld to be removed, got:\n%s", got)
+	}
+	if !strings.Contains(got, "TODO: Short (id: shortNew) (start)") {
+		t.Errorf("expected new marker for shortNew, got:\n%s", got)
+	}
+}
+
 func TestHandleAIThumbnails(t *testing.T) {
 	tests := []struct {
 		name       string

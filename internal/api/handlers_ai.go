@@ -216,8 +216,11 @@ func (s *Server) handleAIShorts(w http.ResponseWriter, r *http.Request) {
 			markersWarning = "could not resolve manuscript path: filesystem not configured"
 		} else {
 			resolvedPath := s.filesystem.ResolvePath(video.Gist)
-			markerErr := manuscriptpkg.InsertShortMarkers(resolvedPath, shorts)
-			if markerErr != nil {
+			// Strip any existing markers so re-running the AI replaces the
+			// previous candidate set rather than stacking on top of it.
+			if removeErr := manuscriptpkg.RemoveShortMarkers(resolvedPath); removeErr != nil {
+				markersWarning = removeErr.Error()
+			} else if markerErr := manuscriptpkg.InsertShortMarkers(resolvedPath, shorts); markerErr != nil {
 				markersWarning = markerErr.Error()
 			}
 		}
