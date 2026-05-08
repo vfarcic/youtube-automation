@@ -3,6 +3,7 @@ package ai
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -249,6 +250,85 @@ func TestParseTaglineAndIllustrationsResponse(t *testing.T) {
 			}
 			if len(got.Illustrations) != tt.wantIllustrations {
 				t.Errorf("parseTaglineAndIllustrationsResponse() returned %d illustrations, want %d", len(got.Illustrations), tt.wantIllustrations)
+			}
+		})
+	}
+}
+
+func TestParseTaglineAndIllustrationsResponse_UppercasesTaglines(t *testing.T) {
+	tests := []struct {
+		name             string
+		input            string
+		wantTaglines     []string
+		wantIllustrations []string
+	}{
+		{
+			name:              "all lowercase",
+			input:             `{"taglines": ["big idea"], "illustrations": ["a tree"]}`,
+			wantTaglines:      []string{"BIG IDEA"},
+			wantIllustrations: []string{"a tree"},
+		},
+		{
+			name:              "mixed case",
+			input:             `{"taglines": ["Big Idea", "Lock It Down"], "illustrations": ["A Tree", "A Cloud"]}`,
+			wantTaglines:      []string{"BIG IDEA", "LOCK IT DOWN"},
+			wantIllustrations: []string{"A Tree", "A Cloud"},
+		},
+		{
+			name:              "already uppercase stays uppercase",
+			input:             `{"taglines": ["BIG IDEA"], "illustrations": ["a tree"]}`,
+			wantTaglines:      []string{"BIG IDEA"},
+			wantIllustrations: []string{"a tree"},
+		},
+		{
+			name:              "with numbers",
+			input:             `{"taglines": ["k8s 101", "Top 10"], "illustrations": ["a chart"]}`,
+			wantTaglines:      []string{"K8S 101", "TOP 10"},
+			wantIllustrations: []string{"a chart"},
+		},
+		{
+			name:              "with special chars",
+			input:             `{"taglines": ["it's epic!", "do-or-die"], "illustrations": ["a sword"]}`,
+			wantTaglines:      []string{"IT'S EPIC!", "DO-OR-DIE"},
+			wantIllustrations: []string{"a sword"},
+		},
+		{
+			name:              "with surrounding whitespace",
+			input:             `{"taglines": ["  Big Idea  ", "\tLock\t"], "illustrations": ["A Tree"]}`,
+			wantTaglines:      []string{"BIG IDEA", "LOCK"},
+			wantIllustrations: []string{"A Tree"},
+		},
+		{
+			name:              "illustrations with mixed case are not uppercased",
+			input:             `{"taglines": ["go fast"], "illustrations": ["A Crumbling Server Rack On Fire", "Cloud icons raining down"]}`,
+			wantTaglines:      []string{"GO FAST"},
+			wantIllustrations: []string{"A Crumbling Server Rack On Fire", "Cloud icons raining down"},
+		},
+		{
+			name:              "via markdown code fence",
+			input:             "```json\n{\"taglines\": [\"big idea\"], \"illustrations\": [\"A Tree\"]}\n```",
+			wantTaglines:      []string{"BIG IDEA"},
+			wantIllustrations: []string{"A Tree"},
+		},
+		{
+			name:              "via mixed-text fallback parse",
+			input:             "Here are some suggestions:\n\n{\"taglines\": [\"big idea\"], \"illustrations\": [\"A Tree\"]}\n\nLet me know.",
+			wantTaglines:      []string{"BIG IDEA"},
+			wantIllustrations: []string{"A Tree"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := parseTaglineAndIllustrationsResponse(tt.input)
+			if err != nil {
+				t.Fatalf("parseTaglineAndIllustrationsResponse() unexpected error = %v", err)
+			}
+			if !reflect.DeepEqual(got.Taglines, tt.wantTaglines) {
+				t.Errorf("Taglines = %v, want %v", got.Taglines, tt.wantTaglines)
+			}
+			if !reflect.DeepEqual(got.Illustrations, tt.wantIllustrations) {
+				t.Errorf("Illustrations = %v, want %v", got.Illustrations, tt.wantIllustrations)
 			}
 		})
 	}

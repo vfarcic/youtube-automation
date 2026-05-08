@@ -93,6 +93,7 @@ func parseTaglineAndIllustrationsResponse(text string) (*TaglineAndIllustrations
 		if len(result.Illustrations) == 0 {
 			return nil, fmt.Errorf("AI returned an empty list of illustrations")
 		}
+		uppercaseTaglines(&result)
 		return &result, nil
 	}
 
@@ -108,9 +109,21 @@ func parseTaglineAndIllustrationsResponse(text string) (*TaglineAndIllustrations
 			if len(result.Illustrations) == 0 {
 				return nil, fmt.Errorf("AI returned an empty list of illustrations")
 			}
+			uppercaseTaglines(&result)
 			return &result, nil
 		}
 	}
 
 	return nil, fmt.Errorf("failed to parse JSON response from AI output")
+}
+
+// uppercaseTaglines normalizes every tagline to UPPERCASE (with surrounding
+// whitespace trimmed). Thumbnail taglines are rendered as bold overlay text
+// and brand convention requires them to be all caps regardless of what the
+// AI returns. Illustrations are left untouched — they are descriptive prompts,
+// not on-thumbnail text.
+func uppercaseTaglines(result *TaglineAndIllustrationsResult) {
+	for i, t := range result.Taglines {
+		result.Taglines[i] = strings.ToUpper(strings.TrimSpace(t))
+	}
 }
