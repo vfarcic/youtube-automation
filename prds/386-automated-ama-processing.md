@@ -1,150 +1,169 @@
-# PRD: Automated Weekly AMA Stream Processing
+# PRD: Automated Daily AMA Stream Processing
 
 **Issue**: #386
 **Status**: Not Started
 **Priority**: Medium
 **Created**: 2026-03-13
-**Last Updated**: 2026-03-13
-**Depends On**: #379 (AMA Web UI — completed)
+**Last Updated**: 2026-05-09
+**Depends On**: #379 (AMA Web UI — completed), #356 (AMA Video Enhancement — completed)
 
 ---
 
 ## Problem Statement
 
 After each AMA livestream, the creator must manually:
-1. Open the CLI or Web UI
+1. Open the Web UI
 2. Enter the YouTube Video ID
 3. Click "Generate with AI" to fetch the transcript and generate content
 4. Review the generated title, description, tags, and timecodes
 5. Click "Apply to YouTube" to push changes
 
-This is a repetitive weekly task that's easy to forget, and the generated content is trusted enough to apply automatically.
+This is a repetitive task that's easy to forget, and the generated content is trusted enough to apply automatically.
 
 ## Proposed Solution
 
 An **in-app scheduler** running inside the existing server process that:
 
-1. Runs on a configurable schedule (default: every Friday at 10:00 UTC)
-2. Lists videos from the "Ask Me Anything" YouTube playlist
-3. Identifies the most recent video
-4. Checks if it has already been processed (has a `manuscript/ama/` entry)
-5. If unprocessed: fetches transcript, generates AI content, applies to YouTube, saves locally
-6. If transcript is unavailable: schedules a retry for the next day (up to 3 attempts), then sends a failure notification if all retries are exhausted
-7. Sends a Slack notification with the video link (success or failure)
+1. Runs daily on a configurable schedule (default: 10:00 UTC every day)
+2. Lists videos from the configured "Ask Me Anything" YouTube playlist
+3. Picks the most recent video
+4. Reads its YouTube description and checks for the timecodes marker (`▬▬▬▬▬▬ ⏱ Timecodes ⏱ ▬▬▬▬▬▬`)
+5. **If the marker is present** → the video is already processed → silent exit (no notification)
+6. **If the marker is absent** → fetches transcript, generates AI content, applies to YouTube, sends an email with the result (success or failure)
+7. **If a pre-decision step fails** (e.g., playlist API unreachable) → sends an email so the operator knows the scheduler is broken
+
+### Why Daily (Not Weekly + Retry)
+
+A daily cadence with marker-based idempotency replaces the original weekly-cron + explicit-retry-counter design:
+
+- **Transcript not ready today?** Tomorrow's run picks it up automatically.
+- **Already processed (manually or by yesterday's run)?** Marker present → skip.
+- **Multiple AMAs in a week?** The manual Web UI buttons remain available as the escape hatch for older videos.
+
+No retry counter, no scheduled retry jobs, no state to persist across restarts.
 
 ### Why In-App Scheduler (Not K8s CronJob)
 
 - Server is already running 24/7 in Kubernetes
 - No additional K8s manifests, secrets, or RBAC to maintain
-- Direct access to all existing services (YouTube API, AI, Slack, storage)
+- Direct access to all existing services (YouTube API, AI, email)
 - Configuration lives in `settings.yaml` alongside everything else
-- Can also be triggered manually via API endpoint
+
+### Why Email-Only (No Slack)
+
+- Reduces config surface (no Slack channel/token requirements)
+- Email infrastructure already exists for upload notifications
+- Inbox cadence is acceptable: ~1 email per week (the day after the AMA airs)
 
 ### User Journey
 
 **Current (Manual)**:
-1. Remember it's Friday and the AMA needs processing
+1. Remember the AMA needs processing
 2. Find the video ID from YouTube
-3. Open CLI/Web UI and run the AMA workflow
-4. Check YouTube to verify changes applied
+3. Open the Web UI and run the AMA workflow
+4. Verify changes applied
 
 **After (Automated)**:
-1. Receive Slack notification on Friday with a link to the processed video
-2. Click the link to verify (optional)
+1. Receive an email the day after the AMA aired ("processed: <link>" or "failed: <error>")
+2. Click the link to verify (success case) or intervene manually via the existing Web UI buttons (failure case)
 
 ## Technical Design
 
-### New Configuration (`settings.yaml`)
+### Detection: Marker-Based Idempotency
+
+The scheduler reads the YouTube video's current description and looks for the timecodes header constant (`timecodesHeader` in `internal/publishing/youtube_update.go`). Presence of this marker means the video has already been processed — by yesterday's scheduler run, by a manual click on the existing "Apply to YouTube" button, or by any other path. No external state is needed.
+
+### Notification Rules
+
+| Condition | Notify? |
+|---|---|
+| Marker present (already processed) | No — silent skip |
+| Marker absent → processing succeeds | Yes — "AMA processed: <video link>" |
+| Marker absent → processing fails (transcript, AI, or apply error) | Yes — "AMA processing failed: <error>" |
+| Playlist fetch fails before the marker check | Yes — "Scheduler error: <error>" (soft exception so silent-broken state is detectable) |
+
+### Configuration (`settings.yaml`)
 
 ```yaml
 ama:
   enabled: true
   playlistId: "PLxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-  schedule: "0 10 * * 5"  # Cron expression: Fridays at 10:00 UTC
-  retryDelayHours: 24     # Hours to wait before retrying on transcript failure
-  maxRetries: 3           # Max retry attempts before giving up
-  slackNotify: true
-  emailNotify: true
-  emailTo: ""              # Email address for success/failure notifications
+  schedule: "0 10 * * *"   # Cron expression: daily at 10:00 UTC
+  emailTo: ""               # Email address for processing & error notifications
 ```
+
+Environment variable overrides follow the existing pattern in `internal/configuration/`.
 
 ### Component Overview
 
-1. **Playlist Service** (`internal/publishing/`): New function to list videos from a YouTube playlist, returning video IDs ordered by publish date
-2. **AMA Scheduler** (`internal/scheduler/`): Goroutine-based scheduler using a cron library (e.g., `robfig/cron`) that triggers the auto-process workflow on schedule. Supports scheduling one-off retry jobs when transcript fetching fails.
-3. **Auto-Process Logic** (`internal/api/` or `internal/service/`): Orchestrates the full workflow — find latest unprocessed video, generate content, apply, notify. On transcript failure, schedules a next-day retry (up to `maxRetries` attempts). Reuses existing `PublishingService.GetTranscript()`, `AIService.GenerateAMAContent()`, `PublishingService.UpdateAMAVideo()`, and Slack notification
-4. **Manual Trigger Endpoint** (`POST /api/ama/auto-process`): Allows triggering the same workflow from the Web UI or manually via API
-5. **Slack Notification**: On success, sends message with video link. On failure, sends error details
-6. **Email Notification**: On success and failure, sends email to configured address with video link or error details. Uses existing email infrastructure
-
-### Detection of Unprocessed Videos
-
-Check whether a `manuscript/ama/` YAML file exists whose `videoId` field matches the latest playlist video. If no match exists, the video needs processing.
-
-### Key Files to Create/Modify
-
-| File | Action | Purpose |
-|------|--------|---------|
-| `internal/configuration/cli.go` | MODIFY | Add `SettingsAMA` struct |
-| `internal/publishing/youtube_playlist.go` | CREATE | YouTube playlist listing |
-| `internal/scheduler/scheduler.go` | CREATE | Cron-based scheduler |
-| `internal/scheduler/ama_job.go` | CREATE | AMA auto-process job logic |
-| `internal/api/server.go` | MODIFY | Start scheduler, add manual trigger route |
-| `internal/api/handlers_publish.go` | MODIFY | Add `POST /api/ama/auto-process` handler |
-| `web/src/pages/AskMeAnything.tsx` | MODIFY | Add "Run Now" button for manual trigger |
-| `web/src/api/hooks.ts` | MODIFY | Add `useAMAAutoProcess` hook |
-| `helm/youtube-automation/values.yaml` | MODIFY | Add AMA scheduler config values (enabled, playlistId, schedule, retry, notifications) |
+1. **Playlist Service** (`internal/publishing/youtube_playlist.go`): New function to list videos from a YouTube playlist by playlist ID, ordered by publish date (most recent first). This is the only net-new YouTube API capability.
+2. **AMA Job** (`internal/scheduler/ama_job.go`): Orchestration logic — fetch latest playlist video → read its description → check for marker → if absent, call `GetTranscript()` + `GenerateAMAContent()` + `UpdateAMAVideo()` → send email.
+3. **Scheduler** (`internal/scheduler/scheduler.go`): Goroutine-based cron scheduler (e.g., `robfig/cron`) that triggers the AMA job on schedule. Graceful shutdown.
+4. **Server Wiring** (`internal/api/server.go`): Start the scheduler when the server starts, stop on shutdown.
+5. **Email Notification**: Reuses the existing email infrastructure used by upload notifications.
 
 ### Reused Existing Code
 
 - `PublishingService.GetTranscript()` — fetch YouTube transcript
 - `AIService.GenerateAMAContent()` — generate title/description/tags/timecodes
 - `PublishingService.UpdateAMAVideo()` — apply to YouTube
-- `menu_ama.go:saveAMAFiles()` — save to `manuscript/ama/` (extract to shared function)
-- Slack client — send Slack notification message
-- Email client — send email notification
+- `timecodesHeader` constant from `internal/publishing/youtube_update.go` — marker for idempotency check
+- Email service — reuse existing notification infrastructure
+- The existing `POST /api/ama/generate` and `POST /api/ama/apply` endpoints remain available for manual triggering via the Web UI (no changes required)
+
+### Key Files to Create/Modify
+
+| File | Action | Purpose |
+|------|--------|---------|
+| `internal/configuration/cli.go` | MODIFY | Add `SettingsAMA` struct (`Enabled`, `PlaylistID`, `Schedule`, `EmailTo`) |
+| `internal/publishing/youtube_playlist.go` | CREATE | YouTube playlist listing + read latest video description |
+| `internal/scheduler/scheduler.go` | CREATE | Cron-based scheduler with graceful shutdown |
+| `internal/scheduler/ama_job.go` | CREATE | AMA orchestration job |
+| `internal/api/server.go` | MODIFY | Start/stop scheduler with the server lifecycle |
+| `helm/youtube-automation/values.yaml` | MODIFY | Add AMA scheduler config values |
+
+**Not changing**: `handlers_publish.go` (no new endpoint — manual trigger uses existing `/api/ama/generate` + `/api/ama/apply`), Web UI files (manual buttons already exist).
 
 ## Success Criteria
 
 ### Must Have
-- [ ] Scheduler runs on configurable cron schedule inside the server process
-- [ ] Lists videos from configured YouTube playlist
-- [ ] Detects whether the latest video has already been processed
-- [ ] Generates and applies AI content for unprocessed videos
-- [ ] Sends Slack notification with video link on success
-- [ ] Sends Slack notification with error details on failure
-- [ ] Sends email notification with video link on success
-- [ ] Sends email notification with error details on failure
-- [ ] On transcript failure, retries next day up to `maxRetries` (default 3) before giving up
-- [ ] Configurable via `settings.yaml` (enabled, playlistId, schedule, retryDelayHours, maxRetries)
-- [ ] Manual trigger via `POST /api/ama/auto-process` endpoint
+- [ ] Scheduler runs daily on a configurable cron schedule inside the server process
+- [ ] Lists videos from the configured YouTube playlist
+- [ ] Reads the latest video's description and detects the timecodes marker
+- [ ] Skips silently when the marker is present
+- [ ] When the marker is absent: generates AI content, applies to YouTube, sends success email with video link
+- [ ] When processing fails after a marker-absent decision: sends failure email with error details
+- [ ] When the playlist fetch (or any pre-decision step) fails: sends a scheduler-error email
+- [ ] Configurable via `settings.yaml` (`enabled`, `playlistId`, `schedule`, `emailTo`)
+- [ ] Helm chart exposes corresponding values
+- [ ] Graceful shutdown when the server stops
 
 ### Nice to Have
-- [ ] "Run Now" button on the Web UI AMA page
-- [ ] Process multiple unprocessed videos (not just the latest)
+- [ ] Process more than just the latest playlist entry (iterate until a processed one is found)
 - [ ] Dry-run mode that generates but doesn't apply
 
 ## Milestones
 
-- [ ] **Milestone 1: YouTube Playlist Integration** — Add function to list videos from a YouTube playlist by playlist ID, with tests. This is the only net-new YouTube API capability needed.
+- [ ] **Milestone 1: YouTube Playlist Integration** — Add a function to list videos from a YouTube playlist by playlist ID, ordered by publish date. Add a function to read a video's current description (used for marker detection). Tests with mocked YouTube client.
 
-- [ ] **Milestone 2: Auto-Process Orchestration** — Extract `saveAMAFiles` to a shared function. Create the orchestration logic: find latest unprocessed video → fetch transcript → generate AI content → apply to YouTube → save locally. Expose as `POST /api/ama/auto-process` endpoint. Tests for the full workflow.
+- [ ] **Milestone 2: AMA Job Orchestration** — Create the orchestration logic in `internal/scheduler/ama_job.go`: list playlist → read latest video description → check for `timecodesHeader` marker → if absent, run `GetTranscript()` → `GenerateAMAContent()` → `UpdateAMAVideo()`. Returns a typed result (skipped / processed / failed / scheduler-error). Full test coverage.
 
-- [ ] **Milestone 3: Notifications (Slack & Email)** — Send Slack message and email after processing with the video link (success) or error details (failure). Uses existing Slack and email infrastructure. Both channels configurable independently via `slackNotify` and `emailNotify`.
+- [ ] **Milestone 3: Email Notifications** — Send email after each non-skipped outcome (processed, failed, scheduler-error). Reuses the existing email infrastructure. Subject + body templated by outcome type. Tests with mocked email client.
 
-- [ ] **Milestone 4: In-App Scheduler** — Add cron-based scheduler that starts with the server. Reads schedule from `settings.yaml`. Triggers the auto-process workflow on schedule. Graceful shutdown.
+- [ ] **Milestone 4: In-App Scheduler** — Cron-based scheduler that starts with the server. Reads schedule from `settings.yaml`. Triggers the AMA job on schedule. Graceful shutdown. Tests for start/stop and scheduling.
 
-- [ ] **Milestone 5: Configuration & Settings** — Add `SettingsAMA` to configuration with `enabled`, `playlistId`, `schedule`, `retryDelayHours`, `maxRetries`, `slackNotify`, `emailNotify`, `emailTo` fields. Environment variable overrides. Validate on startup. Update Helm values.yaml with corresponding config values.
+- [ ] **Milestone 5: Configuration & Helm** — Add `SettingsAMA` struct (`Enabled`, `PlaylistID`, `Schedule`, `EmailTo`) with env-var overrides and startup validation. Update `helm/youtube-automation/values.yaml` with the corresponding values.
 
-- [ ] **Milestone 6: Web UI Integration** — Add "Run Now" button to the AMA page that calls the auto-process endpoint. Show last run status/result.
-
-- [ ] **Milestone 7: Testing & Validation** — Full test coverage for playlist listing, orchestration, scheduler, and endpoint. Manual end-to-end validation.
+- [ ] **Milestone 6: Testing & Validation** — Full test coverage across all packages (≥80%). Manual end-to-end validation against a real AMA video.
 
 ## Risks & Mitigations
 
 | Risk | Mitigation |
 |------|-----------|
-| YouTube API quota limits | Playlist listing is cheap (1 API call). Full workflow only runs for unprocessed videos. |
-| Transcript not available yet | Auto-generated captions may take hours. On failure, schedule a retry after `retryDelayHours` (default 24h), up to `maxRetries` (default 3) attempts. If all retries exhausted, send Slack failure notification for manual intervention. |
-| AI generation produces poor content | Same AI pipeline as CLI/Web UI which is already trusted. |
-| Server restart loses scheduler state | Scheduler is stateless — on startup it checks if the latest video needs processing regardless of history. |
+| YouTube API quota | Daily run = 1 playlist list + 1 video read + (only when processing) the existing generate/apply quota. Negligible. |
+| Transcript not yet available (auto-captions can lag) | Daily idempotent re-run replaces explicit retry logic — tomorrow's run picks it up. |
+| AI produces poor content | Same AI pipeline as the existing manual flow, which is already trusted. |
+| Server restart loses scheduler state | Scheduler is stateless — marker check determines work on every run. |
+| Stream is currently live when the scheduler runs | Marker absent + transcript unavailable → failure email → operator can wait and let tomorrow's run handle it. |
+| Email infrastructure unavailable | Logged, scheduler continues. Same behavior as existing upload-notification path. |
+| Silent-broken scheduler (e.g., playlist API outage that lasts days) | Soft-exception email on pre-decision failures restores "no email = working correctly" as a useful signal. |
