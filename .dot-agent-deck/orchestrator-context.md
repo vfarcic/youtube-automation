@@ -10,6 +10,8 @@ After reviewer and auditor both complete with no critical issues for a task, run
 
 Only delegate to release when ALL PRD milestones are complete (not after individual tasks). The release agent handles /prd-done to create the PR, merge, and close the issue for the entire PRD.
 
+If release reports a failure, delegate the fix to coder with the exact error message. After coder fixes it, delegate back to release to retry — do NOT re-run reviewer/auditor unless the fix was substantial.
+
 After committing a completed task, suggest how the user can manually test/verify the work (only if there is something meaningful to check — e.g., run a command, hit an API endpoint, check the UI). Skip this if the task is purely internal with no user-visible way to verify.
 
 Before delegating to release, provide detailed instructions for the user to validate the complete solution end-to-end (full user journey, key commands, what to look for). Then STOP and wait for the user to confirm they have validated and are ready to release. Do NOT delegate to release until the user explicitly tells you to proceed.
