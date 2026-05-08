@@ -1,7 +1,7 @@
 # PRD: Automated Daily AMA Stream Processing
 
 **Issue**: #386
-**Status**: Not Started
+**Status**: In Progress
 **Priority**: Medium
 **Created**: 2026-03-13
 **Last Updated**: 2026-05-09
@@ -144,7 +144,7 @@ Environment variable overrides follow the existing pattern in `internal/configur
 
 ## Milestones
 
-- [ ] **Milestone 1: YouTube Playlist Integration** — Add a function to list videos from a YouTube playlist by playlist ID, ordered by publish date. Add a function to read a video's current description (used for marker detection). Tests with mocked YouTube client.
+- [x] **Milestone 1: YouTube Playlist Integration** — Add a function to list videos from a YouTube playlist by playlist ID, ordered by publish date. Add a function to read a video's current description (used for marker detection). Tests with mocked YouTube client. ✅ Implemented in `internal/publishing/youtube_playlist.go` (`ListPlaylistVideos`, `GetVideoDescription`) with 14 test cases, 84.62% coverage.
 
 - [ ] **Milestone 2: AMA Job Orchestration** — Create the orchestration logic in `internal/scheduler/ama_job.go`: list playlist → read latest video description → check for `timecodesHeader` marker → if absent, run `GetTranscript()` → `GenerateAMAContent()` → `UpdateAMAVideo()`. Returns a typed result (skipped / processed / failed / scheduler-error). Full test coverage.
 
