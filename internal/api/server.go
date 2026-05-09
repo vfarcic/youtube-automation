@@ -329,7 +329,9 @@ func (s *Server) stopAMASchedulerAfterStartFailure() {
 
 // Shutdown gracefully shuts down the server. The AMA scheduler is stopped
 // first (with its own bounded timeout) so in-flight ticks can finish before
-// the HTTP listener closes.
+// the HTTP listener closes. The scheduler-stop context is derived from the
+// caller's ctx so a tight shutdown deadline (e.g. SIGTERM with a 10s budget)
+// short-circuits the configured AMA timeout instead of blocking past it.
 func (s *Server) Shutdown(ctx context.Context) error {
 	s.lifecycleMu.Lock()
 	sched := s.amaScheduler
@@ -343,7 +345,7 @@ func (s *Server) Shutdown(ctx context.Context) error {
 		if timeout <= 0 {
 			timeout = 30 * time.Second
 		}
-		stopCtx, stopCancel := context.WithTimeout(context.Background(), timeout)
+		stopCtx, stopCancel := context.WithTimeout(ctx, timeout)
 		if err := sched.Stop(stopCtx); err != nil {
 			slog.Warn("AMA scheduler stop returned error", "err", err)
 		}

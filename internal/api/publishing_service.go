@@ -63,8 +63,8 @@ func (d *DefaultPublishingService) GetTranscript(_ context.Context, videoID stri
 	return publishing.GetTranscript(videoID)
 }
 
-func (d *DefaultPublishingService) GetVideoMetadata(_ context.Context, videoID string) (*publishing.VideoMetadata, error) {
-	return publishing.GetVideoMetadata(videoID)
+func (d *DefaultPublishingService) GetVideoMetadata(ctx context.Context, videoID string) (*publishing.VideoMetadata, error) {
+	return publishing.GetVideoMetadata(ctx, videoID)
 }
 
 func (d *DefaultPublishingService) PostBlueSky(_ context.Context, text, videoID, thumbnailPath string) error {
@@ -78,8 +78,8 @@ func (d *DefaultPublishingService) PostSlack(_ context.Context, video *storage.V
 	return d.slackService.PostVideo(video, videoPath)
 }
 
-func (d *DefaultPublishingService) UpdateAMAVideo(_ context.Context, videoID, title, description, tags, timecodes string) error {
-	return publishing.UpdateAMAVideo(videoID, title, description, tags, timecodes)
+func (d *DefaultPublishingService) UpdateAMAVideo(ctx context.Context, videoID, title, description, tags, timecodes string) error {
+	return publishing.UpdateAMAVideo(ctx, videoID, title, description, tags, timecodes)
 }
 
 func (d *DefaultPublishingService) DeleteVideo(_ context.Context, videoID string) error {
@@ -87,13 +87,15 @@ func (d *DefaultPublishingService) DeleteVideo(_ context.Context, videoID string
 }
 
 // ListPlaylistVideos satisfies scheduler.PlaylistLister so the AMA scheduler
-// can reuse this service rather than building its own publishing client.
-func (d *DefaultPublishingService) ListPlaylistVideos(playlistID string) ([]publishing.PlaylistVideo, error) {
-	return publishing.ListPlaylistVideos(playlistID)
+// can reuse this service rather than building its own publishing client. The
+// ctx is forwarded so a scheduler shutdown cancels in-flight pagination.
+func (d *DefaultPublishingService) ListPlaylistVideos(ctx context.Context, playlistID string) ([]publishing.PlaylistVideo, error) {
+	return publishing.ListPlaylistVideos(ctx, playlistID)
 }
 
 // GetVideoDescription satisfies scheduler.DescriptionReader so the AMA
-// scheduler can detect the timecodes-marker idempotency check.
-func (d *DefaultPublishingService) GetVideoDescription(videoID string) (string, error) {
-	return publishing.GetVideoDescription(videoID)
+// scheduler can detect the timecodes-marker idempotency check. The ctx is
+// forwarded so cancellation propagates to the YouTube API call.
+func (d *DefaultPublishingService) GetVideoDescription(ctx context.Context, videoID string) (string, error) {
+	return publishing.GetVideoDescription(ctx, videoID)
 }

@@ -62,11 +62,11 @@ spec:
             - name: AMA_ENABLED
               value: "true"
             - name: AMA_PLAYLIST_ID
-              value: {{ .Values.ama.playlistId | quote }}
+              value: {{ required "ama.playlistId is required when ama.enabled is true" .Values.ama.playlistId | quote }}
             - name: AMA_SCHEDULE
               value: {{ .Values.ama.schedule | quote }}
             - name: AMA_EMAIL_TO
-              value: {{ .Values.ama.emailTo | quote }}
+              value: {{ required "ama.emailTo is required when ama.enabled is true" .Values.ama.emailTo | quote }}
             {{- end }}
             {{- range $key, $value := .Values.env }}
             - name: {{ $key }}

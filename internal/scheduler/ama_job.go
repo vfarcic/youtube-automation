@@ -26,6 +26,9 @@ import (
 //   - scheduler-error: pre-decision failure (playlist or description unreadable)
 type Outcome string
 
+// Outcome string values double as the human-readable identifier in log
+// fields and email templates, so the constants are kept lowercase-with-dashes
+// to match what AMANotifier embeds verbatim.
 const (
 	OutcomeSkipped        Outcome = "skipped"
 	OutcomeProcessed      Outcome = "processed"
@@ -47,15 +50,17 @@ type AMAJobResult struct {
 }
 
 // PlaylistLister lists videos in a YouTube playlist, sorted with the most
-// recently published video first.
+// recently published video first. The ctx is forwarded to the underlying
+// API calls so a scheduler shutdown cancels in-flight pagination.
 type PlaylistLister interface {
-	ListPlaylistVideos(playlistID string) ([]publishing.PlaylistVideo, error)
+	ListPlaylistVideos(ctx context.Context, playlistID string) ([]publishing.PlaylistVideo, error)
 }
 
 // DescriptionReader returns the current description of a YouTube video. The
-// scheduler uses this to detect the idempotency marker.
+// scheduler uses this to detect the idempotency marker. The ctx is forwarded
+// so cancellation propagates to the underlying YouTube API call.
 type DescriptionReader interface {
-	GetVideoDescription(videoID string) (string, error)
+	GetVideoDescription(ctx context.Context, videoID string) (string, error)
 }
 
 // TranscriptFetcher returns the transcript for a YouTube video.
@@ -90,7 +95,7 @@ type AMAJob struct {
 // what happened. It never panics and never returns an error directly; all
 // failures are encoded in the result so callers can route by outcome.
 func (j *AMAJob) Run(ctx context.Context) AMAJobResult {
-	videos, err := j.PlaylistLister.ListPlaylistVideos(j.PlaylistID)
+	videos, err := j.PlaylistLister.ListPlaylistVideos(ctx, j.PlaylistID)
 	if err != nil {
 		return AMAJobResult{
 			Outcome: OutcomeSchedulerError,
@@ -108,7 +113,7 @@ func (j *AMAJob) Run(ctx context.Context) AMAJobResult {
 	videoID := latest.VideoID
 	url := videoURL(videoID)
 
-	description, err := j.DescriptionReader.GetVideoDescription(videoID)
+	description, err := j.DescriptionReader.GetVideoDescription(ctx, videoID)
 	if err != nil {
 		return AMAJobResult{
 			Outcome:  OutcomeSchedulerError,

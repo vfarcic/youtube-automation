@@ -41,7 +41,7 @@ type mockPlaylistItemsLister struct {
 	numListCalls        int
 }
 
-func (m *mockPlaylistItemsLister) List(part []string, playlistID, pageToken string) playlistItemsListDoer {
+func (m *mockPlaylistItemsLister) List(_ context.Context, part []string, playlistID, pageToken string) playlistItemsListDoer {
 	m.numListCalls++
 	m.capturedParts = append(m.capturedParts, part)
 	m.capturedPlaylistIDs = append(m.capturedPlaylistIDs, playlistID)
@@ -216,7 +216,7 @@ func TestListPlaylistVideosInner(t *testing.T) {
 			}
 			lister := &mockPlaylistItemsLister{doer: doer}
 
-			got, err := listPlaylistVideos(lister, tt.playlistID)
+			got, err := listPlaylistVideos(context.Background(), lister, tt.playlistID)
 
 			if tt.wantErr {
 				if err == nil {
@@ -254,7 +254,7 @@ func TestListPlaylistVideosInner(t *testing.T) {
 }
 
 func TestListPlaylistVideosEmptyID(t *testing.T) {
-	got, err := ListPlaylistVideos("")
+	got, err := ListPlaylistVideos(context.Background(), "")
 	if err == nil {
 		t.Fatal("expected error for empty playlist ID")
 	}
@@ -272,11 +272,11 @@ func TestListPlaylistVideosListerFactoryError(t *testing.T) {
 	t.Cleanup(func() { newPlaylistItemsLister = original })
 
 	wantErr := errors.New("oauth refused")
-	newPlaylistItemsLister = func() (playlistItemsLister, error) {
+	newPlaylistItemsLister = func(ctx context.Context) (playlistItemsLister, error) {
 		return nil, wantErr
 	}
 
-	got, err := ListPlaylistVideos("PL123")
+	got, err := ListPlaylistVideos(context.Background(), "PL123")
 	if err == nil {
 		t.Fatal("expected error from factory")
 	}
@@ -303,11 +303,11 @@ func TestListPlaylistVideosViaFactory(t *testing.T) {
 		},
 	}
 	lister := &mockPlaylistItemsLister{doer: doer}
-	newPlaylistItemsLister = func() (playlistItemsLister, error) {
+	newPlaylistItemsLister = func(ctx context.Context) (playlistItemsLister, error) {
 		return lister, nil
 	}
 
-	got, err := ListPlaylistVideos("PL123")
+	got, err := ListPlaylistVideos(context.Background(), "PL123")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -341,17 +341,17 @@ func TestRealPlaylistItemsListerList(t *testing.T) {
 	}
 	lister := &realPlaylistItemsLister{svc: service.PlaylistItems}
 
-	if doer := lister.List([]string{"snippet"}, "PL123", ""); doer == nil {
+	if doer := lister.List(ctx, []string{"snippet"}, "PL123", ""); doer == nil {
 		t.Error("expected non-nil doer when pageToken is empty")
 	}
 
-	if doer := lister.List([]string{"snippet", "contentDetails"}, "PL123", "tok-2"); doer == nil {
+	if doer := lister.List(ctx, []string{"snippet", "contentDetails"}, "PL123", "tok-2"); doer == nil {
 		t.Error("expected non-nil doer when pageToken is set")
 	}
 }
 
 func TestGetVideoDescriptionEmptyID(t *testing.T) {
-	got, err := GetVideoDescription("")
+	got, err := GetVideoDescription(context.Background(), "")
 	if err == nil {
 		t.Fatal("expected error for empty video ID")
 	}
@@ -368,14 +368,14 @@ func TestGetVideoDescriptionSuccess(t *testing.T) {
 	original := fetchVideoMetadata
 	t.Cleanup(func() { fetchVideoMetadata = original })
 
-	fetchVideoMetadata = func(videoID string) (*VideoMetadata, error) {
+	fetchVideoMetadata = func(_ context.Context, videoID string) (*VideoMetadata, error) {
 		if videoID != "vid42" {
 			t.Errorf("videoID = %q, want vid42", videoID)
 		}
 		return &VideoMetadata{Description: "hello world"}, nil
 	}
 
-	got, err := GetVideoDescription("vid42")
+	got, err := GetVideoDescription(context.Background(), "vid42")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -389,11 +389,11 @@ func TestGetVideoDescriptionFetchError(t *testing.T) {
 	t.Cleanup(func() { fetchVideoMetadata = original })
 
 	wantErr := errors.New("api down")
-	fetchVideoMetadata = func(videoID string) (*VideoMetadata, error) {
+	fetchVideoMetadata = func(_ context.Context, videoID string) (*VideoMetadata, error) {
 		return nil, wantErr
 	}
 
-	got, err := GetVideoDescription("vid42")
+	got, err := GetVideoDescription(context.Background(), "vid42")
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -405,3 +405,134 @@ func TestGetVideoDescriptionFetchError(t *testing.T) {
 	}
 }
 
+// TestGetVideoDescriptionNilMetadata verifies the defensive guard against a
+// misbehaving fetchVideoMetadata override that returns (nil, nil). Without the
+// guard, dereferencing metadata.Description would panic.
+func TestGetVideoDescriptionNilMetadata(t *testing.T) {
+	original := fetchVideoMetadata
+	t.Cleanup(func() { fetchVideoMetadata = original })
+
+	fetchVideoMetadata = func(_ context.Context, videoID string) (*VideoMetadata, error) {
+		return nil, nil
+	}
+
+	got, err := GetVideoDescription(context.Background(), "vid42")
+	if err == nil {
+		t.Fatal("expected error from nil metadata")
+	}
+	if !strings.Contains(err.Error(), "no metadata returned") {
+		t.Errorf("error = %q, want substring %q", err.Error(), "no metadata returned")
+	}
+	if got != "" {
+		t.Errorf("expected empty description, got %q", got)
+	}
+}
+
+// TestListPlaylistVideos_NilResponse verifies the defensive guard against a
+// (nil response, nil error) from the YouTube SDK. The loop must not panic on
+// resp.Items deref.
+func TestListPlaylistVideos_NilResponse(t *testing.T) {
+	doer := &mockPlaylistItemsListDoer{responses: []*youtube.PlaylistItemListResponse{nil}}
+	lister := &mockPlaylistItemsLister{doer: doer}
+
+	got, err := listPlaylistVideos(context.Background(), lister, "PLnil")
+	if err == nil {
+		t.Fatal("expected error for nil response")
+	}
+	if !strings.Contains(err.Error(), "nil response") {
+		t.Errorf("error = %q, want substring %q", err.Error(), "nil response")
+	}
+	if got != nil {
+		t.Errorf("expected nil result, got %v", got)
+	}
+}
+
+// TestListPlaylistVideos_EmptyVideoIDSkipped verifies items with an empty
+// ContentDetails.VideoId are skipped (rather than producing PlaylistVideo
+// records with empty IDs that downstream callers would have to filter).
+func TestListPlaylistVideos_EmptyVideoIDSkipped(t *testing.T) {
+	doer := &mockPlaylistItemsListDoer{responses: []*youtube.PlaylistItemListResponse{
+		{
+			Items: []*youtube.PlaylistItem{
+				{
+					Snippet:        &youtube.PlaylistItemSnippet{Title: "Empty ID"},
+					ContentDetails: &youtube.PlaylistItemContentDetails{VideoId: "", VideoPublishedAt: "2026-01-01T00:00:00Z"},
+				},
+				playlistItem("vGood", "Good", "2026-02-01T00:00:00Z"),
+			},
+		},
+	}}
+	lister := &mockPlaylistItemsLister{doer: doer}
+
+	got, err := listPlaylistVideos(context.Background(), lister, "PLmix")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	want := []PlaylistVideo{{VideoID: "vGood", Title: "Good", PublishedAt: "2026-02-01T00:00:00Z"}}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("got %+v, want %+v", got, want)
+	}
+}
+
+// TestListPlaylistVideos_CtxForwarded verifies the ctx is forwarded through to
+// the underlying lister.List call rather than dropped on the floor.
+func TestListPlaylistVideos_CtxForwarded(t *testing.T) {
+	type ctxKey struct{}
+	parent := context.WithValue(context.Background(), ctxKey{}, "marker")
+
+	doer := &mockPlaylistItemsListDoer{responses: []*youtube.PlaylistItemListResponse{
+		{Items: []*youtube.PlaylistItem{playlistItem("v1", "t1", "2026-01-01T00:00:00Z")}},
+	}}
+	lister := &ctxCapturingLister{inner: &mockPlaylistItemsLister{doer: doer}}
+
+	if _, err := listPlaylistVideos(parent, lister, "PL"); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(lister.captured) != 1 {
+		t.Fatalf("expected 1 captured ctx, got %d", len(lister.captured))
+	}
+	if v, _ := lister.captured[0].Value(ctxKey{}).(string); v != "marker" {
+		t.Errorf("ctx value = %q, want marker (ctx not forwarded)", v)
+	}
+}
+
+// ctxCapturingLister wraps mockPlaylistItemsLister to capture each ctx
+// passed into List, since the inner mock discards it.
+type ctxCapturingLister struct {
+	inner    *mockPlaylistItemsLister
+	captured []context.Context
+}
+
+func (c *ctxCapturingLister) List(ctx context.Context, part []string, playlistID, pageToken string) playlistItemsListDoer {
+	c.captured = append(c.captured, ctx)
+	return c.inner.List(ctx, part, playlistID, pageToken)
+}
+
+// TestListPlaylistVideos_PageCap verifies the maxPlaylistPages bound triggers
+// an error instead of looping forever when the API keeps returning a non-empty
+// NextPageToken (a malformed-server safety net, not a normal-flow path).
+func TestListPlaylistVideos_PageCap(t *testing.T) {
+	responses := make([]*youtube.PlaylistItemListResponse, maxPlaylistPages+5)
+	for i := range responses {
+		responses[i] = &youtube.PlaylistItemListResponse{
+			Items:         []*youtube.PlaylistItem{playlistItem("v", "t", "2026-01-01T00:00:00Z")},
+			NextPageToken: "always-more",
+		}
+	}
+	doer := &mockPlaylistItemsListDoer{responses: responses}
+	lister := &mockPlaylistItemsLister{doer: doer}
+
+	got, err := listPlaylistVideos(context.Background(), lister, "PLrunaway")
+	if err == nil {
+		t.Fatal("expected page-cap error, got nil")
+	}
+	if got != nil {
+		t.Errorf("expected nil result on cap, got %d videos", len(got))
+	}
+	if !strings.Contains(err.Error(), "page cap") {
+		t.Errorf("error = %q, want substring %q", err.Error(), "page cap")
+	}
+	if lister.numListCalls != maxPlaylistPages {
+		t.Errorf("called lister %d times, want %d", lister.numListCalls, maxPlaylistPages)
+	}
+}

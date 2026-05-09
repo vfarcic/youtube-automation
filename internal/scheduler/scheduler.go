@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"runtime/debug"
 	"sync"
+	"time"
 
 	"github.com/robfig/cron/v3"
 )
@@ -50,7 +51,10 @@ func (s *Scheduler) Start(ctx context.Context) error {
 		return nil
 	}
 
-	c := cron.New()
+	// Pin cron to UTC so the documented "0 10 * * *" default fires at 10:00
+	// UTC regardless of the host's TZ. Without this, a node in a non-UTC
+	// timezone would silently shift the schedule.
+	c := cron.New(cron.WithLocation(time.UTC))
 	chain := cron.NewChain(cron.SkipIfStillRunning(slogCronLogger{}))
 	wrapped := chain.Then(cron.FuncJob(s.tick))
 	if _, err := c.AddJob(s.Schedule, wrapped); err != nil {

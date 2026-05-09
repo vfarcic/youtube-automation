@@ -32,22 +32,26 @@ type mockVideosClient struct {
 	listParts   []string
 	listVideoID string
 	listCalls   int
+	listCtxs    []context.Context
 	updateParts []string
 	updateVideo *youtube.Video
 	updateCalls int
+	updateCtxs  []context.Context
 }
 
-func (m *mockVideosClient) List(part []string, videoID string) videoListDoer {
+func (m *mockVideosClient) List(ctx context.Context, part []string, videoID string) videoListDoer {
 	m.listCalls++
 	m.listParts = part
 	m.listVideoID = videoID
+	m.listCtxs = append(m.listCtxs, ctx)
 	return m.listDoer
 }
 
-func (m *mockVideosClient) Update(part []string, video *youtube.Video) videoUpdateDoer {
+func (m *mockVideosClient) Update(ctx context.Context, part []string, video *youtube.Video) videoUpdateDoer {
 	m.updateCalls++
 	m.updateParts = part
 	m.updateVideo = video
+	m.updateCtxs = append(m.updateCtxs, ctx)
 	if m.updateDoer == nil {
 		return &mockVideoUpdateDoer{}
 	}
@@ -310,7 +314,7 @@ func indexOf(s, substr string) int {
 }
 
 func TestGetVideoMetadataEmptyID(t *testing.T) {
-	_, err := GetVideoMetadata("")
+	_, err := GetVideoMetadata(context.Background(), "")
 	if err == nil {
 		t.Error("GetVideoMetadata should return error for empty video ID")
 	}
@@ -321,7 +325,7 @@ func TestGetVideoMetadataEmptyID(t *testing.T) {
 }
 
 func TestUpdateAMAVideoEmptyID(t *testing.T) {
-	err := UpdateAMAVideo("", "title", "desc", "tags", "timecodes")
+	err := UpdateAMAVideo(context.Background(), "", "title", "desc", "tags", "timecodes")
 	if err == nil {
 		t.Error("UpdateAMAVideo should return error for empty video ID")
 	}
@@ -384,7 +388,7 @@ func TestGetVideoMetadataInner(t *testing.T) {
 			client := &mockVideosClient{
 				listDoer: &mockVideoListDoer{resp: tt.listResp, err: tt.listErr},
 			}
-			got, err := getVideoMetadata(client, tt.videoID)
+			got, err := getVideoMetadata(context.Background(), client, tt.videoID)
 
 			if tt.wantErr {
 				if err == nil {
@@ -423,7 +427,7 @@ func TestGetVideoMetadataFactoryError(t *testing.T) {
 		return nil, wantErr
 	}
 
-	got, err := GetVideoMetadata("vid42")
+	got, err := GetVideoMetadata(context.Background(), "vid42")
 	if err == nil {
 		t.Fatal("expected error from factory")
 	}
@@ -454,7 +458,7 @@ func TestGetVideoMetadataViaFactory(t *testing.T) {
 	}
 	newVideosClient = func() (videosClient, error) { return client, nil }
 
-	got, err := GetVideoMetadata("vid42")
+	got, err := GetVideoMetadata(context.Background(), "vid42")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -563,7 +567,7 @@ func TestUpdateAMAVideoInner(t *testing.T) {
 				updateDoer: &mockVideoUpdateDoer{ShouldFail: tt.updateErr != nil, ResponseError: tt.updateErr},
 			}
 
-			err := updateAMAVideo(client, tt.videoID, tt.title, tt.description, tt.tags, tt.timecodes)
+			err := updateAMAVideo(context.Background(), client, tt.videoID, tt.title, tt.description, tt.tags, tt.timecodes)
 
 			if tt.wantErr {
 				if err == nil {
@@ -612,7 +616,7 @@ func TestUpdateAMAVideoFactoryError(t *testing.T) {
 	wantErr := errors.New("oauth refused")
 	newVideosClient = func() (videosClient, error) { return nil, wantErr }
 
-	err := UpdateAMAVideo("vid42", "t", "d", "tag", "")
+	err := UpdateAMAVideo(context.Background(), "vid42", "t", "d", "tag", "")
 	if err == nil {
 		t.Fatal("expected error from factory")
 	}
@@ -634,7 +638,7 @@ func TestUpdateAMAVideoViaFactory(t *testing.T) {
 	}
 	newVideosClient = func() (videosClient, error) { return client, nil }
 
-	if err := UpdateAMAVideo("vid42", "new", "desc", "", ""); err != nil {
+	if err := UpdateAMAVideo(context.Background(), "vid42", "new", "desc", "", ""); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if client.updateCalls != 1 {
@@ -666,10 +670,119 @@ func TestRealVideosClientListAndUpdate(t *testing.T) {
 	}
 	client := &realVideosClient{svc: service.Videos}
 
-	if doer := client.List([]string{"snippet"}, "vid42"); doer == nil {
+	if doer := client.List(ctx, []string{"snippet"}, "vid42"); doer == nil {
 		t.Error("expected non-nil List doer")
 	}
-	if doer := client.Update([]string{"snippet"}, &youtube.Video{Id: "vid42"}); doer == nil {
+	if doer := client.Update(ctx, []string{"snippet"}, &youtube.Video{Id: "vid42"}); doer == nil {
 		t.Error("expected non-nil Update doer")
+	}
+}
+
+// TestGetVideoMetadataCtxCanceled verifies that a pre-canceled ctx short-
+// circuits getVideoMetadata before the API call, so the YouTube HTTP request
+// is never issued. This is the fast-path that stops cancellation from being
+// defeated at the API call boundary.
+func TestGetVideoMetadataCtxCanceled(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	client := &mockVideosClient{
+		listDoer: &mockVideoListDoer{resp: &youtube.VideoListResponse{
+			Items: []*youtube.Video{{Snippet: &youtube.VideoSnippet{Title: "should not reach"}}},
+		}},
+	}
+
+	got, err := getVideoMetadata(ctx, client, "vid42")
+	if err == nil {
+		t.Fatal("expected error from canceled ctx")
+	}
+	if !errors.Is(err, context.Canceled) {
+		t.Errorf("error = %v, want wrap of context.Canceled", err)
+	}
+	if got != nil {
+		t.Errorf("expected nil metadata on cancel, got %+v", got)
+	}
+	if client.listCalls != 0 {
+		t.Errorf("expected 0 List calls on canceled ctx, got %d", client.listCalls)
+	}
+}
+
+// TestUpdateAMAVideoCtxCanceled verifies that a pre-canceled ctx short-circuits
+// updateAMAVideo before any API calls, so neither the videos.list nor the
+// videos.update HTTP request is issued.
+func TestUpdateAMAVideoCtxCanceled(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	client := &mockVideosClient{
+		listDoer: &mockVideoListDoer{resp: &youtube.VideoListResponse{
+			Items: []*youtube.Video{{Snippet: &youtube.VideoSnippet{Title: "should not reach", CategoryId: "27"}}},
+		}},
+	}
+
+	err := updateAMAVideo(ctx, client, "vid42", "t", "d", "tag", "")
+	if err == nil {
+		t.Fatal("expected error from canceled ctx")
+	}
+	if !errors.Is(err, context.Canceled) {
+		t.Errorf("error = %v, want wrap of context.Canceled", err)
+	}
+	if client.listCalls != 0 {
+		t.Errorf("expected 0 List calls on canceled ctx, got %d", client.listCalls)
+	}
+	if client.updateCalls != 0 {
+		t.Errorf("expected 0 Update calls on canceled ctx, got %d", client.updateCalls)
+	}
+}
+
+// TestGetVideoMetadataForwardsCtx verifies the ctx is passed through to the
+// underlying client.List call rather than dropped on the floor.
+func TestGetVideoMetadataForwardsCtx(t *testing.T) {
+	type ctxKey struct{}
+	parent := context.WithValue(context.Background(), ctxKey{}, "marker")
+
+	client := &mockVideosClient{
+		listDoer: &mockVideoListDoer{resp: &youtube.VideoListResponse{
+			Items: []*youtube.Video{{Snippet: &youtube.VideoSnippet{Title: "ok"}}},
+		}},
+	}
+
+	if _, err := getVideoMetadata(parent, client, "vid42"); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(client.listCtxs) != 1 {
+		t.Fatalf("expected 1 captured ctx, got %d", len(client.listCtxs))
+	}
+	if v, _ := client.listCtxs[0].Value(ctxKey{}).(string); v != "marker" {
+		t.Errorf("ctx value = %q, want marker (ctx not forwarded)", v)
+	}
+}
+
+// TestUpdateAMAVideoForwardsCtx verifies the ctx is passed through to both the
+// videos.list and videos.update calls rather than dropped on the floor.
+func TestUpdateAMAVideoForwardsCtx(t *testing.T) {
+	type ctxKey struct{}
+	parent := context.WithValue(context.Background(), ctxKey{}, "marker")
+
+	client := &mockVideosClient{
+		listDoer: &mockVideoListDoer{resp: &youtube.VideoListResponse{
+			Items: []*youtube.Video{{Snippet: &youtube.VideoSnippet{Title: "old", CategoryId: "27"}}},
+		}},
+	}
+
+	if err := updateAMAVideo(parent, client, "vid42", "new", "desc", "", ""); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(client.listCtxs) != 1 {
+		t.Fatalf("expected 1 captured List ctx, got %d", len(client.listCtxs))
+	}
+	if v, _ := client.listCtxs[0].Value(ctxKey{}).(string); v != "marker" {
+		t.Errorf("List ctx value = %q, want marker (ctx not forwarded)", v)
+	}
+	if len(client.updateCtxs) != 1 {
+		t.Fatalf("expected 1 captured Update ctx, got %d", len(client.updateCtxs))
+	}
+	if v, _ := client.updateCtxs[0].Value(ctxKey{}).(string); v != "marker" {
+		t.Errorf("Update ctx value = %q, want marker (ctx not forwarded)", v)
 	}
 }

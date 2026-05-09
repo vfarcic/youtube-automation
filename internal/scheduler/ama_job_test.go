@@ -19,7 +19,7 @@ type mockPlaylistLister struct {
 	err      error
 }
 
-func (m *mockPlaylistLister) ListPlaylistVideos(playlistID string) ([]publishing.PlaylistVideo, error) {
+func (m *mockPlaylistLister) ListPlaylistVideos(_ context.Context, playlistID string) ([]publishing.PlaylistVideo, error) {
 	m.calls++
 	m.playlist = playlistID
 	return m.videos, m.err
@@ -32,7 +32,7 @@ type mockDescriptionReader struct {
 	err     error
 }
 
-func (m *mockDescriptionReader) GetVideoDescription(videoID string) (string, error) {
+func (m *mockDescriptionReader) GetVideoDescription(_ context.Context, videoID string) (string, error) {
 	m.calls++
 	m.videoID = videoID
 	return m.desc, m.err

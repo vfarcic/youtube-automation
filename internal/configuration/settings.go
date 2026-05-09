@@ -85,6 +85,10 @@ type Settings struct {
 // SettingsAMA holds configuration for the in-app AMA scheduler that processes
 // daily AMA livestream videos. When Enabled is true the server starts a cron
 // loop on the given Schedule and emails operator notifications to EmailTo.
+//
+// Schedule is interpreted in UTC. The scheduler initializes its cron with
+// time.UTC so a value like "0 10 * * *" fires at 10:00 UTC on every host,
+// regardless of the container's local timezone.
 type SettingsAMA struct {
 	Enabled    bool   `yaml:"enabled" json:"enabled"`
 	PlaylistID string `yaml:"playlistId" json:"playlistId"`

@@ -308,6 +308,10 @@ func TestScheduler_Stop_RespectsCtxDeadline(t *testing.T) {
 		t.Fatalf("hanging job never started")
 	}
 
+	// 50ms is well below any realistic in-flight job duration but well above
+	// the goroutine-scheduling jitter we expect to see on CI runners. With a
+	// hangingJob that ignores cancellation, Stop must hit the deadline (not
+	// the job-completed path) before this window expires.
 	stopCtx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancel()
 	err := s.Stop(stopCtx)
