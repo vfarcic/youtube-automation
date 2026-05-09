@@ -3,8 +3,10 @@ package publishing
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"strings"
 
+	"google.golang.org/api/googleapi"
 	"google.golang.org/api/option"
 	"google.golang.org/api/youtube/v3"
 )
@@ -25,25 +27,67 @@ const boilerplateDelimiter = "▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬�
 // present in a video's description, the video has already been processed.
 const TimecodesHeader = "▬▬▬▬▬▬ ⏱ Timecodes ⏱ ▬▬▬▬▬▬"
 
-// GetVideoMetadata fetches the current metadata for a YouTube video
-func GetVideoMetadata(videoID string) (*VideoMetadata, error) {
-	if videoID == "" {
-		return nil, fmt.Errorf("video ID cannot be empty")
-	}
+// videoListDoer wraps the chained .Do() of a Videos.List call.
+type videoListDoer interface {
+	Do(opts ...googleapi.CallOption) (*youtube.VideoListResponse, error)
+}
 
+// videosClient abstracts youtube.VideosService for testing. It reuses the
+// videoUpdateDoer interface declared in youtube.go.
+type videosClient interface {
+	List(part []string, videoID string) videoListDoer
+	Update(part []string, video *youtube.Video) videoUpdateDoer
+}
+
+// realVideosClient adapts *youtube.VideosService to videosClient.
+type realVideosClient struct {
+	svc *youtube.VideosService
+}
+
+func (r *realVideosClient) List(part []string, videoID string) videoListDoer {
+	return r.svc.List(part).Id(videoID)
+}
+
+func (r *realVideosClient) Update(part []string, video *youtube.Video) videoUpdateDoer {
+	return r.svc.Update(part, video)
+}
+
+// buildVideosClient constructs a videosClient from an authenticated *http.Client.
+// Split out so tests can exercise service construction without a real OAuth flow.
+func buildVideosClient(ctx context.Context, client *http.Client) (videosClient, error) {
+	service, err := youtube.NewService(ctx, option.WithHTTPClient(client))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create YouTube service: %w", err)
+	}
+	return &realVideosClient{svc: service.Videos}, nil
+}
+
+// newVideosClient constructs an authenticated videosClient. Tests may override
+// this to inject a mock.
+var newVideosClient = func() (videosClient, error) {
 	ctx := context.Background()
 	client, err := getClient(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("OAuth failed: %w", err)
 	}
+	return buildVideosClient(ctx, client)
+}
 
-	service, err := youtube.NewService(ctx, option.WithHTTPClient(client))
-	if err != nil {
-		return nil, fmt.Errorf("failed to create YouTube service: %w", err)
+// GetVideoMetadata fetches the current metadata for a YouTube video
+func GetVideoMetadata(videoID string) (*VideoMetadata, error) {
+	if videoID == "" {
+		return nil, fmt.Errorf("video ID cannot be empty")
 	}
+	client, err := newVideosClient()
+	if err != nil {
+		return nil, err
+	}
+	return getVideoMetadata(client, videoID)
+}
 
-	call := service.Videos.List([]string{"snippet"}).Id(videoID)
-	response, err := call.Do()
+// getVideoMetadata is the testable inner implementation of GetVideoMetadata.
+func getVideoMetadata(client videosClient, videoID string) (*VideoMetadata, error) {
+	response, err := client.List([]string{"snippet"}, videoID).Do()
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch video metadata: %w", err)
 	}
@@ -67,21 +111,16 @@ func UpdateAMAVideo(videoID, title, description, tags, timecodes string) error {
 	if videoID == "" {
 		return fmt.Errorf("video ID cannot be empty")
 	}
-
-	ctx := context.Background()
-	client, err := getClient(ctx)
+	client, err := newVideosClient()
 	if err != nil {
-		return fmt.Errorf("OAuth failed: %w", err)
+		return err
 	}
+	return updateAMAVideo(client, videoID, title, description, tags, timecodes)
+}
 
-	service, err := youtube.NewService(ctx, option.WithHTTPClient(client))
-	if err != nil {
-		return fmt.Errorf("failed to create YouTube service: %w", err)
-	}
-
-	// Fetch current video to get existing description and required fields
-	listCall := service.Videos.List([]string{"snippet"}).Id(videoID)
-	listResponse, err := listCall.Do()
+// updateAMAVideo is the testable inner implementation of UpdateAMAVideo.
+func updateAMAVideo(client videosClient, videoID, title, description, tags, timecodes string) error {
+	listResponse, err := client.List([]string{"snippet"}, videoID).Do()
 	if err != nil {
 		return fmt.Errorf("failed to fetch video: %w", err)
 	}
@@ -117,10 +156,7 @@ func UpdateAMAVideo(videoID, title, description, tags, timecodes string) error {
 		updateVideo.Snippet.Tags = currentVideo.Snippet.Tags
 	}
 
-	// Perform the update
-	updateCall := service.Videos.Update([]string{"snippet"}, updateVideo)
-	_, err = updateCall.Do()
-	if err != nil {
+	if _, err := client.Update([]string{"snippet"}, updateVideo).Do(); err != nil {
 		return fmt.Errorf("failed to update video: %w", err)
 	}
 
