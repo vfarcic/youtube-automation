@@ -20,8 +20,10 @@ type VideoMetadata struct {
 // boilerplateDelimiter is the separator between custom content and boilerplate
 const boilerplateDelimiter = "▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
 
-// timecodesHeader is the header for the timecodes section
-const timecodesHeader = "▬▬▬▬▬▬ ⏱ Timecodes ⏱ ▬▬▬▬▬▬"
+// TimecodesHeader is the header for the timecodes section.
+// It also serves as the idempotency marker for AMA processing — when
+// present in a video's description, the video has already been processed.
+const TimecodesHeader = "▬▬▬▬▬▬ ⏱ Timecodes ⏱ ▬▬▬▬▬▬"
 
 // GetVideoMetadata fetches the current metadata for a YouTube video
 func GetVideoMetadata(videoID string) (*VideoMetadata, error) {
@@ -148,7 +150,7 @@ func buildAMADescription(newDescription, currentDescription, timecodes string) s
 	if timecodes != "" {
 		// Remove any existing timecodes section from result
 		currentResult := result.String()
-		if idx := strings.Index(currentResult, timecodesHeader); idx != -1 {
+		if idx := strings.Index(currentResult, TimecodesHeader); idx != -1 {
 			currentResult = strings.TrimSpace(currentResult[:idx])
 			result.Reset()
 			result.WriteString(currentResult)
@@ -156,7 +158,7 @@ func buildAMADescription(newDescription, currentDescription, timecodes string) s
 
 		// Ensure empty line before timecodes header
 		result.WriteString("\n\n")
-		result.WriteString(timecodesHeader)
+		result.WriteString(TimecodesHeader)
 		result.WriteString("\n")
 		result.WriteString(strings.TrimSpace(timecodes))
 	}
@@ -176,7 +178,7 @@ func extractBoilerplate(description string) string {
 	boilerplate := description[idx:]
 
 	// Remove existing timecodes section from boilerplate
-	if timecodesIdx := strings.Index(boilerplate, timecodesHeader); timecodesIdx != -1 {
+	if timecodesIdx := strings.Index(boilerplate, TimecodesHeader); timecodesIdx != -1 {
 		boilerplate = strings.TrimSpace(boilerplate[:timecodesIdx])
 	}
 
