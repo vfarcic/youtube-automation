@@ -98,6 +98,12 @@ existingSecretKey: "api-token"
 # │   GDRIVE_TOKEN_FILE       - Token cache filename (default: gdrive-go.json) │
 # │   GDRIVE_FOLDER_ID        - Root Drive folder ID for uploads (optional)    │
 # │                                                                             │
+# │ AMA SCHEDULER (optional — daily AMA livestream auto-processing):            │
+# │   AMA_ENABLED      - "true" to enable scheduler (default: false)            │
+# │   AMA_PLAYLIST_ID  - YouTube playlist ID for AMA stream archive             │
+# │   AMA_SCHEDULE     - Cron expression, 5 fields (default: "0 10 * * *")      │
+# │   AMA_EMAIL_TO     - Operator email for processed/failed/error notices     │
+# │                                                                             │
 # └─────────────────────────────────────────────────────────────────────────────┘
 #
 # Example:
@@ -158,3 +164,29 @@ settings:
         model: gemini-3-pro-image-preview
       - name: gpt-image
         model: gpt-image-2
+
+# AMA scheduler (PRD #386): daily in-app cron that auto-processes the latest
+# AMA stream from the configured YouTube playlist. When enabled, the server
+# fetches the playlist, checks the latest video's description for the
+# timecodes-marker, and (if absent) generates AI title/description/tags/
+# timecodes and applies them to YouTube. An email is sent on success, failure,
+# or scheduler error; a marker-present (already-processed) run is silent.
+#
+# When ama.enabled is false (default) all other ama.* fields are ignored and
+# no scheduler goroutines are started.
+#
+# Note: when ama.enabled=true the AMA_* values below are rendered into the
+# container's env: list. Per Kubernetes' env merge rules, env: takes
+# precedence over envFrom — so if the same AMA_* keys are also injected via
+# .Values.envFrom (configMapRef/secretRef), the values set here win. To
+# manage AMA_* via a ConfigMap/Secret instead, leave ama.enabled=false and
+# inject AMA_ENABLED + the other AMA_* keys through envFrom.
+ama:
+  # Master switch. Set to true and configure the rest to enable the scheduler.
+  enabled: false
+  # YouTube playlist ID containing the AMA livestream archive.
+  playlistId: ""
+  # Cron expression (5-field standard format). Default runs daily at 10:00 UTC.
+  schedule: "0 10 * * *"
+  # Operator email address for processed/failed/scheduler-error notifications.
+  emailTo: ""

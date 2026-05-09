@@ -58,6 +58,16 @@ spec:
             {{- end }}
             - name: SETTINGS_FILE
               value: /app/settings.yaml
+            {{- if .Values.ama.enabled }}
+            - name: AMA_ENABLED
+              value: "true"
+            - name: AMA_PLAYLIST_ID
+              value: {{ required "ama.playlistId is required when ama.enabled is true" .Values.ama.playlistId | quote }}
+            - name: AMA_SCHEDULE
+              value: {{ .Values.ama.schedule | quote }}
+            - name: AMA_EMAIL_TO
+              value: {{ required "ama.emailTo is required when ama.enabled is true" .Values.ama.emailTo | quote }}
+            {{- end }}
             {{- range $key, $value := .Values.env }}
             - name: {{ $key }}
               value: {{ $value | quote }}

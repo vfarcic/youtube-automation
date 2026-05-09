@@ -23,6 +23,7 @@ import (
 	gitpkg "devopstoolkit/youtube-automation/internal/git"
 	"devopstoolkit/youtube-automation/internal/platform/bluesky"
 	"devopstoolkit/youtube-automation/internal/publishing"
+	"devopstoolkit/youtube-automation/internal/scheduler"
 	"devopstoolkit/youtube-automation/internal/service"
 	slackpkg "devopstoolkit/youtube-automation/internal/slack"
 	"devopstoolkit/youtube-automation/internal/thumbnail"
@@ -76,7 +77,8 @@ func main() {
 		aspectSvc := aspect.NewService()
 
 		distFS, _ := fs.Sub(frontend.DistFS, "dist")
-		srv := api.NewServer(videoService, videoManager, aspectSvc, fsOps, &api.DefaultAIService{}, configuration.GetAPIToken(), distFS)
+		aiSvc := &api.DefaultAIService{}
+		srv := api.NewServer(videoService, videoManager, aspectSvc, fsOps, aiSvc, configuration.GetAPIToken(), distFS)
 
 		// Data directory and analyze service
 		srv.SetDataDir(dataDir)
@@ -88,6 +90,7 @@ func main() {
 		}
 
 		// Publishing: configure YouTube upload, Hugo, social media
+		var pubSvc *api.DefaultPublishingService
 		{
 			bsCfg := bluesky.GetConfig(
 				configuration.GlobalSettings.Bluesky.Identifier,
@@ -104,16 +107,57 @@ func main() {
 					slog.Warn("Slack service creation failed", "error", err)
 				}
 			}
-			pubSvc := api.NewDefaultPublishingService(bsCfg, hugo, slackSvc)
+			pubSvc = api.NewDefaultPublishingService(bsCfg, hugo, slackSvc)
 			srv.SetPublishingService(pubSvc)
 			slog.Info("Publishing service configured")
 		}
 
 		// Email: configure action button email sending
+		var emailSvc *notification.Email
 		if configuration.GlobalSettings.Email.Password != "" {
-			emailSvc := notification.NewEmail(configuration.GlobalSettings.Email.Password)
+			emailSvc = notification.NewEmail(configuration.GlobalSettings.Email.Password)
 			srv.SetEmailService(emailSvc, &configuration.GlobalSettings.Email)
 			slog.Info("Email notifications enabled for action buttons")
+		}
+
+		// AMA scheduler: configure in-app cron job for daily AMA processing (PRD #386)
+		amaCfg := configuration.GlobalSettings.AMA
+		if amaCfg.Enabled {
+			if pubSvc == nil {
+				fmt.Fprintln(os.Stderr, "AMA scheduler enabled but publishing service is not configured")
+				os.Exit(1)
+			}
+			if emailSvc == nil {
+				fmt.Fprintln(os.Stderr, "AMA scheduler enabled but email is not configured (set EMAIL_PASSWORD)")
+				os.Exit(1)
+			}
+			if configuration.GlobalSettings.Email.From == "" {
+				fmt.Fprintln(os.Stderr, "AMA scheduler enabled but email.from is not configured")
+				os.Exit(1)
+			}
+			job := &scheduler.AMAJob{
+				PlaylistID:         amaCfg.PlaylistID,
+				PlaylistLister:     pubSvc,
+				DescriptionReader:  pubSvc,
+				TranscriptFetcher:  pubSvc,
+				AIContentGenerator: aiSvc,
+				VideoUpdater:       pubSvc,
+			}
+			notifier := &scheduler.AMANotifier{
+				Sender: emailSvc,
+				From:   configuration.GlobalSettings.Email.From,
+			}
+			sched := &scheduler.Scheduler{
+				Schedule:   amaCfg.Schedule,
+				PlaylistID: amaCfg.PlaylistID,
+				EmailTo:    amaCfg.EmailTo,
+				Job:        job,
+				Notifier:   notifier,
+			}
+			srv.SetAMAScheduler(sched, 30*time.Second)
+			slog.Info("AMA scheduler enabled", "schedule", amaCfg.Schedule, "playlistID", amaCfg.PlaylistID)
+		} else {
+			slog.Info("AMA scheduler disabled")
 		}
 
 		// Google Drive: configure thumbnail upload if credentials are set

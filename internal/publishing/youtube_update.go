@@ -3,8 +3,10 @@ package publishing
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"strings"
 
+	"google.golang.org/api/googleapi"
 	"google.golang.org/api/option"
 	"google.golang.org/api/youtube/v3"
 )
@@ -20,28 +22,79 @@ type VideoMetadata struct {
 // boilerplateDelimiter is the separator between custom content and boilerplate
 const boilerplateDelimiter = "▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
 
-// timecodesHeader is the header for the timecodes section
-const timecodesHeader = "▬▬▬▬▬▬ ⏱ Timecodes ⏱ ▬▬▬▬▬▬"
+// TimecodesHeader is the header for the timecodes section.
+// It also serves as the idempotency marker for AMA processing — when
+// present in a video's description, the video has already been processed.
+const TimecodesHeader = "▬▬▬▬▬▬ ⏱ Timecodes ⏱ ▬▬▬▬▬▬"
 
-// GetVideoMetadata fetches the current metadata for a YouTube video
-func GetVideoMetadata(videoID string) (*VideoMetadata, error) {
-	if videoID == "" {
-		return nil, fmt.Errorf("video ID cannot be empty")
+// videoListDoer wraps the chained .Do() of a Videos.List call.
+type videoListDoer interface {
+	Do(opts ...googleapi.CallOption) (*youtube.VideoListResponse, error)
+}
+
+// videosClient abstracts youtube.VideosService for testing. The ctx is
+// forwarded to .Context(ctx) on the underlying call so callers can cancel
+// the in-flight HTTP request via the standard context plumbing. Reuses the
+// videoUpdateDoer interface declared in youtube.go.
+type videosClient interface {
+	List(ctx context.Context, part []string, videoID string) videoListDoer
+	Update(ctx context.Context, part []string, video *youtube.Video) videoUpdateDoer
+}
+
+// realVideosClient adapts *youtube.VideosService to videosClient.
+type realVideosClient struct {
+	svc *youtube.VideosService
+}
+
+func (r *realVideosClient) List(ctx context.Context, part []string, videoID string) videoListDoer {
+	return r.svc.List(part).Id(videoID).Context(ctx)
+}
+
+func (r *realVideosClient) Update(ctx context.Context, part []string, video *youtube.Video) videoUpdateDoer {
+	return r.svc.Update(part, video).Context(ctx)
+}
+
+// buildVideosClient constructs a videosClient from an authenticated *http.Client.
+// Split out so tests can exercise service construction without a real OAuth flow.
+func buildVideosClient(ctx context.Context, client *http.Client) (videosClient, error) {
+	service, err := youtube.NewService(ctx, option.WithHTTPClient(client))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create YouTube service: %w", err)
 	}
+	return &realVideosClient{svc: service.Videos}, nil
+}
 
+// newVideosClient constructs an authenticated videosClient. Tests may override
+// this to inject a mock.
+var newVideosClient = func() (videosClient, error) {
 	ctx := context.Background()
 	client, err := getClient(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("OAuth failed: %w", err)
 	}
+	return buildVideosClient(ctx, client)
+}
 
-	service, err := youtube.NewService(ctx, option.WithHTTPClient(client))
-	if err != nil {
-		return nil, fmt.Errorf("failed to create YouTube service: %w", err)
+// GetVideoMetadata fetches the current metadata for a YouTube video. The ctx
+// is forwarded to the underlying YouTube API call so callers can cancel the
+// in-flight HTTP request.
+func GetVideoMetadata(ctx context.Context, videoID string) (*VideoMetadata, error) {
+	if videoID == "" {
+		return nil, fmt.Errorf("video ID cannot be empty")
 	}
+	client, err := newVideosClient()
+	if err != nil {
+		return nil, err
+	}
+	return getVideoMetadata(ctx, client, videoID)
+}
 
-	call := service.Videos.List([]string{"snippet"}).Id(videoID)
-	response, err := call.Do()
+// getVideoMetadata is the testable inner implementation of GetVideoMetadata.
+func getVideoMetadata(ctx context.Context, client videosClient, videoID string) (*VideoMetadata, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	response, err := client.List(ctx, []string{"snippet"}, videoID).Do()
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch video metadata: %w", err)
 	}
@@ -51,6 +104,9 @@ func GetVideoMetadata(videoID string) (*VideoMetadata, error) {
 	}
 
 	video := response.Items[0]
+	if video == nil || video.Snippet == nil {
+		return nil, fmt.Errorf("video %s missing snippet metadata", videoID)
+	}
 	return &VideoMetadata{
 		Title:       video.Snippet.Title,
 		Description: video.Snippet.Description,
@@ -61,25 +117,25 @@ func GetVideoMetadata(videoID string) (*VideoMetadata, error) {
 
 // UpdateAMAVideo updates a YouTube video with AMA-specific content.
 // It merges the new description with existing boilerplate and appends timecodes.
-func UpdateAMAVideo(videoID, title, description, tags, timecodes string) error {
+// The ctx is forwarded to the underlying YouTube API calls so callers can
+// cancel the in-flight HTTP requests.
+func UpdateAMAVideo(ctx context.Context, videoID, title, description, tags, timecodes string) error {
 	if videoID == "" {
 		return fmt.Errorf("video ID cannot be empty")
 	}
-
-	ctx := context.Background()
-	client, err := getClient(ctx)
+	client, err := newVideosClient()
 	if err != nil {
-		return fmt.Errorf("OAuth failed: %w", err)
+		return err
 	}
+	return updateAMAVideo(ctx, client, videoID, title, description, tags, timecodes)
+}
 
-	service, err := youtube.NewService(ctx, option.WithHTTPClient(client))
-	if err != nil {
-		return fmt.Errorf("failed to create YouTube service: %w", err)
+// updateAMAVideo is the testable inner implementation of UpdateAMAVideo.
+func updateAMAVideo(ctx context.Context, client videosClient, videoID, title, description, tags, timecodes string) error {
+	if err := ctx.Err(); err != nil {
+		return err
 	}
-
-	// Fetch current video to get existing description and required fields
-	listCall := service.Videos.List([]string{"snippet"}).Id(videoID)
-	listResponse, err := listCall.Do()
+	listResponse, err := client.List(ctx, []string{"snippet"}, videoID).Do()
 	if err != nil {
 		return fmt.Errorf("failed to fetch video: %w", err)
 	}
@@ -89,6 +145,9 @@ func UpdateAMAVideo(videoID, title, description, tags, timecodes string) error {
 	}
 
 	currentVideo := listResponse.Items[0]
+	if currentVideo == nil || currentVideo.Snippet == nil {
+		return fmt.Errorf("video %s missing snippet metadata", videoID)
+	}
 
 	// Build new description by merging with existing boilerplate
 	newDescription := buildAMADescription(description, currentVideo.Snippet.Description, timecodes)
@@ -115,10 +174,7 @@ func UpdateAMAVideo(videoID, title, description, tags, timecodes string) error {
 		updateVideo.Snippet.Tags = currentVideo.Snippet.Tags
 	}
 
-	// Perform the update
-	updateCall := service.Videos.Update([]string{"snippet"}, updateVideo)
-	_, err = updateCall.Do()
-	if err != nil {
+	if _, err := client.Update(ctx, []string{"snippet"}, updateVideo).Do(); err != nil {
 		return fmt.Errorf("failed to update video: %w", err)
 	}
 
@@ -148,7 +204,7 @@ func buildAMADescription(newDescription, currentDescription, timecodes string) s
 	if timecodes != "" {
 		// Remove any existing timecodes section from result
 		currentResult := result.String()
-		if idx := strings.Index(currentResult, timecodesHeader); idx != -1 {
+		if idx := strings.Index(currentResult, TimecodesHeader); idx != -1 {
 			currentResult = strings.TrimSpace(currentResult[:idx])
 			result.Reset()
 			result.WriteString(currentResult)
@@ -156,7 +212,7 @@ func buildAMADescription(newDescription, currentDescription, timecodes string) s
 
 		// Ensure empty line before timecodes header
 		result.WriteString("\n\n")
-		result.WriteString(timecodesHeader)
+		result.WriteString(TimecodesHeader)
 		result.WriteString("\n")
 		result.WriteString(strings.TrimSpace(timecodes))
 	}
@@ -176,7 +232,7 @@ func extractBoilerplate(description string) string {
 	boilerplate := description[idx:]
 
 	// Remove existing timecodes section from boilerplate
-	if timecodesIdx := strings.Index(boilerplate, timecodesHeader); timecodesIdx != -1 {
+	if timecodesIdx := strings.Index(boilerplate, TimecodesHeader); timecodesIdx != -1 {
 		boilerplate = strings.TrimSpace(boilerplate[:timecodesIdx])
 	}
 

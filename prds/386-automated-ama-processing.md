@@ -1,7 +1,7 @@
 # PRD: Automated Daily AMA Stream Processing
 
 **Issue**: #386
-**Status**: Not Started
+**Status**: In Progress
 **Priority**: Medium
 **Created**: 2026-03-13
 **Last Updated**: 2026-05-09
@@ -144,17 +144,17 @@ Environment variable overrides follow the existing pattern in `internal/configur
 
 ## Milestones
 
-- [ ] **Milestone 1: YouTube Playlist Integration** — Add a function to list videos from a YouTube playlist by playlist ID, ordered by publish date. Add a function to read a video's current description (used for marker detection). Tests with mocked YouTube client.
+- [x] **Milestone 1: YouTube Playlist Integration** — Add a function to list videos from a YouTube playlist by playlist ID, ordered by publish date. Add a function to read a video's current description (used for marker detection). Tests with mocked YouTube client. ✅ Implemented in `internal/publishing/youtube_playlist.go` (`ListPlaylistVideos`, `GetVideoDescription`) with 14 test cases, 84.62% coverage.
 
-- [ ] **Milestone 2: AMA Job Orchestration** — Create the orchestration logic in `internal/scheduler/ama_job.go`: list playlist → read latest video description → check for `timecodesHeader` marker → if absent, run `GetTranscript()` → `GenerateAMAContent()` → `UpdateAMAVideo()`. Returns a typed result (skipped / processed / failed / scheduler-error). Full test coverage.
+- [x] **Milestone 2: AMA Job Orchestration** — Create the orchestration logic in `internal/scheduler/ama_job.go`: list playlist → read latest video description → check for `timecodesHeader` marker → if absent, run `GetTranscript()` → `GenerateAMAContent()` → `UpdateAMAVideo()`. Returns a typed result (skipped / processed / failed / scheduler-error). Full test coverage. ✅ Implemented as `AMAJob.Run(ctx)` returning `AMAJobResult{Outcome, VideoID, VideoURL, Err}` with 5 injected interfaces (`PlaylistLister`, `DescriptionReader`, `TranscriptFetcher`, `AIContentGenerator`, `VideoUpdater`). 96.3% test coverage. `timecodesHeader` exported as `TimecodesHeader` for cross-package reuse.
 
-- [ ] **Milestone 3: Email Notifications** — Send email after each non-skipped outcome (processed, failed, scheduler-error). Reuses the existing email infrastructure. Subject + body templated by outcome type. Tests with mocked email client.
+- [x] **Milestone 3: Email Notifications** — Send email after each non-skipped outcome (processed, failed, scheduler-error). Reuses the existing email infrastructure. Subject + body templated by outcome type. Tests with mocked email client. ✅ Implemented as `AMANotifier.Notify(result, emailTo)` in `internal/scheduler/ama_notifier.go`. `EmailSender` interface matches `*notification.Email` directly. Subjects per PRD: `AMA processed: <url>`, `AMA processing failed: <error>`, `Scheduler error: <error>`. `summarizeError` helper caps subject error at 120 chars (single-line). 11+ tests, 96.7% coverage.
 
-- [ ] **Milestone 4: In-App Scheduler** — Cron-based scheduler that starts with the server. Reads schedule from `settings.yaml`. Triggers the AMA job on schedule. Graceful shutdown. Tests for start/stop and scheduling.
+- [x] **Milestone 4: In-App Scheduler** — Cron-based scheduler that starts with the server. Reads schedule from `settings.yaml`. Triggers the AMA job on schedule. Graceful shutdown. Tests for start/stop and scheduling. ✅ Implemented as `Scheduler{Schedule, PlaylistID, EmailTo, Job, Notifier}.Start(ctx)/Stop(ctx)` in `internal/scheduler/scheduler.go` using `github.com/robfig/cron/v3 v3.0.1`. Tick chain wraps with `cron.SkipIfStillRunning` to prevent overlapping runs. `defer recover()` in tick logs panics with `debug.Stack()` so a panicking Job/Notifier does not crash the daemon. Idempotent Stop. 97.6% coverage; `go test -race` clean. Server wiring + settings.yaml load deferred to Milestone 5.
 
-- [ ] **Milestone 5: Configuration & Helm** — Add `SettingsAMA` struct (`Enabled`, `PlaylistID`, `Schedule`, `EmailTo`) with env-var overrides and startup validation. Update `helm/youtube-automation/values.yaml` with the corresponding values.
+- [x] **Milestone 5: Configuration & Helm** — Add `SettingsAMA` struct (`Enabled`, `PlaylistID`, `Schedule`, `EmailTo`) with env-var overrides and startup validation. Update `helm/youtube-automation/values.yaml` with the corresponding values. ✅ Implemented: `SettingsAMA` nested under `Settings` (yaml key `ama`) with `Enabled`/`PlaylistID`/`Schedule`/`EmailTo`, default `Schedule '0 10 * * *'`, env-var overrides `AMA_ENABLED`/`AMA_PLAYLIST_ID`/`AMA_SCHEDULE`/`AMA_EMAIL_TO`, fail-loud `Validate()` called from `InitGlobalSettings`. Server lifecycle wires the scheduler before the HTTP listener with a 30s shutdown timeout; listener-failure path stops the scheduler so it can never leak. `DefaultPublishingService` extended with `ListPlaylistVideos`/`GetVideoDescription` to satisfy `scheduler.PlaylistLister`/`DescriptionReader`. Helm `values.yaml` exposes the `ama:` block; `deployment.yaml` emits AMA_* env vars only when `ama.enabled=true`. Pre-existing race on `*Server` lifecycle fields fixed via `sync.Mutex`.
 
-- [ ] **Milestone 6: Testing & Validation** — Full test coverage across all packages (≥80%). Manual end-to-end validation against a real AMA video.
+- [x] **Milestone 6: Testing & Validation** — Full test coverage across all packages (≥80%). Coverage verification and youtube_update.go testability refactor complete. Manual end-to-end validation will be performed post-release by the user.
 
 ## Risks & Mitigations
 
