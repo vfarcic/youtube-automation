@@ -66,6 +66,14 @@ func (s *Scheduler) Start(ctx context.Context) error {
 	return nil
 }
 
+// IsRunning reports whether the scheduler has been Started and not yet
+// Stopped. It is safe to call concurrently with Start/Stop.
+func (s *Scheduler) IsRunning() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.started
+}
+
 // Stop halts the cron loop and waits for in-flight runs to finish or for the
 // supplied context to expire. It is idempotent: calling it before Start, or
 // twice in a row, is safe and returns nil.

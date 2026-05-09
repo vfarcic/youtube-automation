@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/robfig/cron/v3"
 	"gopkg.in/yaml.v3"
 )
 
@@ -78,6 +79,39 @@ type Settings struct {
 	Git                 SettingsGit                 `yaml:"git"`
 	GDrive              SettingsGDrive              `yaml:"gdrive"`
 	ThumbnailGeneration SettingsThumbnailGeneration `yaml:"thumbnailGeneration"`
+	AMA                 SettingsAMA                 `yaml:"ama"`
+}
+
+// SettingsAMA holds configuration for the in-app AMA scheduler that processes
+// daily AMA livestream videos. When Enabled is true the server starts a cron
+// loop on the given Schedule and emails operator notifications to EmailTo.
+type SettingsAMA struct {
+	Enabled    bool   `yaml:"enabled" json:"enabled"`
+	PlaylistID string `yaml:"playlistId" json:"playlistId"`
+	Schedule   string `yaml:"schedule" json:"schedule"`
+	EmailTo    string `yaml:"emailTo" json:"emailTo"`
+}
+
+// Validate returns an error if AMA is enabled but required fields are missing
+// or malformed. When AMA is disabled, validation is a no-op so misconfigured
+// optional fields don't block startup.
+func (a SettingsAMA) Validate() error {
+	if !a.Enabled {
+		return nil
+	}
+	if a.PlaylistID == "" {
+		return fmt.Errorf("ama: playlistId is required when ama.enabled is true (set ama.playlistId in settings.yaml or AMA_PLAYLIST_ID env var)")
+	}
+	if a.Schedule == "" {
+		return fmt.Errorf("ama: schedule is required when ama.enabled is true (set ama.schedule in settings.yaml or AMA_SCHEDULE env var)")
+	}
+	if _, err := cron.ParseStandard(a.Schedule); err != nil {
+		return fmt.Errorf("ama: schedule %q is not a valid cron expression: %w", a.Schedule, err)
+	}
+	if a.EmailTo == "" {
+		return fmt.Errorf("ama: emailTo is required when ama.enabled is true (set ama.emailTo in settings.yaml or AMA_EMAIL_TO env var)")
+	}
+	return nil
 }
 
 // SettingsThumbnailGeneration holds configuration for AI-powered thumbnail generation
@@ -343,6 +377,28 @@ func InitGlobalSettings() error {
 				GlobalSettings.Slack.TargetChannelIDs = append(GlobalSettings.Slack.TargetChannelIDs, trimmed)
 			}
 		}
+	}
+
+	// AMA scheduler: env vars override settings.yaml. Default Schedule keeps
+	// the daily-10:00-UTC behavior the PRD specifies even when the YAML omits it.
+	if envAMAEnabled := os.Getenv("AMA_ENABLED"); envAMAEnabled != "" {
+		GlobalSettings.AMA.Enabled = strings.EqualFold(envAMAEnabled, "true") || envAMAEnabled == "1"
+	}
+	if envAMAPlaylist := os.Getenv("AMA_PLAYLIST_ID"); envAMAPlaylist != "" {
+		GlobalSettings.AMA.PlaylistID = envAMAPlaylist
+	}
+	if envAMASchedule := os.Getenv("AMA_SCHEDULE"); envAMASchedule != "" {
+		GlobalSettings.AMA.Schedule = envAMASchedule
+	}
+	if GlobalSettings.AMA.Schedule == "" {
+		GlobalSettings.AMA.Schedule = "0 10 * * *"
+	}
+	if envAMAEmailTo := os.Getenv("AMA_EMAIL_TO"); envAMAEmailTo != "" {
+		GlobalSettings.AMA.EmailTo = envAMAEmailTo
+	}
+
+	if err := GlobalSettings.AMA.Validate(); err != nil {
+		return err
 	}
 
 	return nil

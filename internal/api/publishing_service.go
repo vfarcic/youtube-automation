@@ -85,3 +85,15 @@ func (d *DefaultPublishingService) UpdateAMAVideo(_ context.Context, videoID, ti
 func (d *DefaultPublishingService) DeleteVideo(_ context.Context, videoID string) error {
 	return publishing.DeleteVideo(videoID)
 }
+
+// ListPlaylistVideos satisfies scheduler.PlaylistLister so the AMA scheduler
+// can reuse this service rather than building its own publishing client.
+func (d *DefaultPublishingService) ListPlaylistVideos(playlistID string) ([]publishing.PlaylistVideo, error) {
+	return publishing.ListPlaylistVideos(playlistID)
+}
+
+// GetVideoDescription satisfies scheduler.DescriptionReader so the AMA
+// scheduler can detect the timecodes-marker idempotency check.
+func (d *DefaultPublishingService) GetVideoDescription(videoID string) (string, error) {
+	return publishing.GetVideoDescription(videoID)
+}

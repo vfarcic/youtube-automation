@@ -2,17 +2,20 @@ package api
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/fs"
 	"log/slog"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"devopstoolkit/youtube-automation/internal/aspect"
 	"devopstoolkit/youtube-automation/internal/configuration"
 	"devopstoolkit/youtube-automation/internal/filesystem"
 	"devopstoolkit/youtube-automation/internal/gdrive"
+	"devopstoolkit/youtube-automation/internal/scheduler"
 	"devopstoolkit/youtube-automation/internal/service"
 	"devopstoolkit/youtube-automation/internal/thumbnail"
 	"devopstoolkit/youtube-automation/internal/video"
@@ -42,6 +45,15 @@ type Server struct {
 	dataDir           string
 	apiToken          string
 	frontendFS        fs.FS
+
+	amaScheduler       *scheduler.Scheduler
+	amaSchedulerCancel context.CancelFunc
+	amaShutdownTimeout time.Duration
+
+	// lifecycleMu guards httpServer, amaSchedulerCancel during Start/Shutdown
+	// so calling Shutdown from one goroutine while Start runs in another is
+	// race-clean.
+	lifecycleMu sync.Mutex
 }
 
 // SetDriveService configures Google Drive upload support.
@@ -77,6 +89,14 @@ func (s *Server) SetThumbnailGeneration(generators []thumbnail.ImageGenerator, s
 	s.imageGenerators = generators
 	s.imageStore = store
 	s.photoDir = photoDir
+}
+
+// SetAMAScheduler attaches a fully-configured AMA scheduler to the server.
+// The scheduler is started by Server.Start and stopped by Server.Shutdown
+// using the configured shutdown timeout (defaults to 30s).
+func (s *Server) SetAMAScheduler(sched *scheduler.Scheduler, shutdownTimeout time.Duration) {
+	s.amaScheduler = sched
+	s.amaShutdownTimeout = shutdownTimeout
 }
 
 // NewServer creates a new API server wired to the given service and manager.
@@ -238,24 +258,105 @@ func (s *Server) spaHandler() http.HandlerFunc {
 	}
 }
 
-// Start begins listening on the given host and port.
+// Start begins listening on the given host and port. If an AMA scheduler is
+// attached via SetAMAScheduler, it is started before the HTTP listener so
+// scheduler-startup failures (invalid cron) surface before the server begins
+// accepting traffic. If ListenAndServe itself fails (e.g. port already in
+// use), the AMA scheduler is stopped before Start returns so the cron
+// goroutines do not leak past the failed-start boundary.
 func (s *Server) Start(host string, port int) error {
+	s.lifecycleMu.Lock()
+	if s.amaScheduler != nil {
+		schedCtx, cancel := context.WithCancel(context.Background())
+		s.amaSchedulerCancel = cancel
+		if err := s.amaScheduler.Start(schedCtx); err != nil {
+			cancel()
+			s.amaSchedulerCancel = nil
+			s.lifecycleMu.Unlock()
+			return fmt.Errorf("start AMA scheduler: %w", err)
+		}
+	}
+
 	addr := fmt.Sprintf("%s:%d", host, port)
-	s.httpServer = &http.Server{
+	srv := &http.Server{
 		Addr:         addr,
 		Handler:      s.router,
 		WriteTimeout: 1 * time.Hour,
 	}
+	s.httpServer = srv
+	s.lifecycleMu.Unlock()
+
 	slog.Info("starting API server", "addr", addr)
-	return s.httpServer.ListenAndServe()
+	listenErr := srv.ListenAndServe()
+
+	// http.ErrServerClosed is the normal-shutdown signal: Server.Shutdown
+	// already stopped the scheduler. For any other error the listener
+	// never came up (or died unexpectedly) and we must stop the scheduler
+	// here. Scheduler.Stop is idempotent, so a concurrent Shutdown that
+	// also nils amaSchedulerCancel is safe.
+	if !errors.Is(listenErr, http.ErrServerClosed) {
+		s.stopAMASchedulerAfterStartFailure()
+	}
+	return listenErr
 }
 
-// Shutdown gracefully shuts down the server.
+// stopAMASchedulerAfterStartFailure stops the AMA scheduler when the HTTP
+// listener fails before Server.Shutdown has had a chance to run. The original
+// listener error is preserved by the caller; cleanup errors are logged only.
+func (s *Server) stopAMASchedulerAfterStartFailure() {
+	s.lifecycleMu.Lock()
+	sched := s.amaScheduler
+	cancel := s.amaSchedulerCancel
+	s.amaSchedulerCancel = nil
+	timeout := s.amaShutdownTimeout
+	s.lifecycleMu.Unlock()
+
+	if sched == nil {
+		return
+	}
+	if timeout <= 0 {
+		timeout = 30 * time.Second
+	}
+	stopCtx, stopCancel := context.WithTimeout(context.Background(), timeout)
+	defer stopCancel()
+	if err := sched.Stop(stopCtx); err != nil {
+		slog.Warn("AMA scheduler stop after listener failure returned error", "err", err)
+	}
+	if cancel != nil {
+		cancel()
+	}
+}
+
+// Shutdown gracefully shuts down the server. The AMA scheduler is stopped
+// first (with its own bounded timeout) so in-flight ticks can finish before
+// the HTTP listener closes.
 func (s *Server) Shutdown(ctx context.Context) error {
-	if s.httpServer == nil {
+	s.lifecycleMu.Lock()
+	sched := s.amaScheduler
+	cancel := s.amaSchedulerCancel
+	s.amaSchedulerCancel = nil
+	timeout := s.amaShutdownTimeout
+	httpSrv := s.httpServer
+	s.lifecycleMu.Unlock()
+
+	if sched != nil {
+		if timeout <= 0 {
+			timeout = 30 * time.Second
+		}
+		stopCtx, stopCancel := context.WithTimeout(context.Background(), timeout)
+		if err := sched.Stop(stopCtx); err != nil {
+			slog.Warn("AMA scheduler stop returned error", "err", err)
+		}
+		stopCancel()
+		if cancel != nil {
+			cancel()
+		}
+	}
+
+	if httpSrv == nil {
 		return nil
 	}
-	return s.httpServer.Shutdown(ctx)
+	return httpSrv.Shutdown(ctx)
 }
 
 // Router returns the chi router for testing.
