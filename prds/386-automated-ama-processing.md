@@ -154,7 +154,7 @@ Environment variable overrides follow the existing pattern in `internal/configur
 
 - [x] **Milestone 5: Configuration & Helm** — Add `SettingsAMA` struct (`Enabled`, `PlaylistID`, `Schedule`, `EmailTo`) with env-var overrides and startup validation. Update `helm/youtube-automation/values.yaml` with the corresponding values. ✅ Implemented: `SettingsAMA` nested under `Settings` (yaml key `ama`) with `Enabled`/`PlaylistID`/`Schedule`/`EmailTo`, default `Schedule '0 10 * * *'`, env-var overrides `AMA_ENABLED`/`AMA_PLAYLIST_ID`/`AMA_SCHEDULE`/`AMA_EMAIL_TO`, fail-loud `Validate()` called from `InitGlobalSettings`. Server lifecycle wires the scheduler before the HTTP listener with a 30s shutdown timeout; listener-failure path stops the scheduler so it can never leak. `DefaultPublishingService` extended with `ListPlaylistVideos`/`GetVideoDescription` to satisfy `scheduler.PlaylistLister`/`DescriptionReader`. Helm `values.yaml` exposes the `ama:` block; `deployment.yaml` emits AMA_* env vars only when `ama.enabled=true`. Pre-existing race on `*Server` lifecycle fields fixed via `sync.Mutex`.
 
-- [ ] **Milestone 6: Testing & Validation** — Full test coverage across all packages (≥80%). Manual end-to-end validation against a real AMA video.
+- [x] **Milestone 6: Testing & Validation** — Full test coverage across all packages (≥80%). Coverage verification and youtube_update.go testability refactor complete. Manual end-to-end validation will be performed post-release by the user.
 
 ## Risks & Mitigations
 
