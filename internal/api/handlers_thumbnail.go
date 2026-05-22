@@ -132,11 +132,28 @@ func (s *Server) handleGenerateThumbnails(w http.ResponseWriter, r *http.Request
 	promptWithout := thumbnail.BuildPrompt(cfgWithout)
 
 	// Optional third variant: photo-realistic, contextual subject, no text.
-	// Skipped silently when the subject is empty or sanitization rejects it —
-	// the two B&W variants still run unblocked.
+	// Subject sources, in priority order:
+	//   1. Manual override on the Video (PRD: honored over AI inference).
+	//   2. AI inference from the manuscript (when no manual override and the
+	//      aiService is configured).
+	// Skipped silently when the subject ends up empty or sanitization rejects
+	// it — the two B&W variants still run unblocked.
+	photoRealisticSubject := video.PhotoRealisticSubject
+	if photoRealisticSubject == "" && s.aiService != nil {
+		manuscript, mErr := s.videoService.GetVideoManuscript(req.Name, req.Category)
+		if mErr != nil {
+			log.Printf("skipping photo-realistic variant for %s/%s: manuscript unavailable: %v", req.Category, req.Name, mErr)
+		} else if suggested, sErr := s.aiService.SuggestPhotoRealisticSubject(r.Context(), manuscript); sErr != nil {
+			log.Printf("skipping photo-realistic variant for %s/%s: AI suggestion failed: %v", req.Category, req.Name, sErr)
+		} else {
+			// Defense in depth: the AI is an external source; sanitize before
+			// it flows into the prompt builder (which also sanitizes).
+			photoRealisticSubject = thumbnail.SanitizePromptInput(suggested)
+		}
+	}
 	var promptPhotoRealistic string
-	if video.PhotoRealisticSubject != "" {
-		photoRealCfg := thumbnail.BuildPhotoRealisticPromptConfig(video.PhotoRealisticSubject, nil)
+	if photoRealisticSubject != "" {
+		photoRealCfg := thumbnail.BuildPhotoRealisticPromptConfig(photoRealisticSubject, nil)
 		if p, err := thumbnail.BuildPhotoRealisticPrompt(photoRealCfg); err == nil {
 			promptPhotoRealistic = p
 		} else {
