@@ -8,6 +8,14 @@ import { mockVideo } from './handlers';
 import { ThumbnailGenerateButton } from '../components/forms/ThumbnailGenerateButton';
 import type { VideoResponse } from '../api/types';
 
+// Shape of the JSON body POSTed to /api/videos/:videoName/thumbnail-config.
+// Mirrors the input to useSaveThumbnailConfig in src/api/hooks.ts.
+interface ThumbnailConfigSaveBody {
+  tagline?: string;
+  illustration?: string;
+  photoRealisticSubject?: string;
+}
+
 function renderButton(videoOverrides: Partial<VideoResponse> = {}) {
   const qc = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
@@ -223,14 +231,18 @@ describe('ThumbnailGenerateButton', () => {
   });
 
   it('persists user-typed subject via save endpoint', async () => {
-    let capturedBody: { photoRealisticSubject?: string } | null = null;
+    // Wrap captured value in an object so the closure-set body survives
+    // TypeScript's literal-null narrowing of a plain `let x: T | null = null`.
+    // tsc -b otherwise narrows the variable to `never` at the assertion site
+    // because it doesn't track the msw handler reassignment.
+    const captured: { body?: ThumbnailConfigSaveBody } = {};
     server.use(
       http.post('/api/videos/:videoName/thumbnail-config', async ({ request }) => {
-        capturedBody = (await request.json()) as { photoRealisticSubject?: string };
+        captured.body = (await request.json()) as ThumbnailConfigSaveBody;
         return HttpResponse.json({
           tagline: 'Test Tagline',
           illustration: '',
-          photoRealisticSubject: capturedBody?.photoRealisticSubject ?? '',
+          photoRealisticSubject: captured.body?.photoRealisticSubject ?? '',
         });
       }),
     );
@@ -244,9 +256,9 @@ describe('ThumbnailGenerateButton', () => {
     await userEvent.click(saveBtn);
 
     await waitFor(() => {
-      expect(capturedBody).not.toBeNull();
+      expect(captured.body).toBeDefined();
     });
-    expect(capturedBody?.photoRealisticSubject).toBe('a small white rabbit holding a checklist');
+    expect(captured.body?.photoRealisticSubject).toBe('a small white rabbit holding a checklist');
   });
 
   it('does not show "Save subject" button when input matches the stored subject', () => {
@@ -378,16 +390,17 @@ describe('ThumbnailGenerateButton', () => {
 
   it('auto-saves typed subject before generate when input differs from stored', async () => {
     const callOrder: string[] = [];
-    let capturedSaveBody: { photoRealisticSubject?: string } | null = null;
+    // See note above (persists user-typed subject test) on why we wrap.
+    const captured: { body?: ThumbnailConfigSaveBody } = {};
 
     server.use(
       http.post('/api/videos/:videoName/thumbnail-config', async ({ request }) => {
-        capturedSaveBody = (await request.json()) as { photoRealisticSubject?: string };
+        captured.body = (await request.json()) as ThumbnailConfigSaveBody;
         callOrder.push('save');
         return HttpResponse.json({
           tagline: 'Test Tagline',
           illustration: '',
-          photoRealisticSubject: capturedSaveBody?.photoRealisticSubject ?? '',
+          photoRealisticSubject: captured.body?.photoRealisticSubject ?? '',
         });
       }),
       http.post('/api/thumbnails/generate', () => {
@@ -414,7 +427,7 @@ describe('ThumbnailGenerateButton', () => {
     await waitFor(() => {
       expect(callOrder).toEqual(['save', 'generate']);
     });
-    expect(capturedSaveBody?.photoRealisticSubject).toBe('a small white rabbit');
+    expect(captured.body?.photoRealisticSubject).toBe('a small white rabbit');
   });
 
   it('does NOT auto-save when input matches the stored subject', async () => {
