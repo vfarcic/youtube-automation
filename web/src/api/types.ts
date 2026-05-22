@@ -86,6 +86,7 @@ export interface VideoResponse {
   location: string;
   tagline: string;
   illustration: string;
+  photoRealisticSubject: string;
   otherLogos: string;
   language: string;
   timecodes: string;

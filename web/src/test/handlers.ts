@@ -74,6 +74,7 @@ export const mockVideo: VideoResponse = {
   location: '',
   tagline: '',
   illustration: '',
+  photoRealisticSubject: '',
   otherLogos: '',
   language: '',
   timecodes: '',
@@ -356,9 +357,18 @@ export const handlers = [
       illustrations: ['A robot assembling containers', 'A developer at a whiteboard', 'Kubernetes pods floating in clouds'],
     }),
   ),
-  http.post('/api/videos/:videoName/thumbnail-config', () =>
-    HttpResponse.json({ tagline: 'Contain Everything', illustration: 'A robot assembling containers' }),
-  ),
+  http.post('/api/videos/:videoName/thumbnail-config', async ({ request }) => {
+    const body = (await request.json()) as {
+      tagline?: string;
+      illustration?: string;
+      photoRealisticSubject?: string;
+    };
+    return HttpResponse.json({
+      tagline: body.tagline ?? 'Contain Everything',
+      illustration: body.illustration ?? 'A robot assembling containers',
+      photoRealisticSubject: body.photoRealisticSubject ?? '',
+    });
+  }),
   http.post('/api/thumbnails/generate', () =>
     HttpResponse.json({
       thumbnails: [
