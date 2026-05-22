@@ -863,3 +863,44 @@ func TestConcurrentAccess(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, idx, 1, "index should have exactly 1 entry")
 }
+
+// TestVideo_PhotoRealisticSubjectRoundTrip locks in the M2 PRD 401 storage
+// field: PhotoRealisticSubject must survive a WriteVideo / GetVideo round-
+// trip alongside the existing Tagline / Illustration fields.
+func TestVideo_PhotoRealisticSubjectRoundTrip(t *testing.T) {
+	tests := []struct {
+		name    string
+		subject string
+	}{
+		{name: "non-empty subject", subject: "a small white rabbit holding a checklist"},
+		{name: "empty subject (opt-in metadata)", subject: ""},
+		{name: "subject with unicode", subject: "a vintage ship's wheel with brass detail"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tempDir := t.TempDir()
+			path := filepath.Join(tempDir, "video.yaml")
+
+			original := Video{
+				Name:                  "PRD 401 M2 round-trip",
+				Category:              "testing",
+				Tagline:               "GO REAL",
+				Illustration:          "a rabbit",
+				PhotoRealisticSubject: tt.subject,
+			}
+
+			y := YAML{}
+			require.NoError(t, y.WriteVideo(original, path))
+
+			loaded, err := y.GetVideo(path)
+			require.NoError(t, err)
+
+			assert.Equal(t, original.PhotoRealisticSubject, loaded.PhotoRealisticSubject,
+				"PhotoRealisticSubject must round-trip exactly")
+			// Sibling fields must not be disturbed.
+			assert.Equal(t, original.Tagline, loaded.Tagline)
+			assert.Equal(t, original.Illustration, loaded.Illustration)
+		})
+	}
+}

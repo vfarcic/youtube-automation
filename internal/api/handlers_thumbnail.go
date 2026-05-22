@@ -29,9 +29,10 @@ type ThumbnailGenerateRequest struct {
 
 // ThumbnailConfigRequest is the JSON body for POST /api/videos/{videoName}/thumbnail-config.
 type ThumbnailConfigRequest struct {
-	Category     string `json:"category"`
-	Tagline      string `json:"tagline"`
-	Illustration string `json:"illustration"`
+	Category              string `json:"category"`
+	Tagline               string `json:"tagline"`
+	Illustration          string `json:"illustration"`
+	PhotoRealisticSubject string `json:"photoRealisticSubject"`
 }
 
 // ThumbnailGenerateMeta describes one generated thumbnail in the response.
@@ -130,9 +131,23 @@ func (s *Server) handleGenerateThumbnails(w http.ResponseWriter, r *http.Request
 	promptWith := thumbnail.BuildPrompt(cfgWith)
 	promptWithout := thumbnail.BuildPrompt(cfgWithout)
 
+	// Optional third variant: photo-realistic, contextual subject, no text.
+	// Skipped silently when the subject is empty or sanitization rejects it —
+	// the two B&W variants still run unblocked.
+	var promptPhotoRealistic string
+	if video.PhotoRealisticSubject != "" {
+		photoRealCfg := thumbnail.BuildPhotoRealisticPromptConfig(video.PhotoRealisticSubject, nil)
+		if p, err := thumbnail.BuildPhotoRealisticPrompt(photoRealCfg); err == nil {
+			promptPhotoRealistic = p
+		} else {
+			log.Printf("skipping photo-realistic variant for %s/%s: %v", req.Category, req.Name, err)
+		}
+	}
+
 	genReq := thumbnail.GenerateRequest{
 		PromptWithIllustration:    promptWith,
 		PromptWithoutIllustration: promptWithout,
+		PromptPhotoRealistic:      promptPhotoRealistic,
 		Photos:                    photos,
 	}
 
@@ -343,6 +358,10 @@ func (s *Server) handleSaveThumbnailConfig(w http.ResponseWriter, r *http.Reques
 
 	video.Tagline = req.Tagline
 	video.Illustration = req.Illustration
+	// Defense in depth: sanitize the photo-realistic subject at the handler
+	// layer. The prompt builder also sanitizes, but earlier-is-better — the
+	// persisted value should already be safe to round-trip.
+	video.PhotoRealisticSubject = thumbnail.SanitizePromptInput(req.PhotoRealisticSubject)
 
 	if err := s.videoService.UpdateVideo(video); err != nil {
 		log.Printf("failed to save video %s/%s: %v", req.Category, videoName, err)
@@ -351,8 +370,9 @@ func (s *Server) handleSaveThumbnailConfig(w http.ResponseWriter, r *http.Reques
 	}
 
 	resp := map[string]interface{}{
-		"tagline":      video.Tagline,
-		"illustration": video.Illustration,
+		"tagline":               video.Tagline,
+		"illustration":          video.Illustration,
+		"photoRealisticSubject": video.PhotoRealisticSubject,
 	}
 	addSyncWarningMap(resp, s.videoService)
 	respondJSON(w, http.StatusOK, resp)
