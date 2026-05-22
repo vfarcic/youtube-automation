@@ -55,8 +55,8 @@ There is no new UI surface. The improvement is invisible to the user except in t
 
 ### Nice to have
 
-- [ ] Post-generation verification step: a vision check that flags a residual microphone, with a single automatic regeneration before the image is stored.
-- [ ] If verification is added: telemetry counter for "microphone detected and regenerated" so we can monitor model adherence over time.
+- [~] Post-generation verification step: a vision check that flags a residual microphone, with a single automatic regeneration before the image is stored. _Out of scope: dropped together with M5 — prompt-only fix in M1+M2 is sufficient; revisit only if M4 manual validation shows otherwise._
+- [~] If verification is added: telemetry counter for "microphone detected and regenerated" so we can monitor model adherence over time. _Out of scope: dropped together with M5 — prompt-only fix in M1+M2 is sufficient; revisit only if M4 manual validation shows otherwise._
 - [ ] Spike: try alternative phrasings (e.g., "the photo I attach may contain a microphone — treat it as if it is not there") and pick the wording with the highest empirical adherence on a sample set.
 
 ### Success metrics
@@ -89,7 +89,7 @@ There is no new UI surface. The improvement is invisible to the user except in t
 - [x] **M2 — Hoist the instruction into its own prompt section.** Move it out of the photo-treatment paragraph into a dedicated labeled section, and also list it in the closing "Rules" footer. Update unit tests to assert the new structure.
 - [x] **M3 — Cross-variant enforcement.** Add a test helper that iterates over every known prompt builder (current and any added by PRD #401) and asserts each prompt contains the canonical microphone-removal text. This is the guardrail for future variants.
 - [ ] **M4 — Manual validation on real output.** Generate thumbnails for at least 5 videos whose source photos contain a microphone; verify all variants exclude it. Capture any prompt-tuning follow-ups.
-- [ ] **M5 — (Optional, nice-to-have) Verification + regenerate path.** Add a vision check + single regeneration when a microphone is detected, gated behind a setting. Tests cover both code paths (detected → regenerate, not detected → pass-through).
+- [~] **M5 — (Out of scope for this PRD) Verification + regenerate path.** Add a vision check + single regeneration when a microphone is detected, gated behind a setting. Tests cover both code paths (detected → regenerate, not detected → pass-through). _Out of scope: M1+M2 already explicitly instruct the image-gen AI to exclude microphones via a hoisted prompt section + Rules footer bullet — the post-hoc vision check + regen is unnecessary unless M4 manual validation shows the prompt-only fix is insufficient._
 - [x] **M6 — Test coverage and docs.** `./scripts/coverage.sh` confirms ≥80% coverage on changed packages. Update relevant docs (CLAUDE.md or thumbnail section) to describe the cross-variant rule and the shared constant.
 
 ## Risks and mitigations
