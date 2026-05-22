@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"sort"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -369,6 +370,256 @@ func TestGenerateThumbnails_ConcurrencyLimit(t *testing.T) {
 	// verify the provider-level semaphore kept it bounded.
 	if peak > int32(maxConcurrentProviders*2) {
 		t.Errorf("peak concurrent calls = %d, want <= %d (semaphore not working)", peak, maxConcurrentProviders*2)
+	}
+}
+
+func TestGenerateThumbnails_PhotoRealistic(t *testing.T) {
+	photos := [][]byte{{0xFF, 0xD8}}
+
+	tests := []struct {
+		name           string
+		req            GenerateRequest
+		wantImageCount int
+		wantStyles     map[string]int // style -> expected count across all providers
+	}{
+		{
+			name: "photo-realistic prompt produces third image per provider",
+			req: GenerateRequest{
+				PromptWithIllustration:    "with",
+				PromptWithoutIllustration: "without",
+				PromptPhotoRealistic:      "photo-real",
+				Photos:                    photos,
+			},
+			wantImageCount: 3,
+			wantStyles: map[string]int{
+				StyleWithIllustration:    1,
+				StyleWithoutIllustration: 1,
+				StylePhotoRealistic:      1,
+			},
+		},
+		{
+			name: "empty photo-realistic prompt skips the third image",
+			req: GenerateRequest{
+				PromptWithIllustration:    "with",
+				PromptWithoutIllustration: "without",
+				PromptPhotoRealistic:      "",
+				Photos:                    photos,
+			},
+			wantImageCount: 2,
+			wantStyles: map[string]int{
+				StyleWithIllustration:    1,
+				StyleWithoutIllustration: 1,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			provider := &mockGenerator{
+				name: "mock-provider",
+				genFunc: func(_ context.Context, _ string, _ [][]byte) ([]byte, error) {
+					return []byte("img"), nil
+				},
+			}
+
+			images, errs := GenerateThumbnails(context.Background(), []ImageGenerator{provider}, tt.req)
+			if len(errs) != 0 {
+				t.Fatalf("unexpected errors: %v", errs)
+			}
+			if len(images) != tt.wantImageCount {
+				t.Fatalf("got %d images, want %d (styles: %+v)", len(images), tt.wantImageCount, images)
+			}
+
+			gotStyles := map[string]int{}
+			for _, img := range images {
+				gotStyles[img.Style]++
+			}
+			for style, want := range tt.wantStyles {
+				if gotStyles[style] != want {
+					t.Errorf("style %q count = %d, want %d", style, gotStyles[style], want)
+				}
+			}
+		})
+	}
+}
+
+func TestGenerateThumbnails_PhotoRealistic_MultipleProviders(t *testing.T) {
+	// Three providers × three styles = nine images total.
+	photos := [][]byte{{0xFF, 0xD8}}
+
+	providers := []ImageGenerator{
+		&mockGenerator{name: "provider-a", genFunc: func(_ context.Context, _ string, _ [][]byte) ([]byte, error) {
+			return []byte("a"), nil
+		}},
+		&mockGenerator{name: "provider-b", genFunc: func(_ context.Context, _ string, _ [][]byte) ([]byte, error) {
+			return []byte("b"), nil
+		}},
+		&mockGenerator{name: "provider-c", genFunc: func(_ context.Context, _ string, _ [][]byte) ([]byte, error) {
+			return []byte("c"), nil
+		}},
+	}
+
+	req := GenerateRequest{
+		PromptWithIllustration:    "with",
+		PromptWithoutIllustration: "without",
+		PromptPhotoRealistic:      "photo-real",
+		Photos:                    photos,
+	}
+
+	images, errs := GenerateThumbnails(context.Background(), providers, req)
+	if len(errs) != 0 {
+		t.Fatalf("unexpected errors: %v", errs)
+	}
+	if len(images) != 9 {
+		t.Fatalf("got %d images, want 9", len(images))
+	}
+
+	// Each provider must produce exactly one image of each style.
+	type key struct{ provider, style string }
+	counts := map[key]int{}
+	for _, img := range images {
+		counts[key{img.Provider, img.Style}]++
+	}
+	expectedProviders := []string{"provider-a", "provider-b", "provider-c"}
+	expectedStyles := []string{StyleWithIllustration, StyleWithoutIllustration, StylePhotoRealistic}
+	for _, p := range expectedProviders {
+		for _, s := range expectedStyles {
+			if counts[key{p, s}] != 1 {
+				t.Errorf("provider %s style %s count = %d, want 1", p, s, counts[key{p, s}])
+			}
+		}
+	}
+}
+
+// TestGenerateThumbnails_PhotoRealistic_PromptForwarded asserts the exact
+// PromptPhotoRealistic string is forwarded to the provider for the
+// photorealistic style, not one of the B&W prompts.
+func TestGenerateThumbnails_PhotoRealistic_PromptForwarded(t *testing.T) {
+	var mu sync.Mutex
+	seen := map[string]bool{}
+
+	provider := &mockGenerator{
+		name: "mock-provider",
+		genFunc: func(_ context.Context, prompt string, _ [][]byte) ([]byte, error) {
+			mu.Lock()
+			seen[prompt] = true
+			mu.Unlock()
+			return []byte("data"), nil
+		},
+	}
+
+	req := GenerateRequest{
+		PromptWithIllustration:    "PROMPT-WITH",
+		PromptWithoutIllustration: "PROMPT-WITHOUT",
+		PromptPhotoRealistic:      "PROMPT-PHOTOREAL",
+		Photos:                    [][]byte{{0xFF}},
+	}
+
+	images, errs := GenerateThumbnails(context.Background(), []ImageGenerator{provider}, req)
+	if len(errs) != 0 {
+		t.Fatalf("unexpected errors: %v", errs)
+	}
+	if len(images) != 3 {
+		t.Fatalf("got %d images, want 3", len(images))
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+	for _, want := range []string{"PROMPT-WITH", "PROMPT-WITHOUT", "PROMPT-PHOTOREAL"} {
+		if !seen[want] {
+			t.Errorf("provider was not called with prompt %q (saw: %v)", want, seen)
+		}
+	}
+}
+
+// TestGenerateThumbnails_PhotoRealistic_Concurrent verifies the third style
+// runs concurrently with the existing two (no regression in latency).
+func TestGenerateThumbnails_PhotoRealistic_Concurrent(t *testing.T) {
+	started := make(chan struct{}, 3)
+	proceed := make(chan struct{})
+
+	provider := &mockGenerator{
+		name: "concurrent-provider",
+		genFunc: func(_ context.Context, _ string, _ [][]byte) ([]byte, error) {
+			started <- struct{}{}
+			<-proceed
+			return []byte("data"), nil
+		},
+	}
+
+	req := GenerateRequest{
+		PromptWithIllustration:    "with",
+		PromptWithoutIllustration: "without",
+		PromptPhotoRealistic:      "photo-real",
+		Photos:                    [][]byte{{0xFF}},
+	}
+
+	done := make(chan struct{})
+	var images []GeneratedImage
+	var errs []error
+	go func() {
+		images, errs = GenerateThumbnails(context.Background(), []ImageGenerator{provider}, req)
+		close(done)
+	}()
+
+	// All three style goroutines must start before any can complete.
+	for range 3 {
+		select {
+		case <-started:
+		case <-time.After(5 * time.Second):
+			t.Fatal("timed out waiting for all three style goroutines to start concurrently")
+		}
+	}
+
+	close(proceed)
+
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("timed out waiting for GenerateThumbnails to complete")
+	}
+
+	if len(errs) != 0 {
+		t.Errorf("unexpected errors: %v", errs)
+	}
+	if len(images) != 3 {
+		t.Errorf("got %d images, want 3", len(images))
+	}
+}
+
+// TestGenerateThumbnails_PhotoRealistic_PartialFailure verifies that a
+// failure in one style does not block the other two.
+func TestGenerateThumbnails_PhotoRealistic_PartialFailure(t *testing.T) {
+	provider := &mockGenerator{
+		name: "partial-provider",
+		genFunc: func(_ context.Context, prompt string, _ [][]byte) ([]byte, error) {
+			if prompt == "PROMPT-PHOTOREAL" {
+				return nil, errors.New("photoreal failure")
+			}
+			return []byte("ok"), nil
+		},
+	}
+
+	req := GenerateRequest{
+		PromptWithIllustration:    "PROMPT-WITH",
+		PromptWithoutIllustration: "PROMPT-WITHOUT",
+		PromptPhotoRealistic:      "PROMPT-PHOTOREAL",
+		Photos:                    [][]byte{{0xFF}},
+	}
+
+	images, errs := GenerateThumbnails(context.Background(), []ImageGenerator{provider}, req)
+
+	if len(images) != 2 {
+		t.Errorf("got %d images, want 2 (only photoreal should fail)", len(images))
+	}
+	if len(errs) != 1 {
+		t.Errorf("got %d errors, want 1", len(errs))
+	}
+
+	for _, img := range images {
+		if img.Style == StylePhotoRealistic {
+			t.Errorf("photo-realistic image should not be present when its provider call failed")
+		}
 	}
 }
 

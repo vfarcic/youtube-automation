@@ -17,20 +17,25 @@ import (
 
 // mockAIService is a configurable mock for AIService.
 type mockAIService struct {
-	titles          []string
-	description     string
-	tags            string
-	tweets          []string
-	descriptionTags string
-	shorts          []ai.ShortCandidate
-	thumbnails      ai.VariationPrompts
-	translate       *ai.VideoMetadataOutput
-	amaContent      *ai.AMAContent
-	amaTitle        string
-	amaDescription  string
-	amaTimecodes    string
+	titles                  []string
+	description             string
+	tags                    string
+	tweets                  []string
+	descriptionTags         string
+	shorts                  []ai.ShortCandidate
+	thumbnails              ai.VariationPrompts
+	translate               *ai.VideoMetadataOutput
+	amaContent              *ai.AMAContent
+	amaTitle                string
+	amaDescription          string
+	amaTimecodes            string
 	taglineAndIllustrations *ai.TaglineAndIllustrationsResult
-	err                    error
+	photoRealisticSubject   string
+	// photoRealisticSubjectErr lets tests trigger a tailored failure for the
+	// photo-realistic suggester independently of the shared err field.
+	photoRealisticSubjectErr   error
+	photoRealisticSubjectCalls int
+	err                        error
 }
 
 func (m *mockAIService) SuggestTitles(ctx context.Context, manuscript string, dataDir string) ([]string, error) {
@@ -71,6 +76,13 @@ func (m *mockAIService) GenerateAMATimecodes(ctx context.Context, transcript str
 }
 func (m *mockAIService) SuggestTaglineAndIllustrations(ctx context.Context, manuscript string) (*ai.TaglineAndIllustrationsResult, error) {
 	return m.taglineAndIllustrations, m.err
+}
+func (m *mockAIService) SuggestPhotoRealisticSubject(ctx context.Context, manuscript string) (string, error) {
+	m.photoRealisticSubjectCalls++
+	if m.photoRealisticSubjectErr != nil {
+		return "", m.photoRealisticSubjectErr
+	}
+	return m.photoRealisticSubject, nil
 }
 
 // setupAITestEnv creates a test environment with a mock AI service.

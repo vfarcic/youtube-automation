@@ -112,12 +112,12 @@ User leaves the subject empty. On generate, the system uses the AI-suggested pho
 
 ## Milestones
 
-- [ ] **M1 — Prompt + orchestrator support for a third style.** New photo-realistic prompt builder; `runProvider` generalized; `GenerateRequest` extended. Unit tests cover the new prompt content (no text, photo-realistic instruction, subject included) and the orchestrator producing three images per provider when configured.
-- [ ] **M2 — Storage + API field for the photo-realistic subject.** New `Video` field, save endpoint accepts and persists it, generate endpoint reads it. Tests cover save/load round-trip, sanitization, and that an empty subject does not block the two B&W variants.
-- [ ] **M3 — AI inference for the photo-realistic subject.** New AI function (or extension of `SuggestTaglineAndIllustrations`) that returns a photo-realistic subject string derived from the manuscript. Tests mock the AI provider and verify a non-empty string is returned on valid input and the call surfaces a clear error on invalid input.
-- [ ] **M4 — Web UI input + variant rendering.** Subject input field with AI-suggest action; third variant rendered in the generated-thumbnails grid; selection routes through the existing select endpoint; component tests cover happy path, AI-suggestion failure, and manual override.
-- [ ] **M5 — End-to-end validation.** Manually generate thumbnails for a sample of videos covering different topics; verify the third variant is visually distinct, contains no text, and uses the contextual subject. Capture any prompt-tuning follow-ups.
-- [ ] **M6 — Test coverage threshold and docs.** `./scripts/coverage.sh` confirms ≥80% coverage on changed packages. Update `CLAUDE.md` Thumbnail section (or equivalent docs) to describe the three-variant model and the new subject field.
+- [x] **M1 — Prompt + orchestrator support for a third style.** New photo-realistic prompt builder; `runProvider` generalized; `GenerateRequest` extended. Unit tests cover the new prompt content (no text, photo-realistic instruction, subject included) and the orchestrator producing three images per provider when configured.
+- [x] **M2 — Storage + API field for the photo-realistic subject.** New `Video` field, save endpoint accepts and persists it, generate endpoint reads it. Tests cover save/load round-trip, sanitization, and that an empty subject does not block the two B&W variants.
+- [x] **M3 — AI inference for the photo-realistic subject.** New AI function (or extension of `SuggestTaglineAndIllustrations`) that returns a photo-realistic subject string derived from the manuscript. Tests mock the AI provider and verify a non-empty string is returned on valid input and the call surfaces a clear error on invalid input.
+- [x] **M4 — Web UI input + variant rendering.** Subject input field with AI-suggest action; third variant rendered in the generated-thumbnails grid; selection routes through the existing select endpoint; component tests cover happy path, AI-suggestion failure, and manual override.
+- [~] **M5 — End-to-end validation.** Manually generate thumbnails for a sample of videos covering different topics; verify the third variant is visually distinct, contains no text, and uses the contextual subject. Capture any prompt-tuning follow-ups. _(Deferred: user opted to skip manual validation; can be performed post-merge if desired.)_
+- [x] **M6 — Test coverage threshold and docs.** `./scripts/coverage.sh` confirms ≥80% coverage on changed packages. Update `CLAUDE.md` Thumbnail section (or equivalent docs) to describe the three-variant model and the new subject field.
 
 ## Risks and mitigations
 

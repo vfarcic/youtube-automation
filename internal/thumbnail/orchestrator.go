@@ -6,17 +6,27 @@ import (
 	"sync"
 )
 
+// Style labels persisted on GeneratedImage.Style.
+const (
+	StyleWithIllustration    = "with illustration"
+	StyleWithoutIllustration = "without illustration"
+	StylePhotoRealistic      = "photorealistic"
+)
+
 // GeneratedImage holds a generated thumbnail image with its metadata.
 type GeneratedImage struct {
 	Provider string // e.g. "gemini", "gpt-image"
-	Style    string // "with illustration" or "without illustration"
+	Style    string // e.g. "with illustration", "without illustration", "photorealistic"
 	Data     []byte // raw image bytes
 }
 
 // GenerateRequest holds the parameters for a thumbnail generation run.
+// PromptPhotoRealistic is optional: when empty, the orchestrator skips the
+// photo-realistic variant and only produces the two B&W variants.
 type GenerateRequest struct {
 	PromptWithIllustration    string
 	PromptWithoutIllustration string
+	PromptPhotoRealistic      string
 	Photos                    [][]byte
 }
 
@@ -31,9 +41,10 @@ type providerResult struct {
 // run simultaneously, guarding against misconfiguration with many providers.
 const maxConcurrentProviders = 10
 
-// GenerateThumbnails runs all providers concurrently, each generating two
-// thumbnails (with and without illustration). Individual provider failures
-// are collected but do not block other providers.
+// GenerateThumbnails runs all providers concurrently, each generating one
+// thumbnail per configured style (B&W with/without illustration always; the
+// photo-realistic variant additionally when PromptPhotoRealistic is set).
+// Individual provider failures are collected but do not block other providers.
 // Concurrency is capped at maxConcurrentProviders goroutines.
 // Returns all successfully generated images and any per-provider errors.
 func GenerateThumbnails(ctx context.Context, providers []ImageGenerator, req GenerateRequest) ([]GeneratedImage, []error) {
@@ -75,32 +86,42 @@ func GenerateThumbnails(ctx context.Context, providers []ImageGenerator, req Gen
 	return images, errs
 }
 
-// runProvider generates both with-illustration and without-illustration
-// thumbnails for a single provider concurrently.
+// runProvider generates one thumbnail per configured style for a single
+// provider, dispatching all style goroutines concurrently. The B&W
+// with/without-illustration styles always run; the photo-realistic style
+// runs only when PromptPhotoRealistic is set on the request.
 func runProvider(ctx context.Context, gen ImageGenerator, req GenerateRequest) providerResult {
+	type styleSpec struct {
+		style  string
+		prompt string
+	}
 	type styleResult struct {
 		style string
 		data  []byte
 		err   error
 	}
 
-	ch := make(chan styleResult, 2)
+	specs := []styleSpec{
+		{style: StyleWithIllustration, prompt: req.PromptWithIllustration},
+		{style: StyleWithoutIllustration, prompt: req.PromptWithoutIllustration},
+	}
+	if req.PromptPhotoRealistic != "" {
+		specs = append(specs, styleSpec{style: StylePhotoRealistic, prompt: req.PromptPhotoRealistic})
+	}
 
-	go func() {
-		data, err := gen.GenerateImage(ctx, req.PromptWithIllustration, req.Photos)
-		ch <- styleResult{style: "with illustration", data: data, err: err}
-	}()
-
-	go func() {
-		data, err := gen.GenerateImage(ctx, req.PromptWithoutIllustration, req.Photos)
-		ch <- styleResult{style: "without illustration", data: data, err: err}
-	}()
+	ch := make(chan styleResult, len(specs))
+	for _, spec := range specs {
+		go func(s styleSpec) {
+			data, err := gen.GenerateImage(ctx, s.prompt, req.Photos)
+			ch <- styleResult{style: s.style, data: data, err: err}
+		}(spec)
+	}
 
 	res := providerResult{provider: gen.Name()}
-	for range 2 {
+	for range len(specs) {
 		sr := <-ch
 		if sr.err != nil {
-			// Record error but continue collecting the other style's result.
+			// Record error but continue collecting other styles' results.
 			if res.err == nil {
 				res.err = fmt.Errorf("%s: %w", sr.style, sr.err)
 			} else {
