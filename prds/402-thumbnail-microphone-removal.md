@@ -47,11 +47,11 @@ There is no new UI surface. The improvement is invisible to the user except in t
 
 ### Must have
 
-- [ ] Every variant prompt (existing B&W "with illustration", B&W "without illustration", and the new photo-realistic variant from PRD #401) includes the canonical microphone-removal instruction.
-- [ ] The instruction lives in a single shared constant or helper so all variants pull from the same source — no copy-paste drift.
-- [ ] The instruction is prominent: hoisted into its own labeled section of the prompt, not buried mid-paragraph.
-- [ ] Unit tests assert that every prompt produced by the prompt builder(s) contains the canonical microphone-removal text.
-- [ ] When a new variant is added in the future, the test suite forces it to include the same instruction (e.g., by iterating over all known prompt builders).
+- [x] Every variant prompt (existing B&W "with illustration", B&W "without illustration", and the new photo-realistic variant from PRD #401) includes the canonical microphone-removal instruction.
+- [x] The instruction lives in a single shared constant or helper so all variants pull from the same source — no copy-paste drift.
+- [x] The instruction is prominent: hoisted into its own labeled section of the prompt, not buried mid-paragraph.
+- [x] Unit tests assert that every prompt produced by the prompt builder(s) contains the canonical microphone-removal text.
+- [x] When a new variant is added in the future, the test suite forces it to include the same instruction (e.g., by iterating over all known prompt builders).
 
 ### Nice to have
 
@@ -85,12 +85,12 @@ There is no new UI surface. The improvement is invisible to the user except in t
 
 ## Milestones
 
-- [ ] **M1 — Centralize the microphone-removal instruction.** Extract the sentence into a shared constant; refactor `BuildPrompt` to reference it. No behavior change for the model beyond placement.
-- [ ] **M2 — Hoist the instruction into its own prompt section.** Move it out of the photo-treatment paragraph into a dedicated labeled section, and also list it in the closing "Rules" footer. Update unit tests to assert the new structure.
-- [ ] **M3 — Cross-variant enforcement.** Add a test helper that iterates over every known prompt builder (current and any added by PRD #401) and asserts each prompt contains the canonical microphone-removal text. This is the guardrail for future variants.
+- [x] **M1 — Centralize the microphone-removal instruction.** Extract the sentence into a shared constant; refactor `BuildPrompt` to reference it. No behavior change for the model beyond placement.
+- [x] **M2 — Hoist the instruction into its own prompt section.** Move it out of the photo-treatment paragraph into a dedicated labeled section, and also list it in the closing "Rules" footer. Update unit tests to assert the new structure.
+- [x] **M3 — Cross-variant enforcement.** Add a test helper that iterates over every known prompt builder (current and any added by PRD #401) and asserts each prompt contains the canonical microphone-removal text. This is the guardrail for future variants.
 - [ ] **M4 — Manual validation on real output.** Generate thumbnails for at least 5 videos whose source photos contain a microphone; verify all variants exclude it. Capture any prompt-tuning follow-ups.
 - [ ] **M5 — (Optional, nice-to-have) Verification + regenerate path.** Add a vision check + single regeneration when a microphone is detected, gated behind a setting. Tests cover both code paths (detected → regenerate, not detected → pass-through).
-- [ ] **M6 — Test coverage and docs.** `./scripts/coverage.sh` confirms ≥80% coverage on changed packages. Update relevant docs (CLAUDE.md or thumbnail section) to describe the cross-variant rule and the shared constant.
+- [x] **M6 — Test coverage and docs.** `./scripts/coverage.sh` confirms ≥80% coverage on changed packages. Update relevant docs (CLAUDE.md or thumbnail section) to describe the cross-variant rule and the shared constant.
 
 ## Risks and mitigations
 
