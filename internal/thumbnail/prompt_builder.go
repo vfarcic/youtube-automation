@@ -14,6 +14,30 @@ import (
 // rather than render a malformed prompt.
 var ErrEmptySubject = errors.New("photo-realistic subject is empty after sanitization")
 
+// MicrophoneRemovalInstruction is the canonical, cross-variant instruction
+// requiring that any microphone visible in the source photo be excluded from
+// the generated thumbnail. Every prompt builder (BuildPrompt for the B&W
+// variants, BuildPhotoRealisticPrompt for the photo-realistic variant)
+// references this constant verbatim so all variants share one wording — no
+// drift, no copy-paste skew. New variants added to the pipeline MUST embed
+// this constant; the cross-variant test in prompt_builder_test.go enforces
+// it via the promptBuilders registry.
+const MicrophoneRemovalInstruction = "If there is a microphone visible in the source photo (handheld, on a stand, boom mic, or lapel), remove it completely from the image — the final thumbnail must not show any microphone."
+
+// microphoneRemovalSection is the formatted, hoisted prompt section that
+// carries MicrophoneRemovalInstruction into each variant prompt. Keeping the
+// label and instruction together in one helper guarantees both variants use
+// the same heading wording.
+func microphoneRemovalSection() string {
+	return "**Microphone removal:** " + MicrophoneRemovalInstruction
+}
+
+// microphoneRemovalRuleBullet is the short Rules-footer reminder echoed in
+// every variant. The full canonical instruction lives in its own section
+// above; this bullet provides redundancy in the closing Rules list, matching
+// the style of the tagline rule which is also restated in the footer.
+const microphoneRemovalRuleBullet = "- No microphone visible — if the source photo includes one, it must be removed completely"
+
 // BackgroundColor defines a background color with its allowed text colors.
 type BackgroundColor struct {
 	Name       string
@@ -262,8 +286,11 @@ func BuildPrompt(cfg PromptConfig) string {
 	sb.WriteString("\n\n")
 
 	sb.WriteString(fmt.Sprintf(
-		`**My photo:** Take the photo of me that I attached and convert it to high-contrast black and white — like a photocopy or stencil art. Keep my pose exactly as it is in the photo. Show me waist-up, positioned on the %s, overlapping the text. My body must extend to the bottom edge of the image — anchor me to the bottom so I look grounded, not floating. I must be facing/looking toward the %s side of the frame (toward the text, away from my placement). If the source photo has me facing the other way, horizontally mirror (flip left-to-right) the photo so I face the correct direction. If there is a microphone visible in the photo (handheld, on a stand, boom mic, or lapel), remove it completely from the image. The text is the main element, I am secondary.`,
+		`**My photo:** Take the photo of me that I attached and convert it to high-contrast black and white — like a photocopy or stencil art. Keep my pose exactly as it is in the photo. Show me waist-up, positioned on the %s, overlapping the text. My body must extend to the bottom edge of the image — anchor me to the bottom so I look grounded, not floating. I must be facing/looking toward the %s side of the frame (toward the text, away from my placement). If the source photo has me facing the other way, horizontally mirror (flip left-to-right) the photo so I face the correct direction. The text is the main element, I am secondary.`,
 		cfg.Placement.Description, cfg.Placement.FaceDirection))
+	sb.WriteString("\n\n")
+
+	sb.WriteString(microphoneRemovalSection())
 	sb.WriteString("\n\n")
 
 	sb.WriteString(fmt.Sprintf(
@@ -290,7 +317,8 @@ func BuildPrompt(cfg PromptConfig) string {
 - My photo must be high-contrast black and white (stencil/photocopy style)
 - ALL text must be fully visible — no letters cut off at image edges
 - Text is the dominant element; I am secondary
-- Background is a single solid color, no gradients`, cfg.Tagline))
+- Background is a single solid color, no gradients
+%s`, cfg.Tagline, microphoneRemovalRuleBullet))
 
 	return sb.String()
 }
@@ -336,8 +364,11 @@ func BuildPhotoRealisticPrompt(cfg PhotoRealisticPromptConfig) (string, error) {
 	sb.WriteString("\n\n")
 
 	sb.WriteString(fmt.Sprintf(
-		`**My photo:** Render me in PHOTO-REALISTIC style — keep the natural colors, skin tones, lighting, and detail of the original photograph. Do NOT apply any threshold, stencil, photocopy, or black-and-white treatment. Do NOT posterize or flatten the image. Show me waist-up, positioned on the %s. My body must extend to the bottom edge of the image — anchor me to the bottom so I look grounded, not floating. I must be facing/looking toward the %s side of the frame. If the source photo has me facing the other way, horizontally mirror (flip left-to-right) the photo so I face the correct direction. If there is a microphone visible in the photo (handheld, on a stand, boom mic, or lapel), remove it completely from the image.`,
+		`**My photo:** Render me in PHOTO-REALISTIC style — keep the natural colors, skin tones, lighting, and detail of the original photograph. Do NOT apply any threshold, stencil, photocopy, or black-and-white treatment. Do NOT posterize or flatten the image. Show me waist-up, positioned on the %s. My body must extend to the bottom edge of the image — anchor me to the bottom so I look grounded, not floating. I must be facing/looking toward the %s side of the frame. If the source photo has me facing the other way, horizontally mirror (flip left-to-right) the photo so I face the correct direction.`,
 		cfg.Placement.Description, cfg.Placement.FaceDirection))
+	sb.WriteString("\n\n")
+
+	sb.WriteString(microphoneRemovalSection())
 	sb.WriteString("\n\n")
 
 	sb.WriteString(fmt.Sprintf(
@@ -351,11 +382,12 @@ func BuildPhotoRealisticPrompt(cfg PhotoRealisticPromptConfig) (string, error) {
 	sb.WriteString(`**No text:** Do NOT render any text, tagline, title, caption, watermark, logo lettering, or written words anywhere in the image. Zero text of any kind. If a sign, label, screen, or surface in the scene would naturally contain text, leave it blank. If you are about to add text, stop and remove it.`)
 	sb.WriteString("\n\n")
 
-	sb.WriteString(`**Rules:**
-- You MUST use my attached photo — do NOT generate a different person
-- My photo MUST be photo-realistic — NO threshold, NO stencil, NO black-and-white treatment, NO posterization
-- The contextual subject MUST be photo-realistic — NO flat illustration, NO cartoon, NO line art, NO stylized icon
-- ZERO text in the image — no tagline, no title, no captions, no watermark, no letters of any kind`)
+	sb.WriteString("**Rules:**\n")
+	sb.WriteString("- You MUST use my attached photo — do NOT generate a different person\n")
+	sb.WriteString("- My photo MUST be photo-realistic — NO threshold, NO stencil, NO black-and-white treatment, NO posterization\n")
+	sb.WriteString("- The contextual subject MUST be photo-realistic — NO flat illustration, NO cartoon, NO line art, NO stylized icon\n")
+	sb.WriteString("- ZERO text in the image — no tagline, no title, no captions, no watermark, no letters of any kind\n")
+	sb.WriteString(microphoneRemovalRuleBullet)
 
 	return sb.String(), nil
 }

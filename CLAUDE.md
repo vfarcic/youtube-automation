@@ -200,9 +200,14 @@ Opt-in metadata: `completion:"empty_or_filled"` so the field does **not** block 
 - Applies anchored regex patterns to a fixed point (iteration cap = 8) for role-tag prefixes (`system:`/`assistant:`/`user:`/`developer:`/`human:`/`model:`), instruction-override phrases (`ignore|disregard|forget|override|discard|skip` + quantifier + `previous|above|prior|earlier`), `forget everything/all`, and LLM special markers `<|...|>`.
 - Defense in depth: applied at the **handler layer** (`handlers_thumbnail.go`) AND defensively again inside the **prompt builders** (`BuildPrompt`, `BuildPhotoRealisticPrompt`) so callers constructing config structs directly cannot bypass it.
 
+**Microphone removal — cross-variant canonical instruction** (PRD 402):
+- `thumbnail.MicrophoneRemovalInstruction` is the single, exported constant carrying the canonical sentence ("If there is a microphone visible in the source photo …"). Every prompt builder (B&W with illustration, B&W without illustration, photo-realistic) embeds this constant verbatim — no copy-paste drift between variants.
+- The instruction is hoisted into its own labeled section (`**Microphone removal:**`) right after the `**My photo:**` paragraph in each variant, **not** buried inside the photo-treatment text. It is also restated as a `- No microphone visible …` bullet in the closing `**Rules:**` footer of each variant for redundancy (same style as the tagline rule).
+- The cross-variant test `TestAllPromptBuilders_IncludeMicrophoneRemoval` in `prompt_builder_test.go` iterates over the `allPromptBuilders` registry and fails if any variant omits the constant, the section heading, or the footer bullet. **When adding a new variant, append it to that registry** — the test will then enforce the rule automatically.
+
 **Authoritative references**:
 - `internal/thumbnail/orchestrator.go` — `GenerateRequest`, `runProvider`, style constants.
-- `internal/thumbnail/prompt_builder.go` — `BuildPrompt`, `BuildPhotoRealisticPrompt`, `SanitizePromptInput`.
+- `internal/thumbnail/prompt_builder.go` — `BuildPrompt`, `BuildPhotoRealisticPrompt`, `SanitizePromptInput`, `MicrophoneRemovalInstruction`.
 - `internal/ai/photo_realistic_subject.go` — `SuggestPhotoRealisticSubject` + parser.
 
 #### 6. Hugo URL Construction

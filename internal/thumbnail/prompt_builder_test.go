@@ -1106,3 +1106,224 @@ func TestSanitizePromptInput_BenignInputsUnchanged(t *testing.T) {
 		})
 	}
 }
+
+// ---------------------------------------------------------------------------
+// PRD #402 — microphone-removal cross-variant enforcement.
+//
+// The microphone-removal instruction is a first-class, cross-variant rule
+// (see internal/thumbnail/prompt_builder.go → MicrophoneRemovalInstruction).
+// These tests lock in three guarantees:
+//
+//   (1) The constant exists, is non-empty, and is meaningful (mentions
+//       "microphone" so refactors don't silently empty it out).
+//   (2) Every variant prompt embeds the canonical instruction verbatim,
+//       hoisted into its own labeled section AND echoed in the Rules
+//       footer for redundancy.
+//   (3) A registry-driven test iterates over every known prompt builder,
+//       so when a new variant is added it MUST be appended to the
+//       registry and will be required to include the same instruction.
+// ---------------------------------------------------------------------------
+
+// TestMicrophoneRemovalInstruction_NonEmpty asserts the canonical constant
+// is set to something meaningful — guards against an accidental empty-string
+// regression during refactors.
+func TestMicrophoneRemovalInstruction_NonEmpty(t *testing.T) {
+	if MicrophoneRemovalInstruction == "" {
+		t.Fatal("MicrophoneRemovalInstruction must not be empty")
+	}
+	if !strings.Contains(strings.ToLower(MicrophoneRemovalInstruction), "microphone") {
+		t.Errorf("MicrophoneRemovalInstruction must mention 'microphone'; got: %q", MicrophoneRemovalInstruction)
+	}
+}
+
+// promptBuilderCase is one entry in the cross-variant registry. Each case
+// names a prompt builder and produces its output with a representative
+// config. Add a new entry here when a new variant is introduced.
+type promptBuilderCase struct {
+	name  string
+	build func(t *testing.T) string
+}
+
+// allPromptBuilders is the registry of every known prompt builder. The
+// cross-variant microphone-removal test iterates this list so future
+// variants cannot silently skip the rule — adding a new variant requires
+// adding an entry here (and consuming MicrophoneRemovalInstruction).
+var allPromptBuilders = []promptBuilderCase{
+	{
+		name: "BuildPrompt/B&W with illustration",
+		build: func(t *testing.T) string {
+			return BuildPrompt(PromptConfig{
+				Background:   ChannelPalette[0],
+				TextColor:    ChannelPalette[0].TextColors[0],
+				Placement:    PersonPlacements[0],
+				Tagline:      "TEACH AI",
+				Illustration: "a glowing computer monitor",
+			})
+		},
+	},
+	{
+		name: "BuildPrompt/B&W without illustration",
+		build: func(t *testing.T) string {
+			return BuildPrompt(PromptConfig{
+				Background:   ChannelPalette[0],
+				TextColor:    ChannelPalette[0].TextColors[0],
+				Placement:    PersonPlacements[0],
+				Tagline:      "TEACH AI",
+				Illustration: "",
+			})
+		},
+	},
+	{
+		name: "BuildPhotoRealisticPrompt",
+		build: func(t *testing.T) string {
+			p, err := BuildPhotoRealisticPrompt(PhotoRealisticPromptConfig{
+				Placement: PersonPlacements[0],
+				Subject:   "a small white rabbit holding a checklist",
+			})
+			if err != nil {
+				t.Fatalf("BuildPhotoRealisticPrompt: unexpected error: %v", err)
+			}
+			return p
+		},
+	},
+}
+
+// TestAllPromptBuilders_IncludeMicrophoneRemoval is the cross-variant
+// guardrail: every registered prompt builder must
+//   (a) embed the canonical MicrophoneRemovalInstruction verbatim,
+//   (b) carry the hoisted "**Microphone removal:**" section heading, and
+//   (c) echo the rule in the closing Rules footer bullet.
+// New variants added to allPromptBuilders are automatically subject to this.
+func TestAllPromptBuilders_IncludeMicrophoneRemoval(t *testing.T) {
+	for _, pb := range allPromptBuilders {
+		t.Run(pb.name, func(t *testing.T) {
+			prompt := pb.build(t)
+
+			if !strings.Contains(prompt, MicrophoneRemovalInstruction) {
+				t.Errorf("prompt missing canonical MicrophoneRemovalInstruction:\nprompt:\n%s", prompt)
+			}
+			if !strings.Contains(prompt, "**Microphone removal:**") {
+				t.Errorf("prompt missing hoisted \"**Microphone removal:**\" section heading:\nprompt:\n%s", prompt)
+			}
+			if !strings.Contains(prompt, "No microphone visible") {
+				t.Errorf("prompt missing Rules-footer bullet (\"No microphone visible\"):\nprompt:\n%s", prompt)
+			}
+		})
+	}
+}
+
+// TestBuildPrompt_MicrophoneRemovalHoisted asserts the B&W variant moved
+// the microphone-removal instruction OUT of the photo-treatment paragraph
+// and into its own dedicated section — the core M2 change. Detection: the
+// "**My photo:**" paragraph must no longer carry the canonical sentence,
+// and the canonical sentence must appear under the "**Microphone removal:**"
+// heading.
+func TestBuildPrompt_MicrophoneRemovalHoisted(t *testing.T) {
+	cfg := PromptConfig{
+		Background:   ChannelPalette[0],
+		TextColor:    ChannelPalette[0].TextColors[0],
+		Placement:    PersonPlacements[0],
+		Tagline:      "SHIP IT",
+		Illustration: "",
+	}
+	prompt := BuildPrompt(cfg)
+
+	// The hoisted section heading must be present.
+	idxHeading := strings.Index(prompt, "**Microphone removal:**")
+	if idxHeading < 0 {
+		t.Fatalf("BuildPrompt missing hoisted section heading:\n%s", prompt)
+	}
+
+	// The canonical instruction must appear immediately under the heading.
+	if !strings.Contains(prompt[idxHeading:], MicrophoneRemovalInstruction) {
+		t.Errorf("BuildPrompt: canonical instruction not under \"**Microphone removal:**\" heading:\n%s", prompt)
+	}
+
+	// The mic instruction must NOT remain inside the "**My photo:**"
+	// paragraph. We extract the photo paragraph (between "**My photo:**"
+	// and the next blank line / next bolded heading) and confirm the
+	// canonical sentence does not appear there.
+	idxPhoto := strings.Index(prompt, "**My photo:**")
+	if idxPhoto < 0 {
+		t.Fatal("BuildPrompt missing \"**My photo:**\" paragraph; structural assumption broken")
+	}
+	photoParagraph := prompt[idxPhoto:idxHeading]
+	if strings.Contains(strings.ToLower(photoParagraph), "microphone") {
+		t.Errorf("BuildPrompt still mentions microphone inside **My photo:** paragraph; instruction not hoisted:\n%s", photoParagraph)
+	}
+}
+
+// TestBuildPhotoRealisticPrompt_MicrophoneRemovalHoisted is the M2 mirror
+// for the photo-realistic variant.
+func TestBuildPhotoRealisticPrompt_MicrophoneRemovalHoisted(t *testing.T) {
+	cfg := PhotoRealisticPromptConfig{
+		Placement: PersonPlacements[0],
+		Subject:   "a robot arm holding a wrench",
+	}
+	prompt, err := BuildPhotoRealisticPrompt(cfg)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	idxHeading := strings.Index(prompt, "**Microphone removal:**")
+	if idxHeading < 0 {
+		t.Fatalf("BuildPhotoRealisticPrompt missing hoisted section heading:\n%s", prompt)
+	}
+
+	if !strings.Contains(prompt[idxHeading:], MicrophoneRemovalInstruction) {
+		t.Errorf("BuildPhotoRealisticPrompt: canonical instruction not under \"**Microphone removal:**\" heading:\n%s", prompt)
+	}
+
+	idxPhoto := strings.Index(prompt, "**My photo:**")
+	if idxPhoto < 0 {
+		t.Fatal("BuildPhotoRealisticPrompt missing \"**My photo:**\" paragraph; structural assumption broken")
+	}
+	photoParagraph := prompt[idxPhoto:idxHeading]
+	if strings.Contains(strings.ToLower(photoParagraph), "microphone") {
+		t.Errorf("BuildPhotoRealisticPrompt still mentions microphone inside **My photo:** paragraph; instruction not hoisted:\n%s", photoParagraph)
+	}
+}
+
+// TestBuildPrompt_MicrophoneRuleInFooter asserts the closing Rules section
+// of the B&W variant restates the microphone rule (redundancy mirrors the
+// tagline rule).
+func TestBuildPrompt_MicrophoneRuleInFooter(t *testing.T) {
+	cfg := PromptConfig{
+		Background: ChannelPalette[0],
+		TextColor:  ChannelPalette[0].TextColors[0],
+		Placement:  PersonPlacements[0],
+		Tagline:    "SHIP IT",
+	}
+	prompt := BuildPrompt(cfg)
+
+	idxRules := strings.Index(prompt, "**Rules:**")
+	if idxRules < 0 {
+		t.Fatalf("BuildPrompt missing **Rules:** footer:\n%s", prompt)
+	}
+	footer := prompt[idxRules:]
+	if !strings.Contains(footer, "No microphone visible") {
+		t.Errorf("BuildPrompt Rules footer missing microphone bullet:\n%s", footer)
+	}
+}
+
+// TestBuildPhotoRealisticPrompt_MicrophoneRuleInFooter is the same footer
+// check for the photo-realistic variant.
+func TestBuildPhotoRealisticPrompt_MicrophoneRuleInFooter(t *testing.T) {
+	cfg := PhotoRealisticPromptConfig{
+		Placement: PersonPlacements[0],
+		Subject:   "a robot arm holding a wrench",
+	}
+	prompt, err := BuildPhotoRealisticPrompt(cfg)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	idxRules := strings.Index(prompt, "**Rules:**")
+	if idxRules < 0 {
+		t.Fatalf("BuildPhotoRealisticPrompt missing **Rules:** footer:\n%s", prompt)
+	}
+	footer := prompt[idxRules:]
+	if !strings.Contains(footer, "No microphone visible") {
+		t.Errorf("BuildPhotoRealisticPrompt Rules footer missing microphone bullet:\n%s", footer)
+	}
+}

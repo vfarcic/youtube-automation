@@ -1,10 +1,11 @@
 # PRD: Remove Microphone from Creator Photo in All Thumbnail Variants
 
-**Status**: Draft
+**Status**: Complete
 **Priority**: Medium
 **GitHub Issue**: [#402](https://github.com/vfarcic/youtube-automation/issues/402)
 **Created**: 2026-05-21
-**Last Updated**: 2026-05-21
+**Last Updated**: 2026-05-22
+**Completed**: 2026-05-22
 
 ---
 
@@ -47,16 +48,16 @@ There is no new UI surface. The improvement is invisible to the user except in t
 
 ### Must have
 
-- [ ] Every variant prompt (existing B&W "with illustration", B&W "without illustration", and the new photo-realistic variant from PRD #401) includes the canonical microphone-removal instruction.
-- [ ] The instruction lives in a single shared constant or helper so all variants pull from the same source — no copy-paste drift.
-- [ ] The instruction is prominent: hoisted into its own labeled section of the prompt, not buried mid-paragraph.
-- [ ] Unit tests assert that every prompt produced by the prompt builder(s) contains the canonical microphone-removal text.
-- [ ] When a new variant is added in the future, the test suite forces it to include the same instruction (e.g., by iterating over all known prompt builders).
+- [x] Every variant prompt (existing B&W "with illustration", B&W "without illustration", and the new photo-realistic variant from PRD #401) includes the canonical microphone-removal instruction.
+- [x] The instruction lives in a single shared constant or helper so all variants pull from the same source — no copy-paste drift.
+- [x] The instruction is prominent: hoisted into its own labeled section of the prompt, not buried mid-paragraph.
+- [x] Unit tests assert that every prompt produced by the prompt builder(s) contains the canonical microphone-removal text.
+- [x] When a new variant is added in the future, the test suite forces it to include the same instruction (e.g., by iterating over all known prompt builders).
 
 ### Nice to have
 
-- [ ] Post-generation verification step: a vision check that flags a residual microphone, with a single automatic regeneration before the image is stored.
-- [ ] If verification is added: telemetry counter for "microphone detected and regenerated" so we can monitor model adherence over time.
+- [~] Post-generation verification step: a vision check that flags a residual microphone, with a single automatic regeneration before the image is stored. _Out of scope: dropped together with M5 — prompt-only fix in M1+M2 is sufficient; revisit only if M4 manual validation shows otherwise._
+- [~] If verification is added: telemetry counter for "microphone detected and regenerated" so we can monitor model adherence over time. _Out of scope: dropped together with M5 — prompt-only fix in M1+M2 is sufficient; revisit only if M4 manual validation shows otherwise._
 - [ ] Spike: try alternative phrasings (e.g., "the photo I attach may contain a microphone — treat it as if it is not there") and pick the wording with the highest empirical adherence on a sample set.
 
 ### Success metrics
@@ -85,12 +86,12 @@ There is no new UI surface. The improvement is invisible to the user except in t
 
 ## Milestones
 
-- [ ] **M1 — Centralize the microphone-removal instruction.** Extract the sentence into a shared constant; refactor `BuildPrompt` to reference it. No behavior change for the model beyond placement.
-- [ ] **M2 — Hoist the instruction into its own prompt section.** Move it out of the photo-treatment paragraph into a dedicated labeled section, and also list it in the closing "Rules" footer. Update unit tests to assert the new structure.
-- [ ] **M3 — Cross-variant enforcement.** Add a test helper that iterates over every known prompt builder (current and any added by PRD #401) and asserts each prompt contains the canonical microphone-removal text. This is the guardrail for future variants.
-- [ ] **M4 — Manual validation on real output.** Generate thumbnails for at least 5 videos whose source photos contain a microphone; verify all variants exclude it. Capture any prompt-tuning follow-ups.
-- [ ] **M5 — (Optional, nice-to-have) Verification + regenerate path.** Add a vision check + single regeneration when a microphone is detected, gated behind a setting. Tests cover both code paths (detected → regenerate, not detected → pass-through).
-- [ ] **M6 — Test coverage and docs.** `./scripts/coverage.sh` confirms ≥80% coverage on changed packages. Update relevant docs (CLAUDE.md or thumbnail section) to describe the cross-variant rule and the shared constant.
+- [x] **M1 — Centralize the microphone-removal instruction.** Extract the sentence into a shared constant; refactor `BuildPrompt` to reference it. No behavior change for the model beyond placement.
+- [x] **M2 — Hoist the instruction into its own prompt section.** Move it out of the photo-treatment paragraph into a dedicated labeled section, and also list it in the closing "Rules" footer. Update unit tests to assert the new structure.
+- [x] **M3 — Cross-variant enforcement.** Add a test helper that iterates over every known prompt builder (current and any added by PRD #401) and asserts each prompt contains the canonical microphone-removal text. This is the guardrail for future variants.
+- [x] **M4 — Manual validation on real output.** Generate thumbnails for at least 5 videos whose source photos contain a microphone; verify all variants exclude it. Capture any prompt-tuning follow-ups. (Confirmed by user 2026-05-23: zero microphones across generated variants on real videos.)
+- [~] **M5 — (Out of scope for this PRD) Verification + regenerate path.** Add a vision check + single regeneration when a microphone is detected, gated behind a setting. Tests cover both code paths (detected → regenerate, not detected → pass-through). _Out of scope: M1+M2 already explicitly instruct the image-gen AI to exclude microphones via a hoisted prompt section + Rules footer bullet — the post-hoc vision check + regen is unnecessary unless M4 manual validation shows the prompt-only fix is insufficient._
+- [x] **M6 — Test coverage and docs.** `./scripts/coverage.sh` confirms ≥80% coverage on changed packages. Update relevant docs (CLAUDE.md or thumbnail section) to describe the cross-variant rule and the shared constant.
 
 ## Risks and mitigations
 
