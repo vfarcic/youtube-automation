@@ -250,7 +250,11 @@ func (s *VideoService) GetVideosByPhase(phase int) ([]storage.Video, error) {
 		videoPath := s.filesystem.GetFilePath(videoIndex.Category, sanitizedName, "yaml")
 		fullVideo, err := s.yamlStorage.GetVideo(videoPath)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get video details for %s: %w", videoIndex.Name, err)
+			// Don't fail the whole list for one bad entry — log and skip,
+			// matching GetVideoPhases' behavior. A stranded index entry would
+			// otherwise black-hole every phase listing.
+			slog.Warn("skipping video in phase listing", "name", videoIndex.Name, "category", videoIndex.Category, "error", err)
+			continue
 		}
 		// Always use sanitized name to ensure consistency with filenames
 		fullVideo.Name = s.filesystem.SanitizeName(fullVideo.Name)
@@ -482,9 +486,15 @@ func (s *VideoService) DeleteVideo(name, category string) error {
 		return fmt.Errorf("failed to get index: %w", err)
 	}
 
+	// Compare using sanitized names so legacy index entries written with the
+	// original casing (e.g. "OpenCode") still match the sanitized name the
+	// Web UI sends back ("opencode"). Without this, the YAML/MD files get
+	// removed but the index entry survives, leaving a broken row that makes
+	// /api/videos/list return 500 on the next read.
+	sanitizedTarget := s.filesystem.SanitizeName(name)
 	var updatedIndex []storage.VideoIndex
 	for _, vi := range index {
-		if !(vi.Name == name && vi.Category == category) {
+		if !(s.filesystem.SanitizeName(vi.Name) == sanitizedTarget && vi.Category == category) {
 			updatedIndex = append(updatedIndex, vi)
 		}
 	}

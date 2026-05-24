@@ -307,6 +307,54 @@ func TestVideoService_DeleteVideo(t *testing.T) {
 	}
 }
 
+// TestVideoService_DeleteVideo_LegacyIndexEntry covers a regression where the
+// index entry was written with the original casing (e.g. "OpenCode") but the
+// Web UI sends back the sanitized form ("opencode"). The filter must match
+// on the sanitized form so the entry doesn't become orphaned.
+func TestVideoService_DeleteVideo_LegacyIndexEntry(t *testing.T) {
+	service, _, cleanup := setupTestVideoService(t)
+	defer cleanup()
+
+	// Create the video the normal way (this writes a sanitized index entry).
+	_, err := service.CreateVideo("legacy", "test-category", "")
+	require.NoError(t, err)
+
+	// Then rewrite the index to simulate a legacy entry with original casing,
+	// as still exists in older data repos.
+	require.NoError(t, service.yamlStorage.WriteIndex([]storage.VideoIndex{
+		{Name: "Legacy", Category: "test-category"},
+	}))
+
+	// The Web UI sends the sanitized form back as the URL param.
+	require.NoError(t, service.DeleteVideo("legacy", "test-category"))
+
+	index, err := service.yamlStorage.GetIndex()
+	require.NoError(t, err)
+	assert.Empty(t, index, "stranded index entry must be removed when name casing differs")
+}
+
+// TestVideoService_GetVideosByPhase_SkipsMissingYAML ensures a stranded index
+// entry pointing at a deleted YAML file does not fail the whole listing — it
+// should be skipped, matching GetVideoPhases' behavior.
+func TestVideoService_GetVideosByPhase_SkipsMissingYAML(t *testing.T) {
+	service, _, cleanup := setupTestVideoService(t)
+	defer cleanup()
+
+	_, err := service.CreateVideo("good", "test-category", "")
+	require.NoError(t, err)
+
+	// Append a stranded index entry whose YAML file does not exist.
+	index, err := service.yamlStorage.GetIndex()
+	require.NoError(t, err)
+	index = append(index, storage.VideoIndex{Name: "ghost", Category: "test-category"})
+	require.NoError(t, service.yamlStorage.WriteIndex(index))
+
+	videos, err := service.GetVideosByPhase(7) // Ideas
+	require.NoError(t, err)
+	assert.Len(t, videos, 1, "missing YAML should be skipped, not crash the listing")
+	assert.Equal(t, "good", videos[0].Name)
+}
+
 func TestVideoService_GetVideosByPhase(t *testing.T) {
 	service, _, cleanup := setupTestVideoService(t)
 	defer cleanup()
