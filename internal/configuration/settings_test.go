@@ -296,7 +296,6 @@ hugo:
 
 				// Check that original fields are preserved
 				assert.Equal(t, "test@example.com", settings.Email.From, "Email.From was not preserved")
-				assert.Equal(t, "thumb@example.com", settings.Email.ThumbnailTo, "Email.ThumbnailTo was not preserved")
 				assert.Equal(t, "https://ai.example.com", settings.AI.Azure.Endpoint, "AI.Azure.Endpoint was not preserved")
 				assert.Equal(t, "/hugo/path", settings.Hugo.Path, "Hugo.Path was not preserved")
 			}

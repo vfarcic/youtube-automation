@@ -159,7 +159,6 @@ func mapFieldNameForCompletion(jsonFieldName string) string {
 		"screenshots":         "screenshots",
 		"location":            "location",
 		"otherLogos":          "otherLogos",
-		"requestThumbnail":    "requestThumbnail",
 		"thumbnail":           "thumbnail",
 		"movie":               "movie",
 		"slides":              "slides",
@@ -246,7 +245,6 @@ func getFieldDescription(fieldKey string) string {
 		"descriptionTags":  "Tags for video description",
 		"tweet":            "Social media tweet text",
 		"animationsScript": "Animation instructions or script",
-		"requestThumbnail": "Request custom thumbnail creation",
 
 		// Post-Production
 		"thumbnailPath": "Path to thumbnail image file",

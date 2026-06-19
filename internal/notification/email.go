@@ -38,46 +38,6 @@ func (e *Email) Send(from string, to []string, subject, body string, attachmentP
 	return nil
 }
 
-func generateThumbnailEmailContent(video storage.Video) (subject, body string) {
-	logos := ""
-	if video.ProjectURL != "" && video.ProjectURL != "-" && video.ProjectURL != "N/A" {
-		logos = video.ProjectURL
-	}
-	if video.OtherLogos != "" && video.OtherLogos != "-" && video.OtherLogos != "N/A" {
-		if len(logos) > 0 {
-			logos = fmt.Sprintf("%s, ", logos)
-		}
-		logos = fmt.Sprintf("%s%s", logos, video.OtherLogos)
-	}
-	if len(logos) > 0 {
-		logos = fmt.Sprintf("<li>Logo: %s</li>", logos)
-	}
-	subject = fmt.Sprintf("Thumbnail: %s", video.GetUploadTitle())
-	body = fmt.Sprintf(`<strong>Material:</strong>
-<br/><br/>
-All the material is available at %s.
-<br/><br/>
-<strong>Thumbnail:</strong>
-<br/><br/>
-Elements:
-<ul>
-%s
-<li>Text: %s</li>
-<li>Screenshots: screenshot-*.png</li>
-</ul>
-`, video.Location, logos, video.Tagline)
-	return subject, body
-}
-
-func (e *Email) SendThumbnail(from, to string, video storage.Video) error {
-	subject, body := generateThumbnailEmailContent(video)
-	err := e.Send(from, []string{to}, subject, body, "")
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 func generateEditEmailContent(video storage.Video) (subject, body, attachmentPath string, err error) {
 	if len(video.Gist) == 0 {
 		return "", "", "", fmt.Errorf("Gist is empty")

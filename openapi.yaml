@@ -928,34 +928,6 @@ paths:
         "501":
           $ref: "#/components/responses/NotImplemented"
 
-  /api/actions/request-thumbnail/{videoName}:
-    post:
-      summary: Request thumbnail creation
-      description: |
-        Sets the RequestThumbnail flag on the video and optionally sends an email
-        to the thumbnail creator. Returns immediately if already requested.
-      operationId: requestThumbnail
-      tags:
-        - Actions
-      parameters:
-        - $ref: "#/components/parameters/VideoName"
-        - $ref: "#/components/parameters/Category"
-      responses:
-        "200":
-          description: Action result
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ActionResponse"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "500":
-          $ref: "#/components/responses/InternalError"
-
   /api/actions/request-edit/{videoName}:
     post:
       summary: Request video editing

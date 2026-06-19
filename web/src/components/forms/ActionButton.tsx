@@ -1,10 +1,9 @@
 import { useState } from 'react';
-import { useRequestThumbnail, useRequestEdit, useNotifySponsors } from '../../api/hooks';
+import { useRequestEdit, useNotifySponsors } from '../../api/hooks';
 import type { ActionResponse } from '../../api/types';
 
 /** Field names that should render as action buttons instead of toggles. */
 const ACTION_FIELDS = {
-  requestThumbnail: { label: 'Request Thumbnail', sentLabel: 'Thumbnail Requested' },
   requestEdit: { label: 'Request Edit', sentLabel: 'Edit Requested' },
   notifiedSponsors: { label: 'Notify Sponsors', sentLabel: 'Sponsors Notified' },
 } as const;
@@ -27,7 +26,6 @@ export function ActionButton({ fieldName, value, category, videoName }: ActionBu
   const key = fieldName as ActionFieldName;
   const config = ACTION_FIELDS[key];
   const mutationMap = {
-    requestThumbnail: useRequestThumbnail(),
     requestEdit: useRequestEdit(),
     notifiedSponsors: useNotifySponsors(),
   };

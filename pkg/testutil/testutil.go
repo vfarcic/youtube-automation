@@ -327,7 +327,6 @@ type Video struct {
 	Illustration        string
 	OtherLogos          string
 	Screenshots         bool
-	RequestThumbnail    bool
 	Thumbnail           string
 	Members             string
 	Animations          string
@@ -390,7 +389,6 @@ type Config struct {
 // EmailConfig represents email settings
 type EmailConfig struct {
 	From        string `yaml:"from"`
-	ThumbnailTo string `yaml:"thumbnailTo"`
 	EditTo      string `yaml:"editTo"`
 	FinanceTo   string `yaml:"financeTo"`
 }

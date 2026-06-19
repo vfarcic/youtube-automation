@@ -145,79 +145,74 @@ func TestCalculateDefinePhaseCompletion(t *testing.T) {
 			name:              "All tasks incomplete",
 			video:             storage.Video{},
 			expectedCompleted: 0,
-			expectedTotal:     10, // Titles, Description, Tags, DescriptionTags, Tweet, Animations, Shorts, Members, RequestThumbnail, RequestEdit
+			expectedTotal:     9, // Titles, Description, Tags, DescriptionTags, Tweet, Animations, Shorts, Members, RequestEdit
 		},
 		{
 			name: "Some tasks complete",
 			video: storage.Video{
-				Titles:           []storage.TitleVariant{{Index: 1, Text: "Test Title"}},
-				Description:      "Test Description",
-				Tweet:            "A tweet",
-				RequestThumbnail: true,
+				Titles:      []storage.TitleVariant{{Index: 1, Text: "Test Title"}},
+				Description: "Test Description",
+				Tweet:       "A tweet",
 			},
-			expectedCompleted: 4,
-			expectedTotal:     10,
+			expectedCompleted: 3,
+			expectedTotal:     9,
 		},
 		{
 			name: "All Definition tasks complete",
 			video: storage.Video{
-				Titles:           []storage.TitleVariant{{Index: 1, Text: "Complete Title"}},
-				Description:      "Complete Description",
-				Tags:             "tag1,tag2",
-				DescriptionTags:  "desc_tag1",
-				Tweet:            "Final Tweet",
-				Animations:       "Script for animations",
-				Shorts:           []storage.Short{{ID: "short1", Title: "Short"}},
-				Members:          "member1",
-				RequestThumbnail: true,
-				RequestEdit:      true,
+				Titles:          []storage.TitleVariant{{Index: 1, Text: "Complete Title"}},
+				Description:     "Complete Description",
+				Tags:            "tag1,tag2",
+				DescriptionTags: "desc_tag1",
+				Tweet:           "Final Tweet",
+				Animations:      "Script for animations",
+				Shorts:          []storage.Short{{ID: "short1", Title: "Short"}},
+				Members:         "member1",
+				RequestEdit:     true,
 			},
-			expectedCompleted: 10, // All 10 Definition fields complete
-			expectedTotal:     10,
+			expectedCompleted: 9, // All 9 Definition fields complete
+			expectedTotal:     9,
 		},
 		{
 			name: "All Definition tasks complete with Gist (Gist should not affect Definition count)",
 			video: storage.Video{
-				Titles:           []storage.TitleVariant{{Index: 1, Text: "Complete Title"}},
-				Description:      "Complete Description",
-				Tags:             "tag1,tag2",
-				DescriptionTags:  "desc_tag1",
-				Tweet:            "Final Tweet",
-				Animations:       "Script for animations",
-				Shorts:           []storage.Short{{ID: "short1", Title: "Short"}},
-				Members:          "member1",
-				RequestThumbnail: true,
-				RequestEdit:      true,
-				Gist:             "path/to/my/gist.md", // This should NOT affect Definition phase count
+				Titles:          []storage.TitleVariant{{Index: 1, Text: "Complete Title"}},
+				Description:     "Complete Description",
+				Tags:            "tag1,tag2",
+				DescriptionTags: "desc_tag1",
+				Tweet:           "Final Tweet",
+				Animations:      "Script for animations",
+				Shorts:          []storage.Short{{ID: "short1", Title: "Short"}},
+				Members:         "member1",
+				RequestEdit:     true,
+				Gist:            "path/to/my/gist.md", // This should NOT affect Definition phase count
 			},
-			expectedCompleted: 10,
-			expectedTotal:     10,
+			expectedCompleted: 9,
+			expectedTotal:     9,
 		},
 		{
 			name: "Edge case - empty strings not counted",
 			video: storage.Video{
-				Titles:           []storage.TitleVariant{}, // Empty array
-				Description:      "-",                      // Dash, not counted
-				Tags:             "",
-				DescriptionTags:  "",
-				Tweet:            "",
-				Animations:       "",
-				RequestThumbnail: false, // Boolean false
-				Gist:             "",    // Empty Gist (but doesn't matter for Definition phase)
+				Titles:          []storage.TitleVariant{}, // Empty array
+				Description:     "-",                      // Dash, not counted
+				Tags:            "",
+				DescriptionTags: "",
+				Tweet:           "",
+				Animations:      "",
+				Gist:            "", // Empty Gist (but doesn't matter for Definition phase)
 			},
 			expectedCompleted: 0,
-			expectedTotal:     10,
+			expectedTotal:     9,
 		},
 		{
 			name: "Edge case - string with only spaces not counted",
 			video: storage.Video{
-				Titles:           []storage.TitleVariant{{Index: 1, Text: "   "}}, // Spaces only
-				Description:      "Valid Description",
-				RequestThumbnail: true,
-				Gist:             "  valid/gist/path.md  ", // Gist doesn't affect Definition phase count
+				Titles:      []storage.TitleVariant{{Index: 1, Text: "   "}}, // Spaces only
+				Description: "Valid Description",
+				Gist:        "  valid/gist/path.md  ", // Gist doesn't affect Definition phase count
 			},
-			expectedCompleted: 2, // Description, RequestThumbnail (title with spaces not counted)
-			expectedTotal:     10,
+			expectedCompleted: 1, // Description (title with spaces not counted)
+			expectedTotal:     9,
 		},
 		{
 			name: "Multiple titles - at least one valid counts as complete",
@@ -227,11 +222,10 @@ func TestCalculateDefinePhaseCompletion(t *testing.T) {
 					{Index: 2, Text: "Another Title"},
 					{Index: 3, Text: "Third Title"},
 				},
-				Description:      "Test Description",
-				RequestThumbnail: true,
+				Description: "Test Description",
 			},
-			expectedCompleted: 3, // Titles (1), Description (1), RequestThumbnail (1)
-			expectedTotal:     10,
+			expectedCompleted: 2, // Titles (1), Description (1)
+			expectedTotal:     9,
 		},
 		{
 			name: "Titles array with empty text not counted",
@@ -243,7 +237,7 @@ func TestCalculateDefinePhaseCompletion(t *testing.T) {
 				Description: "Test Description",
 			},
 			expectedCompleted: 1, // Only Description
-			expectedTotal:     10,
+			expectedTotal:     9,
 		},
 	}
 
@@ -514,7 +508,6 @@ func TestCalculateOverallProgress(t *testing.T) {
 				Animations:       "Animation script",
 				Shorts:           []storage.Short{{ID: "short1", Title: "Short"}},
 				Members:          "member1",
-				RequestThumbnail: true,
 				RequestEdit:      true,
 
 				// Post-Production

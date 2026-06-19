@@ -17,7 +17,6 @@ import (
 
 // mockEmailService implements EmailService for testing.
 type mockEmailService struct {
-	sendThumbnailCalled                 bool
 	sendEditCalled                      bool
 	sendEditVideo                       storage.Video
 	sendSponsorsCalled                  bool
@@ -36,11 +35,6 @@ type mockEmailService struct {
 	sendDriveUploadNotificationDone     chan struct{} // closed when SendDriveUploadNotification is called
 	returnErr                           error
 	sendSponsorsErr                     error
-}
-
-func (m *mockEmailService) SendThumbnail(from, to string, video storage.Video) error {
-	m.sendThumbnailCalled = true
-	return m.returnErr
 }
 
 func (m *mockEmailService) SendEdit(from, to string, video storage.Video) error {
@@ -84,157 +78,6 @@ func (m *mockEmailService) SendDriveUploadNotification(from string, params notif
 		return m.sendDriveUploadNotificationErr
 	}
 	return m.returnErr
-}
-
-func TestHandleRequestThumbnail_MissingCategory(t *testing.T) {
-	env := setupTestEnv(t)
-
-	req := httptest.NewRequest(http.MethodPost, "/api/actions/request-thumbnail/test-video", nil)
-	w := httptest.NewRecorder()
-	env.server.Router().ServeHTTP(w, req)
-
-	if w.Code != http.StatusBadRequest {
-		t.Fatalf("expected 400, got %d: %s", w.Code, w.Body.String())
-	}
-}
-
-func TestHandleRequestThumbnail_VideoNotFound(t *testing.T) {
-	env := setupTestEnv(t)
-
-	req := httptest.NewRequest(http.MethodPost, "/api/actions/request-thumbnail/nonexistent?category=devops", nil)
-	w := httptest.NewRecorder()
-	env.server.Router().ServeHTTP(w, req)
-
-	if w.Code != http.StatusNotFound {
-		t.Fatalf("expected 404, got %d: %s", w.Code, w.Body.String())
-	}
-}
-
-func TestHandleRequestThumbnail_AlreadyRequested(t *testing.T) {
-	env := setupTestEnv(t)
-	seedVideo(t, env, storage.Video{
-		Name:             "test-video",
-		Category:         "devops",
-		RequestThumbnail: true,
-	})
-
-	req := httptest.NewRequest(http.MethodPost, "/api/actions/request-thumbnail/test-video?category=devops", nil)
-	w := httptest.NewRecorder()
-	env.server.Router().ServeHTTP(w, req)
-
-	if w.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
-	}
-
-	var resp ActionResponse
-	json.NewDecoder(w.Body).Decode(&resp)
-	if !resp.AlreadyRequested {
-		t.Error("expected alreadyRequested to be true")
-	}
-}
-
-func TestHandleRequestThumbnail_Success(t *testing.T) {
-	env := setupTestEnv(t)
-	mock := &mockEmailService{}
-	env.server.SetEmailService(mock, &configuration.SettingsEmail{
-		From:        "from@test.com",
-		ThumbnailTo: "thumb@test.com",
-	})
-
-	seedVideo(t, env, storage.Video{
-		Name:     "test-video",
-		Category: "devops",
-	})
-
-	req := httptest.NewRequest(http.MethodPost, "/api/actions/request-thumbnail/test-video?category=devops", nil)
-	w := httptest.NewRecorder()
-	env.server.Router().ServeHTTP(w, req)
-
-	if w.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
-	}
-
-	var resp ActionResponse
-	json.NewDecoder(w.Body).Decode(&resp)
-
-	if resp.AlreadyRequested {
-		t.Error("expected alreadyRequested to be false")
-	}
-	if !resp.EmailSent {
-		t.Error("expected emailSent to be true")
-	}
-	if !mock.sendThumbnailCalled {
-		t.Error("expected SendThumbnail to be called")
-	}
-	if !resp.Video.RequestThumbnail {
-		t.Error("expected video.requestThumbnail to be true")
-	}
-}
-
-func TestHandleRequestThumbnail_NoEmailConfigured(t *testing.T) {
-	env := setupTestEnv(t)
-	// No email service configured
-
-	seedVideo(t, env, storage.Video{
-		Name:     "test-video",
-		Category: "devops",
-	})
-
-	req := httptest.NewRequest(http.MethodPost, "/api/actions/request-thumbnail/test-video?category=devops", nil)
-	w := httptest.NewRecorder()
-	env.server.Router().ServeHTTP(w, req)
-
-	if w.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
-	}
-
-	var resp ActionResponse
-	json.NewDecoder(w.Body).Decode(&resp)
-
-	if resp.EmailSent {
-		t.Error("expected emailSent to be false when email not configured")
-	}
-	if resp.EmailError == "" {
-		t.Error("expected emailError to explain why email was not sent")
-	}
-	if resp.Video.RequestThumbnail != true {
-		t.Error("expected video.requestThumbnail to be true even without email")
-	}
-}
-
-func TestHandleRequestThumbnail_EmailFailure(t *testing.T) {
-	env := setupTestEnv(t)
-	mock := &mockEmailService{returnErr: errTestEmail}
-	env.server.SetEmailService(mock, &configuration.SettingsEmail{
-		From:        "from@test.com",
-		ThumbnailTo: "thumb@test.com",
-	})
-
-	seedVideo(t, env, storage.Video{
-		Name:     "test-video",
-		Category: "devops",
-	})
-
-	req := httptest.NewRequest(http.MethodPost, "/api/actions/request-thumbnail/test-video?category=devops", nil)
-	w := httptest.NewRecorder()
-	env.server.Router().ServeHTTP(w, req)
-
-	if w.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
-	}
-
-	var resp ActionResponse
-	json.NewDecoder(w.Body).Decode(&resp)
-
-	if resp.EmailSent {
-		t.Error("expected emailSent to be false on email failure")
-	}
-	if resp.EmailError == "" {
-		t.Error("expected emailError to be set")
-	}
-	if resp.Video.RequestThumbnail != true {
-		t.Error("expected video.requestThumbnail to be true even when email fails")
-	}
 }
 
 func TestHandleRequestEdit_MissingCategory(t *testing.T) {
@@ -505,21 +348,21 @@ func TestEmailNotConfiguredMessage(t *testing.T) {
 			name:           "nil service",
 			svc:            nil,
 			settings:       nil,
-			recipientField: "ThumbnailTo",
+			recipientField: "EditTo",
 			wantContains:   "EMAIL_PASSWORD",
 		},
 		{
 			name:           "nil settings",
 			svc:            &mockEmailService{},
 			settings:       nil,
-			recipientField: "ThumbnailTo",
+			recipientField: "EditTo",
 			wantContains:   "email settings are missing",
 		},
 		{
 			name:           "empty from",
 			svc:            &mockEmailService{},
 			settings:       &configuration.SettingsEmail{},
-			recipientField: "ThumbnailTo",
+			recipientField: "EditTo",
 			wantContains:   "EMAIL_FROM",
 		},
 		{

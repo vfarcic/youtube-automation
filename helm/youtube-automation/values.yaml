@@ -89,7 +89,6 @@ existingSecretKey: "api-token"
 # │ EMAIL (required for email notifications):                                   │
 # │   EMAIL_PASSWORD     - SMTP email password                                 │
 # │   EMAIL_FROM         - Sender email address                                │
-# │   EMAIL_THUMBNAIL_TO - Recipient for thumbnail requests                    │
 # │   EMAIL_EDIT_TO      - Recipient for edit requests                         │
 # │   EMAIL_FINANCE_TO   - Recipient for finance emails                        │
 # │                                                                             │

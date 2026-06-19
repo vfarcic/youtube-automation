@@ -200,7 +200,6 @@ FIXME:
 		Thumbnails:          false,
 		Diagrams:            false,
 		Screenshots:         false,
-		RequestThumbnail:    false,
 		Slides:              false,
 		RequestEdit:         false,
 		LinkedInPosted:      false,
