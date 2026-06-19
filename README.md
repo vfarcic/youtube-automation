@@ -94,7 +94,7 @@ The `/health` endpoint is always public. If `API_TOKEN` is empty, authentication
 | AI | `POST /api/ai/{type}/{category}/{name}` | AI content generation (titles, description, tags, tweets, shorts) |
 | AI (body) | `POST /api/ai/thumbnails`, `POST /api/ai/translate`, `POST /api/ai/ama/*` | Thumbnail analysis, translation, AMA content |
 | Drive | `POST /api/drive/upload/{type}/{name}`, `GET /api/drive/download/video/{name}` | Google Drive file operations |
-| Actions | `POST /api/actions/request-{thumbnail,edit}/{name}` | Request thumbnail/edit with email notifications |
+| Actions | `POST /api/actions/request-edit/{name}` | Request edit with email notifications |
 | Publishing | `POST /api/publish/youtube/{name}[/thumbnail,/shorts/{id}]` | YouTube uploads |
 | Publishing | `POST /api/publish/hugo/{name}` | Hugo blog post creation |
 | Publishing | `GET /api/publish/transcript/{videoId}`, `GET /api/publish/metadata/{videoId}` | YouTube data retrieval |

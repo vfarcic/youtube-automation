@@ -3,7 +3,6 @@
 
 email:
   from: viktor@farcic.com
-  thumbnailTo: viktor@farcic.com
   editTo: viktor@farcic.com
   financeTo: devopstoolkit@acme.com
 ai:

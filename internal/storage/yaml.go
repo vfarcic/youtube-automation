@@ -81,7 +81,6 @@ type Video struct {
 	PhotoRealisticSubject string         `json:"photoRealisticSubject" completion:"empty_or_filled" ui:"auto"`
 	OtherLogos            string         `json:"otherLogos" completion:"filled_only"`
 	Screenshots           bool           `json:"screenshots" completion:"true_only"`
-	RequestThumbnail      bool           `json:"requestThumbnail" completion:"true_only"`
 	// DEPRECATED: This field is for backward compatibility. Use ThumbnailVariants instead.
 	Thumbnail            string             `json:"thumbnail" completion:"filled_only"` // DEPRECATED: fallback for old videos
 	ThumbnailVariants    []ThumbnailVariant `yaml:"thumbnailVariants,omitempty" json:"thumbnailVariants,omitempty" completion:"filled_only"`

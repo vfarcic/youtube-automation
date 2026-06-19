@@ -63,7 +63,6 @@ export const mockVideo: VideoResponse = {
   thumbnails: false,
   diagrams: false,
   screenshots: false,
-  requestThumbnail: false,
   requestEdit: false,
   movie: false,
   animations: '',
@@ -255,13 +254,6 @@ export const handlers = [
     HttpResponse.json({ driveFileId: 'short-drive-id-789', filePath: 'drive://short-drive-id-789' }),
   ),
   // Action endpoints
-  http.post('/api/actions/request-thumbnail/:videoName', () =>
-    HttpResponse.json({
-      alreadyRequested: false,
-      emailSent: true,
-      video: { ...mockVideo, requestThumbnail: true },
-    }),
-  ),
   http.post('/api/actions/request-edit/:videoName', () =>
     HttpResponse.json({
       alreadyRequested: false,

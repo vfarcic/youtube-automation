@@ -243,7 +243,6 @@ func TestEmailFunctionality(t *testing.T) {
 	// Configure test email settings
 	configuration.GlobalSettings.Email = configuration.SettingsEmail{
 		From:        "test@example.com",
-		ThumbnailTo: "thumbnail@example.com",
 		EditTo:      "edit@example.com",
 		FinanceTo:   "finance@example.com",
 		Password:    "test-password",
@@ -301,41 +300,6 @@ func TestEmailFunctionality(t *testing.T) {
 
 		if !strings.Contains(msg.Body, "Test Body") {
 			t.Errorf("Expected body to contain 'Test Body', got '%s'", msg.Body)
-		}
-	})
-
-	// Test SendThumbnail
-	t.Run("TestSendThumbnail", func(t *testing.T) {
-		server.ClearMessages()
-
-		err := email.SendThumbnail(
-			"from@example.com",
-			"thumbnail@example.com",
-			video,
-		)
-		if err != nil {
-			t.Fatalf("SendThumbnail failed: %v", err)
-		}
-
-		// Check message was sent
-		messages := server.GetMessages()
-		if len(messages) == 0 {
-			t.Fatal("No messages received by test server")
-		}
-
-		// Verify message contents
-		msg := messages[0]
-		expectedSubject := fmt.Sprintf("Thumbnail: %s", video.ProjectName)
-		if !strings.Contains(msg.Subject, expectedSubject) {
-			t.Errorf("Expected subject to contain '%s', got '%s'", expectedSubject, msg.Subject)
-		}
-
-		if !strings.Contains(msg.Body, video.Location) {
-			t.Errorf("Expected body to contain location '%s'", video.Location)
-		}
-
-		if !strings.Contains(msg.Body, video.Tagline) {
-			t.Errorf("Expected body to contain tagline '%s'", video.Tagline)
 		}
 	})
 
@@ -440,135 +404,6 @@ func TestEmailFunctionality(t *testing.T) {
 			t.Errorf("Expected body to contain amount '%s'", video.Sponsorship.Amount)
 		}
 	})
-}
-
-func TestGenerateThumbnailEmailContent(t *testing.T) {
-	tests := []struct {
-		name          string
-		video         storage.Video
-		expectSubject string
-		expectBody    string // We will check for key substrings in the body
-	}{
-		{
-			name: "Basic video",
-			video: storage.Video{
-				ProjectName: "My Test Project",
-				Titles:      []storage.TitleVariant{{Index: 1, Text: "My Test Title", Share: 0}},
-				Location:    "/vids/my-test-project",
-				Tagline:     "Cool Tagline",
-			},
-			expectSubject: "Thumbnail: My Test Title",
-			expectBody:    "<strong>Material:</strong><br/><br/>All the material is available at /vids/my-test-project.<br/><br/><strong>Thumbnail:</strong><br/><br/>Elements:<ul>\n<li>Text: Cool Tagline</li>\n<li>Screenshots: screenshot-*.png</li></ul>",
-		},
-		{
-			name: "Video with ProjectURL",
-			video: storage.Video{
-				ProjectName: "Project With URL",
-				Titles:      []storage.TitleVariant{{Index: 1, Text: "Project With URL Title", Share: 0}},
-				Location:    "/vids/url-project",
-				Tagline:     "URL Tagline",
-				ProjectURL:  "http://example.com/logo.png",
-			},
-			expectSubject: "Thumbnail: Project With URL Title",
-			expectBody:    "<li>Logo: http://example.com/logo.png</li>\n<li>Text: URL Tagline</li>",
-		},
-		{
-			name: "Video with OtherLogos",
-			video: storage.Video{
-				ProjectName: "Project Other Logos",
-				Titles:      []storage.TitleVariant{{Index: 1, Text: "Project Other Logos Title", Share: 0}},
-				Location:    "/vids/other-logos",
-				Tagline:     "Other Logos Tagline",
-				OtherLogos:  "logo2.png, logo3.svg",
-			},
-			expectSubject: "Thumbnail: Project Other Logos Title",
-			expectBody:    "<li>Logo: logo2.png, logo3.svg</li>\n<li>Text: Other Logos Tagline</li>",
-		},
-		{
-			name: "Video with ProjectURL and OtherLogos",
-			video: storage.Video{
-				ProjectName: "Project Both Logos",
-				Titles:      []storage.TitleVariant{{Index: 1, Text: "Project Both Logos Title", Share: 0}},
-				Location:    "/vids/both-logos",
-				Tagline:     "Both Logos Tagline",
-				ProjectURL:  "http://example.com/logo.png",
-				OtherLogos:  "logo2.png, logo3.svg",
-			},
-			expectSubject: "Thumbnail: Project Both Logos Title",
-			expectBody:    "<li>Logo: http://example.com/logo.png, logo2.png, logo3.svg</li>\n<li>Text: Both Logos Tagline</li>",
-		},
-		{
-			name: "Video with N/A ProjectURL and OtherLogos",
-			video: storage.Video{
-				ProjectName: "Project N/A Logos",
-				Titles:      []storage.TitleVariant{{Index: 1, Text: "Project N/A Logos Title", Share: 0}},
-				Location:    "/vids/na-logos",
-				Tagline:     "N/A Logos Tagline",
-				ProjectURL:  "N/A",
-				OtherLogos:  "-",
-			},
-			expectSubject: "Thumbnail: Project N/A Logos Title",
-			// Expect no "<li>Logo: ...</li>" line if ProjectURL and OtherLogos are N/A or "-"
-			expectBody: "<strong>Material:</strong><br/><br/>All the material is available at /vids/na-logos.<br/><br/><strong>Thumbnail:</strong><br/><br/>Elements:<ul>\n<li>Text: N/A Logos Tagline</li>\n<li>Screenshots: screenshot-*.png</li></ul>",
-		},
-		{
-			name: "Video with empty ProjectURL and OtherLogos",
-			video: storage.Video{
-				ProjectName: "Project Empty Logos",
-				Titles:      []storage.TitleVariant{{Index: 1, Text: "Project Empty Logos Title", Share: 0}},
-				Location:    "/vids/empty-logos",
-				Tagline:     "Empty Logos Tagline",
-				ProjectURL:  "",
-				OtherLogos:  "",
-			},
-			expectSubject: "Thumbnail: Project Empty Logos Title",
-			expectBody:    "<strong>Material:</strong><br/><br/>All the material is available at /vids/empty-logos.<br/><br/><strong>Thumbnail:</strong><br/><br/>Elements:<ul>\n<li>Text: Empty Logos Tagline</li>\n<li>Screenshots: screenshot-*.png</li></ul>",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			subject, body := generateThumbnailEmailContent(tt.video)
-			assert.Equal(t, tt.expectSubject, subject)
-
-			// For the body, we check for the presence of key parts because exact HTML formatting can be brittle.
-			// The tt.expectBody for basic case is more complete for an example.
-			if tt.name == "Basic video" || tt.name == "Video with N/A ProjectURL and OtherLogos" || tt.name == "Video with empty ProjectURL and OtherLogos" {
-				// For basic and N/A/empty cases, we can do a more direct comparison of the key part
-				normalizedExpected := strings.ReplaceAll(strings.ReplaceAll(tt.expectBody, "\n", ""), " ", "")
-				normalizedActual := strings.ReplaceAll(strings.ReplaceAll(body, "\n", ""), " ", "")
-				if !strings.Contains(normalizedActual, normalizedExpected) {
-					t.Errorf("Expected body to contain (normalized):\n%s\nActual body (normalized):\n%s", normalizedExpected, normalizedActual)
-				}
-			} else {
-				assert.Contains(t, body, tt.video.Location)
-				assert.Contains(t, body, tt.expectBody) // Checks for the logo line and tagline line
-			}
-
-			// General checks for all
-			assert.Contains(t, body, fmt.Sprintf("All the material is available at %s", tt.video.Location))
-			assert.Contains(t, body, fmt.Sprintf("<li>Text: %s</li>", tt.video.Tagline))
-			assert.Contains(t, body, "<li>Screenshots: screenshot-*.png</li>")
-
-			assert.NotContains(t, body, "Ideas:<br/>")
-
-			expectedLogoString := ""
-			if tt.video.ProjectURL != "" && tt.video.ProjectURL != "-" && tt.video.ProjectURL != "N/A" {
-				expectedLogoString = tt.video.ProjectURL
-			}
-			if tt.video.OtherLogos != "" && tt.video.OtherLogos != "-" && tt.video.OtherLogos != "N/A" {
-				if len(expectedLogoString) > 0 {
-					expectedLogoString = fmt.Sprintf("%s, ", expectedLogoString)
-				}
-				expectedLogoString = fmt.Sprintf("%s%s", expectedLogoString, tt.video.OtherLogos)
-			}
-			if len(expectedLogoString) > 0 {
-				assert.Contains(t, body, fmt.Sprintf("<li>Logo: %s</li>", expectedLogoString))
-			} else {
-				assert.NotContains(t, body, "<li>Logo:")
-			}
-		})
-	}
 }
 
 func TestGenerateEditEmailContent(t *testing.T) {

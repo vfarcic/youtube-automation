@@ -75,7 +75,6 @@ export interface VideoResponse {
   thumbnails: boolean;
   diagrams: boolean;
   screenshots: boolean;
-  requestThumbnail: boolean;
   requestEdit: boolean;
   movie: boolean;
   animations: string;

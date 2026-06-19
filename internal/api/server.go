@@ -172,7 +172,6 @@ func (s *Server) setupRoutes() {
 
 		// Action buttons (send emails, set flags)
 		r.Route("/actions", func(r chi.Router) {
-			r.Post("/request-thumbnail/{videoName}", s.handleRequestThumbnail)
 			r.Post("/request-edit/{videoName}", s.handleRequestEdit)
 			r.Post("/notify-sponsors/{videoName}", s.handleNotifySponsors)
 		})

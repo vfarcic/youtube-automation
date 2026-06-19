@@ -30,7 +30,6 @@ func emailNotConfiguredMessage(svc EmailService, settings *configuration.Setting
 
 // EmailService abstracts email sending for action endpoints.
 type EmailService interface {
-	SendThumbnail(from, to string, video storage.Video) error
 	SendEdit(from, to string, video storage.Video) error
 	SendSponsors(from, to string, videoID, sponsorshipPrice, videoTitle string) error
 	SendUploadNotification(from string, params notification.UploadNotificationParams) error
@@ -50,54 +49,6 @@ type ActionResponse struct {
 func (s *Server) SetEmailService(es EmailService, settings *configuration.SettingsEmail) {
 	s.emailService = es
 	s.emailSettings = settings
-}
-
-// handleRequestThumbnail handles POST /api/actions/request-thumbnail/{videoName}?category=X
-func (s *Server) handleRequestThumbnail(w http.ResponseWriter, r *http.Request) {
-	videoName := chi.URLParam(r, "videoName")
-	category := r.URL.Query().Get("category")
-	if category == "" {
-		respondError(w, http.StatusBadRequest, "Missing category", "Query parameter 'category' is required")
-		return
-	}
-
-	video, err := s.videoService.GetVideo(videoName, category)
-	if err != nil {
-		respondError(w, http.StatusNotFound, "Video not found", err.Error())
-		return
-	}
-
-	if video.RequestThumbnail {
-		respondJSON(w, http.StatusOK, ActionResponse{
-			AlreadyRequested: true,
-			Video:            s.enrichVideo(video),
-		})
-		return
-	}
-
-	video.RequestThumbnail = true
-	if err := s.videoService.UpdateVideo(video); err != nil {
-		respondError(w, http.StatusInternalServerError, "Failed to save video", err.Error())
-		return
-	}
-
-	resp := ActionResponse{
-		Video: s.enrichVideo(video),
-	}
-
-	if s.emailService != nil && s.emailSettings != nil && s.emailSettings.From != "" && s.emailSettings.ThumbnailTo != "" {
-		if err := s.emailService.SendThumbnail(s.emailSettings.From, s.emailSettings.ThumbnailTo, video); err != nil {
-			resp.EmailError = err.Error()
-		} else {
-			resp.EmailSent = true
-		}
-	} else {
-		resp.EmailError = emailNotConfiguredMessage(s.emailService, s.emailSettings, "ThumbnailTo")
-	}
-
-	addSyncWarningStr(&resp.SyncWarning, s.videoService)
-
-	respondJSON(w, http.StatusOK, resp)
 }
 
 // handleRequestEdit handles POST /api/actions/request-edit/{videoName}?category=X

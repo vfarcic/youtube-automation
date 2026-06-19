@@ -341,7 +341,7 @@ func TestGetAspectsOverview(t *testing.T) {
 		expectedFieldCounts := map[string]int{
 			AspectKeyInitialDetails: 11, // actual count from mapping (includes sponsor name, URL, and adFile)
 			AspectKeyWorkProgress:   9,  // actual count from mapping
-			AspectKeyDefinition:     10, // actual count from mapping (includes Titles array, Shorts, Members, RequestEdit)
+			AspectKeyDefinition:     9, // actual count from mapping (includes Titles array, Shorts, Members, RequestEdit)
 			AspectKeyPostProduction: 4,  // actual count from mapping (ThumbnailVariants, Timecodes, VideoFile, Slides)
 			AspectKeyPublishing:     2,  // actual count from mapping (VideoId, HugoPath; UploadVideo hidden)
 			AspectKeyPostPublish:    10, // actual count from mapping

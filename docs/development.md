@@ -56,7 +56,6 @@ The tool uses a `settings.yaml` file for configuration:
 ```yaml
 email:
   from: your-email@example.com
-  thumbnailTo: thumbnail-creator@example.com
   editTo: video-editor@example.com
   financeTo: finance@example.com
 ai:
@@ -227,7 +226,7 @@ func (s *Server) handleMyEndpoint(w http.ResponseWriter, r *http.Request) {
 
 - **Dynamic form rendering**: Frontend reads aspect metadata from the API and renders forms without hardcoding field names. New fields added to the Go backend automatically appear in the UI.
 - **Dual-mode file storage**: CLI uses local file paths, Web UI uses Google Drive file IDs. Both coexist via the `DriveFileID` field pattern.
-- **Action buttons**: `RequestThumbnail` and `RequestEdit` are rendered as buttons (not checkboxes) to communicate irreversible intent.
+- **Action buttons**: `RequestEdit` is rendered as a button (not a checkbox) to communicate irreversible intent.
 
 ## Field Completion System
 

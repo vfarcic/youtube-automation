@@ -151,7 +151,6 @@ type SettingsGDrive struct {
 
 type SettingsEmail struct {
 	From        string `yaml:"from"`
-	ThumbnailTo string `yaml:"thumbnailTo"`
 	EditTo      string `yaml:"editTo"`
 	FinanceTo   string `yaml:"financeTo"`
 	Password    string `yaml:"password"`
@@ -292,9 +291,6 @@ func InitGlobalSettings() error {
 	// Email environment variables
 	if envFrom := os.Getenv("EMAIL_FROM"); envFrom != "" {
 		GlobalSettings.Email.From = envFrom
-	}
-	if envThumbnailTo := os.Getenv("EMAIL_THUMBNAIL_TO"); envThumbnailTo != "" {
-		GlobalSettings.Email.ThumbnailTo = envThumbnailTo
 	}
 	if envEditTo := os.Getenv("EMAIL_EDIT_TO"); envEditTo != "" {
 		GlobalSettings.Email.EditTo = envEditTo
