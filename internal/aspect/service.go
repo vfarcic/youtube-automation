@@ -265,7 +265,7 @@ func getFieldDescription(fieldKey string) string {
 		"linkedInPosted":      "Posted to LinkedIn",
 		"slackPosted":         "Posted to Slack channels",
 		"youTubeHighlight":    "YouTube highlight reel created",
-		"youTubeComment":      "Pinned comment added to YouTube",
+		"youTubeComment":      "Pinned sponsor comment added to YouTube (sponsored videos only)",
 		"youTubeCommentReply": "Replied to YouTube comments",
 		"gdePosted":           "Posted to GDE Advocu",
 		"codeRepository":      "Link to associated code repository",

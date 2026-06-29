@@ -575,9 +575,9 @@ func TestCalculateInitialDetailsProgress(t *testing.T) {
 		{
 			name:              "Empty_video",
 			video:             storage.Video{},
-			expectedCompleted: 4, // Sponsorship.Emails (conditional, no amount), Sponsorship.Blocked (empty_or_filled), Sponsorship.AdFile (empty_or_filled), Delayed (false_only)
-			expectedTotal:     11,
-			description:       "Empty video should have 4 completed conditions",
+			expectedCompleted: 3, // Sponsorship.Blocked (empty_or_filled), Sponsorship.AdFile (empty_or_filled), Delayed (false_only); Emails excluded (not sponsored)
+			expectedTotal:     10, // Emails not applicable without sponsorship
+			description:       "Empty video should have 3 completed conditions (emails excluded)",
 		},
 		{
 			name: "All_general_fields_complete",
@@ -587,9 +587,9 @@ func TestCalculateInitialDetailsProgress(t *testing.T) {
 				Gist:        "path/to/gist",
 				Date:        "2023-01-01",
 			},
-			expectedCompleted: 8, // 4 general + emails(conditional) + blocked(empty_or_filled) + adFile(empty_or_filled) + delayed(false_only)
-			expectedTotal:     11,
-			description:       "All general fields should be counted",
+			expectedCompleted: 7, // 4 general + blocked(empty_or_filled) + adFile(empty_or_filled) + delayed(false_only); emails excluded (not sponsored)
+			expectedTotal:     10,
+			description:       "All general fields should be counted (emails excluded)",
 		},
 		{
 			name: "With_sponsorship_amount",
@@ -617,36 +617,36 @@ func TestCalculateInitialDetailsProgress(t *testing.T) {
 			video: storage.Video{
 				Sponsorship: storage.Sponsorship{Blocked: "Some reason"},
 			},
-			expectedCompleted: 3, // Emails(conditional, no amount=pass) + AdFile(empty_or_filled) + Delayed(false_only)
-			expectedTotal:     11,
-			description:       "Sponsorship blocked should fail the blocked condition",
+			expectedCompleted: 2, // AdFile(empty_or_filled) + Delayed(false_only); emails excluded (no amount), Blocked fails
+			expectedTotal:     10,
+			description:       "Sponsorship blocked should fail the blocked condition (emails excluded)",
 		},
 		{
 			name: "With_delayed_true",
 			video: storage.Video{
 				Delayed: true,
 			},
-			expectedCompleted: 3, // Emails(conditional) + Blocked(empty_or_filled) + AdFile(empty_or_filled)
-			expectedTotal:     11,
-			description:       "Delayed video should fail the delayed condition",
+			expectedCompleted: 2, // Blocked(empty_or_filled) + AdFile(empty_or_filled); emails excluded (no amount), Delayed fails
+			expectedTotal:     10,
+			description:       "Delayed video should fail the delayed condition (emails excluded)",
 		},
 		{
 			name: "Sponsorship_amount_NA",
 			video: storage.Video{
 				Sponsorship: storage.Sponsorship{Amount: "N/A"},
 			},
-			expectedCompleted: 5, // Amount + Emails(conditional, N/A=pass) + Blocked(empty_or_filled) + AdFile(empty_or_filled) + Delayed(false_only)
-			expectedTotal:     11,
-			description:       "N/A sponsorship amount should pass emails condition",
+			expectedCompleted: 4, // Amount(N/A is filled) + Blocked(empty_or_filled) + AdFile(empty_or_filled) + Delayed(false_only); emails excluded (N/A = not sponsored)
+			expectedTotal:     10,
+			description:       "N/A sponsorship amount excludes emails from the count",
 		},
 		{
 			name: "Sponsorship_amount_dash",
 			video: storage.Video{
 				Sponsorship: storage.Sponsorship{Amount: "-"},
 			},
-			expectedCompleted: 4, // Emails(conditional, dash=pass) + Blocked(empty_or_filled) + AdFile(empty_or_filled) + Delayed(false_only); Amount("-") fails filled_only
-			expectedTotal:     11,
-			description:       "Dash sponsorship amount should pass emails condition",
+			expectedCompleted: 3, // Blocked(empty_or_filled) + AdFile(empty_or_filled) + Delayed(false_only); emails excluded (dash = not sponsored); Amount("-") fails filled_only
+			expectedTotal:     10,
+			description:       "Dash sponsorship amount excludes emails from the count",
 		},
 	}
 
@@ -969,9 +969,9 @@ func TestCalculatePostPublishProgress(t *testing.T) {
 		{
 			name:              "Empty_video",
 			video:             storage.Video{},
-			expectedCompleted: 1,  // NotifiedSponsors condition passes (no sponsorship amount)
-			expectedTotal:     10, // 9 basic fields + 1 NotifiedSponsors condition
-			description:       "Empty video should pass NotifiedSponsors condition",
+			expectedCompleted: 0, // All 8 basic fields empty/false; conditional fields excluded (not sponsored)
+			expectedTotal:     8, // Only the 8 non-conditional fields; NotifiedSponsors + YouTubeComment excluded
+			description:       "Empty non-sponsored video excludes both sponsorship-conditional fields",
 		},
 		{
 			name: "Basic_booleans_true",
@@ -985,18 +985,18 @@ func TestCalculatePostPublishProgress(t *testing.T) {
 				YouTubeCommentReply: true,
 				GDE:                 true,
 			},
-			expectedCompleted: 9, // 8 booleans + NotifiedSponsors condition
-			expectedTotal:     10,
-			description:       "Boolean fields should be counted when true",
+			expectedCompleted: 7, // 7 non-conditional booleans true (Repo empty); conditional fields excluded (not sponsored)
+			expectedTotal:     8,
+			description:       "Boolean fields should be counted when true (conditional fields excluded)",
 		},
 		{
 			name: "With_repo",
 			video: storage.Video{
 				Repo: "github.com/user/repo",
 			},
-			expectedCompleted: 2, // Repo + NotifiedSponsors condition
-			expectedTotal:     10,
-			description:       "Repo should be counted when non-empty",
+			expectedCompleted: 1, // Repo only; conditional fields excluded (not sponsored)
+			expectedTotal:     8,
+			description:       "Repo should be counted when non-empty (conditional fields excluded)",
 		},
 		{
 			name: "With_sponsorship_amount_needs_notification",
@@ -1024,9 +1024,9 @@ func TestCalculatePostPublishProgress(t *testing.T) {
 				Sponsorship:      storage.Sponsorship{Amount: "N/A"},
 				NotifiedSponsors: false,
 			},
-			expectedCompleted: 1, // NotifiedSponsors condition passes (N/A amount)
-			expectedTotal:     10,
-			description:       "N/A sponsorship amount should pass condition regardless of NotifiedSponsors",
+			expectedCompleted: 0, // N/A = not sponsored; both conditional fields excluded
+			expectedTotal:     8,
+			description:       "N/A sponsorship amount excludes both conditional fields",
 		},
 		{
 			name: "Sponsorship_amount_dash",
@@ -1034,9 +1034,9 @@ func TestCalculatePostPublishProgress(t *testing.T) {
 				Sponsorship:      storage.Sponsorship{Amount: "-"},
 				NotifiedSponsors: false,
 			},
-			expectedCompleted: 1, // NotifiedSponsors condition passes (dash amount)
-			expectedTotal:     10,
-			description:       "Dash sponsorship amount should pass condition regardless of NotifiedSponsors",
+			expectedCompleted: 0, // dash = not sponsored; both conditional fields excluded
+			expectedTotal:     8,
+			description:       "Dash sponsorship amount excludes both conditional fields",
 		},
 		{
 			name: "All_complete",
@@ -1052,9 +1052,28 @@ func TestCalculatePostPublishProgress(t *testing.T) {
 				Repo:                "github.com/user/repo",
 				NotifiedSponsors:    true,
 			},
-			expectedCompleted: 10,
+			expectedCompleted: 8, // 8 non-conditional fields complete; conditional fields excluded (no sponsorship amount)
+			expectedTotal:     8,
+			description:       "All non-conditional post-publish fields complete (non-sponsored)",
+		},
+		{
+			name: "All_complete_sponsored",
+			video: storage.Video{
+				DOTPosted:           true,
+				BlueSkyPosted:       true,
+				LinkedInPosted:      true,
+				SlackPosted:         true,
+				YouTubeHighlight:    true,
+				YouTubeComment:      true,
+				YouTubeCommentReply: true,
+				GDE:                 true,
+				Repo:                "github.com/user/repo",
+				NotifiedSponsors:    true,
+				Sponsorship:         storage.Sponsorship{Amount: "1000"},
+			},
+			expectedCompleted: 10, // 8 non-conditional + YouTubeComment + NotifiedSponsors (both applicable and true)
 			expectedTotal:     10,
-			description:       "All post-publish fields complete",
+			description:       "Sponsored video counts both conditional fields when satisfied",
 		},
 	}
 

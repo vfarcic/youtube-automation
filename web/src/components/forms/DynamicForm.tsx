@@ -11,6 +11,8 @@ import { MapInput } from './MapInput';
 import { ActionButton, isActionField } from './ActionButton';
 import { PublishButton, isPublishField } from './PublishButton';
 import { SocialPostButton, isSocialField } from './SocialPostButton';
+import { PinnedCommentToggle } from './PinnedCommentToggle';
+import { isVideoSponsored, SPONSORSHIP_CONDITIONAL_FIELDS } from '../../lib/sponsorship';
 import { AIGenerateButton } from './AIGenerateButton';
 import { RandomTimingButton } from './RandomTimingButton';
 import { GenerateAnimationsButton } from './GenerateAnimationsButton';
@@ -281,6 +283,13 @@ function renderField(
   const helpText = uiHints?.helpText;
   const placeholder = uiHints?.placeholder;
 
+  // Sponsorship-conditional fields are part of the checklist only when the video
+  // is sponsored. Hidden otherwise so visibility matches the backend progress
+  // count (CompletionService.isFieldApplicable excludes them from the totals).
+  if (SPONSORSHIP_CONDITIONAL_FIELDS.has(fieldName) && (!video || !isVideoSponsored(video))) {
+    return null;
+  }
+
   switch (field.type) {
     case 'label':
       if (isPublishField(fieldName) && category && videoName && video) {
@@ -312,14 +321,21 @@ function renderField(
         </div>
       );
     case 'boolean':
+      // Pinned sponsor comment reminder (sponsored videos only — the guard above
+      // already hid it otherwise) with the exact copy/paste text.
+      if (fieldName === 'youTubeComment' && video) {
+        return (
+          <PinnedCommentToggle
+            name={name}
+            fieldName={fieldName}
+            value={Boolean(value)}
+            onChange={onChange}
+            complete={complete}
+            video={video}
+          />
+        );
+      }
       if (isActionField(fieldName) && category && videoName) {
-        // Hide "Notify Sponsors" when there's no valid sponsorship data
-        if (fieldName === 'notifiedSponsors' && video) {
-          const amount = video.sponsorship?.amount ?? '';
-          if (!amount || amount === 'N/A' || amount === '-') {
-            return null;
-          }
-        }
         return (
           <ActionButton
             fieldName={fieldName}

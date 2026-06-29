@@ -102,7 +102,7 @@ type Video struct {
 	DOTPosted            bool               `json:"dotPosted" completion:"true_only"`
 	BlueSkyPosted        bool               `json:"blueSkyPosted" completion:"true_only"`
 	YouTubeHighlight     bool               `json:"youTubeHighlight" completion:"true_only"`
-	YouTubeComment       bool               `json:"youTubeComment" completion:"true_only"`
+	YouTubeComment       bool               `json:"youTubeComment" completion:"conditional_sponsors"`
 	YouTubeCommentReply  bool               `json:"youTubeCommentReply" completion:"true_only"`
 	Slides               bool               `json:"slides" completion:"true_only"`
 	GDE                  bool               `json:"gde" completion:"true_only"`

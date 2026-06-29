@@ -65,6 +65,13 @@ func (s *CompletionService) CalculateAspectProgress(aspectKey string, video stor
 		value := GetFieldValueByJSONPath(video, fieldName)
 		mappedName := mapFieldNameForCompletion(fieldName)
 
+		// Skip fields that don't apply to this video (e.g. sponsorship-conditional
+		// fields on a non-sponsored video). Not-applicable fields are excluded from
+		// BOTH counts so progress reflects only the checklist that's actually shown.
+		if !s.isFieldApplicable(aspectKey, mappedName, video) {
+			continue
+		}
+
 		total++
 		if s.IsFieldComplete(aspectKey, mappedName, value, video) {
 			completed++
@@ -268,6 +275,28 @@ func (s *CompletionService) isNoFixme(value interface{}) bool {
 		return len(strings.TrimSpace(str)) > 0 && !strings.Contains(str, "FIXME:")
 	}
 	return false
+}
+
+// isFieldApplicable reports whether a field is part of this video's checklist.
+// Sponsorship-conditional fields (notifiedSponsors, youTubeComment, sponsorship
+// emails) don't apply — and are excluded from progress counts entirely — when the
+// video has no real sponsorship. This keeps the counted set aligned with the
+// fields the frontend actually shows.
+func (s *CompletionService) isFieldApplicable(aspectKey, fieldKey string, video storage.Video) bool {
+	switch s.GetFieldCompletionCriteria(aspectKey, fieldKey) {
+	case "conditional_sponsors", "conditional_sponsorship":
+		return videoHasSponsorship(video)
+	default:
+		return true
+	}
+}
+
+// videoHasSponsorship reports whether the video has a real sponsorship amount.
+// Mirrors the frontend isVideoSponsored() check (raw string, no trim) so field
+// visibility and progress counting stay in lockstep.
+func videoHasSponsorship(video storage.Video) bool {
+	amount := video.Sponsorship.Amount
+	return len(amount) != 0 && amount != "N/A" && amount != "-"
 }
 
 func (s *CompletionService) isConditionalSponsorshipComplete(fieldKey string, value interface{}, video storage.Video) bool {

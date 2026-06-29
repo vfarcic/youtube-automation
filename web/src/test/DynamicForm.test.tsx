@@ -304,6 +304,66 @@ describe('DynamicForm', () => {
     expect(screen.queryByText('Shorts Publish')).not.toBeInTheDocument();
   });
 
+  const pinnedCommentField: AspectField = {
+    name: 'YouTube Pinned Comment Added (manual)',
+    fieldName: 'youTubeComment',
+    type: 'boolean',
+    required: false,
+    order: 1,
+    description: '',
+    completionCriteria: 'conditional_sponsors',
+    uiHints: { inputType: 'checkbox', placeholder: '', helpText: '', multiline: false },
+  };
+
+  it('hides the pinned comment checkbox when the video is not sponsored', () => {
+    const video = { ...mockVideo, sponsorship: { ...mockVideo.sponsorship, amount: '' } };
+    render(<DynamicForm fields={[pinnedCommentField]} video={video} onSave={() => {}} />, {
+      wrapper: createWrapper(),
+    });
+    expect(screen.queryByText('YouTube Pinned Comment Added (manual)')).not.toBeInTheDocument();
+  });
+
+  it('shows the pinned comment checkbox with exact text when sponsored', () => {
+    const video = {
+      ...mockVideo,
+      sponsorship: { ...mockVideo.sponsorship, amount: '1000', name: 'Acme Corp', url: 'https://acme.example' },
+    };
+    render(<DynamicForm fields={[pinnedCommentField]} video={video} onSave={() => {}} />, {
+      wrapper: createWrapper(),
+    });
+    expect(screen.getByText('YouTube Pinned Comment Added (manual)')).toBeInTheDocument();
+    expect(
+      screen.getByText('This video is sponsored by Acme Corp. Please visit https://acme.example.'),
+    ).toBeInTheDocument();
+  });
+
+  const emailsField: AspectField = {
+    name: 'Sponsorship Emails',
+    fieldName: 'sponsorship.emails',
+    type: 'string',
+    required: false,
+    order: 1,
+    description: '',
+    completionCriteria: 'conditional_sponsorship',
+    uiHints: { inputType: 'text', placeholder: '', helpText: '', multiline: false },
+  };
+
+  it('hides sponsorship emails when the video is not sponsored', () => {
+    const video = { ...mockVideo, sponsorship: { ...mockVideo.sponsorship, amount: '' } };
+    render(<DynamicForm fields={[emailsField]} video={video} onSave={() => {}} />, {
+      wrapper: createWrapper(),
+    });
+    expect(screen.queryByText('Sponsorship Emails')).not.toBeInTheDocument();
+  });
+
+  it('shows sponsorship emails when the video is sponsored', () => {
+    const video = { ...mockVideo, sponsorship: { ...mockVideo.sponsorship, amount: '1000' } };
+    render(<DynamicForm fields={[emailsField]} video={video} onSave={() => {}} />, {
+      wrapper: createWrapper(),
+    });
+    expect(screen.getByText('Sponsorship Emails')).toBeInTheDocument();
+  });
+
   it('does not render shorts sections when video has no shorts', () => {
     render(
       <DynamicForm

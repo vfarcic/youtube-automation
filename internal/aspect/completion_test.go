@@ -40,6 +40,7 @@ func TestCompletionService_GetFieldCompletionCriteria(t *testing.T) {
 		// Post-Publish
 		{"post-publish", "dotPosted", "true_only", "DOT posted should use true_only"},
 		{"post-publish", "notifiedSponsors", "conditional_sponsors", "Notify sponsors should use conditional_sponsors logic"},
+		{"post-publish", "youTubeComment", "conditional_sponsors", "YouTube pinned sponsor comment should use conditional_sponsors logic"},
 
 		// Unknown field should return default
 		{"unknown-aspect", "unknown-field", "filled_only", "Unknown fields should default to filled_only"},
@@ -146,6 +147,39 @@ func TestCompletionService_IsFieldComplete_ConditionalNotifySponsors(t *testing.
 			if result != tc.expected {
 				t.Errorf("Expected %v for sponsorship amount '%s' and notify value %v, got %v",
 					tc.expected, tc.sponsorshipAmount, tc.notifyValue, result)
+			}
+		})
+	}
+}
+
+func TestCompletionService_IsFieldComplete_ConditionalYouTubePinnedComment(t *testing.T) {
+	service := NewCompletionService()
+
+	testCases := []struct {
+		sponsorshipAmount string
+		commentValue      bool
+		expected          bool
+		description       string
+	}{
+		{"", false, true, "No sponsorship amount - pinned comment not needed"},
+		{"N/A", false, true, "N/A sponsorship amount - pinned comment not needed"},
+		{"-", false, true, "Dash sponsorship amount - pinned comment not needed"},
+		{"1000", false, false, "Has sponsorship amount but comment not posted - should not be complete"},
+		{"1000", true, true, "Has sponsorship amount and comment posted - should be complete"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			video := storage.Video{
+				Sponsorship: storage.Sponsorship{
+					Amount: tc.sponsorshipAmount,
+				},
+			}
+
+			result := service.IsFieldComplete("post-publish", "youTubeComment", tc.commentValue, video)
+			if result != tc.expected {
+				t.Errorf("Expected %v for sponsorship amount '%s' and comment value %v, got %v",
+					tc.expected, tc.sponsorshipAmount, tc.commentValue, result)
 			}
 		})
 	}
@@ -502,6 +536,39 @@ func TestCalculateAspectProgress_PostProduction(t *testing.T) {
 	completed, total := service.CalculateAspectProgress(AspectKeyPostProduction, video)
 	assert.Equal(t, 4, completed)
 	assert.Equal(t, 4, total)
+}
+
+// TestCalculateAspectProgress_ConditionalFieldsExcluded verifies that
+// sponsorship-conditional fields are excluded from BOTH the completed and total
+// counts when the video isn't sponsored, and included once it is.
+func TestCalculateAspectProgress_ConditionalFieldsExcluded(t *testing.T) {
+	service := NewCompletionService()
+
+	// Post-Publish has two conditional fields: youTubeComment + notifiedSponsors.
+	notSponsored := storage.Video{}
+	_, totalNotSponsored := service.CalculateAspectProgress(AspectKeyPostPublish, notSponsored)
+
+	sponsored := storage.Video{Sponsorship: storage.Sponsorship{Amount: "1000"}}
+	_, totalSponsored := service.CalculateAspectProgress(AspectKeyPostPublish, sponsored)
+
+	assert.Equal(t, totalNotSponsored+2, totalSponsored,
+		"sponsored video should add the 2 conditional post-publish fields to the total")
+
+	// A non-sponsored video with the conditional booleans set must NOT count them.
+	completedFlagged, totalFlagged := service.CalculateAspectProgress(AspectKeyPostPublish, storage.Video{
+		YouTubeComment:   true,
+		NotifiedSponsors: true,
+	})
+	assert.Equal(t, totalNotSponsored, totalFlagged,
+		"conditional fields must not appear in the total when not sponsored")
+	assert.Equal(t, 0, completedFlagged,
+		"conditional fields set true must not be counted as completed when not sponsored")
+
+	// Initial-Details has one conditional field: sponsorship emails.
+	_, initNotSponsored := service.CalculateAspectProgress(AspectKeyInitialDetails, storage.Video{})
+	_, initSponsored := service.CalculateAspectProgress(AspectKeyInitialDetails, sponsored)
+	assert.Equal(t, initNotSponsored+1, initSponsored,
+		"sponsored video should add the conditional emails field to the initial-details total")
 }
 
 func TestCalculateAspectProgress_UnknownAspect(t *testing.T) {
