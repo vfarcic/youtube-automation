@@ -271,6 +271,36 @@ func TestPullIfStale_PullsWhenCleanAndNotAhead(t *testing.T) {
 	assert.Contains(t, mock.calls[2].Args, "main")
 }
 
+// TestPullIfStale_IgnoresUntrackedFiles guards the fix for the bug where
+// orphaned upload artifacts (e.g. `multipart-*` temp files) left in the data
+// directory marked the working tree permanently "dirty", causing every
+// read-time pull to be silently skipped. The dirtiness check must exclude
+// untracked files via `--untracked-files=no` so those artifacts cannot gate
+// the pull.
+func TestPullIfStale_IgnoresUntrackedFiles(t *testing.T) {
+	mock := newMockExecutor()
+	// With --untracked-files=no, git reports no changes even though untracked
+	// temp files exist in the working tree.
+	mock.setResult("git status", []byte(""), nil)
+	mock.setResult("git rev-list", []byte("0\n"), nil)
+
+	now := time.Date(2026, 4, 15, 12, 0, 0, 0, time.UTC)
+	sm := newPullTestSyncManager(t, mock, &now)
+
+	require.NoError(t, sm.PullIfStale(10*time.Second))
+
+	// The status check must be invoked with --untracked-files=no so untracked
+	// artifacts are excluded from the dirtiness decision.
+	statusCall := mock.findCall("git status")
+	require.NotNil(t, statusCall)
+	assert.Contains(t, statusCall.Args, "--untracked-files=no",
+		"dirty check must ignore untracked files so temp artifacts don't block pulls")
+
+	// The pull must still happen.
+	require.Len(t, mock.calls, 3)
+	assert.Equal(t, "pull", mock.calls[2].Args[0])
+}
+
 func TestPullIfStale_SkipsWhenWithinThrottleWindow(t *testing.T) {
 	mock := newMockExecutor()
 	mock.setResult("git status", []byte(""), nil)
