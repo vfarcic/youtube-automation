@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -43,6 +44,47 @@ func TestHandleGetCategories(t *testing.T) {
 			if categories[i].Name < categories[i-1].Name {
 				t.Errorf("categories not sorted: %q before %q", categories[i-1].Name, categories[i].Name)
 			}
+		}
+	})
+
+	t.Run("triggers throttled pull when git sync configured", func(t *testing.T) {
+		env := setupTestEnv(t)
+
+		gs := &mockGitSync{}
+		env.server.gitSync = gs
+
+		req := httptest.NewRequest(http.MethodGet, "/api/categories", nil)
+		w := httptest.NewRecorder()
+		env.server.Router().ServeHTTP(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("status = %d, want %d; body: %s", w.Code, http.StatusOK, w.Body.String())
+		}
+		if !gs.pullCalled {
+			t.Error("expected PullIfStale to be called so newly-pushed categories appear")
+		}
+		if gs.pullMaxAge != pullOnReadThrottle {
+			t.Errorf("PullIfStale maxAge = %v, want %v", gs.pullMaxAge, pullOnReadThrottle)
+		}
+	})
+
+	t.Run("still serves categories when pull fails", func(t *testing.T) {
+		env := setupTestEnv(t)
+
+		gs := &mockGitSync{pullErr: errors.New("pull failed")}
+		env.server.gitSync = gs
+
+		req := httptest.NewRequest(http.MethodGet, "/api/categories", nil)
+		w := httptest.NewRecorder()
+		env.server.Router().ServeHTTP(w, req)
+
+		// Pull failure must not block the response — local copy is served.
+		if w.Code != http.StatusOK {
+			t.Fatalf("status = %d, want %d; body: %s", w.Code, http.StatusOK, w.Body.String())
+		}
+		var categories []service.Category
+		if err := json.NewDecoder(w.Body).Decode(&categories); err != nil {
+			t.Fatalf("decode: %v", err)
 		}
 	})
 

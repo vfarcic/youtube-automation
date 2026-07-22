@@ -132,8 +132,14 @@ func (s *SyncManager) CommitAndPush(message string) error {
 //
 // The pull is skipped (without error) when:
 //   - The previous attempt was less than maxAge ago.
-//   - The working tree has uncommitted changes.
+//   - The working tree has uncommitted changes to *tracked* files.
 //   - There are local commits that have not been pushed to origin yet.
+//
+// Untracked files are deliberately ignored: transient upload artifacts (e.g.
+// leftover multipart temp files) accumulate in the data directory and would
+// otherwise mark the tree permanently "dirty", silently blocking every
+// read-time pull. They do not affect `git pull --rebase` (rebase only cares
+// about tracked modifications), so they must not gate the pull.
 //
 // Skips return nil because they are expected steady-state conditions, not
 // failures. Actual git failures (network, conflict, etc.) are returned so
@@ -146,8 +152,10 @@ func (s *SyncManager) PullIfStale(maxAge time.Duration) error {
 		return nil
 	}
 
-	// Skip if working tree is dirty — pull --rebase could fail or surprise the user.
-	statusOutput, err := s.executor.Run(s.dataDir, "git", "status", "--porcelain")
+	// Skip if tracked files are modified — pull --rebase could fail or surprise
+	// the user. Untracked files (--untracked-files=no) are ignored on purpose;
+	// see the doc comment above.
+	statusOutput, err := s.executor.Run(s.dataDir, "git", "status", "--porcelain", "--untracked-files=no")
 	if err != nil {
 		s.lastAttempt = s.now()
 		return fmt.Errorf("git status failed: %s: %w", SanitizeOutput(statusOutput, s.token), err)
