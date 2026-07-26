@@ -1,6 +1,11 @@
 Generate 10 compelling and SEO-friendly YouTube video titles based on the provided manuscript. Target 56-65 characters for optimal performance (acceptable range: 55-75 characters maximum).
 
-CRITICAL: Front-load the hook in the first 60 characters (mobile truncation point). Prioritize these proven high-performing patterns:
+HARD REQUIREMENTS (from full channel analytics — apply to EVERY title):
+- Every title must contain at least one searchable proper noun or established term people actually type (a tool, standard, or named concept — e.g. OpenTelemetry, Crossplane, MCP, Dockerfile, "self-hosting AI models"). Titles made entirely of abstractions ("Let's Fix That", "A Wake-Up Call") earn near-zero search traffic and build no catalog tail.
+- Put the searchable term in the first half of the title.
+- Never lead with an unfamiliar product name as the hook. If the audience does not already run the product, lead with the problem and let the product follow in context.
+
+CRITICAL: Front-load the hook in the first 60 characters (mobile truncation point). Prioritize these proven high-performing patterns (roughly in order of measured subscriber conversion):
 
 1. Provocative Opinion + Technical Specificity (3-5x avg views)
    - Include strong stance or controversial angle
@@ -29,6 +34,8 @@ CRITICAL: Front-load the hook in the first 60 characters (mobile truncation poin
    - Example: "My Workflow With AI: How I Code, Test, and Deploy Faster Than Ever"
 
 AVOID these proven low-performing patterns:
+- Evaluation framing of an unfamiliar product ("Is X Worth It?", "X Review", "X Magic") — 1.25-3.63 subs/1k, worst conversion and retention on the channel. Comparing tools the audience already uses is fine; introducing an unknown product via a review frame is not.
+- Pure-abstraction opinion titles with no named subject (an opinion is fine, but attach it to a searchable tool/concept)
 - Generic "How To" or "Using" openings (52% fewer likes per view)
 - "Explained" or "Tutorial" suffix (62% lower views)
 - Question-only titles without controversy (54% lower watch time)

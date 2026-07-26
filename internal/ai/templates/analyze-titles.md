@@ -70,5 +70,27 @@ Return your analysis as a **valid JSON object** with the following structure:
   - Do NOT ask for rule numbers, pattern references, or any metadata alongside titles — just the titles themselves
   - Describe patterns by name (e.g., "Bold Opinionated Claim") not by number (e.g., "Rule 1")
   - Do NOT force specific patterns (e.g., "ensure at least one uses X"). Instead, instruct the AI to choose whichever patterns best fit the manuscript content and aim for diversity across the 10 titles
+  - **You MUST include the following two sections VERBATIM in titlesMdContent, in addition to whatever A/B-derived patterns you discover.** These encode search-tail and subscriber-conversion findings from full YouTube Analytics that the A/B watch-time-share data above cannot see, so you cannot derive or omit them — copy them exactly:
+
+    ```
+    ## Hard Requirements (Search Tail & Conversion — Non-Negotiable)
+
+    These come from full YouTube Analytics for this channel (search views and subscriber conversion over the days-29-to-120 tail), not from A/B watch-time share. They apply to EVERY one of the 10 titles.
+
+    1. **Every title must contain at least one searchable proper noun or established term** — a tool, standard, or named concept people actually type (`OpenTelemetry`, `Crossplane`, `MCP`, `Dockerfile`, `self-hosting AI models`). Titles built entirely from abstractions ("Let's Fix That", "A Wake-Up Call") earn near-zero search traffic and build no catalog tail — a ~300x gap in measured search views.
+    2. **Put the searchable term in the first half of the title.** Front-load the noun people type, not just the most dramatic word.
+    3. **Never lead with an unfamiliar product name as the hook.** If the audience does not already run the product, lead with the problem and let the product follow in context. A product the audience doesn't know does not become interesting by being reviewed — only as the vehicle for a problem they already have.
+
+    ## Ranked Format Preferences (Highest Measured Conversion First)
+
+    When multiple patterns fit the manuscript, prefer them in this order (subscribers per 1k views, first 28 days):
+
+    1. **Year-anchored list** — `Top N <domain> Tools You MUST Use in <year>` (14.22 subs/1k, by far the strongest format).
+    2. **Contrarian / death-claim on a NAMED subject** (9.91) — e.g. "The End of Infrastructure-as-Code", "Why Self-Hosting AI Models Is a Bad Idea".
+    3. **Comparison between tools the audience already uses** (5.7–8.4) — e.g. "Terraform vs. Crossplane vs. Ansible".
+    4. **Plain explainer / guide framing** (6.95) — acceptable, but the weakest of the viable patterns.
+    ```
+
+  - Also add an anti-pattern to titlesMdContent warning against **evaluation framing of an unfamiliar product** ("Is X Worth It?", "X Review", "X Magic") — 1.25–3.63 subs/1k, worst conversion and retention on the channel — while noting comparisons of tools the audience already uses are fine.
 
 Your JSON response will be parsed programmatically, so ensure it's valid and follows the exact structure above.
