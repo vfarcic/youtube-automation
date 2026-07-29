@@ -130,6 +130,46 @@ Completion criteria: `filled_only`, `true_only`, `false_only`, `conditional_spon
   - `DATA_DIR`: Data directory for YAML files (default: ./tmp)
   - See `internal/configuration/server.go` for all options
 
+### Production Environment
+Production runs on GKE, deployed via GitOps (Argo CD) from a **sibling repo**: `../dot-ai-infra`.
+
+- **kubeconfig**: `../dot-ai-infra/kubeconfig.yaml` (git-ignored). Use it as
+  `KUBECONFIG=../dot-ai-infra/kubeconfig.yaml kubectl ...`. It uses the GKE
+  `gke-gcloud-auth-plugin`, so if tokens are stale the user must run `gcloud auth login`.
+- **Argo CD Application + manifests**: `../dot-ai-infra/apps-youtube/youtube-automation.yaml`
+  — this is the source of truth for production Helm values, `ExternalSecret` mappings
+  (GCP Secret Manager), Gateway API `HTTPRoute`, certificates, and the VPA.
+- **Namespace**: `youtube-automation`
+- **Public URL**: `https://youtube.devopstoolkit.ai`
+- **Chart source**: Argo syncs `helm/youtube-automation` from this repo at `targetRevision: HEAD`
+  (main). CI bumps the chart version on merge (`chore: update Helm chart to X [skip ci]`).
+- **Before diagnosing production, run `git fetch` and compare against `origin/main`.** The
+  local checkout is often many commits behind what is deployed. Check the running version
+  with
+  `KUBECONFIG=../dot-ai-infra/kubeconfig.yaml kubectl get pod -n youtube-automation -o jsonpath='{.items[0].spec.containers[0].image}'`
+  and reason about the code at that tag, not the local worktree. PRD files in `prds/` are
+  especially misleading when stale — a PRD marked "Not Started" locally may be fully
+  implemented and live.
+- **Useful diagnostics**: pod logs (`kubectl logs -n youtube-automation deploy/youtube-automation`)
+  carry structured `slog` output for the in-app schedulers. API keys for read-only YouTube
+  API checks are in the `youtube-automation-secrets` secret.
+
+### In-App AMA Scheduler
+Automated AMA processing (PRD #386) runs as a cron goroutine **inside the server process**,
+not as a K8s CronJob. Code lives in `internal/scheduler/` (`scheduler.go`, `ama_job.go`,
+`ama_notifier.go`) with playlist support in `internal/publishing/youtube_playlist.go`.
+
+- **Discovery is playlist-driven**: the job lists the configured AMA playlist, sorts by
+  `contentDetails.videoPublishedAt` descending, and only ever considers `videos[0]`. A
+  stream that is not in the playlist is invisible to the scheduler.
+- **Idempotency marker**: it skips when the video description already contains
+  `publishing.TimecodesHeader` (`▬▬▬▬▬▬ ⏱ Timecodes ⏱ ▬▬▬▬▬▬`).
+- **Outcomes**: `skipped` (marker present — **sends no notification**), `processed`,
+  `failed`, `scheduler-error`. Because `skipped` is silent, a stale-playlist condition
+  produces no alert and looks like success in the logs.
+
+### Hugo Integration Details
+
 ### Hugo Integration Details
 The system generates Hugo blog posts with deterministic URL construction:
 - **URL Pattern**: `https://devopstoolkit.live/{category}/{sanitized-title}`
