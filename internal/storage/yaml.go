@@ -82,39 +82,35 @@ type Video struct {
 	OtherLogos            string         `json:"otherLogos" completion:"filled_only"`
 	Screenshots           bool           `json:"screenshots" completion:"true_only"`
 	// DEPRECATED: This field is for backward compatibility. Use ThumbnailVariants instead.
-	Thumbnail            string             `json:"thumbnail" completion:"filled_only"` // DEPRECATED: fallback for old videos
-	ThumbnailVariants    []ThumbnailVariant `yaml:"thumbnailVariants,omitempty" json:"thumbnailVariants,omitempty" completion:"filled_only"`
-	Language             string             `json:"language" completion:"filled_only"`
-	Members              string             `json:"members" completion:"filled_only"`
-	Animations           string             `json:"animations" completion:"filled_only"`
-	RequestEdit          bool               `json:"requestEdit" completion:"true_only"`
-	VideoFile            string             `yaml:"videoFile,omitempty" json:"videoFile,omitempty" completion:"filled_only" ui:"label"`
-	VideoDriveFileID     string             `yaml:"videoDriveFileId,omitempty" json:"videoDriveFileId,omitempty" ui:"auto"`
-	Timecodes            string             `json:"timecodes" completion:"no_fixme"`
-	HugoPath             string             `json:"hugoPath" completion:"filled_only"`
-	RelatedVideos        string             `json:"relatedVideos" completion:"filled_only"`
-	UploadVideo          string             `json:"uploadVideo" completion:"filled_only" ui:"auto"`
-	VideoId              string             `json:"videoId" completion:"filled_only"`
-	Tweet                string             `json:"tweet" completion:"filled_only"`
-	LinkedInPosted       bool               `json:"linkedInPosted" completion:"true_only"`
-	SlackPosted          bool               `json:"slackPosted" completion:"true_only"`
-	HNPosted             bool               `json:"hnPosted" completion:"true_only"`
-	DOTPosted            bool               `json:"dotPosted" completion:"true_only"`
-	BlueSkyPosted        bool               `json:"blueSkyPosted" completion:"true_only"`
-	YouTubeHighlight     bool               `json:"youTubeHighlight" completion:"true_only"`
-	YouTubeComment       bool               `json:"youTubeComment" completion:"conditional_sponsors"`
-	YouTubeCommentReply  bool               `json:"youTubeCommentReply" completion:"true_only"`
-	Slides               bool               `json:"slides" completion:"true_only"`
-	GDE                  bool               `json:"gde" completion:"true_only"`
-	Repo                 string             `json:"repo" completion:"filled_only"`
-	NotifiedSponsors     bool               `json:"notifiedSponsors" completion:"conditional_sponsors"`
-	AppliedLanguage      string             `yaml:"appliedLanguage,omitempty" json:"appliedLanguage,omitempty" completion:"filled_only"`
-	AppliedAudioLanguage string             `yaml:"appliedAudioLanguage,omitempty" json:"appliedAudioLanguage,omitempty" completion:"filled_only"`
-	AudioLanguage        string             `yaml:"audioLanguage,omitempty" json:"audioLanguage,omitempty" completion:"filled_only"`
-	Gist                 string             `yaml:"gist,omitempty" json:"gist,omitempty" completion:"filled_only" ui:"label"`
-	Code                 bool               `yaml:"code,omitempty" json:"code,omitempty" completion:"true_only"`
-	Shorts               []Short            `yaml:"shorts,omitempty" json:"shorts,omitempty" completion:"filled_only"` // YouTube Shorts extracted from this video
-	AdContent            string             `json:"-" yaml:"-"`                                                        // Transient: ad file content resolved at runtime
+	Thumbnail           string             `json:"thumbnail" completion:"filled_only"` // DEPRECATED: fallback for old videos
+	ThumbnailVariants   []ThumbnailVariant `yaml:"thumbnailVariants,omitempty" json:"thumbnailVariants,omitempty" completion:"filled_only"`
+	Members             string             `json:"members" completion:"filled_only"`
+	Animations          string             `json:"animations" completion:"filled_only"`
+	RequestEdit         bool               `json:"requestEdit" completion:"true_only"`
+	VideoFile           string             `yaml:"videoFile,omitempty" json:"videoFile,omitempty" completion:"filled_only" ui:"label"`
+	VideoDriveFileID    string             `yaml:"videoDriveFileId,omitempty" json:"videoDriveFileId,omitempty" ui:"auto"`
+	Timecodes           string             `json:"timecodes" completion:"no_fixme"`
+	HugoPath            string             `json:"hugoPath" completion:"filled_only"`
+	RelatedVideos       string             `json:"relatedVideos" completion:"filled_only"`
+	UploadVideo         string             `json:"uploadVideo" completion:"filled_only" ui:"auto"`
+	VideoId             string             `json:"videoId" completion:"filled_only"`
+	Tweet               string             `json:"tweet" completion:"filled_only"`
+	LinkedInPosted      bool               `json:"linkedInPosted" completion:"true_only"`
+	SlackPosted         bool               `json:"slackPosted" completion:"true_only"`
+	HNPosted            bool               `json:"hnPosted" completion:"true_only"`
+	DOTPosted           bool               `json:"dotPosted" completion:"true_only"`
+	BlueSkyPosted       bool               `json:"blueSkyPosted" completion:"true_only"`
+	YouTubeHighlight    bool               `json:"youTubeHighlight" completion:"true_only"`
+	YouTubeComment      bool               `json:"youTubeComment" completion:"conditional_sponsors"`
+	YouTubeCommentReply bool               `json:"youTubeCommentReply" completion:"true_only"`
+	Slides              bool               `json:"slides" completion:"true_only"`
+	GDE                 bool               `json:"gde" completion:"true_only"`
+	Repo                string             `json:"repo" completion:"filled_only"`
+	NotifiedSponsors    bool               `json:"notifiedSponsors" completion:"conditional_sponsors"`
+	Gist                string             `yaml:"gist,omitempty" json:"gist,omitempty" completion:"filled_only" ui:"label"`
+	Code                bool               `yaml:"code,omitempty" json:"code,omitempty" completion:"true_only"`
+	Shorts              []Short            `yaml:"shorts,omitempty" json:"shorts,omitempty" completion:"filled_only"` // YouTube Shorts extracted from this video
+	AdContent           string             `json:"-" yaml:"-"`                                                        // Transient: ad file content resolved at runtime
 }
 
 // Sponsorship holds details about video sponsorship.

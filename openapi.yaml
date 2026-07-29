@@ -647,35 +647,6 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
-  /api/ai/translate:
-    post:
-      summary: Translate video metadata
-      description: Uses AI to translate title, description, tags, timecodes, and short titles to a target language.
-      operationId: aiTranslate
-      tags:
-        - AI
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/AITranslateRequest"
-      responses:
-        "200":
-          description: Translated metadata
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/AITranslateResponse"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "500":
-          $ref: "#/components/responses/InternalError"
-
   /api/ai/ama/content:
     post:
       summary: Generate all AMA content
@@ -1542,36 +1513,6 @@ components:
           type: string
         bold:
           type: string
-
-    AITranslateRequest:
-      type: object
-      required:
-        - category
-        - name
-        - targetLanguage
-      properties:
-        category:
-          type: string
-        name:
-          type: string
-        targetLanguage:
-          type: string
-
-    AITranslateResponse:
-      type: object
-      properties:
-        title:
-          type: string
-        description:
-          type: string
-        tags:
-          type: string
-        timecodes:
-          type: string
-        shortTitles:
-          type: array
-          items:
-            type: string
 
     AIAMARequest:
       type: object

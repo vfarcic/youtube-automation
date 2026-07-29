@@ -147,7 +147,6 @@ func (s *Server) setupRoutes() {
 			r.Post("/shorts/{category}/{name}", s.handleAIShorts)
 			r.Post("/tagline-and-illustrations/{category}/{name}", s.handleAITaglineAndIllustrations)
 			r.Post("/thumbnails", s.handleAIThumbnails)
-			r.Post("/translate", s.handleAITranslate)
 			r.Post("/ama/content", s.handleAIAMAContent)
 			r.Post("/ama/title", s.handleAIAMATitle)
 			r.Post("/ama/description", s.handleAIAMADescription)

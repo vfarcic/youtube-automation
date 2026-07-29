@@ -87,7 +87,6 @@ export interface VideoResponse {
   illustration: string;
   photoRealisticSubject: string;
   otherLogos: string;
-  language: string;
   timecodes: string;
   relatedVideos: string;
   hugoPath: string;
@@ -99,9 +98,6 @@ export interface VideoResponse {
   videoFile?: string;
   videoDriveFileId?: string;
   tweet: string;
-  appliedLanguage: string;
-  appliedAudioLanguage: string;
-  audioLanguage: string;
   sponsorship: Sponsorship;
   notifiedSponsors: boolean;
   videoId: string;
@@ -272,14 +268,6 @@ export interface ThumbnailSelectResponse {
   driveFileId: string;
   variantIndex: number;
   syncWarning?: string;
-}
-
-export interface AITranslateResponse {
-  title: string;
-  description: string;
-  tags: string;
-  timecodes: string;
-  shortTitles?: string[];
 }
 
 export interface AIAMAContentResponse {

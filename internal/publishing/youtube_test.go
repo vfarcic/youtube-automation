@@ -1,7 +1,6 @@
 package publishing
 
 import (
-	"devopstoolkit/youtube-automation/internal/configuration"
 	"devopstoolkit/youtube-automation/internal/storage"
 	"fmt"
 	"os"
@@ -41,17 +40,6 @@ func (m *mockYouTubeService) uploadVideo(video *storage.Video) (string, error) {
 		return "", fmt.Errorf("rate limited")
 	}
 
-	// Determine languages based on input video and global defaults
-	finalDefaultLanguage := video.Language
-	if finalDefaultLanguage == "" {
-		finalDefaultLanguage = configuration.GlobalSettings.VideoDefaults.Language // Guaranteed non-empty by cli.go
-	}
-
-	finalDefaultAudioLanguage := video.AudioLanguage
-	if finalDefaultAudioLanguage == "" {
-		finalDefaultAudioLanguage = configuration.GlobalSettings.VideoDefaults.AudioLanguage // Guaranteed non-empty by cli.go
-	}
-
 	// Record the upload request using fields from the video struct
 	m.uploads = append(m.uploads, &uploadRequest{
 		title:         video.GetUploadTitle(),
@@ -73,15 +61,9 @@ func (m *mockYouTubeService) uploadVideo(video *storage.Video) (string, error) {
 			Description:          video.Description,
 			Tags:                 strings.Split(video.Tags, ","),
 			CategoryId:           "28",
-			DefaultLanguage:      finalDefaultLanguage,
-			DefaultAudioLanguage: finalDefaultAudioLanguage,
+			DefaultLanguage:      videoLanguage,
+			DefaultAudioLanguage: videoLanguage,
 		},
-	}
-
-	// The actual function also sets AppliedLanguage and AppliedAudioLanguage on the input video pointer.
-	if video != nil {
-		video.AppliedLanguage = finalDefaultLanguage
-		video.AppliedAudioLanguage = finalDefaultAudioLanguage
 	}
 
 	return videoId, nil
@@ -340,24 +322,18 @@ func TestUploadVideo(t *testing.T) {
 	defer os.Remove(thumbFile.Name())
 	thumbnailPath := thumbFile.Name()
 
-	// Mock configuration
-	configuration.GlobalSettings.VideoDefaults.Language = "en"
-	configuration.GlobalSettings.VideoDefaults.AudioLanguage = "en" // Set default for tests
-
 	mockService := &mockYouTubeService{
 		videos:  make(map[string]*youtube.Video),
 		uploads: []*uploadRequest{},
 	}
 
-	// Test case 1: Successful upload
+	// Test case 1: Successful upload always declares English
 	video1 := &storage.Video{
-		Titles:        []storage.TitleVariant{{Index: 1, Text: "Test Video 1"}},
-		Description:   "Description for video 1",
-		Tags:          "tag1,tag2",
-		UploadVideo:   videoPath,
-		Thumbnail:     thumbnailPath,
-		Language:      "fr", // Specific language for this video
-		AudioLanguage: "de", // Specific audio language
+		Titles:      []storage.TitleVariant{{Index: 1, Text: "Test Video 1"}},
+		Description: "Description for video 1",
+		Tags:        "tag1,tag2",
+		UploadVideo: videoPath,
+		Thumbnail:   thumbnailPath,
 	}
 	videoID1, err1 := mockService.uploadVideo(video1)
 	if err1 != nil {
@@ -366,140 +342,56 @@ func TestUploadVideo(t *testing.T) {
 	if videoID1 == "" {
 		t.Errorf("Expected video ID, got empty string")
 	}
-	if video1.AppliedLanguage != "fr" {
-		t.Errorf("Expected AppliedLanguage to be 'fr', got '%s'", video1.AppliedLanguage)
+	if mockService.videos[videoID1].Snippet.DefaultLanguage != "en" {
+		t.Errorf("Expected snippet DefaultLanguage to be 'en', got '%s'", mockService.videos[videoID1].Snippet.DefaultLanguage)
 	}
-	if video1.AppliedAudioLanguage != "de" {
-		t.Errorf("Expected AppliedAudioLanguage to be 'de', got '%s'", video1.AppliedAudioLanguage)
-	}
-	if mockService.videos[videoID1].Snippet.DefaultLanguage != "fr" {
-		t.Errorf("Expected snippet DefaultLanguage to be 'fr', got '%s'", mockService.videos[videoID1].Snippet.DefaultLanguage)
-	}
-	if mockService.videos[videoID1].Snippet.DefaultAudioLanguage != "de" {
-		t.Errorf("Expected snippet DefaultAudioLanguage to be 'de', got '%s'", mockService.videos[videoID1].Snippet.DefaultAudioLanguage)
+	if mockService.videos[videoID1].Snippet.DefaultAudioLanguage != "en" {
+		t.Errorf("Expected snippet DefaultAudioLanguage to be 'en', got '%s'", mockService.videos[videoID1].Snippet.DefaultAudioLanguage)
 	}
 	if len(mockService.uploads) != 1 || mockService.uploads[0].title != "Test Video 1" {
 		t.Errorf("Upload request not recorded correctly")
 	}
 
-	// Test case 2: Upload with default language
-	video2 := &storage.Video{
-		Titles:        []storage.TitleVariant{{Index: 1, Text: "Test Video 2 Default Lang"}},
-		Description:   "Description for video 2",
-		Tags:          "tag3,tag4",
-		UploadVideo:   videoPath,
-		Thumbnail:     thumbnailPath,
-		Language:      "", // Should use default
-		AudioLanguage: "", // Should use default
-	}
-	videoID2, err2 := mockService.uploadVideo(video2)
-	if err2 != nil {
-		t.Fatalf("Unexpected error: %v", err2)
-	}
-	if videoID2 == "" {
-		t.Errorf("Expected video ID for video 2, got empty string")
-	}
-	if video2.AppliedLanguage != "en" {
-		t.Errorf("Expected AppliedLanguage to be 'en' (default), got '%s'", video2.AppliedLanguage)
-	}
-	if video2.AppliedAudioLanguage != "en" {
-		t.Errorf("Expected AppliedAudioLanguage to be 'en' (default), got '%s'", video2.AppliedAudioLanguage)
-	}
-	if mockService.videos[videoID2].Snippet.DefaultLanguage != "en" {
-		t.Errorf("Expected snippet DefaultLanguage to be 'en', got '%s'", mockService.videos[videoID2].Snippet.DefaultLanguage)
-	}
-	if mockService.videos[videoID2].Snippet.DefaultAudioLanguage != "en" {
-		t.Errorf("Expected snippet DefaultAudioLanguage to be 'en', got '%s'", mockService.videos[videoID2].Snippet.DefaultAudioLanguage)
-	}
-
-	// Test case 3: Upload with specific language, audio language falls back to global default
-	video3 := &storage.Video{
-		Titles:        []storage.TitleVariant{{Index: 1, Text: "Test Video 3 Specific Lang, Audio Fallback"}},
-		Description:   "Description for video 3",
-		Tags:          "tag5,tag6",
-		UploadVideo:   videoPath,
-		Thumbnail:     thumbnailPath,
-		Language:      "es",
-		AudioLanguage: "", // Falls back to global default 'en'
-	}
-	videoID3, err3 := mockService.uploadVideo(video3)
-	if err3 != nil {
-		t.Fatalf("Unexpected error: %v", err3)
-	}
-	if videoID3 == "" {
-		t.Errorf("Expected video ID for video 3, got empty string")
-	}
-	if video3.AppliedLanguage != "es" {
-		t.Errorf("Expected AppliedLanguage to be 'es', got '%s'", video3.AppliedLanguage)
-	}
-	if video3.AppliedAudioLanguage != "en" {
-		t.Errorf("Expected AppliedAudioLanguage to be 'en' (global default), got '%s'", video3.AppliedAudioLanguage)
-	}
-	if mockService.videos[videoID3].Snippet.DefaultLanguage != "es" {
-		t.Errorf("Expected snippet DefaultLanguage to be 'es', got '%s'", mockService.videos[videoID3].Snippet.DefaultLanguage)
-	}
-	if mockService.videos[videoID3].Snippet.DefaultAudioLanguage != "en" {
-		t.Errorf("Expected snippet DefaultAudioLanguage to be 'en' (global default), got '%s'", mockService.videos[videoID3].Snippet.DefaultAudioLanguage)
-	}
-
-	// Test case 4: Upload failure (renumbered from 3)
+	// Test case 2: Upload failure
 	mockService.shouldFail = true
 	mockService.uploadError = fmt.Errorf("simulated upload error")
-	video4 := &storage.Video{
-		Titles:      []storage.TitleVariant{{Index: 1, Text: "Test Video 4 Fail"}},
+	video2 := &storage.Video{
+		Titles:      []storage.TitleVariant{{Index: 1, Text: "Test Video 2 Fail"}},
 		Description: "This upload should fail",
 		Tags:        "fail,test",
 		UploadVideo: videoPath,
 		Thumbnail:   thumbnailPath,
 	}
-	videoID4, err4 := mockService.uploadVideo(video4)
-	if err4 == nil {
+	videoID2, err2 := mockService.uploadVideo(video2)
+	if err2 == nil {
 		t.Errorf("Expected error on failure, got nil")
 	}
-	if videoID4 != "" {
-		t.Errorf("Expected empty video ID on failure, got '%s'", videoID4)
+	if videoID2 != "" {
+		t.Errorf("Expected empty video ID on failure, got '%s'", videoID2)
 	}
 	mockService.shouldFail = false // Reset failure flag
 
-	// Test case 5: Rate limit (renumbered from 4)
+	// Test case 3: Rate limit
 	mockService.rateLimited = true
-	video5 := &storage.Video{
-		Titles:      []storage.TitleVariant{{Index: 1, Text: "Test Video 5 Rate Limit"}},
+	video3 := &storage.Video{
+		Titles:      []storage.TitleVariant{{Index: 1, Text: "Test Video 3 Rate Limit"}},
 		Description: "This upload should be rate limited",
 		Tags:        "rate,limit,test",
 		UploadVideo: videoPath,
 		Thumbnail:   thumbnailPath,
 	}
-	videoID5, err5 := mockService.uploadVideo(video5)
-	if err5 == nil {
+	videoID3, err3 := mockService.uploadVideo(video3)
+	if err3 == nil {
 		t.Errorf("Expected error on rate limit, got nil")
 	}
-	if videoID5 != "" {
-		t.Errorf("Expected empty video ID on rate limit, got '%s'", videoID5)
+	if videoID3 != "" {
+		t.Errorf("Expected empty video ID on rate limit, got '%s'", videoID3)
 	}
 	mockService.rateLimited = false // Reset rate limit flag
-
-	// Verify that the actual `UploadVideo` function (not the mock) can be called
-	// This is a basic check to ensure the signature change didn't break direct calls,
-	// though it relies on external setup (client_secret.json, etc.)
-	// We'll make it a very simple call that's expected to fail without full auth,
-	// but the point is to check the compile-time call, not runtime success.
-	// 실제 UploadVideo 함수를 직접 호출하려면 client_secret.json 파일 등이 필요하므로,
-	// 여기서는 직접 호출하는 대신, 시그니처가 맞는지 확인하기 위한 플레이스홀더로 남겨둡니다.
-	// To truly test the real UploadVideo, you'd need a more complex setup
-	// or an integration test environment. For unit tests, mocking is preferred.
-	// storageVideo := &storage.Video{
-	// 	UploadVideo: "nonexistent.mp4", // Intentionally non-existent
-	// 	Thumbnail:   "nonexistent.jpg",
-	// 	Title:       "Direct Call Test (Expect Fail)",
-	// 	Description: "Test",
-	// 	Tags:        "test",
-	// 	Language:    "es",
-	// }
-	// _ = UploadVideo(storageVideo) // We don't check the result here, just that it compiles
 }
 
 // mockVideoUpdateDoer is a mock for the videoUpdateDoer interface.
+// Shared with youtube_update_test.go.
 type mockVideoUpdateDoer struct {
 	VideoPassedToDo *youtube.Video // If Do needs to inspect/modify the video it's called with
 	ShouldFail      bool
@@ -515,141 +407,6 @@ func (m *mockVideoUpdateDoer) Do(opts ...googleapi.CallOption) (*youtube.Video, 
 		return nil, m.ResponseError
 	}
 	return m.VideoPassedToDo, nil
-}
-
-// mockVideoServiceUpdater is a mock for the videoServiceUpdater interface.
-type mockVideoServiceUpdater struct {
-	CapturedPart   []string
-	CapturedVideo  *youtube.Video
-	ReturnDoer     videoUpdateDoer // The doer that this updater's Update method will return
-	NumUpdateCalls int
-}
-
-func (m *mockVideoServiceUpdater) Update(part []string, video *youtube.Video) videoUpdateDoer {
-	m.NumUpdateCalls++
-	m.CapturedPart = part
-	m.CapturedVideo = video
-	if m.ReturnDoer == nil {
-		return &mockVideoUpdateDoer{}
-	}
-	return m.ReturnDoer
-}
-
-// TestUpdateVideoLanguage tests the updateVideoLanguage function
-func TestUpdateVideoLanguage(t *testing.T) {
-	// Mock configuration for fallback defaults
-	configuration.GlobalSettings.VideoDefaults.Language = "en"
-	configuration.GlobalSettings.VideoDefaults.AudioLanguage = "en"
-
-	tests := []struct {
-		name                     string
-		videoID                  string
-		inputLangCode            string
-		inputAudioLangCode       string
-		expectedLangInSnippet    string
-		expectedAudioLangSnippet string
-		configDefaultLang        string // To test overriding global defaults
-		configDefaultAudioLang   string // To test overriding global defaults
-		updateShouldFail         bool
-		expectError              bool
-	}{
-		{
-			name: "specific lang and audio lang", videoID: "id1",
-			inputLangCode: "fr", inputAudioLangCode: "de",
-			expectedLangInSnippet: "fr", expectedAudioLangSnippet: "de",
-		},
-		{
-			name: "empty lang, specific audio lang", videoID: "id2",
-			inputLangCode: "", inputAudioLangCode: "es",
-			expectedLangInSnippet: "en", expectedAudioLangSnippet: "es", // lang falls back to global default
-		},
-		{
-			name: "specific lang, empty audio lang", videoID: "id3",
-			inputLangCode: "jp", inputAudioLangCode: "",
-			expectedLangInSnippet: "jp", expectedAudioLangSnippet: "en", // audio falls back to global default
-		},
-		{
-			name: "both empty, fallback to global defaults", videoID: "id4",
-			inputLangCode: "", inputAudioLangCode: "",
-			expectedLangInSnippet: "en", expectedAudioLangSnippet: "en",
-		},
-		{
-			name: "both empty, specific global defaults", videoID: "id5",
-			inputLangCode: "", inputAudioLangCode: "",
-			configDefaultLang: "pt", configDefaultAudioLang: "br",
-			expectedLangInSnippet: "pt", expectedAudioLangSnippet: "br",
-		},
-		{
-			name: "empty audio lang, specific global audio default", videoID: "id6",
-			inputLangCode: "it", inputAudioLangCode: "",
-			configDefaultLang: "xx", configDefaultAudioLang: "yy", // global audio default 'yy' should be used
-			expectedLangInSnippet: "it", expectedAudioLangSnippet: "yy",
-		},
-		{
-			name: "API update fails", videoID: "id7",
-			inputLangCode: "fr", inputAudioLangCode: "de",
-			expectedLangInSnippet: "fr", expectedAudioLangSnippet: "de",
-			updateShouldFail: true, expectError: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Store and restore original global config
-			originalLang := configuration.GlobalSettings.VideoDefaults.Language
-			originalAudioLang := configuration.GlobalSettings.VideoDefaults.AudioLanguage
-			defer func() {
-				configuration.GlobalSettings.VideoDefaults.Language = originalLang
-				configuration.GlobalSettings.VideoDefaults.AudioLanguage = originalAudioLang
-			}()
-
-			if tt.configDefaultLang != "" {
-				configuration.GlobalSettings.VideoDefaults.Language = tt.configDefaultLang
-			}
-			if tt.configDefaultAudioLang != "" {
-				configuration.GlobalSettings.VideoDefaults.AudioLanguage = tt.configDefaultAudioLang
-			}
-
-			mockDoer := &mockVideoUpdateDoer{
-				ShouldFail:    tt.updateShouldFail,
-				ResponseError: fmt.Errorf("simulated API error"),
-			}
-
-			mockUpdater := &mockVideoServiceUpdater{
-				ReturnDoer: mockDoer,
-			}
-
-			err := updateVideoLanguage(mockUpdater, tt.videoID, tt.inputLangCode, tt.inputAudioLangCode)
-
-			if tt.expectError {
-				if err == nil {
-					t.Errorf("Expected error, got nil")
-				}
-			} else {
-				if err != nil {
-					t.Errorf("Expected no error, got %v", err)
-				}
-				if mockUpdater.NumUpdateCalls != 1 {
-					t.Errorf("Expected Update to be called once, got %d times", mockUpdater.NumUpdateCalls)
-				}
-				if mockDoer.NumDoCalls != 1 {
-					t.Errorf("Expected Do to be called once, got %d times", mockDoer.NumDoCalls)
-				}
-				if mockUpdater.CapturedVideo == nil || mockUpdater.CapturedVideo.Snippet == nil {
-					t.Fatalf("Snippet was not captured by mock updater or is nil")
-				}
-				if mockUpdater.CapturedVideo.Id != tt.videoID {
-					t.Errorf("Expected video ID in captured video to be '%s', got '%s'", tt.videoID, mockUpdater.CapturedVideo.Id)
-				}
-				if mockUpdater.CapturedVideo.Snippet.DefaultLanguage != tt.expectedLangInSnippet {
-					t.Errorf("Expected DefaultLanguage in snippet to be '%s', got '%s'", tt.expectedLangInSnippet, mockUpdater.CapturedVideo.Snippet.DefaultLanguage)
-				}
-				if mockUpdater.CapturedVideo.Snippet.DefaultAudioLanguage != tt.expectedAudioLangSnippet {
-					t.Errorf("Expected DefaultAudioLanguage in snippet to be '%s', got '%s'", tt.expectedAudioLangSnippet, mockUpdater.CapturedVideo.Snippet.DefaultAudioLanguage)
-				}
-			}
-		})
-	}
 }
 
 // TODO: Add TestUploadThumbnail if not already present and relevant

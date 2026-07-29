@@ -80,23 +80,23 @@ describe('NumberInput', () => {
 describe('SelectInput', () => {
   it('renders options', () => {
     const options = [
-      { label: 'English', value: 'en' },
-      { label: 'Spanish', value: 'es' },
+      { label: 'Public', value: 'public' },
+      { label: 'Private', value: 'private' },
     ];
     render(
       <SelectInput
-        name="Language"
-        fieldName="language"
-        value="en"
+        name="Visibility"
+        fieldName="visibility"
+        value="public"
         onChange={() => {}}
         options={options}
         placeholder="Pick one"
       />,
     );
     const select = screen.getByRole('combobox');
-    expect(select).toHaveValue('en');
-    expect(screen.getByText('English')).toBeInTheDocument();
-    expect(screen.getByText('Spanish')).toBeInTheDocument();
+    expect(select).toHaveValue('public');
+    expect(screen.getByText('Public')).toBeInTheDocument();
+    expect(screen.getByText('Private')).toBeInTheDocument();
     expect(screen.getByText('Pick one')).toBeInTheDocument();
   });
 });

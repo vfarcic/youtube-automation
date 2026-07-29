@@ -12,7 +12,7 @@ This project automates various aspects of managing a YouTube channel. It provide
 * **Video Lifecycle Management**: Complete workflow from ideas to publishing and post-publish activities across 8 phases
 * **HTTP API**: RESTful API exposing all backend functionality (see [API documentation](#http-api))
 * **React Web UI**: Browser-based interface with dynamic form rendering from backend aspect metadata
-* **AI Content Generation**: AI-powered generation of titles, descriptions, tags, tweets, shorts, thumbnails, and translations
+* **AI Content Generation**: AI-powered generation of titles, descriptions, tags, tweets, shorts, and thumbnails
 * **Video Uploads**: Automated YouTube video and Short uploads
 * **Google Drive Integration**: Upload/download video files and thumbnails via Google Drive
 * **Thumbnail Management**: Thumbnail creation, upload, and variant tracking
@@ -92,7 +92,7 @@ The `/health` endpoint is always public. If `API_TOKEN` is empty, authentication
 | Categories | `GET /api/categories` | Available video categories |
 | Aspects | `GET /api/aspects[/overview]`, `GET /api/aspects/{key}/fields` | Form field metadata |
 | AI | `POST /api/ai/{type}/{category}/{name}` | AI content generation (titles, description, tags, tweets, shorts) |
-| AI (body) | `POST /api/ai/thumbnails`, `POST /api/ai/translate`, `POST /api/ai/ama/*` | Thumbnail analysis, translation, AMA content |
+| AI (body) | `POST /api/ai/thumbnails`, `POST /api/ai/ama/*` | Thumbnail analysis, AMA content |
 | Drive | `POST /api/drive/upload/{type}/{name}`, `GET /api/drive/download/video/{name}` | Google Drive file operations |
 | Actions | `POST /api/actions/request-edit/{name}` | Request edit with email notifications |
 | Publishing | `POST /api/publish/youtube/{name}[/thumbnail,/shorts/{id}]` | YouTube uploads |

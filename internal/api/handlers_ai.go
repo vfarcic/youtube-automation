@@ -61,14 +61,6 @@ type AIThumbnailsResponse struct {
 	Bold   string `json:"bold"`
 }
 
-type AITranslateResponse struct {
-	Title       string   `json:"title"`
-	Description string   `json:"description"`
-	Tags        string   `json:"tags"`
-	Timecodes   string   `json:"timecodes"`
-	ShortTitles []string `json:"shortTitles,omitempty"`
-}
-
 type AIAMAContentResponse struct {
 	Title       string `json:"title"`
 	Timecodes   string `json:"timecodes"`
@@ -100,12 +92,6 @@ type AIThumbnailsRequest struct {
 	Name        string `json:"name"`
 	ImagePath   string `json:"imagePath"`
 	DriveFileID string `json:"driveFileId"`
-}
-
-type AITranslateRequest struct {
-	Category       string `json:"category"`
-	Name           string `json:"name"`
-	TargetLanguage string `json:"targetLanguage"`
 }
 
 type AIAMARequest struct {
@@ -232,7 +218,7 @@ func (s *Server) handleAIShorts(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// --- Body-based handlers (6 endpoints) ---
+// --- Body-based handlers (5 endpoints) ---
 
 // handleAIThumbnails generates thumbnail variation prompts for an image.
 func (s *Server) handleAIThumbnails(w http.ResponseWriter, r *http.Request) {
@@ -258,61 +244,6 @@ func (s *Server) handleAIThumbnails(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	respondJSON(w, http.StatusOK, AIThumbnailsResponse{Subtle: prompts.Subtle, Bold: prompts.Bold})
-}
-
-// handleAITranslate translates video metadata to a target language.
-func (s *Server) handleAITranslate(w http.ResponseWriter, r *http.Request) {
-	var req AITranslateRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request body", "")
-		return
-	}
-	if req.Category == "" || req.Name == "" || req.TargetLanguage == "" {
-		respondError(w, http.StatusBadRequest, "category, name, and targetLanguage are required", "")
-		return
-	}
-	if strings.Contains(req.Category, "..") || strings.Contains(req.Category, "/") || strings.Contains(req.Category, "\\") ||
-		strings.Contains(req.Name, "..") || strings.Contains(req.Name, "/") || strings.Contains(req.Name, "\\") {
-		respondError(w, http.StatusBadRequest, "invalid category or name", "")
-		return
-	}
-	v, err := s.videoService.GetVideo(req.Name, req.Category)
-	if err != nil {
-		log.Printf("video not found for %s/%s: %v", req.Category, req.Name, err)
-		respondError(w, http.StatusNotFound, "video not found", "")
-		return
-	}
-	// Use the first title variant as the primary title
-	var title string
-	if len(v.Titles) > 0 {
-		title = v.Titles[0].Text
-	}
-	// Build short titles from the video's shorts
-	var shortTitles []string
-	for _, short := range v.Shorts {
-		if short.Title != "" {
-			shortTitles = append(shortTitles, short.Title)
-		}
-	}
-	input := ai.VideoMetadataInput{
-		Title:       title,
-		Description: v.Description,
-		Tags:        v.Tags,
-		Timecodes:   v.Timecodes,
-		ShortTitles: shortTitles,
-	}
-	output, err := s.aiService.TranslateVideoMetadata(r.Context(), input, req.TargetLanguage)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "AI generation failed", err.Error())
-		return
-	}
-	respondJSON(w, http.StatusOK, AITranslateResponse{
-		Title:       output.Title,
-		Description: output.Description,
-		Tags:        output.Tags,
-		Timecodes:   output.Timecodes,
-		ShortTitles: output.ShortTitles,
-	})
 }
 
 // handleAIAMAContent generates all AMA content from the manuscript.

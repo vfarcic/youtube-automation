@@ -237,7 +237,7 @@ func generateFieldMapping(structType reflect.Type, fieldPath string, order int) 
 	if fieldType == FieldTypeMap && field.Type.Kind() == reflect.Map {
 		valueType := field.Type.Elem()
 		mapping.ItemFields = generateItemFields(valueType)
-		mapping.MapKeyLabel = "Language Code"
+		mapping.MapKeyLabel = "Key"
 	}
 
 	return mapping

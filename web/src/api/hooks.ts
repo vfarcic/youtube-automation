@@ -16,7 +16,6 @@ import type {
   AIShortsResponse,
   AIThumbnailsResponse,
   AITaglineAndIllustrationsResponse,
-  AITranslateResponse,
   AIAMAContentResponse,
   ActionResponse,
   PublishYouTubeResponse,
@@ -197,12 +196,6 @@ export function useAIShorts() {
 export function useAIThumbnails() {
   return useMutation<AIThumbnailsResponse, Error, { imagePath: string }>({
     mutationFn: (body) => post<AIThumbnailsResponse>('/api/ai/thumbnails', body),
-  });
-}
-
-export function useAITranslate() {
-  return useMutation<AITranslateResponse, Error, { category: string; name: string; targetLanguage: string }>({
-    mutationFn: (body) => post<AITranslateResponse>('/api/ai/translate', body),
   });
 }
 

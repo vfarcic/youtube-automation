@@ -15,7 +15,6 @@ type AIService interface {
 	SuggestDescriptionTags(ctx context.Context, manuscript string) (string, error)
 	AnalyzeShorts(ctx context.Context, manuscript string) ([]ai.ShortCandidate, error)
 	GenerateThumbnailVariations(ctx context.Context, imagePath string) (ai.VariationPrompts, error)
-	TranslateVideoMetadata(ctx context.Context, input ai.VideoMetadataInput, targetLanguage string) (*ai.VideoMetadataOutput, error)
 	GenerateAMAContent(ctx context.Context, transcript string) (*ai.AMAContent, error)
 	GenerateAMATitle(ctx context.Context, transcript string) (string, error)
 	GenerateAMADescription(ctx context.Context, transcript string) (string, error)
@@ -53,10 +52,6 @@ func (d *DefaultAIService) AnalyzeShorts(ctx context.Context, manuscript string)
 
 func (d *DefaultAIService) GenerateThumbnailVariations(ctx context.Context, imagePath string) (ai.VariationPrompts, error) {
 	return ai.GenerateThumbnailVariations(ctx, imagePath)
-}
-
-func (d *DefaultAIService) TranslateVideoMetadata(ctx context.Context, input ai.VideoMetadataInput, targetLanguage string) (*ai.VideoMetadataOutput, error) {
-	return ai.TranslateVideoMetadata(ctx, input, targetLanguage)
 }
 
 func (d *DefaultAIService) GenerateAMAContent(ctx context.Context, transcript string) (*ai.AMAContent, error) {

@@ -24,7 +24,6 @@ otherlogos: logo1, logo2
 screenshots: true
 requestthumbnail: true
 thumbnail: thumbnail.png
-language: ""
 members: member1, member2, member3
 animations: |-
     - Logo: okteto.png, gitpod.png

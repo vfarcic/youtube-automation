@@ -70,7 +70,6 @@ type Settings struct {
 	YouTube             SettingsYouTube             `yaml:"youtube"`
 	Hugo                SettingsHugo                `yaml:"hugo"`
 	Bluesky             SettingsBluesky             `yaml:"bluesky"`
-	VideoDefaults       SettingsVideoDefaults       `yaml:"videoDefaults"`
 	Slack               SettingsSlack               `yaml:"slack"`
 	Timing              TimingConfig                `yaml:"timing"`
 	Calendar            SettingsCalendar            `yaml:"calendar"`
@@ -192,11 +191,6 @@ type SettingsBluesky struct {
 	URL        string `yaml:"url"`
 }
 
-type SettingsVideoDefaults struct {
-	Language      string `yaml:"language"`
-	AudioLanguage string `yaml:"audioLanguage"`
-}
-
 type SettingsSlack struct {
 	TargetChannelIDs []string `yaml:"targetChannelIDs"`
 }
@@ -245,14 +239,6 @@ func InitGlobalSettings() error {
 	// Default Bluesky URL if not set by file
 	if GlobalSettings.Bluesky.URL == "" {
 		GlobalSettings.Bluesky.URL = "https://bsky.social/xrpc"
-	}
-
-	// Default video language if not set by file
-	if GlobalSettings.VideoDefaults.Language == "" {
-		GlobalSettings.VideoDefaults.Language = "en"
-	}
-	if GlobalSettings.VideoDefaults.AudioLanguage == "" {
-		GlobalSettings.VideoDefaults.AudioLanguage = "en"
 	}
 
 	// Default Shorts settings

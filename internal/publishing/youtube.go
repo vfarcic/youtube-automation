@@ -3,13 +3,11 @@ package publishing
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"strings"
 
 	"devopstoolkit/youtube-automation/internal/auth"
-	"devopstoolkit/youtube-automation/internal/configuration"
 	"devopstoolkit/youtube-automation/internal/storage"
 
 	"google.golang.org/api/googleapi"
@@ -18,6 +16,9 @@ import (
 )
 
 const channelID = "UCfz8x0lVzJpb_dgWm9kPVrw"
+
+// videoLanguage is the language declared on every upload. All content is English-only.
+const videoLanguage = "en"
 
 // OAuthConfig holds OAuth configuration for a YouTube channel
 type OAuthConfig struct {
@@ -149,19 +150,8 @@ If you are interested in sponsoring this channel, please visit https://devopstoo
 		upload.Snippet.Tags = sanitizeYouTubeTags(video.Tags)
 	}
 
-	// Determine languages to set
-	finalDefaultLanguage := video.Language
-	if finalDefaultLanguage == "" {
-		finalDefaultLanguage = configuration.GlobalSettings.VideoDefaults.Language // Guaranteed non-empty by cli.go
-	}
-
-	finalDefaultAudioLanguage := video.AudioLanguage
-	if finalDefaultAudioLanguage == "" {
-		finalDefaultAudioLanguage = configuration.GlobalSettings.VideoDefaults.AudioLanguage // Guaranteed non-empty by cli.go
-	}
-
-	upload.Snippet.DefaultLanguage = finalDefaultLanguage
-	upload.Snippet.DefaultAudioLanguage = finalDefaultAudioLanguage
+	upload.Snippet.DefaultLanguage = videoLanguage
+	upload.Snippet.DefaultAudioLanguage = videoLanguage
 
 	call := service.Videos.Insert([]string{"snippet", "status"}, upload)
 	file, err := os.Open(video.UploadVideo)
@@ -175,11 +165,6 @@ If you are interested in sponsoring this channel, please visit https://devopstoo
 		return "", fmt.Errorf("error uploading video to YouTube: %w", err)
 	}
 	fmt.Printf("Upload successful! Video ID: %v\n", response.Id)
-
-	// Save the applied languages back to the video struct
-	video.AppliedLanguage = finalDefaultLanguage
-	video.AppliedAudioLanguage = finalDefaultAudioLanguage
-	log.Printf("DEBUG: Language %s and Audio Language %s stored in video struct for video ID %s", video.AppliedLanguage, video.AppliedAudioLanguage, response.Id)
 
 	return response.Id, nil
 }
@@ -308,36 +293,6 @@ type videoUpdateDoer interface {
 	Do(opts ...googleapi.CallOption) (*youtube.Video, error)
 }
 
-// videoServiceUpdater defines an interface for the Update() method of a video service.
-type videoServiceUpdater interface {
-	Update(part []string, video *youtube.Video) videoUpdateDoer
-}
-
-func updateVideoLanguage(updater videoServiceUpdater, videoID string, languageCode string, audioLanguageCode string) error {
-	// Determine final language codes with fallbacks
-	finalLangCode := languageCode
-	if finalLangCode == "" {
-		finalLangCode = configuration.GlobalSettings.VideoDefaults.Language // Guaranteed non-empty by cli.go
-	}
-
-	finalAudioLangCode := audioLanguageCode
-	if finalAudioLangCode == "" {
-		finalAudioLangCode = configuration.GlobalSettings.VideoDefaults.AudioLanguage // Guaranteed non-empty by cli.go
-	}
-
-	updateVideo := &youtube.Video{
-		Id: videoID,
-		Snippet: &youtube.VideoSnippet{
-			DefaultLanguage:      finalLangCode,
-			DefaultAudioLanguage: finalAudioLangCode,
-		},
-	}
-
-	updateCall := updater.Update([]string{"snippet"}, updateVideo)
-	_, err := updateCall.Do()
-	return err
-}
-
 // UploadShort uploads a YouTube Short with scheduled publishing.
 // The short's description includes a link back to the main video.
 //
@@ -391,15 +346,8 @@ func UploadShort(filePath string, short storage.Short, mainVideoID string) (stri
 		},
 	}
 
-	// Set default language
-	defaultLanguage := configuration.GlobalSettings.VideoDefaults.Language
-	if defaultLanguage != "" {
-		upload.Snippet.DefaultLanguage = defaultLanguage
-	}
-	defaultAudioLanguage := configuration.GlobalSettings.VideoDefaults.AudioLanguage
-	if defaultAudioLanguage != "" {
-		upload.Snippet.DefaultAudioLanguage = defaultAudioLanguage
-	}
+	upload.Snippet.DefaultLanguage = videoLanguage
+	upload.Snippet.DefaultAudioLanguage = videoLanguage
 
 	call := service.Videos.Insert([]string{"snippet", "status"}, upload)
 	file, err := os.Open(filePath)

@@ -24,7 +24,6 @@ type mockAIService struct {
 	descriptionTags         string
 	shorts                  []ai.ShortCandidate
 	thumbnails              ai.VariationPrompts
-	translate               *ai.VideoMetadataOutput
 	amaContent              *ai.AMAContent
 	amaTitle                string
 	amaDescription          string
@@ -58,9 +57,6 @@ func (m *mockAIService) AnalyzeShorts(ctx context.Context, manuscript string) ([
 }
 func (m *mockAIService) GenerateThumbnailVariations(ctx context.Context, imagePath string) (ai.VariationPrompts, error) {
 	return m.thumbnails, m.err
-}
-func (m *mockAIService) TranslateVideoMetadata(ctx context.Context, input ai.VideoMetadataInput, targetLanguage string) (*ai.VideoMetadataOutput, error) {
-	return m.translate, m.err
 }
 func (m *mockAIService) GenerateAMAContent(ctx context.Context, transcript string) (*ai.AMAContent, error) {
 	return m.amaContent, m.err
@@ -644,78 +640,6 @@ func TestHandleAIThumbnails_DriveFileID(t *testing.T) {
 	json.NewDecoder(rr.Body).Decode(&resp)
 	if resp.Subtle != "drive subtle" || resp.Bold != "drive bold" {
 		t.Errorf("unexpected response: %+v", resp)
-	}
-}
-
-func TestHandleAITranslate(t *testing.T) {
-	tests := []struct {
-		name       string
-		body       string
-		seedVideo  bool
-		mock       *mockAIService
-		wantStatus int
-	}{
-		{
-			name:      "success",
-			body:      `{"category":"devops","name":"test-video","targetLanguage":"es"}`,
-			seedVideo: true,
-			mock: &mockAIService{translate: &ai.VideoMetadataOutput{
-				Title:       "Titulo",
-				Description: "Descripcion",
-				Tags:        "etiquetas",
-				Timecodes:   "00:00 Intro",
-			}},
-			wantStatus: http.StatusOK,
-		},
-		{
-			name:       "missing fields",
-			body:       `{"category":"devops","name":"test-video"}`,
-			mock:       &mockAIService{},
-			wantStatus: http.StatusBadRequest,
-		},
-		{
-			name:       "video not found",
-			body:       `{"category":"devops","name":"nonexistent","targetLanguage":"es"}`,
-			mock:       &mockAIService{},
-			wantStatus: http.StatusNotFound,
-		},
-		{
-			name:       "invalid json",
-			body:       `{bad`,
-			mock:       &mockAIService{},
-			wantStatus: http.StatusBadRequest,
-		},
-		{
-			name:      "AI error",
-			body:      `{"category":"devops","name":"test-video","targetLanguage":"es"}`,
-			seedVideo: true,
-			mock:      &mockAIService{err: fmt.Errorf("translation failed")},
-			wantStatus: http.StatusInternalServerError,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			env := setupAITestEnv(t, tt.mock)
-			if tt.seedVideo {
-				seedVideoWithManuscript(t, env, "test-video", "devops", "# Manuscript")
-			}
-
-			req := httptest.NewRequest(http.MethodPost, "/api/ai/translate", strings.NewReader(tt.body))
-			rr := httptest.NewRecorder()
-			env.server.Router().ServeHTTP(rr, req)
-
-			if rr.Code != tt.wantStatus {
-				t.Errorf("status = %d, want %d; body: %s", rr.Code, tt.wantStatus, rr.Body.String())
-			}
-			if tt.wantStatus == http.StatusOK {
-				var resp AITranslateResponse
-				json.NewDecoder(rr.Body).Decode(&resp)
-				if resp.Title != "Titulo" {
-					t.Errorf("title = %q, want %q", resp.Title, "Titulo")
-				}
-			}
-		})
 	}
 }
 

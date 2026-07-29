@@ -14,4 +14,3 @@ export { ShortPublishAction } from './ShortPublishAction';
 export { ShortsSection } from './ShortsSection';
 export { DynamicForm } from './DynamicForm';
 export { ActionButton, isActionField } from './ActionButton';
-export { TranslationPanel } from './TranslationPanel';
