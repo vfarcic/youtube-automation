@@ -159,7 +159,7 @@ func TestInitGlobalSettingsLoadsThumbnailGeneration(t *testing.T) {
   provider: anthropic
   anthropic:
     key: test-key
-    model: claude-sonnet-4-20250514
+    model: claude-sonnet-5
 thumbnailGeneration:
   photoDir: /data/photos
   providers:
@@ -201,7 +201,7 @@ func TestInitGlobalSettingsNoThumbnailSection(t *testing.T) {
   provider: anthropic
   anthropic:
     key: test-key
-    model: claude-sonnet-4-20250514
+    model: claude-sonnet-5
 `
 	err := os.WriteFile(settingsPath, []byte(yamlContent), 0644)
 	require.NoError(t, err)

@@ -25,7 +25,7 @@ Manuscript:
 
 Response format: #hashtag1 #hashtag2 #hashtag3`, manuscript)
 
-	responseContent, err := provider.GenerateContent(ctx, prompt, 100)
+	responseContent, err := provider.GenerateContent(ctx, prompt, 8192)
 	if err != nil {
 		return "", fmt.Errorf("AI description tags generation failed: %w", err)
 	}

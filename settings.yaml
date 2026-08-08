@@ -12,7 +12,7 @@ ai:
     deployment: gpt-4-1106-preview
     # apiVersion: 2023-05-15  # Optional, defaults to 2023-05-15
   anthropic:
-    model: claude-sonnet-4-5-20250929  # Latest Claude Sonnet 4.5 model
+    model: claude-sonnet-5  # Claude Sonnet 5
     # key: set via ANTHROPIC_API_KEY environment variable
 hugo:
   path: ../devopstoolkit-live/

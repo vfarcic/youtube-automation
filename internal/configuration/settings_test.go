@@ -499,7 +499,7 @@ func TestInitGlobalSettingsUsesSettingsFileEnvVar(t *testing.T) {
   provider: anthropic
   anthropic:
     key: test-key
-    model: claude-sonnet-4-20250514
+    model: claude-sonnet-5
 email:
   from: envvar-test@example.com
 `

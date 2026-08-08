@@ -49,7 +49,7 @@ func SuggestTaglineAndIllustrations(ctx context.Context, manuscript string) (*Ta
 		return nil, fmt.Errorf("failed to execute tagline and illustrations template: %w", err)
 	}
 
-	responseContent, err := provider.GenerateContent(ctx, promptBuf.String(), 512)
+	responseContent, err := provider.GenerateContent(ctx, promptBuf.String(), 8192)
 	if err != nil {
 		return nil, fmt.Errorf("AI tagline and illustration suggestion failed: %w", err)
 	}

@@ -121,7 +121,7 @@ func TestInitGlobalSettingsAMAFromYAML(t *testing.T) {
   provider: anthropic
   anthropic:
     key: test-key
-    model: claude-sonnet-4-20250514
+    model: claude-sonnet-5
 ama:
   enabled: true
   playlistId: "PLfromyaml"
@@ -158,7 +158,7 @@ func TestInitGlobalSettingsAMAEnvOverride(t *testing.T) {
   provider: anthropic
   anthropic:
     key: test-key
-    model: claude-sonnet-4-20250514
+    model: claude-sonnet-5
 ama:
   enabled: false
   playlistId: "PLfromyaml"
@@ -196,7 +196,7 @@ func TestInitGlobalSettingsAMADefaultSchedule(t *testing.T) {
   provider: anthropic
   anthropic:
     key: test-key
-    model: claude-sonnet-4-20250514
+    model: claude-sonnet-5
 `
 	require.NoError(t, os.WriteFile(settingsPath, []byte(yamlContent), 0644))
 
@@ -226,7 +226,7 @@ func TestInitGlobalSettingsAMAValidationFailure(t *testing.T) {
   provider: anthropic
   anthropic:
     key: test-key
-    model: claude-sonnet-4-20250514
+    model: claude-sonnet-5
 ama:
   enabled: true
   playlistId: ""

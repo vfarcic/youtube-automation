@@ -96,9 +96,10 @@ func AnalyzeTitles(ctx context.Context, videos []VideoABData, baseDir string) (T
 		_ = os.WriteFile(filepath.Join(promptDir, "title-analysis-prompt.md"), []byte(prompt), 0644)
 	}
 
-	// Generate analysis using AI provider
-	// Use a large token limit since we want comprehensive analysis with titles.md content
-	rawResponse, err := provider.GenerateContent(ctx, prompt, 8192)
+	// Generate analysis using AI provider (adaptive thinking is on by default).
+	// Large ceiling: thinking tokens count against the budget alongside the
+	// comprehensive analysis output.
+	rawResponse, err := provider.GenerateContent(ctx, prompt, 16000)
 	if err != nil {
 		return emptyResult, "", fmt.Errorf("AI analysis generation failed: %w", err)
 	}

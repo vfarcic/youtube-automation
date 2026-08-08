@@ -62,9 +62,12 @@ func GenerateThumbnailVariations(ctx context.Context, imagePath string) (Variati
 	}
 
 	// Call Anthropic API directly since the generic GenerateContent doesn't support images yet
+	// Thinking is left unset so Sonnet 5+ runs adaptive thinking by default,
+	// improving the quality of the vision analysis. Budget is generous since
+	// thinking tokens count against max_tokens.
 	resp, err := anthropicProvider.client.Messages.New(ctx, anthropic.MessageNewParams{
 		Model:     anthropic.Model(anthropicProvider.model),
-		MaxTokens: int64(1024),
+		MaxTokens: int64(8192),
 		System:    []anthropic.TextBlockParam{{Text: thumbnailVariationsPrompt, Type: constant.Text("text")}},
 		Messages:  messages,
 	})
@@ -72,11 +75,10 @@ func GenerateThumbnailVariations(ctx context.Context, imagePath string) (Variati
 		return VariationPrompts{}, fmt.Errorf("failed to analyze image: %w", err)
 	}
 
-	if len(resp.Content) == 0 || resp.Content[0].Text == "" {
-		return VariationPrompts{}, fmt.Errorf("empty response from AI")
+	responseText, err := extractAnthropicText(resp.Content)
+	if err != nil {
+		return VariationPrompts{}, fmt.Errorf("empty response from AI: %w", err)
 	}
-
-	responseText := resp.Content[0].Text
 	return parseVariationResponse(responseText)
 }
 

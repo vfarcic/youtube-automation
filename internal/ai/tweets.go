@@ -26,7 +26,7 @@ Video Manuscript:
 
 Response format: ["Tweet 1 (max 280 chars)", "Tweet 2 (max 280 chars)", ...]`, manuscript)
 
-	responseContent, err := provider.GenerateContent(ctx, prompt, 400)
+	responseContent, err := provider.GenerateContent(ctx, prompt, 8192)
 	if err != nil {
 		return nil, fmt.Errorf("AI tweet generation failed: %w", err)
 	}

@@ -318,7 +318,7 @@ func InitGlobalSettings() error {
 		if envModel := os.Getenv("ANTHROPIC_MODEL"); envModel != "" {
 			GlobalSettings.AI.Anthropic.Model = envModel
 		} else if GlobalSettings.AI.Anthropic.Model == "" {
-			GlobalSettings.AI.Anthropic.Model = "claude-sonnet-4-20250514"
+			GlobalSettings.AI.Anthropic.Model = "claude-sonnet-5"
 		}
 
 	default:

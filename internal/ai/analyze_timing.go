@@ -100,9 +100,10 @@ func GenerateTimingRecommendations(ctx context.Context, analytics []publishing.V
 		_ = os.WriteFile(filepath.Join(promptDir, "timing-analysis-prompt.md"), []byte(prompt), 0644)
 	}
 
-	// Generate recommendations using AI provider
-	// Use 4096 tokens to allow for detailed reasoning
-	rawResponse, err := provider.GenerateContent(ctx, prompt, 4096)
+	// Generate recommendations using AI provider (adaptive thinking is on by
+	// default). Large ceiling so thinking tokens (which count against
+	// max_tokens) leave room for the detailed output.
+	rawResponse, err := provider.GenerateContent(ctx, prompt, 16000)
 	if err != nil {
 		return nil, "", fmt.Errorf("AI timing analysis failed: %w", err)
 	}

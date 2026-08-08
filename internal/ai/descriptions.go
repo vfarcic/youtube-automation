@@ -42,7 +42,7 @@ func SuggestDescription(ctx context.Context, manuscriptContent string, optionalC
 
 	prompt := promptBuf.String()
 
-	responseContent, err := provider.GenerateContent(ctx, prompt, 400)
+	responseContent, err := provider.GenerateContent(ctx, prompt, 8192)
 	if err != nil {
 		return "", fmt.Errorf("AI description generation failed: %w", err)
 	}

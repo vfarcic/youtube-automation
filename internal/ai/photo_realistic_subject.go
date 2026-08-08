@@ -54,7 +54,7 @@ func SuggestPhotoRealisticSubject(ctx context.Context, manuscript string) (strin
 		return "", fmt.Errorf("failed to execute photo-realistic subject template: %w", err)
 	}
 
-	responseContent, err := provider.GenerateContent(ctx, promptBuf.String(), 128)
+	responseContent, err := provider.GenerateContent(ctx, promptBuf.String(), 8192)
 	if err != nil {
 		return "", fmt.Errorf("AI photo-realistic subject suggestion failed: %w", err)
 	}

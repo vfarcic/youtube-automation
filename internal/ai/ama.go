@@ -54,7 +54,7 @@ func GenerateAMATitle(ctx context.Context, transcript string) (string, error) {
 		return "", fmt.Errorf("failed to execute AMA title template: %w", err)
 	}
 
-	responseContent, err := provider.GenerateContent(ctx, promptBuf.String(), 100)
+	responseContent, err := provider.GenerateContent(ctx, promptBuf.String(), 8192)
 	if err != nil {
 		return "", fmt.Errorf("AI AMA title generation failed: %w", err)
 	}
@@ -96,7 +96,7 @@ func GenerateAMATimecodes(ctx context.Context, transcript string) (string, error
 		return "", fmt.Errorf("failed to execute AMA timecodes template: %w", err)
 	}
 
-	responseContent, err := provider.GenerateContent(ctx, promptBuf.String(), 1500)
+	responseContent, err := provider.GenerateContent(ctx, promptBuf.String(), 8192)
 	if err != nil {
 		return "", fmt.Errorf("AI AMA timecodes generation failed: %w", err)
 	}
@@ -141,7 +141,7 @@ DESCRIPTION:`,
 		transcript,
 	)
 
-	responseContent, err := provider.GenerateContent(ctx, prompt, 400)
+	responseContent, err := provider.GenerateContent(ctx, prompt, 8192)
 	if err != nil {
 		return "", fmt.Errorf("AI AMA description generation failed: %w", err)
 	}
@@ -186,7 +186,7 @@ TAGS:`,
 		transcript,
 	)
 
-	responseContent, err := provider.GenerateContent(ctx, prompt, 200)
+	responseContent, err := provider.GenerateContent(ctx, prompt, 8192)
 	if err != nil {
 		return "", fmt.Errorf("AI AMA tag generation failed: %w", err)
 	}

@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/anthropics/anthropic-sdk-go"
+
 	"devopstoolkit/youtube-automation/internal/configuration"
 )
 
@@ -80,7 +82,7 @@ func TestGetAIProvider(t *testing.T) {
 						Provider: "anthropic",
 						Anthropic: configuration.SettingsAnthropicAI{
 							Key:   "test-anthropic-key",
-							Model: "claude-sonnet-4-20250514",
+							Model: "claude-sonnet-5",
 						},
 					},
 				}
@@ -97,7 +99,7 @@ func TestGetAIProvider(t *testing.T) {
 						Provider: "anthropic",
 						Anthropic: configuration.SettingsAnthropicAI{
 							Key:   "", // Empty in config
-							Model: "claude-sonnet-4-20250514",
+							Model: "claude-sonnet-5",
 						},
 					},
 				}
@@ -181,7 +183,7 @@ func TestGetAIProvider(t *testing.T) {
 						Provider: "anthropic",
 						Anthropic: configuration.SettingsAnthropicAI{
 							Key:   "", // Missing
-							Model: "claude-sonnet-4-20250514",
+							Model: "claude-sonnet-5",
 						},
 					},
 				}
@@ -333,7 +335,7 @@ func TestAnthropicProviderGenerateContent(t *testing.T) {
 			Provider: "anthropic",
 			Anthropic: configuration.SettingsAnthropicAI{
 				Key:   "test-anthropic-key",
-				Model: "claude-sonnet-4-20250514",
+				Model: "claude-sonnet-5",
 			},
 		},
 	}
@@ -421,11 +423,66 @@ func TestProviderDefaults(t *testing.T) {
 		}
 
 		// The provider should have the default model
-		expectedDefaultModel := "claude-sonnet-4-20250514"
+		expectedDefaultModel := "claude-sonnet-5"
 		if provider.model != expectedDefaultModel {
 			t.Errorf("Expected default model %q, got %q", expectedDefaultModel, provider.model)
 		}
 	})
+}
+
+func TestExtractAnthropicText(t *testing.T) {
+	tests := []struct {
+		name    string
+		content []anthropic.ContentBlockUnion
+		want    string
+		wantErr bool
+	}{
+		{
+			name:    "empty content returns error",
+			content: nil,
+			wantErr: true,
+		},
+		{
+			name:    "single text block",
+			content: []anthropic.ContentBlockUnion{{Type: "text", Text: "hello world"}},
+			want:    "hello world",
+		},
+		{
+			name: "thinking block precedes text block",
+			content: []anthropic.ContentBlockUnion{
+				{Type: "thinking", Thinking: "let me reason about this"},
+				{Type: "text", Text: "final answer"},
+			},
+			want: "final answer",
+		},
+		{
+			name: "multiple text blocks are concatenated",
+			content: []anthropic.ContentBlockUnion{
+				{Type: "text", Text: "part one "},
+				{Type: "text", Text: "part two"},
+			},
+			want: "part one part two",
+		},
+		{
+			name: "only a thinking block returns error",
+			content: []anthropic.ContentBlockUnion{
+				{Type: "thinking", Thinking: "reasoning with no answer"},
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := extractAnthropicText(tt.content)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("extractAnthropicText() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if got != tt.want {
+				t.Errorf("extractAnthropicText() = %q, want %q", got, tt.want)
+			}
+		})
+	}
 }
 
 func TestEnvironmentVariablePriority(t *testing.T) {
@@ -483,7 +540,7 @@ func TestEnvironmentVariablePriority(t *testing.T) {
 				Provider: "anthropic",
 				Anthropic: configuration.SettingsAnthropicAI{
 					Key:   "config-key", // This should be overridden
-					Model: "claude-sonnet-4-20250514",
+					Model: "claude-sonnet-5",
 				},
 			},
 		}

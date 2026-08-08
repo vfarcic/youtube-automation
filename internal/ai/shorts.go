@@ -71,9 +71,10 @@ func AnalyzeShortsFromManuscript(ctx context.Context, manuscriptContent string) 
 		return nil, fmt.Errorf("failed to execute shorts template: %w", err)
 	}
 
-	// Generate content using the provider
-	// Use higher token limit to accommodate multiple candidates with full text
-	responseContent, err := provider.GenerateContent(ctx, promptBuf.String(), 4096)
+	// Generate content using the provider (adaptive thinking is on by default).
+	// Large ceiling so thinking tokens (which count against max_tokens) leave
+	// room for multiple candidates with full text.
+	responseContent, err := provider.GenerateContent(ctx, promptBuf.String(), 16000)
 	if err != nil {
 		return nil, fmt.Errorf("AI shorts analysis failed: %w", err)
 	}

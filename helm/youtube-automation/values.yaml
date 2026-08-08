@@ -63,7 +63,7 @@ existingSecretKey: "api-token"
 # │ AI PROVIDER (required for AI features like title/description generation):   │
 # │   AI_PROVIDER        - "anthropic" or "azure" (default: anthropic)          │
 # │   ANTHROPIC_API_KEY  - Anthropic API key (required if provider=anthropic)   │
-# │   ANTHROPIC_MODEL    - Model name (default: claude-sonnet-4-20250514)       │
+# │   ANTHROPIC_MODEL    - Model name (default: claude-sonnet-5)                │
 # │   AI_KEY             - Azure OpenAI key (required if provider=azure)        │
 # │                                                                             │
 # │ YOUTUBE (required):                                                         │
@@ -108,7 +108,7 @@ existingSecretKey: "api-token"
 # Example:
 # env:
 #   AI_PROVIDER: "anthropic"
-#   ANTHROPIC_MODEL: "claude-sonnet-4-20250514"
+#   ANTHROPIC_MODEL: "claude-sonnet-5"
 #   SLACK_RETRY_ATTEMPTS: "5"
 #
 # For secrets (ANTHROPIC_API_KEY, SLACK_API_TOKEN, etc.), use envFrom:

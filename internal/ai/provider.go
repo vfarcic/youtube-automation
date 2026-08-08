@@ -16,6 +16,11 @@ import (
 
 // AIProvider interface for different AI providers
 type AIProvider interface {
+	// GenerateContent generates content with extended (adaptive) thinking
+	// enabled for higher-quality output. On Anthropic (Sonnet 5+) this runs
+	// adaptive thinking; providers without a thinking concept ignore it.
+	// maxTokens is a ceiling covering thinking + output, so callers should
+	// budget generously.
 	GenerateContent(ctx context.Context, prompt string, maxTokens int) (string, error)
 }
 
@@ -94,7 +99,7 @@ func createAnthropicProvider() (*AnthropicProvider, error) {
 
 	model := config.Model
 	if model == "" {
-		model = "claude-sonnet-4-20250514"
+		model = "claude-sonnet-5"
 	}
 
 	client := anthropic.NewClient(
@@ -123,7 +128,11 @@ func (a *AzureProvider) GenerateContent(ctx context.Context, prompt string, maxT
 	return strings.TrimSpace(completion), nil
 }
 
-// GenerateContent for Anthropic
+// GenerateContent for Anthropic. The thinking field is left unset, which enables
+// adaptive thinking by default on Sonnet 5+ (the vendored SDK predates the
+// explicit adaptive-thinking parameter), trading extra tokens and latency for
+// higher-quality output. Thinking tokens count against max_tokens, so callers
+// budget generously.
 func (a *AnthropicProvider) GenerateContent(ctx context.Context, prompt string, maxTokens int) (string, error) {
 	message, err := a.client.Messages.New(ctx, anthropic.MessageNewParams{
 		Model:     anthropic.Model(a.model),
@@ -136,14 +145,28 @@ func (a *AnthropicProvider) GenerateContent(ctx context.Context, prompt string, 
 		return "", fmt.Errorf("Anthropic generation failed: %w", err)
 	}
 
-	if len(message.Content) == 0 {
+	return extractAnthropicText(message.Content)
+}
+
+// extractAnthropicText returns the concatenated text from all text blocks in the
+// response, skipping thinking blocks. When thinking is enabled the response
+// leads with thinking block(s) that carry no text content, so reading only the
+// first block is not safe.
+func extractAnthropicText(content []anthropic.ContentBlockUnion) (string, error) {
+	if len(content) == 0 {
 		return "", fmt.Errorf("Anthropic returned empty response")
 	}
 
-	// Extract text from the first content block
-	if len(message.Content) > 0 && message.Content[0].Text != "" {
-		return strings.TrimSpace(message.Content[0].Text), nil
+	var sb strings.Builder
+	for _, block := range content {
+		if block.Type == "text" {
+			sb.WriteString(block.Text)
+		}
 	}
 
-	return "", fmt.Errorf("Anthropic response contains no text content")
+	text := strings.TrimSpace(sb.String())
+	if text == "" {
+		return "", fmt.Errorf("Anthropic response contains no text content")
+	}
+	return text, nil
 }

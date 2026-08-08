@@ -69,7 +69,7 @@ func SuggestTitles(ctx context.Context, manuscriptContent string, optionalConfig
 	prompt := promptBuf.String()
 
 	// Generate content using the provider
-	responseContent, err := provider.GenerateContent(ctx, prompt, 512)
+	responseContent, err := provider.GenerateContent(ctx, prompt, 8192)
 	if err != nil {
 		return nil, fmt.Errorf("AI title generation failed: %w", err)
 	}

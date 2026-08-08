@@ -46,7 +46,7 @@ func SuggestTags(ctx context.Context, manuscriptContent string, optionalConfig .
 
 	prompt := promptBuf.String()
 
-	responseContent, err := provider.GenerateContent(ctx, prompt, 200)
+	responseContent, err := provider.GenerateContent(ctx, prompt, 8192)
 	if err != nil {
 		return "", fmt.Errorf("AI tag generation failed: %w", err)
 	}
