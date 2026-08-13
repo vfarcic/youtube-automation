@@ -147,8 +147,8 @@ func TestGPTImageClient_GenerateImage(t *testing.T) {
 				if fields["prompt"] != "Generate a thumbnail" {
 					t.Errorf("prompt = %q, want %q", fields["prompt"], "Generate a thumbnail")
 				}
-				if fields["size"] != "1536x1024" {
-					t.Errorf("size = %q, want %q", fields["size"], "1536x1024")
+				if fields["size"] != "2048x1152" {
+					t.Errorf("size = %q, want %q", fields["size"], "2048x1152")
 				}
 				if fields["quality"] != "high" {
 					t.Errorf("quality = %q, want %q", fields["quality"], "high")

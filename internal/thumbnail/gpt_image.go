@@ -35,6 +35,12 @@ const (
 	// gptImageMaxResponseBytes is the maximum response body size (50MB).
 	// This prevents OOM from malicious or buggy responses returning unbounded data.
 	gptImageMaxResponseBytes = 50 * 1024 * 1024
+
+	// gptImageSize is the requested output size. 2048x1152 is a native 16:9
+	// aspect ratio (both dimensions divisible by 16, well within the 3:1 limit),
+	// matching YouTube's 16:9 thumbnail frame. Requires gpt-image-2 or newer;
+	// the original gpt-image-1 only supported the fixed 1536x1024 (3:2) landscape.
+	gptImageSize = "2048x1152"
 )
 
 // GPTImageClient implements ImageGenerator using the OpenAI image generation API.
@@ -148,7 +154,7 @@ func (g *GPTImageClient) buildMultipartRequest(prompt string, photos [][]byte) (
 		return nil, "", fmt.Errorf("writing prompt field: %w", err)
 	}
 
-	if err := writer.WriteField("size", "1536x1024"); err != nil {
+	if err := writer.WriteField("size", gptImageSize); err != nil {
 		return nil, "", fmt.Errorf("writing size field: %w", err)
 	}
 
