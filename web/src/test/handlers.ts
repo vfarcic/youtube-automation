@@ -73,7 +73,6 @@ export const mockVideo: VideoResponse = {
   location: '',
   tagline: '',
   illustration: '',
-  photoRealisticSubject: '',
   otherLogos: '',
   timecodes: '',
   relatedVideos: '',
@@ -348,12 +347,10 @@ export const handlers = [
     const body = (await request.json()) as {
       tagline?: string;
       illustration?: string;
-      photoRealisticSubject?: string;
     };
     return HttpResponse.json({
       tagline: body.tagline ?? 'Contain Everything',
       illustration: body.illustration ?? 'A robot assembling containers',
-      photoRealisticSubject: body.photoRealisticSubject ?? '',
     });
   }),
   http.post('/api/thumbnails/generate', () =>

@@ -1,7 +1,6 @@
 package thumbnail
 
 import (
-	"errors"
 	"fmt"
 	"math/rand"
 	"regexp"
@@ -9,19 +8,13 @@ import (
 	"unicode"
 )
 
-// ErrEmptySubject is returned by BuildPhotoRealisticPrompt when the subject
-// is empty after sanitization. Callers should treat it as "skip this variant"
-// rather than render a malformed prompt.
-var ErrEmptySubject = errors.New("photo-realistic subject is empty after sanitization")
-
 // MicrophoneRemovalInstruction is the canonical, cross-variant instruction
 // requiring that any microphone visible in the source photo be excluded from
-// the generated thumbnail. Every prompt builder (BuildPrompt for the B&W
-// variants, BuildPhotoRealisticPrompt for the photo-realistic variant)
-// references this constant verbatim so all variants share one wording — no
-// drift, no copy-paste skew. New variants added to the pipeline MUST embed
-// this constant; the cross-variant test in prompt_builder_test.go enforces
-// it via the promptBuilders registry.
+// the generated thumbnail. Every prompt builder references this constant
+// verbatim so all variants share one wording — no drift, no copy-paste skew.
+// New variants added to the pipeline MUST embed this constant; the
+// cross-variant test in prompt_builder_test.go enforces it via the
+// promptBuilders registry.
 const MicrophoneRemovalInstruction = "If there is a microphone visible in the source photo (handheld, on a stand, boom mic, or lapel), remove it completely from the image — the final thumbnail must not show any microphone."
 
 // microphoneRemovalSection is the formatted, hoisted prompt section that
@@ -120,14 +113,6 @@ type PromptConfig struct {
 	Placement    PersonPlacement
 	Tagline      string
 	Illustration string // empty means no illustration
-}
-
-// PhotoRealisticPromptConfig holds parameters for the photo-realistic
-// thumbnail variant (no B&W treatment, no text overlay, contextual subject
-// rendered realistically).
-type PhotoRealisticPromptConfig struct {
-	Placement PersonPlacement
-	Subject   string
 }
 
 const maxPromptInputLen = 200
@@ -321,75 +306,6 @@ func BuildPrompt(cfg PromptConfig) string {
 %s`, cfg.Tagline, microphoneRemovalRuleBullet))
 
 	return sb.String()
-}
-
-// BuildPhotoRealisticPromptConfig selects a random placement for the
-// photo-realistic variant and sanitizes the subject input. Returns a config
-// with an empty Subject if the sanitized subject is empty — callers should
-// treat that as "skip this variant".
-func BuildPhotoRealisticPromptConfig(subject string, rng RandSource) PhotoRealisticPromptConfig {
-	if rng == nil {
-		rng = defaultRandSource{}
-	}
-
-	subject = SanitizePromptInput(subject)
-	placement := PersonPlacements[rng.Intn(len(PersonPlacements))]
-
-	return PhotoRealisticPromptConfig{
-		Placement: placement,
-		Subject:   subject,
-	}
-}
-
-// BuildPhotoRealisticPrompt generates the prompt text for the photo-realistic
-// variant: creator photo rendered photo-realistically (no B&W/stencil), a
-// contextual subject also rendered photo-realistically, and no text overlay.
-//
-// Defensively sanitizes cfg.Subject so callers that construct
-// PhotoRealisticPromptConfig directly — bypassing BuildPhotoRealisticPromptConfig
-// — still get prompt-injection protection at the point closest to the prompt.
-//
-// Returns ErrEmptySubject when the subject is empty after sanitization. The
-// orchestrator skips this variant on a sentinel-error return rather than
-// producing a malformed prompt.
-func BuildPhotoRealisticPrompt(cfg PhotoRealisticPromptConfig) (string, error) {
-	cfg.Subject = SanitizePromptInput(cfg.Subject)
-	if cfg.Subject == "" {
-		return "", ErrEmptySubject
-	}
-
-	var sb strings.Builder
-
-	sb.WriteString(`Create a YouTube thumbnail using the photo I've attached. The thumbnail must feature ME (the person in the attached photo) — do NOT generate a different person. Use my actual photo as the base.`)
-	sb.WriteString("\n\n")
-
-	sb.WriteString(fmt.Sprintf(
-		`**My photo:** Render me in PHOTO-REALISTIC style — keep the natural colors, skin tones, lighting, and detail of the original photograph. Do NOT apply any threshold, stencil, photocopy, or black-and-white treatment. Do NOT posterize or flatten the image. Show me waist-up, positioned on the %s. My body must extend to the bottom edge of the image — anchor me to the bottom so I look grounded, not floating. I must be facing/looking toward the %s side of the frame. If the source photo has me facing the other way, horizontally mirror (flip left-to-right) the photo so I face the correct direction.`,
-		cfg.Placement.Description, cfg.Placement.FaceDirection))
-	sb.WriteString("\n\n")
-
-	sb.WriteString(microphoneRemovalSection())
-	sb.WriteString("\n\n")
-
-	sb.WriteString(fmt.Sprintf(
-		`**Contextual subject:** Include %s as a PHOTO-REALISTIC element — rendered with natural lighting, realistic textures, materials, and lifelike detail. NOT flat, NOT a cartoon, NOT line art, NOT a stylized icon. Integrate the subject naturally into the composition alongside me so it reads as part of the same photograph.`,
-		cfg.Subject))
-	sb.WriteString("\n\n")
-
-	sb.WriteString(`**Background:** A photo-realistic environment that complements the subject and the creator — with depth, realistic lighting, and natural detail. Do NOT use a solid flat color block. Do NOT use a stencil or graphic-poster aesthetic.`)
-	sb.WriteString("\n\n")
-
-	sb.WriteString(`**No text:** Do NOT render any text, tagline, title, caption, watermark, logo lettering, or written words anywhere in the image. Zero text of any kind. If a sign, label, screen, or surface in the scene would naturally contain text, leave it blank. If you are about to add text, stop and remove it.`)
-	sb.WriteString("\n\n")
-
-	sb.WriteString("**Rules:**\n")
-	sb.WriteString("- You MUST use my attached photo — do NOT generate a different person\n")
-	sb.WriteString("- My photo MUST be photo-realistic — NO threshold, NO stencil, NO black-and-white treatment, NO posterization\n")
-	sb.WriteString("- The contextual subject MUST be photo-realistic — NO flat illustration, NO cartoon, NO line art, NO stylized icon\n")
-	sb.WriteString("- ZERO text in the image — no tagline, no title, no captions, no watermark, no letters of any kind\n")
-	sb.WriteString(microphoneRemovalRuleBullet)
-
-	return sb.String(), nil
 }
 
 // buildTextLayoutDescription creates a word-by-word positioning description

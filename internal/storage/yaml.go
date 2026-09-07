@@ -59,28 +59,27 @@ type Short struct {
 // Video represents all data associated with a video project.
 // All fields are already exported.
 type Video struct {
-	Name                  string         `json:"name" completion:"filled_only"`
-	Path                  string         `json:"path" completion:"filled_only"`
-	Category              string         `json:"category" completion:"filled_only"`
-	ProjectName           string         `json:"projectName" completion:"filled_only"`
-	ProjectURL            string         `json:"projectURL" completion:"filled_only"`
-	Sponsorship           Sponsorship    `json:"sponsorship"`
-	Date                  string         `json:"date" completion:"filled_only"`
-	Delayed               bool           `json:"delayed" completion:"false_only"`
-	Screen                bool           `json:"screen" completion:"true_only"`
-	Head                  bool           `json:"head" completion:"true_only"`
-	Thumbnails            bool           `json:"thumbnails" completion:"true_only"`
-	Diagrams              bool           `json:"diagrams" completion:"true_only"`
-	Titles                []TitleVariant `yaml:"titles,omitempty" json:"titles,omitempty" completion:"filled_only"`
-	Description           string         `json:"description" completion:"filled_only"`
-	Tags                  string         `json:"tags" completion:"filled_only"`
-	DescriptionTags       string         `json:"descriptionTags" completion:"filled_only"`
-	Location              string         `json:"location" completion:"filled_only"`
-	Tagline               string         `json:"tagline" ui:"auto"`
-	Illustration          string         `json:"illustration" ui:"auto"`
-	PhotoRealisticSubject string         `json:"photoRealisticSubject" completion:"empty_or_filled" ui:"auto"`
-	OtherLogos            string         `json:"otherLogos" completion:"filled_only"`
-	Screenshots           bool           `json:"screenshots" completion:"true_only"`
+	Name            string         `json:"name" completion:"filled_only"`
+	Path            string         `json:"path" completion:"filled_only"`
+	Category        string         `json:"category" completion:"filled_only"`
+	ProjectName     string         `json:"projectName" completion:"filled_only"`
+	ProjectURL      string         `json:"projectURL" completion:"filled_only"`
+	Sponsorship     Sponsorship    `json:"sponsorship"`
+	Date            string         `json:"date" completion:"filled_only"`
+	Delayed         bool           `json:"delayed" completion:"false_only"`
+	Screen          bool           `json:"screen" completion:"true_only"`
+	Head            bool           `json:"head" completion:"true_only"`
+	Thumbnails      bool           `json:"thumbnails" completion:"true_only"`
+	Diagrams        bool           `json:"diagrams" completion:"true_only"`
+	Titles          []TitleVariant `yaml:"titles,omitempty" json:"titles,omitempty" completion:"filled_only"`
+	Description     string         `json:"description" completion:"filled_only"`
+	Tags            string         `json:"tags" completion:"filled_only"`
+	DescriptionTags string         `json:"descriptionTags" completion:"filled_only"`
+	Location        string         `json:"location" completion:"filled_only"`
+	Tagline         string         `json:"tagline" ui:"auto"`
+	Illustration    string         `json:"illustration" ui:"auto"`
+	OtherLogos      string         `json:"otherLogos" completion:"filled_only"`
+	Screenshots     bool           `json:"screenshots" completion:"true_only"`
 	// DEPRECATED: This field is for backward compatibility. Use ThumbnailVariants instead.
 	Thumbnail           string             `json:"thumbnail" completion:"filled_only"` // DEPRECATED: fallback for old videos
 	ThumbnailVariants   []ThumbnailVariant `yaml:"thumbnailVariants,omitempty" json:"thumbnailVariants,omitempty" completion:"filled_only"`

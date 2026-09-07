@@ -29,10 +29,9 @@ type ThumbnailGenerateRequest struct {
 
 // ThumbnailConfigRequest is the JSON body for POST /api/videos/{videoName}/thumbnail-config.
 type ThumbnailConfigRequest struct {
-	Category              string `json:"category"`
-	Tagline               string `json:"tagline"`
-	Illustration          string `json:"illustration"`
-	PhotoRealisticSubject string `json:"photoRealisticSubject"`
+	Category     string `json:"category"`
+	Tagline      string `json:"tagline"`
+	Illustration string `json:"illustration"`
 }
 
 // ThumbnailGenerateMeta describes one generated thumbnail in the response.
@@ -131,40 +130,9 @@ func (s *Server) handleGenerateThumbnails(w http.ResponseWriter, r *http.Request
 	promptWith := thumbnail.BuildPrompt(cfgWith)
 	promptWithout := thumbnail.BuildPrompt(cfgWithout)
 
-	// Optional third variant: photo-realistic, contextual subject, no text.
-	// Subject sources, in priority order:
-	//   1. Manual override on the Video (PRD: honored over AI inference).
-	//   2. AI inference from the manuscript (when no manual override and the
-	//      aiService is configured).
-	// Skipped silently when the subject ends up empty or sanitization rejects
-	// it — the two B&W variants still run unblocked.
-	photoRealisticSubject := video.PhotoRealisticSubject
-	if photoRealisticSubject == "" && s.aiService != nil {
-		manuscript, mErr := s.videoService.GetVideoManuscript(req.Name, req.Category)
-		if mErr != nil {
-			log.Printf("skipping photo-realistic variant for %s/%s: manuscript unavailable: %v", req.Category, req.Name, mErr)
-		} else if suggested, sErr := s.aiService.SuggestPhotoRealisticSubject(r.Context(), manuscript); sErr != nil {
-			log.Printf("skipping photo-realistic variant for %s/%s: AI suggestion failed: %v", req.Category, req.Name, sErr)
-		} else {
-			// Defense in depth: the AI is an external source; sanitize before
-			// it flows into the prompt builder (which also sanitizes).
-			photoRealisticSubject = thumbnail.SanitizePromptInput(suggested)
-		}
-	}
-	var promptPhotoRealistic string
-	if photoRealisticSubject != "" {
-		photoRealCfg := thumbnail.BuildPhotoRealisticPromptConfig(photoRealisticSubject, nil)
-		if p, err := thumbnail.BuildPhotoRealisticPrompt(photoRealCfg); err == nil {
-			promptPhotoRealistic = p
-		} else {
-			log.Printf("skipping photo-realistic variant for %s/%s: %v", req.Category, req.Name, err)
-		}
-	}
-
 	genReq := thumbnail.GenerateRequest{
 		PromptWithIllustration:    promptWith,
 		PromptWithoutIllustration: promptWithout,
-		PromptPhotoRealistic:      promptPhotoRealistic,
 		Photos:                    photos,
 	}
 
@@ -375,10 +343,6 @@ func (s *Server) handleSaveThumbnailConfig(w http.ResponseWriter, r *http.Reques
 
 	video.Tagline = req.Tagline
 	video.Illustration = req.Illustration
-	// Defense in depth: sanitize the photo-realistic subject at the handler
-	// layer. The prompt builder also sanitizes, but earlier-is-better — the
-	// persisted value should already be safe to round-trip.
-	video.PhotoRealisticSubject = thumbnail.SanitizePromptInput(req.PhotoRealisticSubject)
 
 	if err := s.videoService.UpdateVideo(video); err != nil {
 		log.Printf("failed to save video %s/%s: %v", req.Category, videoName, err)
@@ -387,9 +351,8 @@ func (s *Server) handleSaveThumbnailConfig(w http.ResponseWriter, r *http.Reques
 	}
 
 	resp := map[string]interface{}{
-		"tagline":               video.Tagline,
-		"illustration":          video.Illustration,
-		"photoRealisticSubject": video.PhotoRealisticSubject,
+		"tagline":      video.Tagline,
+		"illustration": video.Illustration,
 	}
 	addSyncWarningMap(resp, s.videoService)
 	respondJSON(w, http.StatusOK, resp)

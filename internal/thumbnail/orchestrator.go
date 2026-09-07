@@ -10,23 +10,19 @@ import (
 const (
 	StyleWithIllustration    = "with illustration"
 	StyleWithoutIllustration = "without illustration"
-	StylePhotoRealistic      = "photorealistic"
 )
 
 // GeneratedImage holds a generated thumbnail image with its metadata.
 type GeneratedImage struct {
 	Provider string // e.g. "gemini", "gpt-image"
-	Style    string // e.g. "with illustration", "without illustration", "photorealistic"
+	Style    string // e.g. "with illustration", "without illustration"
 	Data     []byte // raw image bytes
 }
 
 // GenerateRequest holds the parameters for a thumbnail generation run.
-// PromptPhotoRealistic is optional: when empty, the orchestrator skips the
-// photo-realistic variant and only produces the two B&W variants.
 type GenerateRequest struct {
 	PromptWithIllustration    string
 	PromptWithoutIllustration string
-	PromptPhotoRealistic      string
 	Photos                    [][]byte
 }
 
@@ -42,8 +38,7 @@ type providerResult struct {
 const maxConcurrentProviders = 10
 
 // GenerateThumbnails runs all providers concurrently, each generating one
-// thumbnail per configured style (B&W with/without illustration always; the
-// photo-realistic variant additionally when PromptPhotoRealistic is set).
+// thumbnail per style (B&W with illustration and B&W without illustration).
 // Individual provider failures are collected but do not block other providers.
 // Concurrency is capped at maxConcurrentProviders goroutines.
 // Returns all successfully generated images and any per-provider errors.
@@ -86,10 +81,8 @@ func GenerateThumbnails(ctx context.Context, providers []ImageGenerator, req Gen
 	return images, errs
 }
 
-// runProvider generates one thumbnail per configured style for a single
-// provider, dispatching all style goroutines concurrently. The B&W
-// with/without-illustration styles always run; the photo-realistic style
-// runs only when PromptPhotoRealistic is set on the request.
+// runProvider generates one thumbnail per style for a single provider,
+// dispatching all style goroutines concurrently.
 func runProvider(ctx context.Context, gen ImageGenerator, req GenerateRequest) providerResult {
 	type styleSpec struct {
 		style  string
@@ -104,9 +97,6 @@ func runProvider(ctx context.Context, gen ImageGenerator, req GenerateRequest) p
 	specs := []styleSpec{
 		{style: StyleWithIllustration, prompt: req.PromptWithIllustration},
 		{style: StyleWithoutIllustration, prompt: req.PromptWithoutIllustration},
-	}
-	if req.PromptPhotoRealistic != "" {
-		specs = append(specs, styleSpec{style: StylePhotoRealistic, prompt: req.PromptPhotoRealistic})
 	}
 
 	ch := make(chan styleResult, len(specs))

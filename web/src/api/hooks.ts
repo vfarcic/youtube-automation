@@ -509,9 +509,9 @@ export function useSuggestTaglineAndIllustrations() {
 export function useSaveThumbnailConfig() {
   const qc = useQueryClient();
   return useMutation<
-    { tagline: string; illustration: string; photoRealisticSubject: string },
+    { tagline: string; illustration: string },
     Error,
-    { videoName: string; category: string; tagline: string; illustration: string; photoRealisticSubject: string }
+    { videoName: string; category: string; tagline: string; illustration: string }
   >({
     mutationFn: ({ videoName, ...body }) =>
       post(`/api/videos/${encodeURIComponent(videoName)}/thumbnail-config`, body),

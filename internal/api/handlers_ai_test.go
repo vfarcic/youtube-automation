@@ -29,12 +29,7 @@ type mockAIService struct {
 	amaDescription          string
 	amaTimecodes            string
 	taglineAndIllustrations *ai.TaglineAndIllustrationsResult
-	photoRealisticSubject   string
-	// photoRealisticSubjectErr lets tests trigger a tailored failure for the
-	// photo-realistic suggester independently of the shared err field.
-	photoRealisticSubjectErr   error
-	photoRealisticSubjectCalls int
-	err                        error
+	err                     error
 }
 
 func (m *mockAIService) SuggestTitles(ctx context.Context, manuscript string, dataDir string) ([]string, error) {
@@ -72,13 +67,6 @@ func (m *mockAIService) GenerateAMATimecodes(ctx context.Context, transcript str
 }
 func (m *mockAIService) SuggestTaglineAndIllustrations(ctx context.Context, manuscript string) (*ai.TaglineAndIllustrationsResult, error) {
 	return m.taglineAndIllustrations, m.err
-}
-func (m *mockAIService) SuggestPhotoRealisticSubject(ctx context.Context, manuscript string) (string, error) {
-	m.photoRealisticSubjectCalls++
-	if m.photoRealisticSubjectErr != nil {
-		return "", m.photoRealisticSubjectErr
-	}
-	return m.photoRealisticSubject, nil
 }
 
 // setupAITestEnv creates a test environment with a mock AI service.
@@ -437,12 +425,12 @@ func TestHandleAIShorts(t *testing.T) {
 			wantNoMarkerIDs: []string{"short1"},
 		},
 		{
-			name:       "AI error",
-			videoName:  "test-video",
-			mock:       &mockAIService{err: fmt.Errorf("AI failed")},
-			hasManus:   true,
+			name:           "AI error",
+			videoName:      "test-video",
+			mock:           &mockAIService{err: fmt.Errorf("AI failed")},
+			hasManus:       true,
 			manuscriptBody: "# Manuscript",
-			wantStatus: http.StatusInternalServerError,
+			wantStatus:     http.StatusInternalServerError,
 		},
 		{
 			name:       "manuscript not found",
@@ -673,10 +661,10 @@ func TestHandleAIAMAContent(t *testing.T) {
 			wantStatus: http.StatusNotFound,
 		},
 		{
-			name:     "AI error",
-			body:     `{"category":"devops","name":"test-video"}`,
-			hasManus: true,
-			mock:     &mockAIService{err: fmt.Errorf("fail")},
+			name:       "AI error",
+			body:       `{"category":"devops","name":"test-video"}`,
+			hasManus:   true,
+			mock:       &mockAIService{err: fmt.Errorf("fail")},
 			wantStatus: http.StatusInternalServerError,
 		},
 	}
@@ -903,7 +891,6 @@ func TestManuscriptPathParamsMissing(t *testing.T) {
 	}
 }
 
-
 func TestHandleAITaglineAndIllustrations(t *testing.T) {
 	tests := []struct {
 		name              string
@@ -916,8 +903,8 @@ func TestHandleAITaglineAndIllustrations(t *testing.T) {
 		wantIllustrations int
 	}{
 		{
-			name:     "success",
-			category: "devops",
+			name:      "success",
+			category:  "devops",
 			videoName: "test-video",
 			mock: &mockAIService{taglineAndIllustrations: &ai.TaglineAndIllustrationsResult{
 				Taglines:      []string{"Secure Everything", "Lock It Down", "Zero Trust"},

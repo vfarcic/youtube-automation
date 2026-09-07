@@ -216,39 +216,30 @@ Example: Timing analytics feature (via API `/api/analyze/timing`):
 - "Apply Random Timing" button in Web UI picks random recommendation within same week
 - All times in UTC, iterative improvement (keep good, replace poor performers)
 
-#### 5. Thumbnail Generation Pipeline (Three Variants)
-The thumbnail generation pipeline produces **three variants per configured provider** when fully configured (PRD 401):
+#### 5. Thumbnail Generation Pipeline (Two Variants)
+The thumbnail generation pipeline produces **two variants per configured provider**:
 
 1. **B&W with illustration** — high-contrast stencil treatment of the creator + a 3D-rendered illustration accent + huge tagline overlay.
 2. **B&W without illustration** — same B&W aesthetic, no accent illustration.
-3. **Photo-realistic with contextual subject** — creator rendered photo-realistically (no threshold/stencil) alongside a photo-realistic contextual subject; **zero text overlay**. Style label on `GeneratedImage.Style` is `"photorealistic"`.
 
-**Subject resolution priority for variant #3** (`internal/api/handlers_thumbnail.go` → `handleGenerateThumbnails`):
-1. Manual override on `Video.PhotoRealisticSubject` (always wins per PRD must-have).
-2. AI inference via `ai.SuggestPhotoRealisticSubject(ctx, manuscript)` — fills the subject from the manuscript when the user leaves it empty.
-3. If both are empty / fail, the third variant is **silently skipped** — the two B&W variants still produce.
-
-**`Video.PhotoRealisticSubject` field**:
-```go
-PhotoRealisticSubject string `json:"photoRealisticSubject" completion:"empty_or_filled" ui:"auto"`
-```
-Opt-in metadata: `completion:"empty_or_filled"` so the field does **not** block phase progression.
+Both variants come from `thumbnail.BuildPrompt`; the only difference is whether
+`PromptConfig.Illustration` is set. A third photo-realistic variant existed
+(PRD 401) and was removed — see git history if it needs resurrecting.
 
 **Prompt-injection sanitization** (`thumbnail.SanitizePromptInput`):
 - Drops invalid UTF-8 (`strings.ToValidUTF8`).
 - Strips Unicode `Cc` + `Cf` characters (covers ASCII control bytes, C1 controls, zero-width chars like ZWSP/ZWJ/ZWNJ/BOM, bidi-override marks like LRO/RLO/PDF — all standard prompt-injection vectors).
 - Applies anchored regex patterns to a fixed point (iteration cap = 8) for role-tag prefixes (`system:`/`assistant:`/`user:`/`developer:`/`human:`/`model:`), instruction-override phrases (`ignore|disregard|forget|override|discard|skip` + quantifier + `previous|above|prior|earlier`), `forget everything/all`, and LLM special markers `<|...|>`.
-- Defense in depth: applied at the **handler layer** (`handlers_thumbnail.go`) AND defensively again inside the **prompt builders** (`BuildPrompt`, `BuildPhotoRealisticPrompt`) so callers constructing config structs directly cannot bypass it.
+- Defense in depth: applied at the **handler layer** (`handlers_thumbnail.go`) AND defensively again inside `BuildPrompt` so callers constructing config structs directly cannot bypass it.
 
 **Microphone removal — cross-variant canonical instruction** (PRD 402):
-- `thumbnail.MicrophoneRemovalInstruction` is the single, exported constant carrying the canonical sentence ("If there is a microphone visible in the source photo …"). Every prompt builder (B&W with illustration, B&W without illustration, photo-realistic) embeds this constant verbatim — no copy-paste drift between variants.
-- The instruction is hoisted into its own labeled section (`**Microphone removal:**`) right after the `**My photo:**` paragraph in each variant, **not** buried inside the photo-treatment text. It is also restated as a `- No microphone visible …` bullet in the closing `**Rules:**` footer of each variant for redundancy (same style as the tagline rule).
+- `thumbnail.MicrophoneRemovalInstruction` is the single, exported constant carrying the canonical sentence ("If there is a microphone visible in the source photo …"). Every prompt builder embeds this constant verbatim — no copy-paste drift between variants.
+- The instruction is hoisted into its own labeled section (`**Microphone removal:**`) right after the `**My photo:**` paragraph, **not** buried inside the photo-treatment text. It is also restated as a `- No microphone visible …` bullet in the closing `**Rules:**` footer for redundancy (same style as the tagline rule).
 - The cross-variant test `TestAllPromptBuilders_IncludeMicrophoneRemoval` in `prompt_builder_test.go` iterates over the `allPromptBuilders` registry and fails if any variant omits the constant, the section heading, or the footer bullet. **When adding a new variant, append it to that registry** — the test will then enforce the rule automatically.
 
 **Authoritative references**:
 - `internal/thumbnail/orchestrator.go` — `GenerateRequest`, `runProvider`, style constants.
-- `internal/thumbnail/prompt_builder.go` — `BuildPrompt`, `BuildPhotoRealisticPrompt`, `SanitizePromptInput`, `MicrophoneRemovalInstruction`.
-- `internal/ai/photo_realistic_subject.go` — `SuggestPhotoRealisticSubject` + parser.
+- `internal/thumbnail/prompt_builder.go` — `BuildPrompt`, `SanitizePromptInput`, `MicrophoneRemovalInstruction`.
 
 #### 6. Hugo URL Construction
 For any Hugo-related functionality, use the established pattern:
