@@ -409,3 +409,106 @@ func TestPullIfStale_ReturnsErrorOnStatusFailure(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "git status failed")
 }
+
+func TestCommitAndPush_AdvancesTrackingRefAfterPush(t *testing.T) {
+	mock := newMockExecutor()
+	mock.setResult("git status", []byte("M index.yaml\n"), nil)
+
+	sm := NewSyncManagerWithExecutor(
+		"https://github.com/user/repo.git", "main", t.TempDir(), "tok123", mock,
+	)
+
+	require.NoError(t, sm.CommitAndPush("test commit"))
+
+	// update-ref must come after the push, so a failed push never advances the ref.
+	require.Len(t, mock.calls, 8)
+	assert.Equal(t, "push", mock.calls[6].Args[0])
+	assert.Equal(t, "update-ref", mock.calls[7].Args[0])
+	assert.Equal(t, []string{"update-ref", "refs/remotes/origin/main", "HEAD"}, mock.calls[7].Args)
+}
+
+func TestCommitAndPush_DoesNotAdvanceTrackingRefWhenPushFails(t *testing.T) {
+	mock := newMockExecutor()
+	mock.setResult("git status", []byte("M index.yaml\n"), nil)
+	mock.setResult("git push", []byte("remote rejected"), fmt.Errorf("exit 1"))
+
+	sm := NewSyncManagerWithExecutor(
+		"https://github.com/user/repo.git", "main", t.TempDir(), "tok123", mock,
+	)
+
+	require.Error(t, sm.CommitAndPush("test commit"))
+	assert.Nil(t, mock.findCall("git update-ref"), "tracking ref must not advance past a failed push")
+}
+
+func TestCommitAndPush_ReturnsErrorWhenUpdateRefFails(t *testing.T) {
+	mock := newMockExecutor()
+	mock.setResult("git status", []byte("M index.yaml\n"), nil)
+	mock.setResult("git update-ref", []byte("fatal: bad ref"), fmt.Errorf("exit 128"))
+
+	sm := NewSyncManagerWithExecutor(
+		"https://github.com/user/repo.git", "main", t.TempDir(), "tok123", mock,
+	)
+
+	err := sm.CommitAndPush("test commit")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "git update-ref failed")
+}
+
+// refTrackingExecutor models the one git behaviour that caused the production
+// wedge: pushing to a URL literal moves HEAD on the remote but leaves
+// refs/remotes/origin/<branch> where it was. Only an explicit update-ref (or a
+// fetch) advances it, and `rev-list @{u}..HEAD` is measured against it.
+type refTrackingExecutor struct {
+	dirty       bool // uncommitted change waiting to be saved
+	head        int  // commits made locally
+	tracking    int  // what refs/remotes/origin/<branch> points at
+	pulls       int
+	pushedAtRev int
+}
+
+func (e *refTrackingExecutor) Run(dir string, name string, args ...string) ([]byte, error) {
+	switch args[0] {
+	case "commit":
+		e.head++
+		e.dirty = false
+	case "push":
+		e.pushedAtRev = e.head // remote advances; tracking ref deliberately does not
+	case "update-ref":
+		e.tracking = e.head
+	case "pull":
+		e.pulls++
+	case "rev-list":
+		return []byte(fmt.Sprintf("%d\n", e.head-e.tracking)), nil
+	case "status":
+		if e.dirty {
+			return []byte("M index.yaml\n"), nil
+		}
+		return []byte(""), nil
+	}
+	return []byte{}, nil
+}
+
+func TestPullIfStale_StillPullsAfterAWrite(t *testing.T) {
+	exec := &refTrackingExecutor{dirty: true}
+	clock := time.Date(2026, 4, 15, 12, 0, 0, 0, time.UTC)
+
+	sm := NewSyncManagerWithExecutor(
+		"https://github.com/user/repo.git", "main", t.TempDir(), "tok123", exec,
+	)
+	sm.now = func() time.Time { return clock }
+
+	// A UI-driven save: commit, pull --rebase, push.
+	require.NoError(t, sm.CommitAndPush("update video"))
+	require.Equal(t, 1, exec.pushedAtRev)
+
+	pullsAfterWrite := exec.pulls
+
+	// A later read must still sync. Before the update-ref fix the tracking ref
+	// stayed behind HEAD, rev-list reported "1", and every subsequent read-time
+	// pull was silently skipped for the life of the process.
+	clock = clock.Add(time.Minute)
+	require.NoError(t, sm.PullIfStale(10*time.Second))
+
+	assert.Greater(t, exec.pulls, pullsAfterWrite,
+		"read-time pull must still run after a write, otherwise the server serves stale data forever")
+}

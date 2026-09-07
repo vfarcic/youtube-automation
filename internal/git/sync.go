@@ -2,6 +2,7 @@ package git
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"os/exec"
 	"strings"
@@ -27,14 +28,14 @@ func (e *DefaultExecutor) Run(dir string, name string, args ...string) ([]byte, 
 
 // SyncManager handles git clone, pull, commit, and push operations
 type SyncManager struct {
-	repoURL      string
-	branch       string
-	dataDir      string
-	token        string
-	mu           sync.Mutex
-	executor     CommandExecutor
-	now          func() time.Time
-	lastAttempt  time.Time
+	repoURL     string
+	branch      string
+	dataDir     string
+	token       string
+	mu          sync.Mutex
+	executor    CommandExecutor
+	now         func() time.Time
+	lastAttempt time.Time
 }
 
 // NewSyncManager creates a new SyncManager with the default command executor
@@ -123,7 +124,28 @@ func (s *SyncManager) CommitAndPush(message string) error {
 		return fmt.Errorf("git push failed: %s: %w", SanitizeOutput(output, s.token), err)
 	}
 
+	// Advance the remote-tracking ref by hand.
+	//
+	// We push to a URL literal rather than to the `origin` remote so the token
+	// never has to live in .git/config. The cost is that git has no refspec to
+	// map the result onto, so it leaves refs/remotes/origin/<branch> pointing at
+	// whatever it was before — one commit behind HEAD, forever.
+	//
+	// PullIfStale reads that ref via @{u} to decide whether the local clone has
+	// unpushed work. Left stale, it reports "ahead" on every subsequent read and
+	// silently skips the pull for the life of the process, so externally pushed
+	// changes are never picked up. Keeping the ref honest here is what makes
+	// read-time sync work after the first write.
+	if output, err := s.executor.Run(s.dataDir, "git", "update-ref", trackingRef(s.branch), "HEAD"); err != nil {
+		return fmt.Errorf("git update-ref failed: %s: %w", SanitizeOutput(output, s.token), err)
+	}
+
 	return nil
+}
+
+// trackingRef returns the remote-tracking ref name for a branch on origin.
+func trackingRef(branch string) string {
+	return "refs/remotes/origin/" + branch
 }
 
 // PullIfStale runs `git pull --rebase` if at least maxAge has elapsed since the
@@ -162,6 +184,7 @@ func (s *SyncManager) PullIfStale(maxAge time.Duration) error {
 	}
 	if strings.TrimSpace(string(statusOutput)) != "" {
 		s.lastAttempt = s.now()
+		slog.Debug("git: skipping read-time pull, tracked files modified")
 		return nil
 	}
 
@@ -171,8 +194,14 @@ func (s *SyncManager) PullIfStale(maxAge time.Duration) error {
 		s.lastAttempt = s.now()
 		return fmt.Errorf("git rev-list failed: %s: %w", SanitizeOutput(aheadOutput, s.token), err)
 	}
-	if strings.TrimSpace(string(aheadOutput)) != "0" {
+	if ahead := strings.TrimSpace(string(aheadOutput)); ahead != "0" {
 		s.lastAttempt = s.now()
+		// Warn, not Debug: CommitAndPush keeps the tracking ref current, so a
+		// clone that still looks ahead during a read means a push failed. Left
+		// unlogged this is indistinguishable from a successful sync, and the
+		// server quietly serves stale data.
+		slog.Warn("git: skipping read-time pull, local clone has unpushed commits",
+			"ahead", ahead, "branch", s.branch)
 		return nil
 	}
 
@@ -190,4 +219,3 @@ func (s *SyncManager) PullIfStale(maxAge time.Duration) error {
 func (s *SyncManager) authenticatedURL() string {
 	return AuthenticatedURL(s.repoURL, s.token)
 }
-

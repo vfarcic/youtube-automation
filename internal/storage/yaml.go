@@ -157,12 +157,70 @@ func (y *YAML) GetVideo(path string) (Video, error) {
 		}}
 	}
 
+	normalizeVariantIndexes(&video)
+
 	return video, nil
+}
+
+// normalizeVariantIndexes assigns a positive Index to every title and thumbnail
+// variant that lacks one.
+//
+// Zero is not a valid variant number. GetUploadTitle looks for Index == 1 to
+// find the title to upload, so a video whose titles all carry the zero value
+// behaves as though it had no title at all: YouTube uploads send an empty
+// title and Hugo publishing fails outright with "Video has no title".
+//
+// The Web UI produces exactly that shape. Index is tagged ui:"auto", so
+// generateItemFields strips it from the form's item fields, and anything added
+// with the "Add Item" button is built from those fields alone — arriving with
+// Index unset. Normalising on both read and write means existing files heal
+// themselves the next time they are touched.
+//
+// Entries that already carry a positive index are left alone, duplicates
+// included, so a deliberate ordering is never silently rewritten.
+func normalizeVariantIndexes(video *Video) {
+	titles := make([]*int, len(video.Titles))
+	for i := range video.Titles {
+		titles[i] = &video.Titles[i].Index
+	}
+	fillMissingIndexes(titles)
+
+	thumbnails := make([]*int, len(video.ThumbnailVariants))
+	for i := range video.ThumbnailVariants {
+		thumbnails[i] = &video.ThumbnailVariants[i].Index
+	}
+	fillMissingIndexes(thumbnails)
+}
+
+// fillMissingIndexes gives each non-positive index the smallest positive number
+// not already claimed by its siblings, preserving document order.
+func fillMissingIndexes(indexes []*int) {
+	used := make(map[int]bool, len(indexes))
+	for _, idx := range indexes {
+		if *idx > 0 {
+			used[*idx] = true
+		}
+	}
+
+	next := 1
+	for _, idx := range indexes {
+		if *idx > 0 {
+			continue
+		}
+		for used[next] {
+			next++
+		}
+		*idx = next
+		used[next] = true
+	}
 }
 
 func (y *YAML) WriteVideo(video Video, path string) error {
 	y.mu.Lock()
 	defer y.mu.Unlock()
+	// video is a copy, so this repairs what lands on disk without the caller
+	// having to care. See normalizeVariantIndexes.
+	normalizeVariantIndexes(&video)
 	data, err := yaml.Marshal(&video)
 	if err != nil {
 		return fmt.Errorf("failed to marshal video data for %s: %w", path, err)

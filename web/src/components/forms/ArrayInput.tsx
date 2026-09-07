@@ -2,6 +2,20 @@ import { FieldLabel } from './FieldLabel';
 import { FileUploadInput } from './FileUploadInput';
 import type { ItemField } from '../../api/types';
 
+// Array fields whose items are numbered by an auto-managed `index` field.
+const INDEXED_ARRAY_FIELDS = new Set(['titles', 'thumbnailVariants']);
+
+// nextIndex returns the smallest positive index not already taken, so adding an
+// item after one was removed does not collide with a surviving sibling.
+function nextIndex(items: Record<string, unknown>[]): number {
+  const used = new Set(
+    items.map((item) => Number(item.index)).filter((n) => Number.isInteger(n) && n > 0),
+  );
+  let candidate = 1;
+  while (used.has(candidate)) candidate++;
+  return candidate;
+}
+
 interface ArrayInputProps {
   name: string;
   fieldName: string;
@@ -44,6 +58,14 @@ export function ArrayInput({
     const empty: Record<string, unknown> = {};
     for (const f of itemFields) {
       empty[f.fieldName] = f.type === 'number' ? 0 : f.type === 'boolean' ? false : '';
+    }
+    // Indexed arrays carry an `index` the server treats as the variant number,
+    // but it is tagged ui:"auto" and so never appears in itemFields. Without
+    // this the new item ships index 0, and since the upload title is the one
+    // with index 1, a video whose titles were all added here reads as having no
+    // title at all.
+    if (INDEXED_ARRAY_FIELDS.has(fieldName)) {
+      empty.index = nextIndex(items);
     }
     onChange(fieldName, [...items, empty]);
   };

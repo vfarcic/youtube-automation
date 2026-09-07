@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"sync"
 	"testing"
@@ -862,4 +863,131 @@ func TestConcurrentAccess(t *testing.T) {
 	idx, err := y.GetIndex()
 	require.NoError(t, err)
 	require.Len(t, idx, 1, "index should have exactly 1 entry")
+}
+
+func TestFillMissingIndexes(t *testing.T) {
+	tests := []struct {
+		name string
+		in   []int
+		want []int
+	}{
+		{name: "empty", in: []int{}, want: []int{}},
+		{name: "all unset gets sequential", in: []int{0, 0, 0}, want: []int{1, 2, 3}},
+		{name: "already numbered is untouched", in: []int{1, 2, 3}, want: []int{1, 2, 3}},
+		{name: "gap is filled around existing", in: []int{0, 2, 0}, want: []int{1, 2, 3}},
+		{name: "existing high index is preserved", in: []int{0, 5}, want: []int{1, 5}},
+		{name: "deliberate ordering is not rewritten", in: []int{3, 1}, want: []int{3, 1}},
+		{name: "duplicates are left alone", in: []int{1, 1}, want: []int{1, 1}},
+		{name: "negative treated as unset", in: []int{-1, 0}, want: []int{1, 2}},
+		{name: "single unset becomes one", in: []int{0}, want: []int{1}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			values := append(make([]int, 0, len(tt.in)), tt.in...)
+			ptrs := make([]*int, len(values))
+			for i := range values {
+				ptrs[i] = &values[i]
+			}
+
+			fillMissingIndexes(ptrs)
+
+			if !reflect.DeepEqual(values, tt.want) {
+				t.Errorf("fillMissingIndexes(%v) = %v, want %v", tt.in, values, tt.want)
+			}
+		})
+	}
+}
+
+func TestFillMissingIndexes_NilSlice(t *testing.T) {
+	fillMissingIndexes(nil) // must not panic
+}
+
+func TestNormalizeVariantIndexes_CoversTitlesAndThumbnails(t *testing.T) {
+	video := &Video{
+		Titles: []TitleVariant{
+			{Index: 0, Text: "First"},
+			{Index: 0, Text: "Second"},
+		},
+		ThumbnailVariants: []ThumbnailVariant{
+			{Index: 0, Path: "a.png"},
+			{Index: 2, Path: "b.png"},
+		},
+	}
+
+	normalizeVariantIndexes(video)
+
+	if got := video.GetUploadTitle(); got != "First" {
+		t.Errorf("GetUploadTitle() = %q, want %q", got, "First")
+	}
+	if video.Titles[1].Index != 2 {
+		t.Errorf("Titles[1].Index = %d, want 2", video.Titles[1].Index)
+	}
+	// Titles and thumbnails are numbered independently.
+	if video.ThumbnailVariants[0].Index != 1 || video.ThumbnailVariants[1].Index != 2 {
+		t.Errorf("thumbnail indexes = %d,%d, want 1,2",
+			video.ThumbnailVariants[0].Index, video.ThumbnailVariants[1].Index)
+	}
+}
+
+// Regression: titles added via the Web UI arrive with Index unset because the
+// field is ui:"auto" and stripped from the form. Before normalisation this made
+// GetUploadTitle return "" and Hugo publishing fail with "Video has no title",
+// even though the video plainly had three titles.
+func TestGetVideo_RepairsUnindexedTitlesFromDisk(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "video.yaml")
+
+	content := `name: bedtime-jenkins
+category: Bedtime
+titles:
+    - index: 0
+      text: Is Jenkins Dead? No, And That's Much Worse
+    - index: 0
+      text: Jenkins Won DevOps, Yet Nobody Uses It Willingly.
+`
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		t.Fatalf("failed to write fixture: %v", err)
+	}
+
+	y := NewYAML(filepath.Join(dir, "index.yaml"))
+	video, err := y.GetVideo(path)
+	if err != nil {
+		t.Fatalf("GetVideo() error = %v", err)
+	}
+
+	if got := video.GetUploadTitle(); got != "Is Jenkins Dead? No, And That's Much Worse" {
+		t.Errorf("GetUploadTitle() = %q, want the first title", got)
+	}
+}
+
+func TestWriteVideo_PersistsRepairedIndexes(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "video.yaml")
+	y := NewYAML(filepath.Join(dir, "index.yaml"))
+
+	err := y.WriteVideo(Video{
+		Name:   "test",
+		Titles: []TitleVariant{{Text: "Only Title"}},
+	}, path)
+	if err != nil {
+		t.Fatalf("WriteVideo() error = %v", err)
+	}
+
+	reloaded, err := y.GetVideo(path)
+	if err != nil {
+		t.Fatalf("GetVideo() error = %v", err)
+	}
+	if reloaded.Titles[0].Index != 1 {
+		t.Errorf("persisted index = %d, want 1", reloaded.Titles[0].Index)
+	}
+
+	// The repair must reach the file itself, not just the in-memory value.
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("failed to read written file: %v", err)
+	}
+	if !strings.Contains(string(data), "index: 1") {
+		t.Errorf("written YAML missing 'index: 1':\n%s", data)
+	}
 }

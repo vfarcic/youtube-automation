@@ -171,12 +171,14 @@ func (s *Server) setupRoutes() {
 
 		// Action buttons (send emails, set flags)
 		r.Route("/actions", func(r chi.Router) {
+			r.Use(s.syncBeforeAction)
 			r.Post("/request-edit/{videoName}", s.handleRequestEdit)
 			r.Post("/notify-sponsors/{videoName}", s.handleNotifySponsors)
 		})
 
 		// Publishing (YouTube upload, Hugo, transcript, metadata)
 		r.Route("/publish", func(r chi.Router) {
+			r.Use(s.syncBeforeAction)
 			r.Post("/youtube/{videoName}", s.handlePublishYouTube)
 			r.Post("/youtube/{videoName}/reupload", s.handleReuploadYouTube)
 			r.Post("/youtube/{videoName}/thumbnail", s.handlePublishThumbnail)
@@ -202,7 +204,7 @@ func (s *Server) setupRoutes() {
 		})
 
 		// Social media posting
-		r.Post("/social/{platform}/{videoName}", s.handleSocialPost)
+		r.With(s.syncBeforeAction).Post("/social/{platform}/{videoName}", s.handleSocialPost)
 
 		// Videos
 		r.Route("/videos", func(r chi.Router) {

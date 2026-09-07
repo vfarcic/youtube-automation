@@ -59,7 +59,79 @@ describe('ArrayInput', () => {
       />,
     );
     await userEvent.click(screen.getByText('+ Add Item'));
-    expect(onChange).toHaveBeenCalledWith('titles', [{ index: 0, text: '', share: 0 }]);
+    expect(onChange).toHaveBeenCalledWith('titles', [{ index: 1, text: '', share: 0 }]);
+  });
+
+  // In production `index` is tagged ui:"auto" on the Go struct, so the server
+  // strips it from itemFields entirely. The added item must still carry one:
+  // the upload title is the one with index 1, and titles left at index 0 make
+  // the video read as having no title at all.
+  it('numbers added items even when index is not an editable field', async () => {
+    const onChange = vi.fn();
+    const withoutIndex: ItemField[] = [{ name: 'Text', fieldName: 'text', type: 'string', order: 1 }];
+    render(
+      <ArrayInput
+        name="Titles"
+        fieldName="titles"
+        value={[]}
+        onChange={onChange}
+        itemFields={withoutIndex}
+      />,
+    );
+    await userEvent.click(screen.getByText('+ Add Item'));
+    expect(onChange).toHaveBeenCalledWith('titles', [{ index: 1, text: '' }]);
+  });
+
+  it('gives an added item the next free index', async () => {
+    const onChange = vi.fn();
+    render(
+      <ArrayInput
+        name="Titles"
+        fieldName="titles"
+        value={sampleItems}
+        onChange={onChange}
+        itemFields={titleItemFields}
+      />,
+    );
+    await userEvent.click(screen.getByText('+ Add Item'));
+    expect(onChange).toHaveBeenCalledWith('titles', [
+      ...sampleItems,
+      { index: 3, text: '', share: 0 },
+    ]);
+  });
+
+  it('reuses a freed index rather than colliding with a surviving sibling', async () => {
+    const onChange = vi.fn();
+    render(
+      <ArrayInput
+        name="Titles"
+        fieldName="titles"
+        value={[{ index: 2, text: 'Second Title', share: 0.4 }]}
+        onChange={onChange}
+        itemFields={titleItemFields}
+      />,
+    );
+    await userEvent.click(screen.getByText('+ Add Item'));
+    expect(onChange).toHaveBeenCalledWith('titles', [
+      { index: 2, text: 'Second Title', share: 0.4 },
+      { index: 1, text: '', share: 0 },
+    ]);
+  });
+
+  it('leaves non-indexed arrays without an index field', async () => {
+    const onChange = vi.fn();
+    const shortFields: ItemField[] = [{ name: 'Title', fieldName: 'title', type: 'string', order: 1 }];
+    render(
+      <ArrayInput
+        name="Shorts"
+        fieldName="shorts"
+        value={[]}
+        onChange={onChange}
+        itemFields={shortFields}
+      />,
+    );
+    await userEvent.click(screen.getByText('+ Add Item'));
+    expect(onChange).toHaveBeenCalledWith('shorts', [{ title: '' }]);
   });
 
   it('calls onChange without removed item on remove', async () => {
