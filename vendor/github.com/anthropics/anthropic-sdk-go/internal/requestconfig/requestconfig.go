@@ -1,5 +1,3 @@
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
-
 package requestconfig
 
 import (
@@ -38,7 +36,7 @@ func getNormalizedOS() string {
 		return "Android"
 	case "darwin":
 		return "MacOS"
-	case "window":
+	case "windows":
 		return "Windows"
 	case "freebsd":
 		return "FreeBSD"
@@ -121,7 +119,13 @@ func NewRequestConfig(ctx context.Context, method string, u string, body any, ds
 		}
 		params := q.Encode()
 		if params != "" {
-			u = u + "?" + params
+			parsed, _ := url.Parse(u)
+			if parsed.RawQuery != "" {
+				parsed.RawQuery = parsed.RawQuery + "&" + params
+				u = parsed.String()
+			} else {
+				u = u + "?" + params
+			}
 		}
 	}
 	if body, ok := body.([]byte); ok {
@@ -214,6 +218,7 @@ type RequestConfig struct {
 	Middlewares    []middleware
 	APIKey         string
 	AuthToken      string
+	WebhookKey     string
 	// If ResponseBodyInto not nil, then we will attempt to deserialize into
 	// ResponseBodyInto. If Destination is a []byte, then it will return the body as
 	// is.
@@ -356,11 +361,9 @@ func (b *bodyWithTimeout) Close() error {
 }
 
 func retryDelay(res *http.Response, retryCount int) time.Duration {
-	// If the API asks us to wait a certain amount of time (and it's a reasonable amount),
-	// just do what it says.
-
-	if retryAfterDelay, ok := parseRetryAfterHeader(res); ok && 0 <= retryAfterDelay && retryAfterDelay < time.Minute {
-		return retryAfterDelay
+	// If the backend tells us to wait a certain amount of time, use that value
+	if retryAfterDelay, ok := parseRetryAfterHeader(res); ok {
+		return max(0, retryAfterDelay)
 	}
 
 	maxDelay := 8 * time.Second
@@ -425,9 +428,16 @@ func (cfg *RequestConfig) Execute() (err error) {
 	var res *http.Response
 	var cancel context.CancelFunc
 	for retryCount := 0; retryCount <= cfg.MaxRetries; retryCount += 1 {
-		ctx := cfg.Request.Context()
-		if cfg.RequestTimeout != time.Duration(0) && isBeforeContextDeadline(time.Now().Add(cfg.RequestTimeout), ctx) {
-			ctx, cancel = context.WithTimeout(ctx, cfg.RequestTimeout)
+		// callerCtx spans every attempt; ctx additionally carries this attempt's RequestTimeout, if any.
+		callerCtx := cfg.Request.Context()
+		ctx := callerCtx
+		// Release the previous attempt's timer before starting a new attempt.
+		if cancel != nil {
+			cancel()
+			cancel = nil
+		}
+		if cfg.RequestTimeout != time.Duration(0) && isBeforeContextDeadline(time.Now().Add(cfg.RequestTimeout), callerCtx) {
+			ctx, cancel = context.WithTimeout(callerCtx, cfg.RequestTimeout)
 			defer func() {
 				// The cancel function is nil if it was handed off to be handled in a different scope.
 				if cancel != nil {
@@ -442,8 +452,18 @@ func (cfg *RequestConfig) Execute() (err error) {
 		}
 
 		res, err = handler(req)
-		if ctx != nil && ctx.Err() != nil {
-			return ctx.Err()
+		// Once the caller's context is done there is nothing left to retry.
+		if callerErr := callerCtx.Err(); callerErr != nil {
+			return callerErr
+		}
+		// Only the per-attempt timeout expired: treat it like a connection error so it is retried,
+		// and surface the context error if this was the last attempt.
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			if res != nil && res.Body != nil {
+				_ = res.Body.Close()
+			}
+			res = nil
+			err = ctxErr
 		}
 		if !shouldRetry(cfg.Request, res) || retryCount >= cfg.MaxRetries {
 			break
@@ -464,10 +484,14 @@ func (cfg *RequestConfig) Execute() (err error) {
 
 		// Close the response body before retrying to prevent connection leaks
 		if res != nil && res.Body != nil {
-			res.Body.Close()
+			_ = res.Body.Close()
 		}
 
-		time.Sleep(retryDelay(res, retryCount))
+		select {
+		case <-callerCtx.Done():
+			return callerCtx.Err()
+		case <-time.After(retryDelay(res, retryCount)):
+		}
 	}
 
 	// Save *http.Response if it is requested to, even if there was an error making the request. This is
@@ -488,7 +512,7 @@ func (cfg *RequestConfig) Execute() (err error) {
 
 	if res.StatusCode >= 400 {
 		contents, err := io.ReadAll(res.Body)
-		res.Body.Close()
+		_ = res.Body.Close()
 		if err != nil {
 			return err
 		}
@@ -498,7 +522,7 @@ func (cfg *RequestConfig) Execute() (err error) {
 		res.Body = io.NopCloser(bytes.NewBuffer(contents))
 
 		// Load the contents into the error format if it is provided.
-		aerr := apierror.Error{Request: cfg.Request, Response: res, StatusCode: res.StatusCode, RequestID: res.Header.Get("request-id")}
+		aerr := apierror.Error{Request: cfg.Request, Response: res, StatusCode: res.StatusCode, RequestID: res.Header.Get("request-id"), WorkspaceID: res.Header.Get("anthropic-workspace-id")}
 		err = aerr.UnmarshalJSON(contents)
 		if err != nil {
 			return err
@@ -519,7 +543,7 @@ func (cfg *RequestConfig) Execute() (err error) {
 	}
 
 	contents, err := io.ReadAll(res.Body)
-	res.Body.Close()
+	_ = res.Body.Close()
 	if err != nil {
 		return fmt.Errorf("error reading response body: %w", err)
 	}
@@ -587,6 +611,7 @@ func (cfg *RequestConfig) Clone(ctx context.Context) *RequestConfig {
 		Middlewares:    cfg.Middlewares,
 		APIKey:         cfg.APIKey,
 		AuthToken:      cfg.AuthToken,
+		WebhookKey:     cfg.WebhookKey,
 	}
 
 	return new
