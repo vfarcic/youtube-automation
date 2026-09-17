@@ -280,7 +280,8 @@ func TestBuildSectionBlockWithThumbnail(t *testing.T) {
 				require.NotNil(t, block.Accessory)
 				require.NotNil(t, block.Accessory.ImageElement, "Accessory.ImageElement should not be nil")
 				assert.Equal(t, slack.METImage, block.Accessory.ImageElement.Type)
-				assert.Equal(t, tt.expectedThumbnailURL, block.Accessory.ImageElement.ImageURL)
+				require.NotNil(t, block.Accessory.ImageElement.ImageURL)
+				assert.Equal(t, tt.expectedThumbnailURL, *block.Accessory.ImageElement.ImageURL)
 				// Use video title as alt text if available, otherwise a default or empty.
 				// BuildSectionBlockWithThumbnail sets alt text to video.GetUploadTitle()
 				expectedAltText := tt.videoDetails.GetUploadTitle()
