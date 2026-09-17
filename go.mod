@@ -12,7 +12,7 @@ require (
 	github.com/horiagug/youtube-transcript-api-go v0.0.13
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/sirupsen/logrus v1.10.2
-	github.com/slack-go/slack v0.17.3
+	github.com/slack-go/slack v0.29.0
 	github.com/stretchr/testify v1.12.1
 	github.com/tmc/langchaingo v0.1.14
 	golang.org/x/oauth2 v0.35.0
