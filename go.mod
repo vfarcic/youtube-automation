@@ -8,7 +8,7 @@ require (
 	github.com/anthropics/anthropic-sdk-go v1.73.0
 	github.com/atotto/clipboard v0.1.4
 	github.com/emersion/go-smtp v0.25.0
-	github.com/go-chi/chi/v5 v5.2.3
+	github.com/go-chi/chi/v5 v5.3.2
 	github.com/horiagug/youtube-transcript-api-go v0.0.13
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/sirupsen/logrus v1.9.3
