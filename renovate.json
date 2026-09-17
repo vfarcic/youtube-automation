@@ -3,16 +3,12 @@
   "extends": [
       "config:recommended"
   ],
+  "automerge": true,
   "packageRules": [
     {
       "matchManagers": ["devbox"],
-      "automerge": true,
-      "commitMessageSuffix": "[skip ci]"
-    },
-    {
-      "matchManagers": ["gomod"],
-      "matchUpdateTypes": ["patch", "minor"],
-      "automerge": true
+      "commitMessageSuffix": "[skip ci]",
+      "ignoreTests": true
     }
   ]
 }
