@@ -1,5 +1,3 @@
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
-
 package anthropic
 
 import (
@@ -50,12 +48,18 @@ func NewMessageBatchService(opts ...option.RequestOption) (r MessageBatchService
 // can take up to 24 hours to complete.
 //
 // Learn more about the Message Batches API in our
-// [user guide](https://docs.claude.com/en/docs/build-with-claude/batch-processing)
-func (r *MessageBatchService) New(ctx context.Context, body MessageBatchNewParams, opts ...option.RequestOption) (res *MessageBatch, err error) {
+// [user guide](https://platform.claude.com/docs/en/build-with-claude/batch-processing)
+func (r *MessageBatchService) New(ctx context.Context, params MessageBatchNewParams, opts ...option.RequestOption) (res *MessageBatch, err error) {
+	if !param.IsOmitted(params.UserProfileID) {
+		opts = append(opts, option.WithHeader("anthropic-user-profile-id", fmt.Sprintf("%v", params.UserProfileID.Value)))
+	}
+	if !param.IsOmitted(params.WorkspaceID) {
+		opts = append(opts, option.WithHeader("anthropic-workspace-id", fmt.Sprintf("%v", params.WorkspaceID.Value)))
+	}
 	opts = slices.Concat(r.Options, opts)
 	path := "v1/messages/batches"
-	err = requestconfig.ExecuteNewRequest(ctx, http.MethodPost, path, body, &res, opts...)
-	return
+	err = requestconfig.ExecuteNewRequest(ctx, http.MethodPost, path, params, &res, opts...)
+	return res, err
 }
 
 // This endpoint is idempotent and can be used to poll for Message Batch
@@ -63,29 +67,35 @@ func (r *MessageBatchService) New(ctx context.Context, body MessageBatchNewParam
 // `results_url` field in the response.
 //
 // Learn more about the Message Batches API in our
-// [user guide](https://docs.claude.com/en/docs/build-with-claude/batch-processing)
-func (r *MessageBatchService) Get(ctx context.Context, messageBatchID string, opts ...option.RequestOption) (res *MessageBatch, err error) {
+// [user guide](https://platform.claude.com/docs/en/build-with-claude/batch-processing)
+func (r *MessageBatchService) Get(ctx context.Context, messageBatchID string, query MessageBatchGetParams, opts ...option.RequestOption) (res *MessageBatch, err error) {
+	if !param.IsOmitted(query.WorkspaceID) {
+		opts = append(opts, option.WithHeader("anthropic-workspace-id", fmt.Sprintf("%v", query.WorkspaceID.Value)))
+	}
 	opts = slices.Concat(r.Options, opts)
 	if messageBatchID == "" {
 		err = errors.New("missing required message_batch_id parameter")
-		return
+		return nil, err
 	}
 	path := fmt.Sprintf("v1/messages/batches/%s", messageBatchID)
 	err = requestconfig.ExecuteNewRequest(ctx, http.MethodGet, path, nil, &res, opts...)
-	return
+	return res, err
 }
 
 // List all Message Batches within a Workspace. Most recently created batches are
 // returned first.
 //
 // Learn more about the Message Batches API in our
-// [user guide](https://docs.claude.com/en/docs/build-with-claude/batch-processing)
-func (r *MessageBatchService) List(ctx context.Context, query MessageBatchListParams, opts ...option.RequestOption) (res *pagination.Page[MessageBatch], err error) {
+// [user guide](https://platform.claude.com/docs/en/build-with-claude/batch-processing)
+func (r *MessageBatchService) List(ctx context.Context, params MessageBatchListParams, opts ...option.RequestOption) (res *pagination.Page[MessageBatch], err error) {
 	var raw *http.Response
+	if !param.IsOmitted(params.WorkspaceID) {
+		opts = append(opts, option.WithHeader("anthropic-workspace-id", fmt.Sprintf("%v", params.WorkspaceID.Value)))
+	}
 	opts = slices.Concat(r.Options, opts)
 	opts = append([]option.RequestOption{option.WithResponseInto(&raw)}, opts...)
 	path := "v1/messages/batches"
-	cfg, err := requestconfig.NewRequestConfig(ctx, http.MethodGet, path, query, &res, opts...)
+	cfg, err := requestconfig.NewRequestConfig(ctx, http.MethodGet, path, params, &res, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -101,9 +111,9 @@ func (r *MessageBatchService) List(ctx context.Context, query MessageBatchListPa
 // returned first.
 //
 // Learn more about the Message Batches API in our
-// [user guide](https://docs.claude.com/en/docs/build-with-claude/batch-processing)
-func (r *MessageBatchService) ListAutoPaging(ctx context.Context, query MessageBatchListParams, opts ...option.RequestOption) *pagination.PageAutoPager[MessageBatch] {
-	return pagination.NewPageAutoPager(r.List(ctx, query, opts...))
+// [user guide](https://platform.claude.com/docs/en/build-with-claude/batch-processing)
+func (r *MessageBatchService) ListAutoPaging(ctx context.Context, params MessageBatchListParams, opts ...option.RequestOption) *pagination.PageAutoPager[MessageBatch] {
+	return pagination.NewPageAutoPager(r.List(ctx, params, opts...))
 }
 
 // Delete a Message Batch.
@@ -112,16 +122,19 @@ func (r *MessageBatchService) ListAutoPaging(ctx context.Context, query MessageB
 // like to delete an in-progress batch, you must first cancel it.
 //
 // Learn more about the Message Batches API in our
-// [user guide](https://docs.claude.com/en/docs/build-with-claude/batch-processing)
-func (r *MessageBatchService) Delete(ctx context.Context, messageBatchID string, opts ...option.RequestOption) (res *DeletedMessageBatch, err error) {
+// [user guide](https://platform.claude.com/docs/en/build-with-claude/batch-processing)
+func (r *MessageBatchService) Delete(ctx context.Context, messageBatchID string, body MessageBatchDeleteParams, opts ...option.RequestOption) (res *DeletedMessageBatch, err error) {
+	if !param.IsOmitted(body.WorkspaceID) {
+		opts = append(opts, option.WithHeader("anthropic-workspace-id", fmt.Sprintf("%v", body.WorkspaceID.Value)))
+	}
 	opts = slices.Concat(r.Options, opts)
 	if messageBatchID == "" {
 		err = errors.New("missing required message_batch_id parameter")
-		return
+		return nil, err
 	}
 	path := fmt.Sprintf("v1/messages/batches/%s", messageBatchID)
 	err = requestconfig.ExecuteNewRequest(ctx, http.MethodDelete, path, nil, &res, opts...)
-	return
+	return res, err
 }
 
 // Batches may be canceled any time before processing ends. Once cancellation is
@@ -135,16 +148,19 @@ func (r *MessageBatchService) Delete(ctx context.Context, messageBatchID string,
 // non-interruptible.
 //
 // Learn more about the Message Batches API in our
-// [user guide](https://docs.claude.com/en/docs/build-with-claude/batch-processing)
-func (r *MessageBatchService) Cancel(ctx context.Context, messageBatchID string, opts ...option.RequestOption) (res *MessageBatch, err error) {
+// [user guide](https://platform.claude.com/docs/en/build-with-claude/batch-processing)
+func (r *MessageBatchService) Cancel(ctx context.Context, messageBatchID string, body MessageBatchCancelParams, opts ...option.RequestOption) (res *MessageBatch, err error) {
+	if !param.IsOmitted(body.WorkspaceID) {
+		opts = append(opts, option.WithHeader("anthropic-workspace-id", fmt.Sprintf("%v", body.WorkspaceID.Value)))
+	}
 	opts = slices.Concat(r.Options, opts)
 	if messageBatchID == "" {
 		err = errors.New("missing required message_batch_id parameter")
-		return
+		return nil, err
 	}
 	path := fmt.Sprintf("v1/messages/batches/%s/cancel", messageBatchID)
 	err = requestconfig.ExecuteNewRequest(ctx, http.MethodPost, path, nil, &res, opts...)
-	return
+	return res, err
 }
 
 // Streams the results of a Message Batch as a `.jsonl` file.
@@ -154,17 +170,20 @@ func (r *MessageBatchService) Cancel(ctx context.Context, messageBatchID string,
 // requests. Use the `custom_id` field to match results to requests.
 //
 // Learn more about the Message Batches API in our
-// [user guide](https://docs.claude.com/en/docs/build-with-claude/batch-processing)
-func (r *MessageBatchService) ResultsStreaming(ctx context.Context, messageBatchID string, opts ...option.RequestOption) (stream *jsonl.Stream[MessageBatchIndividualResponse]) {
+// [user guide](https://platform.claude.com/docs/en/build-with-claude/batch-processing)
+func (r *MessageBatchService) ResultsStreaming(ctx context.Context, messageBatchID string, query MessageBatchResultsParams, opts ...option.RequestOption) (stream *jsonl.Stream[MessageBatchIndividualResponse]) {
 	var (
 		raw *http.Response
 		err error
 	)
+	if !param.IsOmitted(query.WorkspaceID) {
+		opts = append(opts, option.WithHeader("anthropic-workspace-id", fmt.Sprintf("%v", query.WorkspaceID.Value)))
+	}
 	opts = slices.Concat(r.Options, opts)
 	opts = append([]option.RequestOption{option.WithHeader("Accept", "application/x-jsonl")}, opts...)
 	if messageBatchID == "" {
 		err = errors.New("missing required message_batch_id parameter")
-		return
+		return jsonl.NewStream[MessageBatchIndividualResponse](nil, err)
 	}
 	path := fmt.Sprintf("v1/messages/batches/%s/results", messageBatchID)
 	err = requestconfig.ExecuteNewRequest(ctx, http.MethodGet, path, nil, &raw, opts...)
@@ -173,11 +192,11 @@ func (r *MessageBatchService) ResultsStreaming(ctx context.Context, messageBatch
 
 type DeletedMessageBatch struct {
 	// ID of the Message Batch.
-	ID string `json:"id,required"`
+	ID string `json:"id" api:"required"`
 	// Deleted object type.
 	//
 	// For Message Batches, this is always `"message_batch_deleted"`.
-	Type constant.MessageBatchDeleted `json:"type,required"`
+	Type constant.MessageBatchDeleted `json:"type" default:"message_batch_deleted"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		ID          respjson.Field
@@ -197,45 +216,45 @@ type MessageBatch struct {
 	// Unique object identifier.
 	//
 	// The format and length of IDs may change over time.
-	ID string `json:"id,required"`
+	ID string `json:"id" api:"required"`
 	// RFC 3339 datetime string representing the time at which the Message Batch was
 	// archived and its results became unavailable.
-	ArchivedAt time.Time `json:"archived_at,required" format:"date-time"`
+	ArchivedAt time.Time `json:"archived_at" api:"required" format:"date-time"`
 	// RFC 3339 datetime string representing the time at which cancellation was
 	// initiated for the Message Batch. Specified only if cancellation was initiated.
-	CancelInitiatedAt time.Time `json:"cancel_initiated_at,required" format:"date-time"`
+	CancelInitiatedAt time.Time `json:"cancel_initiated_at" api:"required" format:"date-time"`
 	// RFC 3339 datetime string representing the time at which the Message Batch was
 	// created.
-	CreatedAt time.Time `json:"created_at,required" format:"date-time"`
+	CreatedAt time.Time `json:"created_at" api:"required" format:"date-time"`
 	// RFC 3339 datetime string representing the time at which processing for the
 	// Message Batch ended. Specified only once processing ends.
 	//
 	// Processing ends when every request in a Message Batch has either succeeded,
 	// errored, canceled, or expired.
-	EndedAt time.Time `json:"ended_at,required" format:"date-time"`
+	EndedAt time.Time `json:"ended_at" api:"required" format:"date-time"`
 	// RFC 3339 datetime string representing the time at which the Message Batch will
 	// expire and end processing, which is 24 hours after creation.
-	ExpiresAt time.Time `json:"expires_at,required" format:"date-time"`
+	ExpiresAt time.Time `json:"expires_at" api:"required" format:"date-time"`
 	// Processing status of the Message Batch.
 	//
 	// Any of "in_progress", "canceling", "ended".
-	ProcessingStatus MessageBatchProcessingStatus `json:"processing_status,required"`
+	ProcessingStatus MessageBatchProcessingStatus `json:"processing_status" api:"required"`
 	// Tallies requests within the Message Batch, categorized by their status.
 	//
 	// Requests start as `processing` and move to one of the other statuses only once
 	// processing of the entire batch ends. The sum of all values always matches the
 	// total number of requests in the batch.
-	RequestCounts MessageBatchRequestCounts `json:"request_counts,required"`
+	RequestCounts MessageBatchRequestCounts `json:"request_counts" api:"required"`
 	// URL to a `.jsonl` file containing the results of the Message Batch requests.
 	// Specified only once processing ends.
 	//
 	// Results in the file are not guaranteed to be in the same order as requests. Use
 	// the `custom_id` field to match results to requests.
-	ResultsURL string `json:"results_url,required"`
+	ResultsURL string `json:"results_url" api:"required"`
 	// Object type.
 	//
 	// For Message Batches, this is always `"message_batch"`.
-	Type constant.MessageBatch `json:"type,required"`
+	Type constant.MessageBatch `json:"type" default:"message_batch"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		ID                respjson.Field
@@ -269,7 +288,7 @@ const (
 )
 
 type MessageBatchCanceledResult struct {
-	Type constant.Canceled `json:"type,required"`
+	Type constant.Canceled `json:"type" default:"canceled"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Type        respjson.Field
@@ -285,8 +304,8 @@ func (r *MessageBatchCanceledResult) UnmarshalJSON(data []byte) error {
 }
 
 type MessageBatchErroredResult struct {
-	Error shared.ErrorResponse `json:"error,required"`
-	Type  constant.Errored     `json:"type,required"`
+	Error shared.ErrorResponse `json:"error" api:"required"`
+	Type  constant.Errored     `json:"type" default:"errored"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Error       respjson.Field
@@ -303,7 +322,7 @@ func (r *MessageBatchErroredResult) UnmarshalJSON(data []byte) error {
 }
 
 type MessageBatchExpiredResult struct {
-	Type constant.Expired `json:"type,required"`
+	Type constant.Expired `json:"type" default:"expired"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Type        respjson.Field
@@ -325,13 +344,13 @@ type MessageBatchIndividualResponse struct {
 	// matching results to requests, as results may be given out of request order.
 	//
 	// Must be unique for each request within the Message Batch.
-	CustomID string `json:"custom_id,required"`
+	CustomID string `json:"custom_id" api:"required"`
 	// Processing result for this request.
 	//
 	// Contains a Message output if processing was successful, an error response if
 	// processing failed, or the reason why processing was not attempted, such as
 	// cancellation or expiration.
-	Result MessageBatchResultUnion `json:"result,required"`
+	Result MessageBatchResultUnion `json:"result" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		CustomID    respjson.Field
@@ -351,21 +370,21 @@ type MessageBatchRequestCounts struct {
 	// Number of requests in the Message Batch that have been canceled.
 	//
 	// This is zero until processing of the entire Message Batch has ended.
-	Canceled int64 `json:"canceled,required"`
+	Canceled int64 `json:"canceled" api:"required"`
 	// Number of requests in the Message Batch that encountered an error.
 	//
 	// This is zero until processing of the entire Message Batch has ended.
-	Errored int64 `json:"errored,required"`
+	Errored int64 `json:"errored" api:"required"`
 	// Number of requests in the Message Batch that have expired.
 	//
 	// This is zero until processing of the entire Message Batch has ended.
-	Expired int64 `json:"expired,required"`
+	Expired int64 `json:"expired" api:"required"`
 	// Number of requests in the Message Batch that are processing.
-	Processing int64 `json:"processing,required"`
+	Processing int64 `json:"processing" api:"required"`
 	// Number of requests in the Message Batch that have completed successfully.
 	//
 	// This is zero until processing of the entire Message Batch has ended.
-	Succeeded int64 `json:"succeeded,required"`
+	Succeeded int64 `json:"succeeded" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Canceled    respjson.Field
@@ -470,8 +489,8 @@ func (r *MessageBatchResultUnion) UnmarshalJSON(data []byte) error {
 }
 
 type MessageBatchSucceededResult struct {
-	Message Message            `json:"message,required"`
-	Type    constant.Succeeded `json:"type,required"`
+	Message Message            `json:"message" api:"required"`
+	Type    constant.Succeeded `json:"type" default:"succeeded"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Message     respjson.Field
@@ -490,7 +509,13 @@ func (r *MessageBatchSucceededResult) UnmarshalJSON(data []byte) error {
 type MessageBatchNewParams struct {
 	// List of requests for prompt completion. Each is an individual request to create
 	// a Message.
-	Requests []MessageBatchNewParamsRequest `json:"requests,omitzero,required"`
+	Requests []MessageBatchNewParamsRequest `json:"requests,omitzero" api:"required"`
+	// The user profile ID to attribute the requests in this batch to. Use when acting
+	// on behalf of a party other than your organization. Requires the `user-profiles`
+	// beta header. Applies to every request in the batch; an individual request whose
+	// `user_profile_id` body field conflicts with this header is errored.
+	UserProfileID param.Opt[string] `header:"anthropic-user-profile-id,omitzero" json:"-"`
+	WorkspaceID   param.Opt[string] `header:"anthropic-workspace-id,omitzero" json:"-"`
 	paramObj
 }
 
@@ -508,12 +533,13 @@ type MessageBatchNewParamsRequest struct {
 	// matching results to requests, as results may be given out of request order.
 	//
 	// Must be unique for each request within the Message Batch.
-	CustomID string `json:"custom_id,required"`
+	CustomID string `json:"custom_id" api:"required"`
 	// Messages API creation parameters for the individual request.
 	//
-	// See the [Messages API reference](https://docs.claude.com/en/api/messages) for
+	// See the
+	// [Messages API reference](https://platform.claude.com/docs/en/api/messages) for
 	// full documentation on available parameters.
-	Params MessageBatchNewParamsRequestParams `json:"params,omitzero,required"`
+	Params MessageBatchNewParamsRequestParams `json:"params,omitzero" api:"required"`
 	paramObj
 }
 
@@ -527,7 +553,8 @@ func (r *MessageBatchNewParamsRequest) UnmarshalJSON(data []byte) error {
 
 // Messages API creation parameters for the individual request.
 //
-// See the [Messages API reference](https://docs.claude.com/en/api/messages) for
+// See the
+// [Messages API reference](https://platform.claude.com/docs/en/api/messages) for
 // full documentation on available parameters.
 //
 // The properties MaxTokens, Messages, Model are required.
@@ -537,9 +564,14 @@ type MessageBatchNewParamsRequestParams struct {
 	// Note that our models may stop _before_ reaching this maximum. This parameter
 	// only specifies the absolute maximum number of tokens to generate.
 	//
+	// Set to `0` to populate the
+	// [prompt cache](https://platform.claude.com/docs/en/build-with-claude/prompt-caching#pre-warming-the-cache)
+	// without generating a response.
+	//
 	// Different models have different maximum values for this parameter. See
-	// [models](https://docs.claude.com/en/docs/models-overview) for details.
-	MaxTokens int64 `json:"max_tokens,required"`
+	// [models](https://platform.claude.com/docs/en/about-claude/models/overview) for
+	// details.
+	MaxTokens int64 `json:"max_tokens" api:"required"`
 	// Input messages.
 	//
 	// Our models are trained to operate on alternating `user` and `assistant`
@@ -601,22 +633,28 @@ type MessageBatchNewParamsRequestParams struct {
 	// { "role": "user", "content": [{ "type": "text", "text": "Hello, Claude" }] }
 	// ```
 	//
-	// See [input examples](https://docs.claude.com/en/api/messages-examples).
+	// See
+	// [input examples](https://platform.claude.com/docs/en/build-with-claude/working-with-messages).
 	//
 	// Note that if you want to include a
-	// [system prompt](https://docs.claude.com/en/docs/system-prompts), you can use the
-	// top-level `system` parameter — there is no `"system"` role for input messages in
-	// the Messages API.
+	// [system prompt](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices#give-claude-a-role),
+	// you can use the top-level `system` parameter — there is no `"system"` role for
+	// input messages in the Messages API.
 	//
 	// There is a limit of 100,000 messages in a single request.
-	Messages []MessageParam `json:"messages,omitzero,required"`
-	// The model that will complete your prompt.\n\nSee
-	// [models](https://docs.anthropic.com/en/docs/models-overview) for additional
+	Messages []MessageParam `json:"messages,omitzero" api:"required"`
+	// The model that will complete your prompt.
+	//
+	// See [models](https://docs.anthropic.com/en/docs/models-overview) for additional
 	// details and options.
-	Model Model `json:"model,omitzero,required"`
+	Model Model `json:"model,omitzero" api:"required"`
+	// Specifies the geographic region for inference processing. If not specified, the
+	// workspace's `default_inference_geo` is used.
+	InferenceGeo param.Opt[string] `json:"inference_geo,omitzero"`
 	// Whether to incrementally stream the response using server-sent events.
 	//
-	// See [streaming](https://docs.claude.com/en/api/messages-streaming) for details.
+	// See [streaming](https://platform.claude.com/docs/en/build-with-claude/streaming)
+	// for details.
 	Stream param.Opt[bool] `json:"stream,omitzero"`
 	// Amount of randomness injected into the response.
 	//
@@ -626,32 +664,48 @@ type MessageBatchNewParamsRequestParams struct {
 	//
 	// Note that even with `temperature` of `0.0`, the results will not be fully
 	// deterministic.
+	//
+	// Deprecated: Deprecated. Models released after Claude Opus 4.6 do not support
+	// setting temperature. A value of 1.0 will be accepted for backwards
+	// compatibility, all other values will be rejected with a 400 error.
 	Temperature param.Opt[float64] `json:"temperature,omitzero"`
 	// Only sample from the top K options for each subsequent token.
 	//
 	// Used to remove "long tail" low probability responses.
 	// [Learn more technical details here](https://towardsdatascience.com/how-to-sample-from-language-models-682bceb97277).
 	//
-	// Recommended for advanced use cases only. You usually only need to use
-	// `temperature`.
+	// Recommended for advanced use cases only.
+	//
+	// Deprecated: Deprecated. Models released after Claude Opus 4.6 do not accept
+	// top_k; any value will be rejected with a 400 error.
 	TopK param.Opt[int64] `json:"top_k,omitzero"`
 	// Use nucleus sampling.
 	//
 	// In nucleus sampling, we compute the cumulative distribution over all the options
 	// for each subsequent token in decreasing probability order and cut it off once it
-	// reaches a particular probability specified by `top_p`. You should either alter
-	// `temperature` or `top_p`, but not both.
+	// reaches a particular probability specified by `top_p`.
 	//
-	// Recommended for advanced use cases only. You usually only need to use
-	// `temperature`.
+	// Recommended for advanced use cases only.
+	//
+	// Deprecated: Deprecated. Models released after Claude Opus 4.6 do not support
+	// setting top_p. A value >= 0.99 will be accepted for backwards compatibility, all
+	// other values will be rejected with a 400 error.
 	TopP param.Opt[float64] `json:"top_p,omitzero"`
+	// Container identifier for reuse across requests.
+	Container MessageCreateParamsContainerUnion `json:"container,omitzero"`
+	// Top-level cache control automatically applies a cache_control marker to the last
+	// cacheable block in the request.
+	CacheControl CacheControlEphemeralParam `json:"cache_control,omitzero"`
 	// An object describing metadata about the request.
 	Metadata MetadataParam `json:"metadata,omitzero"`
+	// Configuration options for the model's output, such as the output format.
+	OutputConfig OutputConfigParam `json:"output_config,omitzero"`
 	// Determines whether to use priority capacity (if available) or standard capacity
 	// for this request.
 	//
 	// Anthropic offers different levels of service for your API requests. See
-	// [service-tiers](https://docs.claude.com/en/api/service-tiers) for details.
+	// [service-tiers](https://platform.claude.com/docs/en/api/service-tiers) for
+	// details.
 	//
 	// Any of "auto", "standard_only".
 	ServiceTier string `json:"service_tier,omitzero"`
@@ -669,7 +723,7 @@ type MessageBatchNewParamsRequestParams struct {
 	//
 	// A system prompt is a way of providing context and instructions to Claude, such
 	// as specifying a particular goal or role. See our
-	// [guide to system prompts](https://docs.claude.com/en/docs/system-prompts).
+	// [guide to system prompts](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices#give-claude-a-role).
 	System []TextBlockParam `json:"system,omitzero"`
 	// Configuration for enabling Claude's extended thinking.
 	//
@@ -678,7 +732,7 @@ type MessageBatchNewParamsRequestParams struct {
 	// tokens and counts towards your `max_tokens` limit.
 	//
 	// See
-	// [extended thinking](https://docs.claude.com/en/docs/build-with-claude/extended-thinking)
+	// [extended thinking](https://platform.claude.com/docs/en/build-with-claude/extended-thinking)
 	// for details.
 	Thinking ThinkingConfigParamUnion `json:"thinking,omitzero"`
 	// How the model should use the provided tools. The model can use a specific tool,
@@ -693,9 +747,9 @@ type MessageBatchNewParamsRequestParams struct {
 	//
 	// There are two types of tools: **client tools** and **server tools**. The
 	// behavior described below applies to client tools. For
-	// [server tools](https://docs.claude.com/en/docs/agents-and-tools/tool-use/overview#server-tools),
+	// [server tools](https://platform.claude.com/docs/en/agents-and-tools/tool-use/server-tools),
 	// see their individual documentation as each has its own behavior (e.g., the
-	// [web search tool](https://docs.claude.com/en/docs/agents-and-tools/tool-use/web-search-tool)).
+	// [web search tool](https://platform.claude.com/docs/en/agents-and-tools/tool-use/web-search-tool)).
 	//
 	// Each tool definition includes:
 	//
@@ -764,7 +818,9 @@ type MessageBatchNewParamsRequestParams struct {
 	// functions, or more generally whenever you want the model to produce a particular
 	// JSON structure of output.
 	//
-	// See our [guide](https://docs.claude.com/en/docs/tool-use) for more details.
+	// See our
+	// [guide](https://platform.claude.com/docs/en/agents-and-tools/tool-use/overview)
+	// for more details.
 	Tools []ToolUnionParam `json:"tools,omitzero"`
 	paramObj
 }
@@ -783,6 +839,11 @@ func init() {
 	)
 }
 
+type MessageBatchGetParams struct {
+	WorkspaceID param.Opt[string] `header:"anthropic-workspace-id,omitzero" json:"-"`
+	paramObj
+}
+
 type MessageBatchListParams struct {
 	// ID of the object to use as a cursor for pagination. When provided, returns the
 	// page of results immediately after this object.
@@ -793,14 +854,30 @@ type MessageBatchListParams struct {
 	// Number of items to return per page.
 	//
 	// Defaults to `20`. Ranges from `1` to `1000`.
-	Limit param.Opt[int64] `query:"limit,omitzero" json:"-"`
+	Limit       param.Opt[int64]  `query:"limit,omitzero" json:"-"`
+	WorkspaceID param.Opt[string] `header:"anthropic-workspace-id,omitzero" json:"-"`
 	paramObj
 }
 
 // URLQuery serializes [MessageBatchListParams]'s query parameters as `url.Values`.
 func (r MessageBatchListParams) URLQuery() (v url.Values, err error) {
 	return apiquery.MarshalWithSettings(r, apiquery.QuerySettings{
-		ArrayFormat:  apiquery.ArrayQueryFormatComma,
+		ArrayFormat:  apiquery.ArrayQueryFormatBrackets,
 		NestedFormat: apiquery.NestedQueryFormatBrackets,
 	})
+}
+
+type MessageBatchDeleteParams struct {
+	WorkspaceID param.Opt[string] `header:"anthropic-workspace-id,omitzero" json:"-"`
+	paramObj
+}
+
+type MessageBatchCancelParams struct {
+	WorkspaceID param.Opt[string] `header:"anthropic-workspace-id,omitzero" json:"-"`
+	paramObj
+}
+
+type MessageBatchResultsParams struct {
+	WorkspaceID param.Opt[string] `header:"anthropic-workspace-id,omitzero" json:"-"`
+	paramObj
 }

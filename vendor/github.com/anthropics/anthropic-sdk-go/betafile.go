@@ -1,5 +1,3 @@
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
-
 package anthropic
 
 import (
@@ -45,13 +43,16 @@ func NewBetaFileService(opts ...option.RequestOption) (r BetaFileService) {
 }
 
 // List Files
-func (r *BetaFileService) List(ctx context.Context, params BetaFileListParams, opts ...option.RequestOption) (res *pagination.Page[FileMetadata], err error) {
+func (r *BetaFileService) List(ctx context.Context, params BetaFileListParams, opts ...option.RequestOption) (res *pagination.PageCursor[BetaFileMetadata], err error) {
 	var raw *http.Response
 	for _, v := range params.Betas {
-		opts = append(opts, option.WithHeaderAdd("anthropic-beta", fmt.Sprintf("%s", v)))
+		opts = append(opts, option.WithHeaderAdd("anthropic-beta", fmt.Sprintf("%v", v)))
+	}
+	if !param.IsOmitted(params.WorkspaceID) {
+		opts = append(opts, option.WithHeader("anthropic-workspace-id", fmt.Sprintf("%v", params.WorkspaceID.Value)))
 	}
 	opts = slices.Concat(r.Options, opts)
-	opts = append([]option.RequestOption{option.WithHeader("anthropic-beta", "files-api-2025-04-14"), option.WithResponseInto(&raw)}, opts...)
+	opts = append([]option.RequestOption{option.WithResponseInto(&raw)}, opts...)
 	path := "v1/files?beta=true"
 	cfg, err := requestconfig.NewRequestConfig(ctx, http.MethodGet, path, params, &res, opts...)
 	if err != nil {
@@ -66,79 +67,88 @@ func (r *BetaFileService) List(ctx context.Context, params BetaFileListParams, o
 }
 
 // List Files
-func (r *BetaFileService) ListAutoPaging(ctx context.Context, params BetaFileListParams, opts ...option.RequestOption) *pagination.PageAutoPager[FileMetadata] {
-	return pagination.NewPageAutoPager(r.List(ctx, params, opts...))
+func (r *BetaFileService) ListAutoPaging(ctx context.Context, params BetaFileListParams, opts ...option.RequestOption) *pagination.PageCursorAutoPager[BetaFileMetadata] {
+	return pagination.NewPageCursorAutoPager(r.List(ctx, params, opts...))
 }
 
 // Delete File
-func (r *BetaFileService) Delete(ctx context.Context, fileID string, body BetaFileDeleteParams, opts ...option.RequestOption) (res *DeletedFile, err error) {
+func (r *BetaFileService) Delete(ctx context.Context, fileID string, body BetaFileDeleteParams, opts ...option.RequestOption) (res *BetaDeletedFile, err error) {
 	for _, v := range body.Betas {
-		opts = append(opts, option.WithHeaderAdd("anthropic-beta", fmt.Sprintf("%s", v)))
+		opts = append(opts, option.WithHeaderAdd("anthropic-beta", fmt.Sprintf("%v", v)))
+	}
+	if !param.IsOmitted(body.WorkspaceID) {
+		opts = append(opts, option.WithHeader("anthropic-workspace-id", fmt.Sprintf("%v", body.WorkspaceID.Value)))
 	}
 	opts = slices.Concat(r.Options, opts)
-	opts = append([]option.RequestOption{option.WithHeader("anthropic-beta", "files-api-2025-04-14")}, opts...)
 	if fileID == "" {
 		err = errors.New("missing required file_id parameter")
-		return
+		return nil, err
 	}
 	path := fmt.Sprintf("v1/files/%s?beta=true", fileID)
 	err = requestconfig.ExecuteNewRequest(ctx, http.MethodDelete, path, nil, &res, opts...)
-	return
+	return res, err
 }
 
 // Download File
 func (r *BetaFileService) Download(ctx context.Context, fileID string, query BetaFileDownloadParams, opts ...option.RequestOption) (res *http.Response, err error) {
 	for _, v := range query.Betas {
-		opts = append(opts, option.WithHeaderAdd("anthropic-beta", fmt.Sprintf("%s", v)))
+		opts = append(opts, option.WithHeaderAdd("anthropic-beta", fmt.Sprintf("%v", v)))
+	}
+	if !param.IsOmitted(query.WorkspaceID) {
+		opts = append(opts, option.WithHeader("anthropic-workspace-id", fmt.Sprintf("%v", query.WorkspaceID.Value)))
 	}
 	opts = slices.Concat(r.Options, opts)
-	opts = append([]option.RequestOption{option.WithHeader("anthropic-beta", "files-api-2025-04-14"), option.WithHeader("Accept", "application/binary")}, opts...)
+	opts = append([]option.RequestOption{option.WithHeader("Accept", "application/binary")}, opts...)
 	if fileID == "" {
 		err = errors.New("missing required file_id parameter")
-		return
+		return nil, err
 	}
 	path := fmt.Sprintf("v1/files/%s/content?beta=true", fileID)
 	err = requestconfig.ExecuteNewRequest(ctx, http.MethodGet, path, nil, &res, opts...)
-	return
+	return res, err
 }
 
 // Get File Metadata
-func (r *BetaFileService) GetMetadata(ctx context.Context, fileID string, query BetaFileGetMetadataParams, opts ...option.RequestOption) (res *FileMetadata, err error) {
+func (r *BetaFileService) GetMetadata(ctx context.Context, fileID string, query BetaFileGetMetadataParams, opts ...option.RequestOption) (res *BetaFileMetadata, err error) {
 	for _, v := range query.Betas {
-		opts = append(opts, option.WithHeaderAdd("anthropic-beta", fmt.Sprintf("%s", v)))
+		opts = append(opts, option.WithHeaderAdd("anthropic-beta", fmt.Sprintf("%v", v)))
+	}
+	if !param.IsOmitted(query.WorkspaceID) {
+		opts = append(opts, option.WithHeader("anthropic-workspace-id", fmt.Sprintf("%v", query.WorkspaceID.Value)))
 	}
 	opts = slices.Concat(r.Options, opts)
-	opts = append([]option.RequestOption{option.WithHeader("anthropic-beta", "files-api-2025-04-14")}, opts...)
 	if fileID == "" {
 		err = errors.New("missing required file_id parameter")
-		return
+		return nil, err
 	}
 	path := fmt.Sprintf("v1/files/%s?beta=true", fileID)
 	err = requestconfig.ExecuteNewRequest(ctx, http.MethodGet, path, nil, &res, opts...)
-	return
+	return res, err
 }
 
 // Upload File
-func (r *BetaFileService) Upload(ctx context.Context, params BetaFileUploadParams, opts ...option.RequestOption) (res *FileMetadata, err error) {
+func (r *BetaFileService) Upload(ctx context.Context, params BetaFileUploadParams, opts ...option.RequestOption) (res *BetaFileMetadata, err error) {
 	for _, v := range params.Betas {
-		opts = append(opts, option.WithHeaderAdd("anthropic-beta", fmt.Sprintf("%s", v)))
+		opts = append(opts, option.WithHeaderAdd("anthropic-beta", fmt.Sprintf("%v", v)))
+	}
+	if !param.IsOmitted(params.WorkspaceID) {
+		opts = append(opts, option.WithHeader("anthropic-workspace-id", fmt.Sprintf("%v", params.WorkspaceID.Value)))
 	}
 	opts = slices.Concat(r.Options, opts)
-	opts = append([]option.RequestOption{option.WithHeader("anthropic-beta", "files-api-2025-04-14")}, opts...)
 	path := "v1/files?beta=true"
 	err = requestconfig.ExecuteNewRequest(ctx, http.MethodPost, path, params, &res, opts...)
-	return
+	return res, err
 }
 
-type DeletedFile struct {
+type BetaDeletedFile struct {
 	// ID of the deleted file.
-	ID string `json:"id,required"`
+	ID string `json:"id" api:"required"`
 	// Deleted object type.
 	//
 	// For file deletion, this is always `"file_deleted"`.
 	//
 	// Any of "file_deleted".
-	Type DeletedFileType `json:"type"`
+	Type BetaDeletedFileType `json:"type"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		ID          respjson.Field
@@ -149,39 +159,46 @@ type DeletedFile struct {
 }
 
 // Returns the unmodified JSON received from the API
-func (r DeletedFile) RawJSON() string { return r.JSON.raw }
-func (r *DeletedFile) UnmarshalJSON(data []byte) error {
+func (r BetaDeletedFile) RawJSON() string { return r.JSON.raw }
+func (r *BetaDeletedFile) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
 // Deleted object type.
 //
 // For file deletion, this is always `"file_deleted"`.
-type DeletedFileType string
+type BetaDeletedFileType string
 
 const (
-	DeletedFileTypeFileDeleted DeletedFileType = "file_deleted"
+	BetaDeletedFileTypeFileDeleted BetaDeletedFileType = "file_deleted"
 )
 
-type FileMetadata struct {
+type BetaFileMetadata struct {
 	// Unique object identifier.
 	//
 	// The format and length of IDs may change over time.
-	ID string `json:"id,required"`
+	ID string `json:"id" api:"required"`
 	// RFC 3339 datetime string representing when the file was created.
-	CreatedAt time.Time `json:"created_at,required" format:"date-time"`
+	CreatedAt time.Time `json:"created_at" api:"required" format:"date-time"`
 	// Original filename of the uploaded file.
-	Filename string `json:"filename,required"`
+	Filename string `json:"filename" api:"required"`
 	// MIME type of the file.
-	MimeType string `json:"mime_type,required"`
+	MimeType string `json:"mime_type" api:"required"`
 	// Size of the file in bytes.
-	SizeBytes int64 `json:"size_bytes,required"`
+	SizeBytes int64 `json:"size_bytes" api:"required"`
 	// Object type.
 	//
 	// For files, this is always `"file"`.
-	Type constant.File `json:"type,required"`
+	Type constant.File `json:"type" default:"file"`
 	// Whether the file can be downloaded.
 	Downloadable bool `json:"downloadable"`
+	// RFC 3339 datetime string representing when the file will expire and become
+	// unavailable for download. Null if the file does not expire. For files uploaded
+	// with `expires_in_seconds`, this is the upload time plus that value.
+	ExpiresAt time.Time `json:"expires_at" api:"nullable" format:"date-time"`
+	// The scope of this file, indicating the context in which it was created (e.g., a
+	// session).
+	Scope BetaFileScope `json:"scope" api:"nullable"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		ID           respjson.Field
@@ -191,28 +208,57 @@ type FileMetadata struct {
 		SizeBytes    respjson.Field
 		Type         respjson.Field
 		Downloadable respjson.Field
+		ExpiresAt    respjson.Field
+		Scope        respjson.Field
 		ExtraFields  map[string]respjson.Field
 		raw          string
 	} `json:"-"`
 }
 
 // Returns the unmodified JSON received from the API
-func (r FileMetadata) RawJSON() string { return r.JSON.raw }
-func (r *FileMetadata) UnmarshalJSON(data []byte) error {
+func (r BetaFileMetadata) RawJSON() string { return r.JSON.raw }
+func (r *BetaFileMetadata) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type BetaFileScope struct {
+	// The ID of the scoping resource (e.g., the session ID).
+	ID string `json:"id" api:"required"`
+	// The type of scope (e.g., `"session"`).
+	Type constant.Session `json:"type" default:"session"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		ID          respjson.Field
+		Type        respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r BetaFileScope) RawJSON() string { return r.JSON.raw }
+func (r *BetaFileScope) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
 type BetaFileListParams struct {
-	// ID of the object to use as a cursor for pagination. When provided, returns the
-	// page of results immediately after this object.
-	AfterID param.Opt[string] `query:"after_id,omitzero" json:"-"`
-	// ID of the object to use as a cursor for pagination. When provided, returns the
-	// page of results immediately before this object.
-	BeforeID param.Opt[string] `query:"before_id,omitzero" json:"-"`
+	// Opaque page cursor returned in a prior list response's `next_page`. Prefixed
+	// `page_`.
+	Page param.Opt[string] `query:"page,omitzero" json:"-"`
 	// Number of items to return per page.
 	//
 	// Defaults to `20`. Ranges from `1` to `1000`.
 	Limit param.Opt[int64] `query:"limit,omitzero" json:"-"`
+	// Filter by scope ID. Only returns files associated with the specified scope
+	// (e.g., a session ID).
+	ScopeID     param.Opt[string] `query:"scope_id,omitzero" json:"-"`
+	WorkspaceID param.Opt[string] `header:"anthropic-workspace-id,omitzero" json:"-"`
+	// Restrict the result set to Files whose `id` is in this list. At most 100 entries
+	// (after de-duplication). Mutually exclusive with `page` and `limit`. When
+	// supplied, the response is always a single page (`next_page` is null). IDs that
+	// do not resolve to a visible File — including deleted Files — are silently
+	// omitted.
+	IDs []string `query:"ids,omitzero" json:"-"`
 	// Optional header to specify the beta version(s) you want to use.
 	Betas []AnthropicBeta `header:"anthropic-beta,omitzero" json:"-"`
 	paramObj
@@ -221,32 +267,41 @@ type BetaFileListParams struct {
 // URLQuery serializes [BetaFileListParams]'s query parameters as `url.Values`.
 func (r BetaFileListParams) URLQuery() (v url.Values, err error) {
 	return apiquery.MarshalWithSettings(r, apiquery.QuerySettings{
-		ArrayFormat:  apiquery.ArrayQueryFormatComma,
+		ArrayFormat:  apiquery.ArrayQueryFormatBrackets,
 		NestedFormat: apiquery.NestedQueryFormatBrackets,
 	})
 }
 
 type BetaFileDeleteParams struct {
+	WorkspaceID param.Opt[string] `header:"anthropic-workspace-id,omitzero" json:"-"`
 	// Optional header to specify the beta version(s) you want to use.
 	Betas []AnthropicBeta `header:"anthropic-beta,omitzero" json:"-"`
 	paramObj
 }
 
 type BetaFileDownloadParams struct {
+	WorkspaceID param.Opt[string] `header:"anthropic-workspace-id,omitzero" json:"-"`
 	// Optional header to specify the beta version(s) you want to use.
 	Betas []AnthropicBeta `header:"anthropic-beta,omitzero" json:"-"`
 	paramObj
 }
 
 type BetaFileGetMetadataParams struct {
+	WorkspaceID param.Opt[string] `header:"anthropic-workspace-id,omitzero" json:"-"`
 	// Optional header to specify the beta version(s) you want to use.
 	Betas []AnthropicBeta `header:"anthropic-beta,omitzero" json:"-"`
 	paramObj
 }
 
 type BetaFileUploadParams struct {
-	// The file to upload
-	File io.Reader `json:"file,omitzero,required" format:"binary"`
+	// The file to upload. Only the final path component of the part's `filename` is
+	// kept; an absent or empty `filename` is replaced with `unnamed` plus the
+	// extension for the file's stored `mime_type`, when known.
+	File io.Reader `json:"file,omitzero" api:"required" format:"binary"`
+	// Seconds from upload until the file expires and its bytes become permanently
+	// unavailable. Must be between 3600 (one hour) and 7776000 (ninety days).
+	ExpiresInSeconds param.Opt[int64]  `json:"expires_in_seconds,omitzero"`
+	WorkspaceID      param.Opt[string] `header:"anthropic-workspace-id,omitzero" json:"-"`
 	// Optional header to specify the beta version(s) you want to use.
 	Betas []AnthropicBeta `header:"anthropic-beta,omitzero" json:"-"`
 	paramObj

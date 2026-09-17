@@ -1,3 +1,7 @@
+## Contributing to documentation
+
+The documentation for this SDK lives at [platform.claude.com/docs/en/api/sdks/go](https://platform.claude.com/docs/en/api/sdks/go). To suggest changes, open an issue.
+
 ## Setting up the environment
 
 To set up the repository, run:
@@ -46,11 +50,10 @@ $ go mod edit -replace github.com/anthropics/anthropic-sdk-go=/path/to/anthropic
 
 ## Running tests
 
-Most tests require you to [set up a mock server](https://github.com/stoplightio/prism) against the OpenAPI spec to run the tests.
+Most tests require you to [set up a mock server](https://github.com/dgellow/steady) against the OpenAPI spec to run the tests.
 
 ```sh
-# you will need npm installed
-$ npx prism mock path/to/your/openapi.yml
+$ ./scripts/mock
 ```
 
 ```sh

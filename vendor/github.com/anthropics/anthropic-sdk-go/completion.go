@@ -1,5 +1,3 @@
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
-
 package anthropic
 
 import (
@@ -39,30 +37,33 @@ func NewCompletionService(opts ...option.RequestOption) (r CompletionService) {
 // [Legacy] Create a Text Completion.
 //
 // The Text Completions API is a legacy API. We recommend using the
-// [Messages API](https://docs.claude.com/en/api/messages) going forward.
+// [Messages API](https://platform.claude.com/docs/en/api/messages) going forward.
 //
 // Future models and features will not be compatible with Text Completions. See our
-// [migration guide](https://docs.claude.com/en/api/migrating-from-text-completions-to-messages)
+// [migration guide](https://platform.claude.com/docs/en/build-with-claude/working-with-messages)
 // for guidance in migrating from Text Completions to Messages.
 //
 // Note: If you choose to set a timeout for this request, we recommend 10 minutes.
 func (r *CompletionService) New(ctx context.Context, params CompletionNewParams, opts ...option.RequestOption) (res *Completion, err error) {
 	for _, v := range params.Betas {
-		opts = append(opts, option.WithHeaderAdd("anthropic-beta", fmt.Sprintf("%s", v)))
+		opts = append(opts, option.WithHeaderAdd("anthropic-beta", fmt.Sprintf("%v", v)))
+	}
+	if !param.IsOmitted(params.WorkspaceID) {
+		opts = append(opts, option.WithHeader("anthropic-workspace-id", fmt.Sprintf("%v", params.WorkspaceID.Value)))
 	}
 	opts = slices.Concat(r.Options, opts)
 	path := "v1/complete"
 	err = requestconfig.ExecuteNewRequest(ctx, http.MethodPost, path, params, &res, opts...)
-	return
+	return res, err
 }
 
 // [Legacy] Create a Text Completion.
 //
 // The Text Completions API is a legacy API. We recommend using the
-// [Messages API](https://docs.claude.com/en/api/messages) going forward.
+// [Messages API](https://platform.claude.com/docs/en/api/messages) going forward.
 //
 // Future models and features will not be compatible with Text Completions. See our
-// [migration guide](https://docs.claude.com/en/api/migrating-from-text-completions-to-messages)
+// [migration guide](https://platform.claude.com/docs/en/build-with-claude/working-with-messages)
 // for guidance in migrating from Text Completions to Messages.
 //
 // Note: If you choose to set a timeout for this request, we recommend 10 minutes.
@@ -72,10 +73,13 @@ func (r *CompletionService) NewStreaming(ctx context.Context, params CompletionN
 		err error
 	)
 	for _, v := range params.Betas {
-		opts = append(opts, option.WithHeaderAdd("anthropic-beta", fmt.Sprintf("%s", v)))
+		opts = append(opts, option.WithHeaderAdd("anthropic-beta", fmt.Sprintf("%v", v)))
+	}
+	if !param.IsOmitted(params.WorkspaceID) {
+		opts = append(opts, option.WithHeader("anthropic-workspace-id", fmt.Sprintf("%v", params.WorkspaceID.Value)))
 	}
 	opts = slices.Concat(r.Options, opts)
-	opts = append([]option.RequestOption{option.WithJSONSet("stream", true)}, opts...)
+	opts = append(opts, option.WithJSONSet("stream", true))
 	path := "v1/complete"
 	err = requestconfig.ExecuteNewRequest(ctx, http.MethodPost, path, params, &raw, opts...)
 	return ssestream.NewStream[Completion](ssestream.NewDecoder(raw), err)
@@ -85,13 +89,14 @@ type Completion struct {
 	// Unique object identifier.
 	//
 	// The format and length of IDs may change over time.
-	ID string `json:"id,required"`
+	ID string `json:"id" api:"required"`
 	// The resulting completion up to and excluding the stop sequences.
-	Completion string `json:"completion,required"`
-	// The model that will complete your prompt.\n\nSee
-	// [models](https://docs.anthropic.com/en/docs/models-overview) for additional
+	Completion string `json:"completion" api:"required"`
+	// The model that will complete your prompt.
+	//
+	// See [models](https://docs.anthropic.com/en/docs/models-overview) for additional
 	// details and options.
-	Model Model `json:"model,required"`
+	Model Model `json:"model" api:"required"`
 	// The reason that we stopped.
 	//
 	// This may be one the following values:
@@ -99,11 +104,11 @@ type Completion struct {
 	//   - `"stop_sequence"`: we reached a stop sequence — either provided by you via the
 	//     `stop_sequences` parameter, or a stop sequence built into the model
 	//   - `"max_tokens"`: we exceeded `max_tokens_to_sample` or the model's maximum
-	StopReason string `json:"stop_reason,required"`
+	StopReason string `json:"stop_reason" api:"required"`
 	// Object type.
 	//
 	// For Text Completions, this is always `"completion"`.
-	Type constant.Completion `json:"type,required"`
+	Type constant.Completion `json:"type" default:"completion"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		ID          respjson.Field
@@ -127,11 +132,12 @@ type CompletionNewParams struct {
 	//
 	// Note that our models may stop _before_ reaching this maximum. This parameter
 	// only specifies the absolute maximum number of tokens to generate.
-	MaxTokensToSample int64 `json:"max_tokens_to_sample,required"`
-	// The model that will complete your prompt.\n\nSee
-	// [models](https://docs.anthropic.com/en/docs/models-overview) for additional
+	MaxTokensToSample int64 `json:"max_tokens_to_sample" api:"required"`
+	// The model that will complete your prompt.
+	//
+	// See [models](https://docs.anthropic.com/en/docs/models-overview) for additional
 	// details and options.
-	Model Model `json:"model,omitzero,required"`
+	Model Model `json:"model,omitzero" api:"required"`
 	// The prompt that you want Claude to complete.
 	//
 	// For proper response generation you will need to format your prompt using
@@ -141,10 +147,12 @@ type CompletionNewParams struct {
 	// "\n\nHuman: {userQuestion}\n\nAssistant:"
 	// ```
 	//
-	// See [prompt validation](https://docs.claude.com/en/api/prompt-validation) and
-	// our guide to [prompt design](https://docs.claude.com/en/docs/intro-to-prompting)
+	// See
+	// [prompt validation](https://platform.claude.com/docs/en/build-with-claude/working-with-messages)
+	// and our guide to
+	// [prompt design](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview)
 	// for more details.
-	Prompt string `json:"prompt,required"`
+	Prompt string `json:"prompt" api:"required"`
 	// Amount of randomness injected into the response.
 	//
 	// Defaults to `1.0`. Ranges from `0.0` to `1.0`. Use `temperature` closer to `0.0`
@@ -159,19 +167,17 @@ type CompletionNewParams struct {
 	// Used to remove "long tail" low probability responses.
 	// [Learn more technical details here](https://towardsdatascience.com/how-to-sample-from-language-models-682bceb97277).
 	//
-	// Recommended for advanced use cases only. You usually only need to use
-	// `temperature`.
+	// Recommended for advanced use cases only.
 	TopK param.Opt[int64] `json:"top_k,omitzero"`
 	// Use nucleus sampling.
 	//
 	// In nucleus sampling, we compute the cumulative distribution over all the options
 	// for each subsequent token in decreasing probability order and cut it off once it
-	// reaches a particular probability specified by `top_p`. You should either alter
-	// `temperature` or `top_p`, but not both.
+	// reaches a particular probability specified by `top_p`.
 	//
-	// Recommended for advanced use cases only. You usually only need to use
-	// `temperature`.
-	TopP param.Opt[float64] `json:"top_p,omitzero"`
+	// Recommended for advanced use cases only.
+	TopP        param.Opt[float64] `json:"top_p,omitzero"`
+	WorkspaceID param.Opt[string]  `header:"anthropic-workspace-id,omitzero" json:"-"`
 	// An object describing metadata about the request.
 	Metadata MetadataParam `json:"metadata,omitzero"`
 	// Sequences that will cause the model to stop generating.
