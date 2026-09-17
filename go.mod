@@ -1,6 +1,6 @@
 module devopstoolkit/youtube-automation
 
-go 1.25.0
+go 1.26.0
 
 toolchain go1.27.1
 
@@ -15,7 +15,7 @@ require (
 	github.com/slack-go/slack v0.17.3
 	github.com/stretchr/testify v1.12.1
 	github.com/tmc/langchaingo v0.1.14
-	golang.org/x/oauth2 v0.35.0
+	golang.org/x/oauth2 v0.37.0
 	golang.org/x/text v0.34.0
 	google.golang.org/api v0.269.0
 	gopkg.in/gomail.v2 v2.0.0-20160411212932-81ebce5c23df

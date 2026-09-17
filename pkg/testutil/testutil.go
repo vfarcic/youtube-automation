@@ -221,7 +221,7 @@ func AssertEqual(t Tester, expected, actual interface{}, msgAndArgs ...interface
 		if len(msgAndArgs) > 0 {
 			message = fmt.Sprintf("%s\n%s", fmt.Sprint(msgAndArgs...), message)
 		}
-		t.Errorf(message)
+		t.Errorf("%s", message)
 	}
 }
 
@@ -234,7 +234,7 @@ func AssertNotEqual(t Tester, expected, actual interface{}, msgAndArgs ...interf
 		if len(msgAndArgs) > 0 {
 			message = fmt.Sprintf("%s\n%s", fmt.Sprint(msgAndArgs...), message)
 		}
-		t.Errorf(message)
+		t.Errorf("%s", message)
 	}
 }
 
@@ -247,7 +247,7 @@ func AssertTrue(t Tester, condition bool, msgAndArgs ...interface{}) {
 		if len(msgAndArgs) > 0 {
 			message = fmt.Sprintf("%s\n%s", fmt.Sprint(msgAndArgs...), message)
 		}
-		t.Errorf(message)
+		t.Errorf("%s", message)
 	}
 }
 
@@ -260,7 +260,7 @@ func AssertFalse(t Tester, condition bool, msgAndArgs ...interface{}) {
 		if len(msgAndArgs) > 0 {
 			message = fmt.Sprintf("%s\n%s", fmt.Sprint(msgAndArgs...), message)
 		}
-		t.Errorf(message)
+		t.Errorf("%s", message)
 	}
 }
 
@@ -273,7 +273,7 @@ func AssertContains(t Tester, str, substr string, msgAndArgs ...interface{}) {
 		if len(msgAndArgs) > 0 {
 			message = fmt.Sprintf("%s\n%s", fmt.Sprint(msgAndArgs...), message)
 		}
-		t.Errorf(message)
+		t.Errorf("%s", message)
 	}
 }
 
