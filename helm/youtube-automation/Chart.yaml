@@ -2,5 +2,5 @@ apiVersion: v2
 name: youtube-automation
 description: YouTube Automation Tool - video lifecycle management with web UI
 type: application
-version: 0.276.0
-appVersion: "v0.276.0"
+version: 0.277.0
+appVersion: "v0.277.0"
