@@ -9,6 +9,16 @@ permissions:
   contents: write # Needed to create releases, upload assets, and push tags
   packages: write # Needed to push container images to ghcr.io
 
+# Serialize releases. Every push to main computes the next version with
+# `make get-next-minor-version` and pushes that tag. Without this group, merging
+# several PRs in quick succession starts parallel runs that all read the same
+# latest tag, compute the same next version, and then collide -- the losers fail
+# with "! [rejected] v0.30X.0 -> v0.30X.0 (already exists)". cancel-in-progress
+# is false because every merged commit must still get its own release.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
   build-and-release:
     name: Build and Release
