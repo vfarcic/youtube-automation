@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, it, expect, vi } from 'vitest';
 import { DynamicForm } from '../components/forms/DynamicForm';
-import type { AspectField } from '../api/types';
+import type { AspectField, VideoResponse } from '../api/types';
 import { mockVideo } from './handlers';
 
 function createWrapper() {
@@ -153,7 +153,7 @@ describe('DynamicForm', () => {
   });
 
   it('renders map fields with MapInput component', () => {
-    const video = { ...mockVideo, metadata: { key1: { id: 'id-1', value: 'val-1' } } } as any;
+    const video = { ...mockVideo, metadata: { key1: { id: 'id-1', value: 'val-1' } } } as unknown as VideoResponse;
     render(<DynamicForm fields={[mapField]} video={video} onSave={() => {}} />, { wrapper: createWrapper() });
     expect(screen.getByText('Metadata')).toBeInTheDocument();
     expect(screen.getByText(/Key: key1/)).toBeInTheDocument();

@@ -20,8 +20,20 @@ jobs:
           cache: npm
           cache-dependency-path: web/package-lock.json
 
+      - name: Install frontend dependencies
+        run: cd web && npm ci
+
+      - name: Lint frontend
+        run: cd web && npm run lint
+
       - name: Run frontend tests
-        run: cd web && npm ci && npm test
+        run: cd web && npm test
+
+      # The release workflow builds the frontend before shipping. Without this
+      # step a dependency bump that breaks `tsc -b` or `vite build` passes CI
+      # and only fails after merge, when release.yml is already tagging.
+      - name: Build frontend
+        run: cd web && npm run build
 
       - name: Set up Go
         uses: actions/setup-go@v7

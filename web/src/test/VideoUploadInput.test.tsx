@@ -133,7 +133,7 @@ describe('VideoUploadInput', () => {
     // Mock uploadFileWithProgress to capture the onProgress callback
     // and control when the promise resolves
     let capturedOnProgress: ((percent: number) => void) | undefined;
-    let resolveUpload: ((value: any) => void) | undefined;
+    let resolveUpload: ((value: { driveFileId: string; videoFile: string }) => void) | undefined;
 
     const clientModule = await import('../api/client');
     vi.spyOn(clientModule, 'uploadFileWithProgress').mockImplementation(
