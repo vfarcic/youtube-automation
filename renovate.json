@@ -4,6 +4,17 @@
       "config:recommended"
   ],
   "automerge": true,
+  "description": [
+    "rebaseWhen defaults to 'auto', which resolves to 'behind-base-branch' whenever automerge is enabled.",
+    "That made every push to main force-rebase all open Renovate branches, restarting their CI. Each",
+    "merged PR pushes twice to main (the merge itself, plus the 'chore: update Helm chart' commit from",
+    "release.yml), so the whole queue was invalidated twice per merge. Renovate also stops processing a",
+    "run after a single automerge because the base branch SHA changed, so branches rarely stayed green",
+    "long enough for the next run to merge them, and major updates (sorted last) starved indefinitely.",
+    "'conflicted' rebases only when a branch actually conflicts with main, which keeps passing checks",
+    "valid across unrelated merges."
+  ],
+  "rebaseWhen": "conflicted",
   "packageRules": [
     {
       "matchManagers": ["devbox"],
