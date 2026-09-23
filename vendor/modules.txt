@@ -22,7 +22,7 @@ cloud.google.com/go/auth/oauth2adapt
 # cloud.google.com/go/compute/metadata v0.9.1
 ## explicit; go 1.25.0
 cloud.google.com/go/compute/metadata
-# github.com/anthropics/anthropic-sdk-go v1.74.0
+# github.com/anthropics/anthropic-sdk-go v1.75.0
 ## explicit; go 1.24
 github.com/anthropics/anthropic-sdk-go
 github.com/anthropics/anthropic-sdk-go/config
