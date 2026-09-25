@@ -17,6 +17,20 @@
   "rebaseWhen": "conflicted",
   "packageRules": [
     {
+      "description": [
+        "typescript-eslint hard-errors on startup under TypeScript 7 ('typescript-eslint does not",
+        "support TS 7.0'), and its peer range is typescript '>=4.8.4 <6.1.0'. That peer conflict also",
+        "makes npm refuse to resolve the tree, so Renovate cannot even regenerate package-lock.json --",
+        "PR #450 failed with 'Artifact update problem' for exactly this reason. The app itself is TS 7",
+        "clean (tsc -b, vite build and the full vitest suite all pass), so the only thing holding us at",
+        "6.x is lint. Drop this cap once typescript-eslint ships TS >=7.1 support:",
+        "https://github.com/typescript-eslint/typescript-eslint/issues/10940"
+      ],
+      "matchManagers": ["npm"],
+      "matchPackageNames": ["typescript"],
+      "allowedVersions": "<7"
+    },
+    {
       "matchManagers": ["devbox"],
       "commitMessageSuffix": "[skip ci]",
       "ignoreTests": true
